@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AppleMusicDesktopLyrics.Core\AppleMusicDesktopLyrics.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\scripts\now-playing.ps1" Link="scripts\now-playing.ps1" CopyToOutputDirectory="Always" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\app-logo.png" />
+  </ItemGroup>
+
+</Project>
