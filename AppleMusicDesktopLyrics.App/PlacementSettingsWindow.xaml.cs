@@ -173,6 +173,7 @@ namespace AppleMusicDesktopLyrics.App
             var primary = BrushFromHex(dark ? "#F3F4F6" : "#202124");
             var toggleBackground = BrushFromHex(dark ? "#242A34" : "#EEF1F6");
 
+            UpdateThemeResources(dark);
             RootChrome.Background = rootBackground;
             RootChrome.BorderBrush = BrushFromHex(dark ? "#303642" : "#D4DAE3");
             SidebarCard.Background = cardBackground;
@@ -183,6 +184,27 @@ namespace AppleMusicDesktopLyrics.App
             HeaderTitleText.Foreground = primary;
             HeaderSubtitleText.Foreground = muted;
             ApplyTextTheme(this, primary, muted);
+        }
+
+        private void UpdateThemeResources(bool dark)
+        {
+            SetBrushResource("SettingsControlBackgroundBrush", dark ? "#20252E" : "#F8FAFC");
+            SetBrushResource("SettingsControlForegroundBrush", dark ? "#F3F4F6" : "#1F2937");
+            SetBrushResource("SettingsControlMutedForegroundBrush", dark ? "#B4BDCA" : "#667085");
+            SetBrushResource("SettingsControlBorderBrush", dark ? "#3A4250" : "#D8DEE8");
+            SetBrushResource("SettingsControlHoverBackgroundBrush", dark ? "#28303B" : "#FFFFFF");
+            SetBrushResource("SettingsControlPressedBackgroundBrush", dark ? "#303846" : "#EEF2F7");
+            SetBrushResource("SettingsSelectedBackgroundBrush", dark ? "#2D3542" : "#FFFFFF");
+            SetBrushResource("SettingsSelectedForegroundBrush", dark ? "#F8FAFC" : "#111827");
+            SetBrushResource("SettingsSidebarHoverBackgroundBrush", dark ? "#202733" : "#F2F5FA");
+            SetBrushResource("SettingsSidebarSelectedBackgroundBrush", dark ? "#20324D" : "#EAF2FF");
+            SetBrushResource("SettingsSidebarSelectedForegroundBrush", dark ? "#8DBBFF" : "#0F5FD7");
+            SetBrushResource("SettingsTrackBackgroundBrush", dark ? "#303846" : "#E6EAF0");
+        }
+
+        private void SetBrushResource(string key, string hex)
+        {
+            Resources[key] = BrushFromHex(hex);
         }
 
         private static bool ResolveDarkSettingsTheme(SettingsThemePreference preference)
@@ -223,15 +245,6 @@ namespace AppleMusicDesktopLyrics.App
                 textBlock.Foreground = textBlock.FontSize <= 12.5 ? muted : primary;
             }
 
-            foreach (var control in FindVisualChildren<Control>(root))
-            {
-                if (IsDescendantOf(HoverPreviewScene, control))
-                {
-                    continue;
-                }
-
-                control.Foreground = primary;
-            }
         }
 
         private static SolidColorBrush BrushFromHex(string hex)

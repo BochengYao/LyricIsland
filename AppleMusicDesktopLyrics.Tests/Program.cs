@@ -652,8 +652,12 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.True(xaml.Contains("ToolTip=\"浅色模式\""));
             Assert.True(xaml.Contains("ToolTip=\"深色模式\""));
             Assert.True(xaml.Contains("ToolTip=\"跟随系统\""));
+            Assert.True(xaml.Contains("SettingsControlBackgroundBrush"));
+            Assert.True(xaml.Contains("SettingsSelectedForegroundBrush"));
             Assert.True(settingsSource.Contains("SettingsThemePreference"));
             Assert.True(windowSource.Contains("ResolveDarkSettingsTheme"));
+            Assert.True(windowSource.Contains("UpdateThemeResources"));
+            Assert.False(windowSource.Contains("foreach (var control in FindVisualChildren<Control>(root))"));
         }
 
         static string GetSolutionRoot()

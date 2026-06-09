@@ -12,6 +12,18 @@
         Icon="Assets/app-logo.png"
         MouseLeftButtonDown="Window_MouseLeftButtonDown">
     <Window.Resources>
+        <SolidColorBrush x:Key="SettingsControlBackgroundBrush" Color="#F8FAFC" />
+        <SolidColorBrush x:Key="SettingsControlForegroundBrush" Color="#1F2937" />
+        <SolidColorBrush x:Key="SettingsControlMutedForegroundBrush" Color="#667085" />
+        <SolidColorBrush x:Key="SettingsControlBorderBrush" Color="#D8DEE8" />
+        <SolidColorBrush x:Key="SettingsControlHoverBackgroundBrush" Color="#FFFFFF" />
+        <SolidColorBrush x:Key="SettingsControlPressedBackgroundBrush" Color="#EEF2F7" />
+        <SolidColorBrush x:Key="SettingsSelectedBackgroundBrush" Color="#FFFFFF" />
+        <SolidColorBrush x:Key="SettingsSelectedForegroundBrush" Color="#111827" />
+        <SolidColorBrush x:Key="SettingsSidebarHoverBackgroundBrush" Color="#F2F5FA" />
+        <SolidColorBrush x:Key="SettingsSidebarSelectedBackgroundBrush" Color="#EAF2FF" />
+        <SolidColorBrush x:Key="SettingsSidebarSelectedForegroundBrush" Color="#0F5FD7" />
+        <SolidColorBrush x:Key="SettingsTrackBackgroundBrush" Color="#E6EAF0" />
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="#202124" />
             <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
@@ -41,7 +53,7 @@
             <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="#475467" />
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -54,11 +66,11 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="SidebarRoot" Property="Background" Value="#F2F5FA" />
+                                <Setter TargetName="SidebarRoot" Property="Background" Value="{DynamicResource SettingsSidebarHoverBackgroundBrush}" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="SidebarRoot" Property="Background" Value="#EAF2FF" />
-                                <Setter Property="Foreground" Value="#0F5FD7" />
+                                <Setter TargetName="SidebarRoot" Property="Background" Value="{DynamicResource SettingsSidebarSelectedBackgroundBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource SettingsSidebarSelectedForegroundBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -71,9 +83,9 @@
             <Setter Property="Padding" Value="16,0" />
             <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
             <Setter Property="FontSize" Value="13" />
-            <Setter Property="Foreground" Value="#1F2937" />
-            <Setter Property="Background" Value="#FFFFFF" />
-            <Setter Property="BorderBrush" Value="#D6DCE5" />
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SettingsControlBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SettingsControlBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -88,10 +100,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ButtonRoot" Property="Background" Value="#F8FAFC" />
+                                <Setter TargetName="ButtonRoot" Property="Background" Value="{DynamicResource SettingsControlHoverBackgroundBrush}" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="ButtonRoot" Property="Background" Value="#EEF2F7" />
+                                <Setter TargetName="ButtonRoot" Property="Background" Value="{DynamicResource SettingsControlPressedBackgroundBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -136,8 +148,9 @@
         <Style TargetType="TextBox">
             <Setter Property="Height" Value="34" />
             <Setter Property="Padding" Value="11,0" />
-            <Setter Property="Background" Value="#F8FAFC" />
-            <Setter Property="BorderBrush" Value="#D8DEE8" />
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SettingsControlBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SettingsControlBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -165,8 +178,9 @@
         <Style TargetType="ComboBox">
             <Setter Property="Height" Value="34" />
             <Setter Property="Padding" Value="8,3" />
-            <Setter Property="Background" Value="#F8FAFC" />
-            <Setter Property="BorderBrush" Value="#D8DEE8" />
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SettingsControlBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SettingsControlBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="Template">
@@ -182,7 +196,7 @@
                                     <ControlTemplate TargetType="ToggleButton">
                                         <Border x:Name="ComboRoot"
                                                 Background="{TemplateBinding Background}"
-                                                BorderBrush="#D8DEE8"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
                                                 BorderThickness="1"
                                                 CornerRadius="9">
                                             <Grid>
@@ -199,7 +213,7 @@
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="ComboRoot" Property="Background" Value="#FFFFFF" />
+                                                <Setter TargetName="ComboRoot" Property="Background" Value="{DynamicResource SettingsControlHoverBackgroundBrush}" />
                                             </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
@@ -214,8 +228,8 @@
                                 <Border MinWidth="{TemplateBinding ActualWidth}"
                                         Margin="0,4,0,0"
                                         Padding="4"
-                                        Background="White"
-                                        BorderBrush="#D8DEE8"
+                                        Background="{DynamicResource SettingsControlBackgroundBrush}"
+                                        BorderBrush="{DynamicResource SettingsControlBorderBrush}"
                                         BorderThickness="1"
                                         CornerRadius="10">
                                     <ScrollViewer MaxHeight="220">
@@ -231,6 +245,7 @@
         <Style TargetType="ComboBoxItem">
             <Setter Property="Padding" Value="10,7" />
             <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBoxItem">
@@ -241,10 +256,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="ItemRoot" Property="Background" Value="#EAF2FF" />
+                                <Setter TargetName="ItemRoot" Property="Background" Value="{DynamicResource SettingsSidebarSelectedBackgroundBrush}" />
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="ItemRoot" Property="Background" Value="#EAF2FF" />
+                                <Setter TargetName="ItemRoot" Property="Background" Value="{DynamicResource SettingsSidebarSelectedBackgroundBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -252,7 +267,7 @@
             </Setter>
         </Style>
         <Style TargetType="CheckBox">
-            <Setter Property="Foreground" Value="#1F2937" />
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
             <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="Template">
@@ -283,7 +298,7 @@
                         </StackPanel>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="CheckRoot" Property="Background" Value="#1677FF" />
+                            <Setter TargetName="CheckRoot" Property="Background" Value="#1677FF" />
                                 <Setter TargetName="CheckRoot" Property="BorderBrush" Value="#1677FF" />
                                 <Setter TargetName="CheckGlyph" Property="Visibility" Value="Visible" />
                             </Trigger>
@@ -327,7 +342,7 @@
                                         <RepeatButton.Template>
                                             <ControlTemplate TargetType="RepeatButton">
                                                 <Border Height="5"
-                                                        Background="#E6EAF0"
+                                                        Background="{DynamicResource SettingsTrackBackgroundBrush}"
                                                         CornerRadius="3" />
                                             </ControlTemplate>
                                         </RepeatButton.Template>
@@ -375,7 +390,7 @@
             <Setter Property="Padding" Value="14,0" />
             <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
             <Setter Property="FontSize" Value="13" />
-            <Setter Property="Foreground" Value="#667085" />
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlMutedForegroundBrush}" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="Template">
@@ -391,9 +406,9 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="SegmentRoot" Property="Background" Value="#FFFFFF" />
-                                <Setter TargetName="SegmentRoot" Property="BorderBrush" Value="#D5DCE7" />
-                                <Setter Property="Foreground" Value="#111827" />
+                                <Setter TargetName="SegmentRoot" Property="Background" Value="{DynamicResource SettingsSelectedBackgroundBrush}" />
+                                <Setter TargetName="SegmentRoot" Property="BorderBrush" Value="{DynamicResource SettingsControlBorderBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource SettingsSelectedForegroundBrush}" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.48" />
@@ -408,7 +423,7 @@
             <Setter Property="Height" Value="30" />
             <Setter Property="FontFamily" Value="Segoe UI Symbol" />
             <Setter Property="FontSize" Value="15" />
-            <Setter Property="Foreground" Value="#667085" />
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlMutedForegroundBrush}" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="Template">
@@ -424,12 +439,12 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ThemeSegmentRoot" Property="Background" Value="#F8FAFC" />
+                                <Setter TargetName="ThemeSegmentRoot" Property="Background" Value="{DynamicResource SettingsControlHoverBackgroundBrush}" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="ThemeSegmentRoot" Property="Background" Value="#FFFFFF" />
-                                <Setter TargetName="ThemeSegmentRoot" Property="BorderBrush" Value="#D5DCE7" />
-                                <Setter Property="Foreground" Value="#111827" />
+                                <Setter TargetName="ThemeSegmentRoot" Property="Background" Value="{DynamicResource SettingsSelectedBackgroundBrush}" />
+                                <Setter TargetName="ThemeSegmentRoot" Property="BorderBrush" Value="{DynamicResource SettingsControlBorderBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource SettingsSelectedForegroundBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
