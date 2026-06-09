@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using Microsoft.Win32;
 using AppleMusicDesktopLyrics.Core;
 
 namespace AppleMusicDesktopLyrics.App
@@ -15,6 +16,7 @@ namespace AppleMusicDesktopLyrics.App
         private readonly IReadOnlyList<OverlayScreenArea> screens;
         private readonly Action<OverlayPlacementSettings> applySettings;
         private readonly int initialCacheLimitMegabytes;
+        private SettingsThemePreference selectedThemePreference = SettingsThemePreference.System;
 
         public PlacementSettingsWindow(
             IReadOnlyList<OverlayScreenArea> screens,
@@ -40,6 +42,9 @@ namespace AppleMusicDesktopLyrics.App
             var settings = currentSettings ?? new OverlayPlacementSettings();
             settings.Normalize();
             initialCacheLimitMegabytes = settings.CacheLimitMegabytes;
+            selectedThemePreference = settings.SettingsTheme;
+            SetThemeRadioButton(selectedThemePreference);
+            ApplySettingsTheme();
             LyricsSourceComboBox.SelectedValue = settings.LyricsSource;
             SingleLineRadioButton.IsChecked = !settings.UseMultiLineDisplay;
             MultiLineRadioButton.IsChecked = settings.UseMultiLineDisplay;
@@ -52,6 +57,7 @@ namespace AppleMusicDesktopLyrics.App
             HoverAuraSizeSlider.Value = settings.HoverAuraSize;
             HoverDetectionRangeSlider.Value = settings.HoverDetectionRange;
             HoverAuraAspectRatioSlider.Value = settings.HoverAuraAspectRatio;
+            PassThroughOnHoverCheckBox.IsChecked = settings.PassThroughOnHover;
             SetHoverSpectrumControls(settings.HoverSpectrumStops);
             UpdateTranslationLineModeLock();
             UpdateSettingValueLabels();
@@ -89,6 +95,8 @@ namespace AppleMusicDesktopLyrics.App
                 HoverAuraAspectRatio = HoverAuraAspectRatioSlider.Value,
                 HoverTransparencyPercent = (int)Math.Round(SpectrumCenterTransparencySlider.Value),
                 HoverSpectrumStops = ReadHoverSpectrumStops(),
+                PassThroughOnHover = PassThroughOnHoverCheckBox.IsChecked == true,
+                SettingsTheme = selectedThemePreference,
                 LyricsSource = ReadLyricsSource(),
                 UseMultiLineDisplay = ReadUseMultiLineDisplay(),
                 ShowTranslation = ShowTranslationCheckBox.IsChecked == true
@@ -120,6 +128,159 @@ namespace AppleMusicDesktopLyrics.App
         {
             var button = sender as RadioButton;
             ShowSection(button?.Tag as string ?? "Lyrics");
+        }
+
+        private void ThemeRadioButton_Checked(object sender, RoutedEventArgs e)
+        {
+            var button = sender as RadioButton;
+            if (button == null || button.Tag == null)
+            {
+                return;
+            }
+
+            SettingsThemePreference preference;
+            if (Enum.TryParse(button.Tag.ToString(), out preference))
+            {
+                selectedThemePreference = preference;
+                ApplySettingsTheme();
+            }
+        }
+
+        private void SetThemeRadioButton(SettingsThemePreference preference)
+        {
+            if (LightThemeRadioButton == null)
+            {
+                return;
+            }
+
+            LightThemeRadioButton.IsChecked = preference == SettingsThemePreference.Light;
+            DarkThemeRadioButton.IsChecked = preference == SettingsThemePreference.Dark;
+            SystemThemeRadioButton.IsChecked = preference == SettingsThemePreference.System;
+        }
+
+        private void ApplySettingsTheme()
+        {
+            if (RootChrome == null)
+            {
+                return;
+            }
+
+            var dark = ResolveDarkSettingsTheme(selectedThemePreference);
+            var rootBackground = BrushFromHex(dark ? "#111318" : "#F7F8FB");
+            var cardBackground = BrushFromHex(dark ? "#181B22" : "#FFFFFFFF");
+            var cardBorder = BrushFromHex(dark ? "#2A303A" : "#E6E9EF");
+            var muted = BrushFromHex(dark ? "#9CA3AF" : "#667085");
+            var primary = BrushFromHex(dark ? "#F3F4F6" : "#202124");
+            var toggleBackground = BrushFromHex(dark ? "#242A34" : "#EEF1F6");
+
+            RootChrome.Background = rootBackground;
+            RootChrome.BorderBrush = BrushFromHex(dark ? "#303642" : "#D4DAE3");
+            SidebarCard.Background = cardBackground;
+            SidebarCard.BorderBrush = cardBorder;
+            ContentCard.Background = cardBackground;
+            ContentCard.BorderBrush = cardBorder;
+            ThemeToggleRoot.Background = toggleBackground;
+            HeaderTitleText.Foreground = primary;
+            HeaderSubtitleText.Foreground = muted;
+            ApplyTextTheme(this, primary, muted);
+        }
+
+        private static bool ResolveDarkSettingsTheme(SettingsThemePreference preference)
+        {
+            if (preference == SettingsThemePreference.Dark)
+            {
+                return true;
+            }
+
+            if (preference == SettingsThemePreference.Light)
+            {
+                return false;
+            }
+
+            try
+            {
+                using (var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"))
+                {
+                    var value = key?.GetValue("AppsUseLightTheme");
+                    return value is int && (int)value == 0;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private void ApplyTextTheme(DependencyObject root, Brush primary, Brush muted)
+        {
+            foreach (var textBlock in FindVisualChildren<TextBlock>(root))
+            {
+                if (IsDescendantOf(HoverPreviewScene, textBlock))
+                {
+                    continue;
+                }
+
+                textBlock.Foreground = textBlock.FontSize <= 12.5 ? muted : primary;
+            }
+
+            foreach (var control in FindVisualChildren<Control>(root))
+            {
+                if (IsDescendantOf(HoverPreviewScene, control))
+                {
+                    continue;
+                }
+
+                control.Foreground = primary;
+            }
+        }
+
+        private static SolidColorBrush BrushFromHex(string hex)
+        {
+            return new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex));
+        }
+
+        private static IEnumerable<T> FindVisualChildren<T>(DependencyObject root)
+            where T : DependencyObject
+        {
+            if (root == null)
+            {
+                yield break;
+            }
+
+            for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+            {
+                var child = VisualTreeHelper.GetChild(root, index);
+                if (child is T)
+                {
+                    yield return (T)child;
+                }
+
+                foreach (var descendant in FindVisualChildren<T>(child))
+                {
+                    yield return descendant;
+                }
+            }
+        }
+
+        private static bool IsDescendantOf(DependencyObject ancestor, DependencyObject child)
+        {
+            if (ancestor == null || child == null)
+            {
+                return false;
+            }
+
+            var current = child;
+            while (current != null)
+            {
+                if (ReferenceEquals(current, ancestor))
+                {
+                    return true;
+                }
+
+                current = VisualTreeHelper.GetParent(current);
+            }
+
+            return false;
         }
 
         private void ShowSection(string section)

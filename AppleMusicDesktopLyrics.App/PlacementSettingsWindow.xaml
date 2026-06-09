@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="偏好设置"
         Width="760"
-        Height="760"
+        Height="790"
         AllowsTransparency="True"
         Background="Transparent"
         WindowStartupLocation="Manual"
@@ -403,9 +403,43 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="ThemeSegmentButtonStyle" TargetType="RadioButton">
+            <Setter Property="Width" Value="42" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="FontFamily" Value="Segoe UI Symbol" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="Foreground" Value="#667085" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="ThemeSegmentRoot"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="9">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ThemeSegmentRoot" Property="Background" Value="#F8FAFC" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="ThemeSegmentRoot" Property="Background" Value="#FFFFFF" />
+                                <Setter TargetName="ThemeSegmentRoot" Property="BorderBrush" Value="#D5DCE7" />
+                                <Setter Property="Foreground" Value="#111827" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
-    <Border Background="#F7F8FB"
+    <Border x:Name="RootChrome"
+            Background="#F7F8FB"
             BorderBrush="#D4DAE3"
             BorderThickness="1"
             CornerRadius="18">
@@ -416,27 +450,63 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <StackPanel Grid.Row="0"
-                        Margin="0,0,0,18"
-                        Orientation="Horizontal">
-                <Border Width="42"
-                        Height="42"
-                        Margin="0,0,12,0"
-                        CornerRadius="12"
-                        ClipToBounds="True">
-                    <Image Source="Assets/app-logo.png"
-                           Stretch="UniformToFill" />
-                </Border>
-                <StackPanel VerticalAlignment="Center">
-                    <TextBlock FontSize="23"
-                               FontWeight="SemiBold"
-                               Text="偏好设置" />
-                    <TextBlock Margin="0,5,0,0"
-                               Foreground="#7A8494"
-                               FontSize="12"
-                               Text="调整歌词岛位置、缓存和鼠标避让效果" />
+            <Grid Grid.Row="0"
+                  Margin="0,0,0,18">
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="42"
+                            Height="42"
+                            Margin="0,0,12,0"
+                            CornerRadius="12"
+                            ClipToBounds="True">
+                        <Image Source="Assets/app-logo.png"
+                               Stretch="UniformToFill" />
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock x:Name="HeaderTitleText"
+                                   FontSize="23"
+                                   FontWeight="SemiBold"
+                                   Text="偏好设置" />
+                        <TextBlock x:Name="HeaderSubtitleText"
+                                   Margin="0,5,0,0"
+                                   Foreground="#7A8494"
+                                   FontSize="12"
+                                   Text="调整歌词岛位置、缓存和鼠标避让效果" />
+                    </StackPanel>
                 </StackPanel>
-            </StackPanel>
+
+                <Border x:Name="ThemeToggleRoot"
+                        Width="134"
+                        Height="36"
+                        Padding="3"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Background="#EEF1F6"
+                        CornerRadius="12">
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton x:Name="LightThemeRadioButton"
+                                     GroupName="SettingsTheme"
+                                     Tag="Light"
+                                     Checked="ThemeRadioButton_Checked"
+                                     Style="{StaticResource ThemeSegmentButtonStyle}"
+                                     ToolTip="浅色模式"
+                                     Content="☀" />
+                        <RadioButton x:Name="DarkThemeRadioButton"
+                                     GroupName="SettingsTheme"
+                                     Tag="Dark"
+                                     Checked="ThemeRadioButton_Checked"
+                                     Style="{StaticResource ThemeSegmentButtonStyle}"
+                                     ToolTip="深色模式"
+                                     Content="☾" />
+                        <RadioButton x:Name="SystemThemeRadioButton"
+                                     GroupName="SettingsTheme"
+                                     Tag="System"
+                                     Checked="ThemeRadioButton_Checked"
+                                     Style="{StaticResource ThemeSegmentButtonStyle}"
+                                     ToolTip="跟随系统"
+                                     Content="◐" />
+                    </StackPanel>
+                </Border>
+            </Grid>
 
             <Grid Grid.Row="1"
                   Margin="0,0,0,18">
@@ -446,7 +516,8 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <Border Grid.Column="0"
+                <Border x:Name="SidebarCard"
+                        Grid.Column="0"
                         Style="{StaticResource CardStyle}">
                     <StackPanel>
                         <RadioButton x:Name="LyricsSectionButton"
@@ -476,7 +547,8 @@
                     </StackPanel>
                 </Border>
 
-                <Border Grid.Column="2"
+                <Border x:Name="ContentCard"
+                        Grid.Column="2"
                         Style="{StaticResource CardStyle}">
                     <Grid>
                         <Grid x:Name="LyricsSettingsPanel">
@@ -550,6 +622,7 @@
                         <Grid x:Name="PositionSettingsPanel"
                               Visibility="Collapsed">
                             <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
@@ -726,8 +799,22 @@
                                        Grid.Column="0"
                                        Margin="0,0,16,18"
                                        Style="{StaticResource SettingLabel}"
+                                       Text="鼠标穿透" />
+                            <CheckBox x:Name="PassThroughOnHoverCheckBox"
+                                      Grid.Row="4"
+                                      Grid.Column="1"
+                                      Grid.ColumnSpan="2"
+                                      Margin="0,0,0,18"
+                                      VerticalAlignment="Center"
+                                      Content="透明避让时允许左键点到下方窗口" />
+
+                            <TextBlock Grid.Row="5"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,18"
+                                       Style="{StaticResource SettingLabel}"
                                        Text="实时预览" />
-                            <Border Grid.Row="4"
+                            <Border x:Name="HoverPreviewScene"
+                                    Grid.Row="5"
                                     Grid.Column="1"
                                     Grid.ColumnSpan="2"
                                     Height="118"
@@ -822,12 +909,12 @@
                                 </Grid>
                             </Border>
 
-                            <TextBlock Grid.Row="5"
+                            <TextBlock Grid.Row="6"
                                        Grid.Column="0"
                                        Margin="0,0,16,18"
                                        Style="{StaticResource SettingLabel}"
                                        Text="光晕频谱" />
-                            <StackPanel Grid.Row="5"
+                            <StackPanel Grid.Row="6"
                                         Grid.Column="1"
                                         Grid.ColumnSpan="2"
                                         Margin="0,0,0,18">
@@ -866,13 +953,13 @@
                                 </Grid>
                             </StackPanel>
 
-                            <TextBlock Grid.Row="6"
+                            <TextBlock Grid.Row="7"
                                        Grid.Column="0"
                                        Margin="0,0,16,18"
                                        Style="{StaticResource SettingLabel}"
                                        Text="过渡位置" />
                             <Slider x:Name="SpectrumMidPositionSlider"
-                                    Grid.Row="6"
+                                    Grid.Row="7"
                                     Grid.Column="1"
                                     Margin="0,0,10,18"
                                     Minimum="5"
@@ -880,25 +967,6 @@
                                     TickFrequency="5"
                                     ValueChanged="SettingSlider_ValueChanged" />
                             <TextBlock x:Name="SpectrumMidPositionSliderValueText"
-                                       Grid.Row="6"
-                                       Grid.Column="2"
-                                       Margin="0,0,0,18"
-                                       Style="{StaticResource SettingValue}" />
-
-                            <TextBlock Grid.Row="7"
-                                       Grid.Column="0"
-                                       Margin="0,0,16,18"
-                                       Style="{StaticResource SettingLabel}"
-                                       Text="中心透明" />
-                            <Slider x:Name="SpectrumCenterTransparencySlider"
-                                    Grid.Row="7"
-                                    Grid.Column="1"
-                                    Margin="0,0,10,18"
-                                    Minimum="0"
-                                    Maximum="100"
-                                    TickFrequency="5"
-                                    ValueChanged="SettingSlider_ValueChanged" />
-                            <TextBlock x:Name="SpectrumCenterTransparencyValueText"
                                        Grid.Row="7"
                                        Grid.Column="2"
                                        Margin="0,0,0,18"
@@ -908,8 +976,8 @@
                                        Grid.Column="0"
                                        Margin="0,0,16,18"
                                        Style="{StaticResource SettingLabel}"
-                                       Text="过渡透明" />
-                            <Slider x:Name="SpectrumMidTransparencySlider"
+                                       Text="中心透明" />
+                            <Slider x:Name="SpectrumCenterTransparencySlider"
                                     Grid.Row="8"
                                     Grid.Column="1"
                                     Margin="0,0,10,18"
@@ -917,7 +985,7 @@
                                     Maximum="100"
                                     TickFrequency="5"
                                     ValueChanged="SettingSlider_ValueChanged" />
-                            <TextBlock x:Name="SpectrumMidTransparencyValueText"
+                            <TextBlock x:Name="SpectrumCenterTransparencyValueText"
                                        Grid.Row="8"
                                        Grid.Column="2"
                                        Margin="0,0,0,18"
@@ -925,10 +993,29 @@
 
                             <TextBlock Grid.Row="9"
                                        Grid.Column="0"
+                                       Margin="0,0,16,18"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="过渡透明" />
+                            <Slider x:Name="SpectrumMidTransparencySlider"
+                                    Grid.Row="9"
+                                    Grid.Column="1"
+                                    Margin="0,0,10,18"
+                                    Minimum="0"
+                                    Maximum="100"
+                                    TickFrequency="5"
+                                    ValueChanged="SettingSlider_ValueChanged" />
+                            <TextBlock x:Name="SpectrumMidTransparencyValueText"
+                                       Grid.Row="9"
+                                       Grid.Column="2"
+                                       Margin="0,0,0,18"
+                                       Style="{StaticResource SettingValue}" />
+
+                            <TextBlock Grid.Row="10"
+                                       Grid.Column="0"
                                        Style="{StaticResource SettingLabel}"
                                        Text="边缘透明" />
                             <Slider x:Name="SpectrumEdgeTransparencySlider"
-                                    Grid.Row="9"
+                                    Grid.Row="10"
                                     Grid.Column="1"
                                     Margin="0,0,10,0"
                                     Minimum="0"
@@ -936,7 +1023,7 @@
                                     TickFrequency="5"
                                     ValueChanged="SettingSlider_ValueChanged" />
                             <TextBlock x:Name="SpectrumEdgeTransparencyValueText"
-                                       Grid.Row="9"
+                                       Grid.Row="10"
                                        Grid.Column="2"
                                        Style="{StaticResource SettingValue}" />
                         </Grid>

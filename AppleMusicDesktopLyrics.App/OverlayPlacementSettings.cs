@@ -38,6 +38,10 @@ namespace AppleMusicDesktopLyrics.App
 
         public List<HoverSpectrumStop> HoverSpectrumStops { get; set; } = CreateDefaultHoverSpectrumStops();
 
+        public bool PassThroughOnHover { get; set; } = true;
+
+        public SettingsThemePreference SettingsTheme { get; set; } = SettingsThemePreference.System;
+
         public LyricsSourcePreference LyricsSource { get; set; } = LyricsSourcePreference.Automatic;
 
         public bool UseMultiLineDisplay { get; set; } = true;
@@ -62,6 +66,11 @@ namespace AppleMusicDesktopLyrics.App
             if (!Enum.IsDefined(typeof(LyricsSourcePreference), LyricsSource))
             {
                 LyricsSource = LyricsSourcePreference.Automatic;
+            }
+
+            if (!Enum.IsDefined(typeof(SettingsThemePreference), SettingsTheme))
+            {
+                SettingsTheme = SettingsThemePreference.System;
             }
 
             if (ShowTranslation)
@@ -143,6 +152,8 @@ namespace AppleMusicDesktopLyrics.App
                 var originalHoverAuraAspectRatio = settings.HoverAuraAspectRatio;
                 var originalHoverTransparency = settings.HoverTransparencyPercent;
                 var originalHoverSpectrum = SerializeHoverSpectrum(settings.HoverSpectrumStops);
+                var originalPassThroughOnHover = settings.PassThroughOnHover;
+                var originalSettingsTheme = settings.SettingsTheme;
                 var originalLyricsSource = settings.LyricsSource;
                 var originalUseMultiLineDisplay = settings.UseMultiLineDisplay;
                 var originalShowTranslation = settings.ShowTranslation;
@@ -155,6 +166,8 @@ namespace AppleMusicDesktopLyrics.App
                     Math.Abs(settings.HoverAuraAspectRatio - originalHoverAuraAspectRatio) > 0.0001 ||
                     settings.HoverTransparencyPercent != originalHoverTransparency ||
                     SerializeHoverSpectrum(settings.HoverSpectrumStops) != originalHoverSpectrum ||
+                    settings.PassThroughOnHover != originalPassThroughOnHover ||
+                    settings.SettingsTheme != originalSettingsTheme ||
                     settings.LyricsSource != originalLyricsSource ||
                     settings.UseMultiLineDisplay != originalUseMultiLineDisplay ||
                     settings.ShowTranslation != originalShowTranslation)
@@ -195,5 +208,12 @@ namespace AppleMusicDesktopLyrics.App
         public int PositionPercent { get; set; }
 
         public int TransparencyPercent { get; set; }
+    }
+
+    public enum SettingsThemePreference
+    {
+        System,
+        Light,
+        Dark
     }
 }

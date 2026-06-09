@@ -1,11 +1,13 @@
 using System;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Interop;
 using System.Windows.Threading;
 using AppleMusicDesktopLyrics.Core;
 using Forms = System.Windows.Forms;
@@ -39,6 +41,9 @@ namespace AppleMusicDesktopLyrics.App
         private RadialGradientBrush lyricsHoverOpacityMask;
         private int hoverFadeAnimationVersion;
         private bool hoverFadeOutActive;
+        private const int WM_NCHITTEST = 0x0084;
+        private const int HTTRANSPARENT = -1;
+        private const int VK_RBUTTON = 0x02;
 
         public MainWindow()
         {
@@ -70,6 +75,51 @@ namespace AppleMusicDesktopLyrics.App
                 Focus();
                 ShowWaitingForPlaybackHint();
             };
+            SourceInitialized += (sender, args) => InstallWindowMessageHook();
+        }
+
+        [DllImport("user32.dll")]
+        private static extern short GetAsyncKeyState(int virtualKey);
+
+        private void InstallWindowMessageHook()
+        {
+            var source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
+            source?.AddHook(WindowMessageHook);
+        }
+
+        private IntPtr WindowMessageHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            if (msg == WM_NCHITTEST && ShouldPassThroughMouseHit())
+            {
+                handled = true;
+                return new IntPtr(HTTRANSPARENT);
+            }
+
+            return IntPtr.Zero;
+        }
+
+        private bool ShouldPassThroughMouseHit()
+        {
+            if (placementSettings == null ||
+                !placementSettings.PassThroughOnHover ||
+                !islandVisible ||
+                !IsVisible ||
+                IsRightMouseButtonDown())
+            {
+                return false;
+            }
+
+            var cursor = Forms.Cursor.Position;
+            var localPoint = PointFromScreen(new Point(cursor.X, cursor.Y));
+            return localPoint.X >= 0 &&
+                localPoint.X <= Width &&
+                localPoint.Y >= 0 &&
+                localPoint.Y <= Height;
+        }
+
+        private static bool IsRightMouseButtonDown()
+        {
+            return (GetAsyncKeyState(VK_RBUTTON) & unchecked((short)0x8000)) != 0;
         }
 
         public void ShowWaitingForPlaybackHint()
@@ -843,6 +893,7 @@ namespace AppleMusicDesktopLyrics.App
                 HoverAuraAspectRatio = placementSettings.HoverAuraAspectRatio,
                 HoverTransparencyPercent = placementSettings.HoverTransparencyPercent,
                 HoverSpectrumStops = placementSettings.HoverSpectrumStops,
+                PassThroughOnHover = placementSettings.PassThroughOnHover,
                 LyricsSource = placementSettings.LyricsSource,
                 UseMultiLineDisplay = placementSettings.UseMultiLineDisplay,
                 ShowTranslation = placementSettings.ShowTranslation

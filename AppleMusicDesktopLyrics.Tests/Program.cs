@@ -51,6 +51,8 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("selects overlay shape path for dock edge", SelectsOverlayShapePathForDockEdge);
             suite.Run("mouse avoidance settings panel has enough layout rows", MouseAvoidanceSettingsPanelHasEnoughLayoutRows);
             suite.Run("mouse avoidance settings exposes hover aspect ratio preview", MouseAvoidanceSettingsExposesHoverAspectRatioPreview);
+            suite.Run("mouse avoidance settings exposes click through option", MouseAvoidanceSettingsExposesClickThroughOption);
+            suite.Run("settings window exposes theme mode switcher", SettingsWindowExposesThemeModeSwitcher);
             return suite.ExitCode;
         }
 
@@ -624,6 +626,34 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.True(settingsSource.Contains("HoverAuraAspectRatio"));
             Assert.False(mainWindowSource.Contains("HoverAuraSize * 1.5"));
             Assert.False(mainWindowSource.Contains("HoverAuraSize * 0.73"));
+        }
+
+        static void MouseAvoidanceSettingsExposesClickThroughOption()
+        {
+            var root = GetSolutionRoot();
+            var xaml = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml"));
+            var settingsSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "OverlayPlacementSettings.cs"));
+            var mainWindowSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs"));
+
+            Assert.True(xaml.Contains("x:Name=\"PassThroughOnHoverCheckBox\""));
+            Assert.True(settingsSource.Contains("PassThroughOnHover"));
+            Assert.True(mainWindowSource.Contains("WM_NCHITTEST"));
+            Assert.True(mainWindowSource.Contains("HTTRANSPARENT"));
+        }
+
+        static void SettingsWindowExposesThemeModeSwitcher()
+        {
+            var root = GetSolutionRoot();
+            var xaml = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml"));
+            var settingsSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "OverlayPlacementSettings.cs"));
+            var windowSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml.cs"));
+
+            Assert.True(xaml.Contains("x:Name=\"ThemeToggleRoot\""));
+            Assert.True(xaml.Contains("ToolTip=\"浅色模式\""));
+            Assert.True(xaml.Contains("ToolTip=\"深色模式\""));
+            Assert.True(xaml.Contains("ToolTip=\"跟随系统\""));
+            Assert.True(settingsSource.Contains("SettingsThemePreference"));
+            Assert.True(windowSource.Contains("ResolveDarkSettingsTheme"));
         }
 
         static string GetSolutionRoot()
