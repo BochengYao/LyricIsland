@@ -411,7 +411,7 @@
                                 <Setter Property="Foreground" Value="{DynamicResource SettingsSelectedForegroundBrush}" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.48" />
+                                <Setter Property="Opacity" Value="1" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -602,12 +602,13 @@
                                        Margin="0,0,16,16"
                                        Style="{StaticResource SettingLabel}"
                                        Text="行数" />
-                            <Border Grid.Row="2"
+                            <Border x:Name="LineModeSegmentRoot"
+                                    Grid.Row="2"
                                     Grid.Column="1"
                                     Margin="0,0,0,16"
                                     Padding="3"
                                     HorizontalAlignment="Left"
-                                    Background="#EEF1F6"
+                                    Background="{DynamicResource SettingsControlPressedBackgroundBrush}"
                                     CornerRadius="10">
                                 <StackPanel Orientation="Horizontal">
                                     <RadioButton x:Name="SingleLineRadioButton"

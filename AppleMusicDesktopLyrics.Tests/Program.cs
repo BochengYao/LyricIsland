@@ -52,7 +52,9 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("mouse avoidance settings panel has enough layout rows", MouseAvoidanceSettingsPanelHasEnoughLayoutRows);
             suite.Run("mouse avoidance settings exposes hover aspect ratio preview", MouseAvoidanceSettingsExposesHoverAspectRatioPreview);
             suite.Run("mouse avoidance settings exposes click through option", MouseAvoidanceSettingsExposesClickThroughOption);
+            suite.Run("click through keeps left drag available", ClickThroughKeepsLeftDragAvailable);
             suite.Run("settings window exposes theme mode switcher", SettingsWindowExposesThemeModeSwitcher);
+            suite.Run("line mode segment uses theme-aware colors", LineModeSegmentUsesThemeAwareColors);
             return suite.ExitCode;
         }
 
@@ -641,6 +643,17 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.True(mainWindowSource.Contains("HTTRANSPARENT"));
         }
 
+        static void ClickThroughKeepsLeftDragAvailable()
+        {
+            var root = GetSolutionRoot();
+            var mainWindowSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs"));
+
+            Assert.False(mainWindowSource.Contains("msg == WM_NCHITTEST && ShouldPassThroughMouseHit()"));
+            Assert.True(mainWindowSource.Contains("BeginPotentialHorizontalDrag"));
+            Assert.True(mainWindowSource.Contains("ForwardClickThroughToUnderlyingWindow"));
+            Assert.True(mainWindowSource.Contains("DragStartThreshold"));
+        }
+
         static void SettingsWindowExposesThemeModeSwitcher()
         {
             var root = GetSolutionRoot();
@@ -658,6 +671,20 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.True(windowSource.Contains("ResolveDarkSettingsTheme"));
             Assert.True(windowSource.Contains("UpdateThemeResources"));
             Assert.False(windowSource.Contains("foreach (var control in FindVisualChildren<Control>(root))"));
+        }
+
+        static void LineModeSegmentUsesThemeAwareColors()
+        {
+            var root = GetSolutionRoot();
+            var xaml = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml"));
+            var lineModeStart = xaml.IndexOf("x:Name=\"LineModeSegmentRoot\"", StringComparison.Ordinal);
+            var lineModeEnd = xaml.IndexOf("x:Name=\"ShowTranslationCheckBox\"", lineModeStart, StringComparison.Ordinal);
+            var lineModeBlock = xaml.Substring(lineModeStart, lineModeEnd - lineModeStart);
+
+            Assert.True(xaml.Contains("x:Name=\"LineModeSegmentRoot\""));
+            Assert.True(lineModeBlock.Contains("Background=\"{DynamicResource SettingsControlPressedBackgroundBrush}\""));
+            Assert.False(lineModeBlock.Contains("Background=\"#EEF1F6\""));
+            Assert.True(xaml.Contains("<Setter Property=\"Opacity\" Value=\"1\" />"));
         }
 
         static string GetSolutionRoot()

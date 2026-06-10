@@ -37,13 +37,20 @@ namespace AppleMusicDesktopLyrics.App
         private string displayedSecondary;
         private int positionAnimationVersion;
         private bool horizontalDragActive;
+        private bool horizontalDragPending;
+        private Point horizontalDragStartScreenPoint;
         private RadialGradientBrush backgroundHoverOpacityMask;
         private RadialGradientBrush lyricsHoverOpacityMask;
         private int hoverFadeAnimationVersion;
         private bool hoverFadeOutActive;
+        private const double DragStartThreshold = 4.0;
         private const int WM_NCHITTEST = 0x0084;
         private const int HTTRANSPARENT = -1;
         private const int VK_RBUTTON = 0x02;
+        private const int GWL_EXSTYLE = -20;
+        private const int WS_EX_TRANSPARENT = 0x00000020;
+        private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
+        private const uint MOUSEEVENTF_LEFTUP = 0x0004;
 
         public MainWindow()
         {
@@ -81,6 +88,15 @@ namespace AppleMusicDesktopLyrics.App
         [DllImport("user32.dll")]
         private static extern short GetAsyncKeyState(int virtualKey);
 
+        [DllImport("user32.dll")]
+        private static extern int GetWindowLong(IntPtr hwnd, int index);
+
+        [DllImport("user32.dll")]
+        private static extern int SetWindowLong(IntPtr hwnd, int index, int value);
+
+        [DllImport("user32.dll")]
+        private static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extraInfo);
+
         private void InstallWindowMessageHook()
         {
             var source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
@@ -89,10 +105,9 @@ namespace AppleMusicDesktopLyrics.App
 
         private IntPtr WindowMessageHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
-            if (msg == WM_NCHITTEST && ShouldPassThroughMouseHit())
+            if (msg == WM_NCHITTEST)
             {
-                handled = true;
-                return new IntPtr(HTTRANSPARENT);
+                handled = false;
             }
 
             return IntPtr.Zero;
@@ -611,6 +626,15 @@ namespace AppleMusicDesktopLyrics.App
             }
         }
 
+        private void BeginPotentialHorizontalDrag(MouseButtonEventArgs e)
+        {
+            Focus();
+            horizontalDragPending = true;
+            horizontalDragActive = false;
+            horizontalDragStartScreenPoint = GetPointerScreenPoint(e.GetPosition(this));
+            CaptureMouse();
+        }
+
         private void MoveOverlayToPointer(MouseEventArgs e)
         {
             var pointer = GetPointerScreenPoint(e.GetPosition(this));
@@ -637,18 +661,58 @@ namespace AppleMusicDesktopLyrics.App
             return point;
         }
 
+        private static double GetDragDistance(Point current, Point start)
+        {
+            var deltaX = current.X - start.X;
+            var deltaY = current.Y - start.Y;
+            return Math.Sqrt(deltaX * deltaX + deltaY * deltaY);
+        }
+
         private void FinishHorizontalDrag()
         {
-            if (!horizontalDragActive)
+            if (!horizontalDragActive && !horizontalDragPending)
             {
                 return;
             }
 
             horizontalDragActive = false;
+            horizontalDragPending = false;
             ReleaseMouseCapture();
             settingsStore.Save(placementSettings);
             UpdateIslandShape();
             UpdateHoverProximity();
+        }
+
+        private bool ShouldForwardLeftClickThrough()
+        {
+            return placementSettings != null &&
+                placementSettings.PassThroughOnHover &&
+                islandVisible &&
+                IsVisible;
+        }
+
+        private void ForwardClickThroughToUnderlyingWindow()
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            if (hwnd == IntPtr.Zero)
+            {
+                return;
+            }
+
+            var originalStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+            SetWindowLong(hwnd, GWL_EXSTYLE, originalStyle | WS_EX_TRANSPARENT);
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                try
+                {
+                    mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, UIntPtr.Zero);
+                    mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
+                }
+                finally
+                {
+                    SetWindowLong(hwnd, GWL_EXSTYLE, originalStyle);
+                }
+            }), DispatcherPriority.Input);
         }
 
         private void UpdateIslandShape()
@@ -908,11 +972,7 @@ namespace AppleMusicDesktopLyrics.App
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            Focus();
-            ClearPositionAnimation();
-            horizontalDragActive = true;
-            CaptureMouse();
-            MoveOverlayToPointer(e);
+            BeginPotentialHorizontalDrag(e);
             e.Handled = true;
         }
 
@@ -921,6 +981,25 @@ namespace AppleMusicDesktopLyrics.App
             if (islandVisible)
             {
                 ShowHoverTransparency(e.GetPosition(IslandShell));
+            }
+
+            if (horizontalDragPending && !horizontalDragActive)
+            {
+                if (e.LeftButton != MouseButtonState.Pressed)
+                {
+                    FinishHorizontalDrag();
+                    return;
+                }
+
+                var pointer = GetPointerScreenPoint(e.GetPosition(this));
+                if (GetDragDistance(pointer, horizontalDragStartScreenPoint) < DragStartThreshold)
+                {
+                    e.Handled = true;
+                    return;
+                }
+
+                ClearPositionAnimation();
+                horizontalDragActive = true;
             }
 
             if (!horizontalDragActive)
@@ -940,7 +1019,13 @@ namespace AppleMusicDesktopLyrics.App
 
         private void Window_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
+            var shouldForwardClick = horizontalDragPending && !horizontalDragActive && ShouldForwardLeftClickThrough();
             FinishHorizontalDrag();
+            if (shouldForwardClick)
+            {
+                ForwardClickThroughToUnderlyingWindow();
+            }
+
             e.Handled = true;
         }
 
