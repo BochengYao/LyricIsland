@@ -55,6 +55,7 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("click through keeps left drag available", ClickThroughKeepsLeftDragAvailable);
             suite.Run("settings window exposes theme mode switcher", SettingsWindowExposesThemeModeSwitcher);
             suite.Run("line mode segment uses theme-aware colors", LineModeSegmentUsesThemeAwareColors);
+            suite.Run("uses apple music ocr fallback when lyrics sources miss", UsesAppleMusicOcrFallbackWhenLyricsSourcesMiss);
             return suite.ExitCode;
         }
 
@@ -685,6 +686,23 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.True(lineModeBlock.Contains("Background=\"{DynamicResource SettingsControlPressedBackgroundBrush}\""));
             Assert.False(lineModeBlock.Contains("Background=\"#EEF1F6\""));
             Assert.True(xaml.Contains("<Setter Property=\"Opacity\" Value=\"1\" />"));
+        }
+
+        static void UsesAppleMusicOcrFallbackWhenLyricsSourcesMiss()
+        {
+            var root = GetSolutionRoot();
+            var mainWindowSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs"));
+            var fallbackSourcePath = Path.Combine(root, "AppleMusicDesktopLyrics.App", "AppleMusicOcrLyricsReader.cs");
+
+            Assert.True(File.Exists(fallbackSourcePath));
+            var fallbackSource = File.ReadAllText(fallbackSourcePath);
+            Assert.True(mainWindowSource.Contains("appleMusicOcrLyricsReader"));
+            Assert.True(mainWindowSource.Contains("TryReadAppleMusicOcrFallbackAsync"));
+            Assert.True(mainWindowSource.Contains("Apple Music 内置歌词识别"));
+            Assert.True(fallbackSource.Contains("tesseract.exe"));
+            Assert.True(fallbackSource.Contains("CopyFromScreen"));
+            Assert.True(fallbackSource.Contains("BuildHighContrastWhiteTextImage"));
+            Assert.True(fallbackSource.Contains("Codex") && fallbackSource.Contains("插件"));
         }
 
         static string GetSolutionRoot()
