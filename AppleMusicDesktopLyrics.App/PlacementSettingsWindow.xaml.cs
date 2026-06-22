@@ -63,7 +63,11 @@ namespace AppleMusicDesktopLyrics.App
             UpdateSettingValueLabels();
             LyricsSectionButton.IsChecked = true;
             ShowSection("Lyrics");
-            Loaded += (sender, args) => CenterOnDesktop();
+            Loaded += (sender, args) =>
+            {
+                ApplySettingsTheme();
+                CenterOnDesktop();
+            };
         }
 
         private void SaveButton_Click(object sender, RoutedEventArgs e)

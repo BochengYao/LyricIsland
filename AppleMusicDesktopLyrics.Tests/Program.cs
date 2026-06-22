@@ -54,6 +54,7 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("mouse avoidance settings exposes click through option", MouseAvoidanceSettingsExposesClickThroughOption);
             suite.Run("click through keeps left drag available", ClickThroughKeepsLeftDragAvailable);
             suite.Run("settings window exposes theme mode switcher", SettingsWindowExposesThemeModeSwitcher);
+            suite.Run("settings first open text uses theme resources", SettingsFirstOpenTextUsesThemeResources);
             suite.Run("line mode segment uses theme-aware colors", LineModeSegmentUsesThemeAwareColors);
             suite.Run("uses apple music ocr fallback when lyrics sources miss", UsesAppleMusicOcrFallbackWhenLyricsSourcesMiss);
             return suite.ExitCode;
@@ -672,6 +673,22 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.True(windowSource.Contains("ResolveDarkSettingsTheme"));
             Assert.True(windowSource.Contains("UpdateThemeResources"));
             Assert.False(windowSource.Contains("foreach (var control in FindVisualChildren<Control>(root))"));
+        }
+
+        static void SettingsFirstOpenTextUsesThemeResources()
+        {
+            var root = GetSolutionRoot();
+            var xaml = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml"));
+            var windowSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml.cs"));
+
+            Assert.True(xaml.Contains("<Setter Property=\"Foreground\" Value=\"{DynamicResource SettingsControlForegroundBrush}\" />"));
+            Assert.True(xaml.Contains("<Setter Property=\"Foreground\" Value=\"{DynamicResource SettingsControlMutedForegroundBrush}\" />"));
+            Assert.True(xaml.Contains("Foreground=\"{TemplateBinding Foreground}\""));
+            Assert.False(xaml.Contains("<Setter Property=\"Foreground\" Value=\"#202124\" />"));
+            Assert.False(xaml.Contains("<Setter Property=\"Foreground\" Value=\"#667085\" />"));
+            Assert.False(xaml.Contains("<Setter Property=\"Foreground\" Value=\"#1F2937\" />"));
+            Assert.True(windowSource.Contains("Loaded += (sender, args) =>"));
+            Assert.True(windowSource.Contains("ApplySettingsTheme();"));
         }
 
         static void LineModeSegmentUsesThemeAwareColors()

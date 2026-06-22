@@ -25,7 +25,7 @@
         <SolidColorBrush x:Key="SettingsSidebarSelectedForegroundBrush" Color="#0F5FD7" />
         <SolidColorBrush x:Key="SettingsTrackBackgroundBrush" Color="#E6EAF0" />
         <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#202124" />
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
             <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
         </Style>
         <Style x:Key="CardStyle" TargetType="Border">
@@ -36,12 +36,12 @@
             <Setter Property="CornerRadius" Value="14" />
         </Style>
         <Style x:Key="SettingLabel" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#667085" />
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlMutedForegroundBrush}" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
         <Style x:Key="SettingValue" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#1F2937" />
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="HorizontalAlignment" Value="Right" />
@@ -190,6 +190,7 @@
                             <ToggleButton x:Name="ToggleButton"
                                           Focusable="False"
                                           Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource TemplatedParent}}"
+                                          Foreground="{TemplateBinding Foreground}"
                                           Background="{TemplateBinding Background}"
                                           IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
                                 <ToggleButton.Template>
