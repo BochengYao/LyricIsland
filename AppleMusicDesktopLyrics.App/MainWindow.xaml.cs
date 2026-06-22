@@ -10,6 +10,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Interop;
 using System.Windows.Threading;
 using AppleMusicDesktopLyrics.Core;
+using Drawing = System.Drawing;
 using Forms = System.Windows.Forms;
 
 namespace AppleMusicDesktopLyrics.App
@@ -33,6 +34,7 @@ namespace AppleMusicDesktopLyrics.App
         private bool islandVisible;
         private TimeSpan lyricOffset = TimeSpan.FromMilliseconds(800);
         private DispatcherTimer startupHintTimer;
+        private Forms.NotifyIcon trayIcon;
         private readonly LyricTextTransitionTracker lyricTextTransitionTracker = new LyricTextTransitionTracker();
         private string displayedPrimary;
         private string displayedSecondary;
@@ -69,6 +71,7 @@ namespace AppleMusicDesktopLyrics.App
             cache = new LyricsCache(cacheRoot, GetCacheLimitBytes(placementSettings));
             UpdateIslandShape();
             lyricsClient = CreateLyricsClient(selectedLyricsSource);
+            InitializeTrayIcon();
 
             timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             timer.Tick += async (sender, args) => await RefreshAsync();
@@ -84,6 +87,44 @@ namespace AppleMusicDesktopLyrics.App
                 ShowWaitingForPlaybackHint();
             };
             SourceInitialized += (sender, args) => InstallWindowMessageHook();
+            Closed += (sender, args) => DisposeTrayIcon();
+        }
+
+        private void InitializeTrayIcon()
+        {
+            trayIcon = new Forms.NotifyIcon
+            {
+                Text = "Lyric Island 歌词岛",
+                Icon = LoadTrayIcon(),
+                ContextMenuStrip = new Forms.ContextMenuStrip()
+            };
+            trayIcon.ContextMenuStrip.Items.Add("偏好设置", null, (sender, args) => Dispatcher.BeginInvoke(new Action(OpenPlacementSettingsWindow)));
+            trayIcon.ContextMenuStrip.Items.Add("退出", null, (sender, args) => Dispatcher.BeginInvoke(new Action(() => System.Windows.Application.Current.Shutdown())));
+            trayIcon.DoubleClick += (sender, args) => Dispatcher.BeginInvoke(new Action(OpenPlacementSettingsWindow));
+            trayIcon.Visible = true;
+        }
+
+        private static Drawing.Icon LoadTrayIcon()
+        {
+            var iconPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "app.ico");
+            if (System.IO.File.Exists(iconPath))
+            {
+                return new Drawing.Icon(iconPath);
+            }
+
+            return Drawing.SystemIcons.Application;
+        }
+
+        private void DisposeTrayIcon()
+        {
+            if (trayIcon == null)
+            {
+                return;
+            }
+
+            trayIcon.Visible = false;
+            trayIcon.Dispose();
+            trayIcon = null;
         }
 
         [DllImport("user32.dll")]

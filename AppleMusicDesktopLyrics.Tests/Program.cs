@@ -57,6 +57,7 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("settings first open text uses theme resources", SettingsFirstOpenTextUsesThemeResources);
             suite.Run("line mode segment uses theme-aware colors", LineModeSegmentUsesThemeAwareColors);
             suite.Run("uses apple music ocr fallback when lyrics sources miss", UsesAppleMusicOcrFallbackWhenLyricsSourcesMiss);
+            suite.Run("shows tray icon on startup", ShowsTrayIconOnStartup);
             return suite.ExitCode;
         }
 
@@ -720,6 +721,25 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.True(fallbackSource.Contains("CopyFromScreen"));
             Assert.True(fallbackSource.Contains("BuildHighContrastWhiteTextImage"));
             Assert.True(fallbackSource.Contains("Codex") && fallbackSource.Contains("插件"));
+        }
+
+        static void ShowsTrayIconOnStartup()
+        {
+            var root = GetSolutionRoot();
+            var mainWindowSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs"));
+            var projectSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "AppleMusicDesktopLyrics.App.csproj"));
+
+            Assert.True(mainWindowSource.Contains("Forms.NotifyIcon"));
+            Assert.True(mainWindowSource.Contains("InitializeTrayIcon();"));
+            Assert.True(mainWindowSource.Contains("trayIcon.Visible = true"));
+            Assert.True(mainWindowSource.Contains("ContextMenuStrip"));
+            Assert.True(mainWindowSource.Contains("偏好设置"));
+            Assert.True(mainWindowSource.Contains("退出"));
+            Assert.True(mainWindowSource.Contains("OpenPlacementSettingsWindow"));
+            Assert.True(mainWindowSource.Contains("DisposeTrayIcon"));
+            Assert.True(mainWindowSource.Contains("Assets") && mainWindowSource.Contains("app.ico"));
+            Assert.True(projectSource.Contains("Assets\\app.ico"));
+            Assert.True(projectSource.Contains("CopyToOutputDirectory=\"Always\""));
         }
 
         static string GetSolutionRoot()

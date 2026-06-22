@@ -13,6 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="Assets\app.ico" CopyToOutputDirectory="Always" />
     <Content Include="..\scripts\now-playing.ps1" Link="scripts\now-playing.ps1" CopyToOutputDirectory="Always" />
   </ItemGroup>
 
