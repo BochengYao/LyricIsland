@@ -1,9 +1,14 @@
-# Lyric Island / 歌词岛
+﻿# Lyric Island / 歌词岛
 
 **中文** | 给 Windows 版 Apple Music 使用的桌面歌词伴侣。它读取 Windows 当前媒体会话，从多个歌词源查找同步歌词和歌词库翻译，并在屏幕上边缘显示一个可自动弹出、自动收起的“歌词岛”。
 
 **English** | A Windows desktop lyrics companion for Apple Music. It reads the active Windows media session, searches synced lyrics and source-provided translations from multiple providers, and displays them in a top-edge dynamic-island style overlay.
 
+## 预览 / Screenshots
+
+![歌词岛主视觉](docs/images/poster-hero.png)
+
+![工作场景中的歌词岛](docs/images/poster-workspace.png)
 ## 功能 / Features
 
 - **顶部歌词岛 / Top-edge lyric island**
@@ -124,3 +129,4 @@ dotnet build D:\AppleMusicDesktopLyrics\AppleMusicDesktopLyrics.sln --no-restore
 当前播放信息依赖 Windows 系统媒体会话服务。请在正常桌面会话中运行，并确保 Apple Music 能通过 Windows 媒体控制发布歌曲信息。
 
 The now-playing reader depends on Windows' system media session service. Run it in a normal desktop session where Apple Music publishes playback metadata through Windows media controls.
+
