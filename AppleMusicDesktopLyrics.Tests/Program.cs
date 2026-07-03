@@ -46,6 +46,8 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("prefers locked media session", PrefersLockedMediaSession);
             suite.Run("prefers most recently active playing session", PrefersMostRecentlyActivePlayingSession);
             suite.Run("falls back when locked session disappears", FallsBackWhenLockedSessionDisappears);
+            suite.Run("classifies target SMTC players", ClassifiesTargetSmtcPlayers);
+            suite.Run("uses generic profile for unknown players", UsesGenericProfileForUnknownPlayers);
             suite.Run("allows only one named application instance", AllowsOnlyOneNamedApplicationInstance);
             suite.Run("signals the existing application instance", SignalsExistingApplicationInstance);
             suite.Run("keeps island visible while playing even without lyrics", KeepsIslandVisibleWhilePlayingEvenWithoutLyrics);
@@ -546,6 +548,21 @@ namespace AppleMusicDesktopLyrics.Tests
             var available = MediaSessionSnapshot.CreateForTest("spotify", MediaPlaybackStatus.Playing, now);
 
             Assert.Equal("spotify", SessionSelectionPolicy.Select(new[] { available }, "missing", null).SessionId);
+        }
+
+        static void ClassifiesTargetSmtcPlayers()
+        {
+            Assert.Equal(PlayerKind.QQMusic, PlayerProfileCatalog.Resolve("Tencent.QQMusic.exe").Kind);
+            Assert.Equal(PlayerKind.NetEaseCloudMusicUwp, PlayerProfileCatalog.Resolve("NetEase.CloudMusicUWP_abc!App").Kind);
+            Assert.Equal(PlayerKind.KuGou, PlayerProfileCatalog.Resolve("KuGou.exe").Kind);
+            Assert.Equal(PlayerKind.Spotify, PlayerProfileCatalog.Resolve("Spotify.exe").Kind);
+            Assert.Equal(PlayerKind.Kuwo, PlayerProfileCatalog.Resolve("KwMusic.exe").Kind);
+            Assert.Equal(PlayerKind.AppleMusic, PlayerProfileCatalog.Resolve("AppleMusic.exe").Kind);
+        }
+
+        static void UsesGenericProfileForUnknownPlayers()
+        {
+            Assert.Equal(PlayerKind.Generic, PlayerProfileCatalog.Resolve("Example.Player").Kind);
         }
 
         static void AllowsOnlyOneNamedApplicationInstance()
