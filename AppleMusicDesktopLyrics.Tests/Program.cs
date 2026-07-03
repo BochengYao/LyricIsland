@@ -69,6 +69,7 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("line mode segment uses theme-aware colors", LineModeSegmentUsesThemeAwareColors);
             suite.Run("does not use apple music ocr fallback when lyrics sources miss", DoesNotUseAppleMusicOcrFallbackWhenLyricsSourcesMiss);
             suite.Run("shows tray icon on startup", ShowsTrayIconOnStartup);
+            suite.Run("native SMTC service keeps persistent session subscriptions", NativeSmtcServiceKeepsPersistentSessionSubscriptions);
             return suite.ExitCode;
         }
 
@@ -848,6 +849,24 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.True(mainWindowSource.Contains("Assets") && mainWindowSource.Contains("app.ico"));
             Assert.True(projectSource.Contains("Assets\\app.ico"));
             Assert.True(projectSource.Contains("CopyToOutputDirectory=\"Always\""));
+        }
+
+        static void NativeSmtcServiceKeepsPersistentSessionSubscriptions()
+        {
+            var root = GetSolutionRoot();
+            var projectPath = Path.Combine(root, "AppleMusicDesktopLyrics.App", "AppleMusicDesktopLyrics.App.csproj");
+            var servicePath = Path.Combine(root, "AppleMusicDesktopLyrics.App", "Media", "SmTcMediaSessionService.cs");
+
+            Assert.True(File.Exists(servicePath));
+            var projectSource = File.ReadAllText(projectPath);
+            var serviceSource = File.ReadAllText(servicePath);
+
+            Assert.True(projectSource.Contains("Microsoft.Windows.SDK.Contracts"));
+            Assert.True(projectSource.Contains("10.0.19041.1"));
+            Assert.True(serviceSource.Contains("GlobalSystemMediaTransportControlsSessionManager"));
+            Assert.True(serviceSource.Contains("AttachSession(session)"));
+            Assert.True(serviceSource.Contains("DetachSessions()"));
+            Assert.True(serviceSource.Contains("Session_Changed"));
         }
 
         static string GetSolutionRoot()

@@ -13,6 +13,7 @@ namespace AppleMusicDesktopLyrics.Core.Media
         public byte[] ArtworkBytes { get; set; }
         public TimeSpan Position { get; set; }
         public TimeSpan Duration { get; set; }
+        public bool HasReliableTimeline { get; set; }
         public MediaPlaybackStatus PlaybackStatus { get; set; }
         public MediaControlCapabilities Controls { get; set; } = new MediaControlCapabilities();
         public DateTimeOffset LastActivityUtc { get; set; }
