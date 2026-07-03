@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using AppleMusicDesktopLyrics.Core;
+using AppleMusicDesktopLyrics.Core.Media;
 
 namespace AppleMusicDesktopLyrics.Tests
 {
@@ -42,6 +43,9 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("cleans combined now playing titles", CleansCombinedNowPlayingTitles);
             suite.Run("removes featured artist credit from now playing titles", RemovesFeaturedArtistCreditFromNowPlayingTitles);
             suite.Run("matches lyric candidates when now playing title includes featured artist", MatchesLyricCandidatesWhenNowPlayingTitleIncludesFeaturedArtist);
+            suite.Run("prefers locked media session", PrefersLockedMediaSession);
+            suite.Run("prefers most recently active playing session", PrefersMostRecentlyActivePlayingSession);
+            suite.Run("falls back when locked session disappears", FallsBackWhenLockedSessionDisappears);
             suite.Run("allows only one named application instance", AllowsOnlyOneNamedApplicationInstance);
             suite.Run("signals the existing application instance", SignalsExistingApplicationInstance);
             suite.Run("keeps island visible while playing even without lyrics", KeepsIslandVisibleWhilePlayingEvenWithoutLyrics);
@@ -516,6 +520,32 @@ namespace AppleMusicDesktopLyrics.Tests
                 "Katy Perry",
                 "PRISM",
                 TimeSpan.FromSeconds(215)));
+        }
+
+        static void PrefersLockedMediaSession()
+        {
+            var now = DateTimeOffset.Parse("2026-07-03T10:00:00+08:00");
+            var spotify = MediaSessionSnapshot.CreateForTest("spotify", MediaPlaybackStatus.Playing, now);
+            var qq = MediaSessionSnapshot.CreateForTest("qqmusic", MediaPlaybackStatus.Paused, now.AddSeconds(-3));
+
+            Assert.Equal("qqmusic", SessionSelectionPolicy.Select(new[] { spotify, qq }, "qqmusic", null).SessionId);
+        }
+
+        static void PrefersMostRecentlyActivePlayingSession()
+        {
+            var now = DateTimeOffset.Parse("2026-07-03T10:00:00+08:00");
+            var older = MediaSessionSnapshot.CreateForTest("spotify", MediaPlaybackStatus.Playing, now.AddSeconds(-5));
+            var newer = MediaSessionSnapshot.CreateForTest("kugou", MediaPlaybackStatus.Playing, now);
+
+            Assert.Equal("kugou", SessionSelectionPolicy.Select(new[] { older, newer }, "", older.SessionId).SessionId);
+        }
+
+        static void FallsBackWhenLockedSessionDisappears()
+        {
+            var now = DateTimeOffset.Parse("2026-07-03T10:00:00+08:00");
+            var available = MediaSessionSnapshot.CreateForTest("spotify", MediaPlaybackStatus.Playing, now);
+
+            Assert.Equal("spotify", SessionSelectionPolicy.Select(new[] { available }, "missing", null).SessionId);
         }
 
         static void AllowsOnlyOneNamedApplicationInstance()
