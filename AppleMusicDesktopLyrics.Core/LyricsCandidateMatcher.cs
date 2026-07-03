@@ -95,7 +95,8 @@ namespace AppleMusicDesktopLyrics.Core
         private static string Normalize(string value)
         {
             var builder = new StringBuilder();
-            foreach (var character in (value ?? string.Empty).ToLower(CultureInfo.InvariantCulture))
+            var title = TrackTitleNormalizer.RemoveFeaturedArtistCredit(value);
+            foreach (var character in title.ToLower(CultureInfo.InvariantCulture))
             {
                 if (char.IsLetterOrDigit(character))
                 {

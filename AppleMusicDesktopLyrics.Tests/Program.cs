@@ -40,6 +40,8 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("prefers translated fallback lyrics source", PrefersTranslatedFallbackLyricsSource);
             suite.Run("uses fallback lyrics source when primary source throws", UsesFallbackLyricsSourceWhenPrimarySourceThrows);
             suite.Run("cleans combined now playing titles", CleansCombinedNowPlayingTitles);
+            suite.Run("removes featured artist credit from now playing titles", RemovesFeaturedArtistCreditFromNowPlayingTitles);
+            suite.Run("matches lyric candidates when now playing title includes featured artist", MatchesLyricCandidatesWhenNowPlayingTitleIncludesFeaturedArtist);
             suite.Run("allows only one named application instance", AllowsOnlyOneNamedApplicationInstance);
             suite.Run("signals the existing application instance", SignalsExistingApplicationInstance);
             suite.Run("keeps island visible while playing even without lyrics", KeepsIslandVisibleWhilePlayingEvenWithoutLyrics);
@@ -56,7 +58,7 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("settings window exposes theme mode switcher", SettingsWindowExposesThemeModeSwitcher);
             suite.Run("settings first open text uses theme resources", SettingsFirstOpenTextUsesThemeResources);
             suite.Run("line mode segment uses theme-aware colors", LineModeSegmentUsesThemeAwareColors);
-            suite.Run("uses apple music ocr fallback when lyrics sources miss", UsesAppleMusicOcrFallbackWhenLyricsSourcesMiss);
+            suite.Run("does not use apple music ocr fallback when lyrics sources miss", DoesNotUseAppleMusicOcrFallbackWhenLyricsSourcesMiss);
             suite.Run("shows tray icon on startup", ShowsTrayIconOnStartup);
             return suite.ExitCode;
         }
@@ -488,6 +490,34 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.Equal("Taylor Swift", track.Artist);
         }
 
+        static void RemovesFeaturedArtistCreditFromNowPlayingTitles()
+        {
+            var track = TrackIdentityCleaner.Clean(new TrackIdentity(
+                "Dark Horse (feat. Juicy J)",
+                "Katy Perry",
+                TimeSpan.FromSeconds(215),
+                "PRISM"));
+
+            Assert.Equal("Dark Horse", track.Title);
+            Assert.Equal("Katy Perry", track.Artist);
+        }
+
+        static void MatchesLyricCandidatesWhenNowPlayingTitleIncludesFeaturedArtist()
+        {
+            var track = new TrackIdentity(
+                "Dark Horse (feat. Juicy J)",
+                "Katy Perry",
+                TimeSpan.FromSeconds(215),
+                "PRISM");
+
+            Assert.True(LyricsCandidateMatcher.IsReasonable(
+                track,
+                "Dark Horse",
+                "Katy Perry",
+                "PRISM",
+                TimeSpan.FromSeconds(215)));
+        }
+
         static void AllowsOnlyOneNamedApplicationInstance()
         {
             var name = "AppleMusicDesktopLyrics.Tests." + Guid.NewGuid().ToString("N");
@@ -706,21 +736,14 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.True(xaml.Contains("<Setter Property=\"Opacity\" Value=\"1\" />"));
         }
 
-        static void UsesAppleMusicOcrFallbackWhenLyricsSourcesMiss()
+        static void DoesNotUseAppleMusicOcrFallbackWhenLyricsSourcesMiss()
         {
             var root = GetSolutionRoot();
             var mainWindowSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs"));
-            var fallbackSourcePath = Path.Combine(root, "AppleMusicDesktopLyrics.App", "AppleMusicOcrLyricsReader.cs");
 
-            Assert.True(File.Exists(fallbackSourcePath));
-            var fallbackSource = File.ReadAllText(fallbackSourcePath);
-            Assert.True(mainWindowSource.Contains("appleMusicOcrLyricsReader"));
-            Assert.True(mainWindowSource.Contains("TryReadAppleMusicOcrFallbackAsync"));
-            Assert.True(mainWindowSource.Contains("Apple Music 内置歌词识别"));
-            Assert.True(fallbackSource.Contains("tesseract.exe"));
-            Assert.True(fallbackSource.Contains("CopyFromScreen"));
-            Assert.True(fallbackSource.Contains("BuildHighContrastWhiteTextImage"));
-            Assert.True(fallbackSource.Contains("Codex") && fallbackSource.Contains("插件"));
+            Assert.False(mainWindowSource.Contains("appleMusicOcrLyricsReader"));
+            Assert.False(mainWindowSource.Contains("TryReadAppleMusicOcrFallbackAsync"));
+            Assert.False(mainWindowSource.Contains("Apple Music 内置歌词识别"));
         }
 
         static void ShowsTrayIconOnStartup()

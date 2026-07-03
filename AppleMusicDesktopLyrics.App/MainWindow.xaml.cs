@@ -23,7 +23,6 @@ namespace AppleMusicDesktopLyrics.App
         private readonly LyricsCache cache;
         private readonly OverlaySettingsStore settingsStore;
         private readonly ScreenCatalog screenCatalog = new ScreenCatalog();
-        private readonly AppleMusicOcrLyricsReader appleMusicOcrLyricsReader = new AppleMusicOcrLyricsReader();
         private ILyricsClient lyricsClient;
         private TimedLyrics currentLyrics = new TimedLyrics(new LyricLine[0]);
         private TrackIdentity currentTrack;
@@ -250,14 +249,6 @@ namespace AppleMusicDesktopLyrics.App
                 {
                     if (lyricsSearchFinished)
                     {
-                        var appleMusicLyric = await TryReadAppleMusicOcrFallbackAsync();
-                        if (!string.IsNullOrWhiteSpace(appleMusicLyric))
-                        {
-                            SetIslandText(appleMusicLyric, "Apple Music 内置歌词识别");
-                            ShowIsland();
-                            return;
-                        }
-
                         SetIslandText(FormatTrack(track), "未找到同步歌词");
                         ShowIsland();
                     }
@@ -324,16 +315,6 @@ namespace AppleMusicDesktopLyrics.App
                     lyricsSearchFinished = true;
                 }
             }
-        }
-
-        private async Task<string> TryReadAppleMusicOcrFallbackAsync()
-        {
-            if (!appleMusicOcrLyricsReader.IsAvailable)
-            {
-                return string.Empty;
-            }
-
-            return await appleMusicOcrLyricsReader.TryReadCurrentLyricAsync();
         }
 
         private bool IsNewTrack(TrackIdentity track)
