@@ -48,6 +48,9 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("falls back when locked session disappears", FallsBackWhenLockedSessionDisappears);
             suite.Run("classifies target SMTC players", ClassifiesTargetSmtcPlayers);
             suite.Run("uses generic profile for unknown players", UsesGenericProfileForUnknownPlayers);
+            suite.Run("estimates missing playback timeline", EstimatesMissingPlaybackTimeline);
+            suite.Run("freezes estimated timeline while paused", FreezesEstimatedTimelineWhilePaused);
+            suite.Run("accepts large real timeline correction", AcceptsLargeRealTimelineCorrection);
             suite.Run("allows only one named application instance", AllowsOnlyOneNamedApplicationInstance);
             suite.Run("signals the existing application instance", SignalsExistingApplicationInstance);
             suite.Run("keeps island visible while playing even without lyrics", KeepsIslandVisibleWhilePlayingEvenWithoutLyrics);
@@ -565,6 +568,41 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.Equal(PlayerKind.Generic, PlayerProfileCatalog.Resolve("Example.Player").Kind);
         }
 
+        static void EstimatesMissingPlaybackTimeline()
+        {
+            var clock = new FakeMonotonicClock();
+            var coordinator = new TimelineCoordinator(clock);
+            coordinator.Update(TimeSpan.FromSeconds(20), true, MediaPlaybackStatus.Playing);
+            clock.Advance(TimeSpan.FromSeconds(3));
+
+            var result = coordinator.Update(TimeSpan.Zero, false, MediaPlaybackStatus.Playing);
+
+            Assert.Equal(TimeSpan.FromSeconds(23), result.Position);
+            Assert.Equal(TimelineReliability.Estimated, result.Reliability);
+        }
+
+        static void FreezesEstimatedTimelineWhilePaused()
+        {
+            var clock = new FakeMonotonicClock();
+            var coordinator = new TimelineCoordinator(clock);
+            coordinator.Update(TimeSpan.FromSeconds(20), true, MediaPlaybackStatus.Playing);
+            clock.Advance(TimeSpan.FromSeconds(2));
+            coordinator.Update(TimeSpan.Zero, false, MediaPlaybackStatus.Paused);
+            clock.Advance(TimeSpan.FromSeconds(5));
+
+            Assert.Equal(TimeSpan.FromSeconds(22), coordinator.Update(TimeSpan.Zero, false, MediaPlaybackStatus.Paused).Position);
+        }
+
+        static void AcceptsLargeRealTimelineCorrection()
+        {
+            var clock = new FakeMonotonicClock();
+            var coordinator = new TimelineCoordinator(clock);
+            coordinator.Update(TimeSpan.FromSeconds(20), true, MediaPlaybackStatus.Playing);
+            clock.Advance(TimeSpan.FromSeconds(2));
+
+            Assert.Equal(TimeSpan.FromSeconds(40), coordinator.Update(TimeSpan.FromSeconds(40), true, MediaPlaybackStatus.Playing).Position);
+        }
+
         static void AllowsOnlyOneNamedApplicationInstance()
         {
             var name = "AppleMusicDesktopLyrics.Tests." + Guid.NewGuid().ToString("N");
@@ -840,6 +878,12 @@ namespace AppleMusicDesktopLyrics.Tests
 
             return count;
         }
+    }
+
+    sealed class FakeMonotonicClock : IMonotonicClock
+    {
+        public TimeSpan Elapsed { get; private set; }
+        public void Advance(TimeSpan value) { Elapsed += value; }
     }
 
     sealed class FakeLyricsClient : ILyricsClient
