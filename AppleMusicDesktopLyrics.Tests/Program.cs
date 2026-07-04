@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using AppleMusicDesktopLyrics.Core;
+using AppleMusicDesktopLyrics.Core.Layout;
 using AppleMusicDesktopLyrics.Core.Media;
 
 namespace AppleMusicDesktopLyrics.Tests
@@ -48,6 +49,8 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("falls back when locked session disappears", FallsBackWhenLockedSessionDisappears);
             suite.Run("classifies target SMTC players", ClassifiesTargetSmtcPlayers);
             suite.Run("uses generic profile for unknown players", UsesGenericProfileForUnknownPlayers);
+            suite.Run("creates independent A and C layouts", CreatesIndependentAAndCLayouts);
+            suite.Run("keeps repeated divider modules", KeepsRepeatedDividerModules);
             suite.Run("estimates missing playback timeline", EstimatesMissingPlaybackTimeline);
             suite.Run("freezes estimated timeline while paused", FreezesEstimatedTimelineWhilePaused);
             suite.Run("accepts large real timeline correction", AcceptsLargeRealTimelineCorrection);
@@ -570,6 +573,25 @@ namespace AppleMusicDesktopLyrics.Tests
         static void UsesGenericProfileForUnknownPlayers()
         {
             Assert.Equal(PlayerKind.Generic, PlayerProfileCatalog.Resolve("Example.Player").Kind);
+        }
+
+        static void CreatesIndependentAAndCLayouts()
+        {
+            var settings = IslandLayoutDefaults.Create();
+            settings.Horizontal.Modules.RemoveAt(0);
+
+            Assert.Equal(IslandModuleType.Lyrics, settings.CompactCollapsed.Modules[0].Type);
+            Assert.True(settings.Horizontal.Modules.Count != settings.CompactExpanded.Modules.Count);
+        }
+
+        static void KeepsRepeatedDividerModules()
+        {
+            var profile = new IslandLayoutProfile();
+            profile.Modules.Add(new IslandModuleInstance(IslandModuleType.Divider));
+            profile.Modules.Add(new IslandModuleInstance(IslandModuleType.Divider));
+            profile.Normalize();
+
+            Assert.Equal(2, profile.Modules.Count);
         }
 
         static void EstimatesMissingPlaybackTimeline()
