@@ -55,6 +55,8 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("signals the existing application instance", SignalsExistingApplicationInstance);
             suite.Run("keeps island visible while playing even without lyrics", KeepsIslandVisibleWhilePlayingEvenWithoutLyrics);
             suite.Run("keeps island visible during startup hint", KeepsIslandVisibleDuringStartupHint);
+            suite.Run("keeps paused island available during grace period", KeepsPausedIslandAvailableDuringGracePeriod);
+            suite.Run("hides paused island after grace period", HidesPausedIslandAfterGracePeriod);
             suite.Run("calculates top-only overlay positions", CalculatesTopOnlyOverlayPositions);
             suite.Run("calculates hidden top-only overlay positions", CalculatesHiddenTopOnlyOverlayPositions);
             suite.Run("snaps dragged overlay to top edge", SnapsDraggedOverlayToTopEdge);
@@ -70,6 +72,7 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("does not use apple music ocr fallback when lyrics sources miss", DoesNotUseAppleMusicOcrFallbackWhenLyricsSourcesMiss);
             suite.Run("shows tray icon on startup", ShowsTrayIconOnStartup);
             suite.Run("native SMTC service keeps persistent session subscriptions", NativeSmtcServiceKeepsPersistentSessionSubscriptions);
+            suite.Run("native playback rejects stale lyrics and removes PowerShell bridge", NativePlaybackRejectsStaleLyricsAndRemovesPowerShellBridge);
             return suite.ExitCode;
         }
 
@@ -641,6 +644,18 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.True(PlaybackVisibilityPolicy.ShouldHide(false, "", false, false));
         }
 
+        static void KeepsPausedIslandAvailableDuringGracePeriod()
+        {
+            Assert.False(PlaybackVisibilityPolicy.ShouldHide(
+                true, "Song", MediaPlaybackStatus.Paused, TimeSpan.FromSeconds(3), false, false));
+        }
+
+        static void HidesPausedIslandAfterGracePeriod()
+        {
+            Assert.True(PlaybackVisibilityPolicy.ShouldHide(
+                true, "Song", MediaPlaybackStatus.Paused, TimeSpan.FromSeconds(6), false, false));
+        }
+
         static void CalculatesTopOnlyOverlayPositions()
         {
             var screen = new OverlayScreenArea("main", 0, 0, 1920, 1080, 0, 0, 1920, 1040);
@@ -867,6 +882,22 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.True(serviceSource.Contains("AttachSession(session)"));
             Assert.True(serviceSource.Contains("DetachSessions()"));
             Assert.True(serviceSource.Contains("Session_Changed"));
+        }
+
+        static void NativePlaybackRejectsStaleLyricsAndRemovesPowerShellBridge()
+        {
+            var root = GetSolutionRoot();
+            var mainWindowPath = Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs");
+            var projectPath = Path.Combine(root, "AppleMusicDesktopLyrics.App", "AppleMusicDesktopLyrics.App.csproj");
+            var mainWindowSource = File.ReadAllText(mainWindowPath);
+            var projectSource = File.ReadAllText(projectPath);
+
+            Assert.True(mainWindowSource.Contains("SessionSelectionPolicy.Select"));
+            Assert.True(mainWindowSource.Contains("lyricLoadGeneration"));
+            Assert.True(mainWindowSource.Contains("generation == lyricLoadGeneration"));
+            Assert.False(mainWindowSource.Contains("PowerShellNowPlayingProvider"));
+            Assert.False(projectSource.Contains("now-playing.ps1"));
+            Assert.False(File.Exists(Path.Combine(root, "scripts", "now-playing.ps1")));
         }
 
         static string GetSolutionRoot()

@@ -10,6 +10,8 @@ using System.Windows.Media.Animation;
 using System.Windows.Interop;
 using System.Windows.Threading;
 using AppleMusicDesktopLyrics.Core;
+using AppleMusicDesktopLyrics.App.Media;
+using AppleMusicDesktopLyrics.Core.Media;
 using Drawing = System.Drawing;
 using Forms = System.Windows.Forms;
 
@@ -19,7 +21,11 @@ namespace AppleMusicDesktopLyrics.App
     {
         private readonly DispatcherTimer timer;
         private readonly DispatcherTimer hoverProximityTimer;
-        private readonly PowerShellNowPlayingProvider nowPlayingProvider;
+        private readonly IMediaSessionService mediaSessions;
+        private readonly TimelineCoordinator timelineCoordinator;
+        private MediaSessionSnapshot currentSession;
+        private DateTimeOffset? pausedSinceUtc;
+        private int lyricLoadGeneration;
         private readonly LyricsCache cache;
         private readonly OverlaySettingsStore settingsStore;
         private readonly ScreenCatalog screenCatalog = new ScreenCatalog();
@@ -61,9 +67,11 @@ namespace AppleMusicDesktopLyrics.App
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             var cacheRoot = System.IO.Path.Combine(appData, "AppleMusicDesktopLyrics", "lyrics");
             var settingsPath = System.IO.Path.Combine(appData, "AppleMusicDesktopLyrics", "settings.json");
-            var scriptPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "scripts", "now-playing.ps1");
 
-            nowPlayingProvider = new PowerShellNowPlayingProvider(scriptPath);
+            mediaSessions = new SmTcMediaSessionService();
+            timelineCoordinator = new TimelineCoordinator(new StopwatchClock());
+            mediaSessions.SessionsChanged += (sender, args) =>
+                Dispatcher.BeginInvoke(new Action(async () => await RefreshAsync()));
             settingsStore = new OverlaySettingsStore(settingsPath);
             placementSettings = settingsStore.Load();
             selectedLyricsSource = placementSettings.LyricsSource;
@@ -72,21 +80,36 @@ namespace AppleMusicDesktopLyrics.App
             lyricsClient = CreateLyricsClient(selectedLyricsSource);
             InitializeTrayIcon();
 
-            timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
             timer.Tick += async (sender, args) => await RefreshAsync();
             timer.Start();
 
             hoverProximityTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(40) };
             hoverProximityTimer.Tick += (sender, args) => UpdateHoverProximity();
 
-            Loaded += (sender, args) =>
+            Loaded += async (sender, args) =>
             {
                 HideIsland(false);
                 Focus();
                 ShowWaitingForPlaybackHint();
+                try
+                {
+                    await mediaSessions.InitializeAsync();
+                    await RefreshAsync();
+                }
+                catch (Exception ex)
+                {
+                    SetIslandText("读取播放状态失败", ex.Message);
+                    ShowIsland();
+                }
             };
             SourceInitialized += (sender, args) => InstallWindowMessageHook();
-            Closed += (sender, args) => DisposeTrayIcon();
+            Closed += (sender, args) =>
+            {
+                timer.Stop();
+                mediaSessions.Dispose();
+                DisposeTrayIcon();
+            };
         }
 
         private void InitializeTrayIcon()
@@ -211,6 +234,7 @@ namespace AppleMusicDesktopLyrics.App
 
         private async Task RefreshAsync()
         {
+            await Task.CompletedTask;
             if (refreshingState)
             {
                 return;
@@ -219,21 +243,53 @@ namespace AppleMusicDesktopLyrics.App
             refreshingState = true;
             try
             {
-                var state = await nowPlayingProvider.GetCurrentAsync();
-                if (PlaybackVisibilityPolicy.ShouldHide(state.HasSession, state.Title, state.IsPlaying, IsStartupHintActive()))
-                {
-                    if (!state.HasSession || string.IsNullOrWhiteSpace(state.Title))
-                    {
-                        currentTrack = null;
-                        currentLyrics = new TimedLyrics(new LyricLine[0]);
-                        lyricsSearchFinished = false;
-                    }
+                var selected = SessionSelectionPolicy.Select(
+                    mediaSessions.Sessions,
+                    placementSettings.LockedSourceAppUserModelId,
+                    mediaSessions.WindowsCurrentSessionId);
+                currentSession = selected;
 
+                if (selected == null)
+                {
+                    currentTrack = null;
+                    currentLyrics = new TimedLyrics(new LyricLine[0]);
+                    lyricsSearchFinished = false;
+                    pausedSinceUtc = null;
+                    lyricLoadGeneration++;
                     HideIsland(true);
                     return;
                 }
 
-                var track = TrackIdentityCleaner.Clean(new TrackIdentity(state.Title, state.Artist, TimeSpan.FromSeconds(state.DurationSeconds), state.Album));
+                if (selected.PlaybackStatus == MediaPlaybackStatus.Paused)
+                {
+                    if (!pausedSinceUtc.HasValue) pausedSinceUtc = DateTimeOffset.UtcNow;
+                }
+                else
+                {
+                    pausedSinceUtc = null;
+                }
+
+                var pausedFor = pausedSinceUtc.HasValue
+                    ? DateTimeOffset.UtcNow - pausedSinceUtc.Value
+                    : TimeSpan.Zero;
+                if (PlaybackVisibilityPolicy.ShouldHide(
+                    true,
+                    selected.Title,
+                    selected.PlaybackStatus,
+                    pausedFor,
+                    IsStartupHintActive(),
+                    false))
+                {
+                    HideIsland(true);
+                    return;
+                }
+
+                var timeline = timelineCoordinator.Update(
+                    selected.Position,
+                    selected.HasReliableTimeline,
+                    selected.PlaybackStatus);
+                var track = TrackIdentityCleaner.Clean(
+                    new TrackIdentity(selected.Title, selected.Artist, selected.Duration, selected.Album));
                 if (IsNewTrack(track))
                 {
                     currentTrack = track;
@@ -241,37 +297,33 @@ namespace AppleMusicDesktopLyrics.App
                     lyricsSearchFinished = false;
                     SetIslandText(FormatTrack(track), "正在搜索同步歌词...");
                     ShowIsland();
-                    _ = LoadLyricsAsync(track, false);
+                    _ = LoadLyricsAsync(track, false, ++lyricLoadGeneration);
                     return;
                 }
 
                 if (currentLyrics.Lines.Count == 0)
                 {
-                    if (lyricsSearchFinished)
-                    {
-                        SetIslandText(FormatTrack(track), "未找到同步歌词");
-                        ShowIsland();
-                    }
-                    else
-                    {
-                        SetIslandText(FormatTrack(track), "正在搜索同步歌词...");
-                        ShowIsland();
-                    }
-
+                    SetIslandText(
+                        FormatTrack(track),
+                        lyricsSearchFinished ? "未找到同步歌词" : "正在搜索同步歌词...");
+                    ShowIsland();
                     return;
                 }
 
                 var lines = LyricsDisplaySelector.Select(
                     currentLyrics,
-                    TimeSpan.FromSeconds(state.PositionSeconds),
+                    timeline.Position,
                     lyricOffset,
                     placementSettings.UseMultiLineDisplay,
                     placementSettings.ShowTranslation);
                 var lineDuration = currentLyrics.GetCurrentLineDuration(
-                    TimeSpan.FromSeconds(state.PositionSeconds),
+                    timeline.Position,
                     lyricOffset,
                     TimeSpan.FromSeconds(4));
-                SetIslandText(lines.Count > 0 ? lines[0].Text : string.Empty, lines.Count > 1 ? lines[1].Text : string.Empty, lineDuration);
+                SetIslandText(
+                    lines.Count > 0 ? lines[0].Text : string.Empty,
+                    lines.Count > 1 ? lines[1].Text : string.Empty,
+                    lineDuration);
                 ShowIsland();
             }
             catch (Exception ex)
@@ -285,7 +337,7 @@ namespace AppleMusicDesktopLyrics.App
             }
         }
 
-        private async Task LoadLyricsAsync(TrackIdentity track, bool forceRefresh)
+        private async Task LoadLyricsAsync(TrackIdentity track, bool forceRefresh, int generation)
         {
             try
             {
@@ -301,7 +353,7 @@ namespace AppleMusicDesktopLyrics.App
                     }
                 }
 
-                if (IsSameTrack(track, currentTrack))
+                if (generation == lyricLoadGeneration && IsSameTrack(track, currentTrack))
                 {
                     currentLyrics = LyricsPackageParser.Parse(lrc);
                     lyricsSearchFinished = true;
@@ -309,7 +361,7 @@ namespace AppleMusicDesktopLyrics.App
             }
             catch
             {
-                if (IsSameTrack(track, currentTrack))
+                if (generation == lyricLoadGeneration && IsSameTrack(track, currentTrack))
                 {
                     currentLyrics = new TimedLyrics(new LyricLine[0]);
                     lyricsSearchFinished = true;
@@ -914,6 +966,33 @@ namespace AppleMusicDesktopLyrics.App
             System.Windows.Controls.Canvas.SetLeft(SecondaryLyricText, 0);
         }
 
+        private Task PreviousRequested()
+        {
+            return ExecuteMediaCommandAsync(mediaSessions.TrySkipPreviousAsync);
+        }
+
+        private Task PlayPauseRequested()
+        {
+            return currentSession != null && currentSession.PlaybackStatus == MediaPlaybackStatus.Playing
+                ? ExecuteMediaCommandAsync(mediaSessions.TryPauseAsync)
+                : ExecuteMediaCommandAsync(mediaSessions.TryPlayAsync);
+        }
+
+        private Task NextRequested()
+        {
+            return ExecuteMediaCommandAsync(mediaSessions.TrySkipNextAsync);
+        }
+
+        private async Task ExecuteMediaCommandAsync(Func<string, Task<bool>> command)
+        {
+            var session = currentSession;
+            if (session == null) return;
+            if (await command(session.SessionId))
+            {
+                await mediaSessions.RefreshAsync();
+            }
+        }
+
         private void RefreshCurrentTrackLyrics(bool forceRefresh)
         {
             if (currentTrack == null)
@@ -925,7 +1004,7 @@ namespace AppleMusicDesktopLyrics.App
             lyricsSearchFinished = false;
             SetIslandText(FormatTrack(currentTrack), "正在搜索同步歌词...");
             ShowIsland();
-            _ = LoadLyricsAsync(currentTrack, forceRefresh);
+            _ = LoadLyricsAsync(currentTrack, forceRefresh, ++lyricLoadGeneration);
         }
 
         private void OpenPlacementSettingsWindow()
@@ -1001,7 +1080,8 @@ namespace AppleMusicDesktopLyrics.App
                 PassThroughOnHover = placementSettings.PassThroughOnHover,
                 LyricsSource = placementSettings.LyricsSource,
                 UseMultiLineDisplay = placementSettings.UseMultiLineDisplay,
-                ShowTranslation = placementSettings.ShowTranslation
+                ShowTranslation = placementSettings.ShowTranslation,
+                LockedSourceAppUserModelId = placementSettings.LockedSourceAppUserModelId
             };
         }
 

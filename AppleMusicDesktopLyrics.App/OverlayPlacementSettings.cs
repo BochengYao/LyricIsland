@@ -48,6 +48,8 @@ namespace AppleMusicDesktopLyrics.App
 
         public bool ShowTranslation { get; set; } = true;
 
+        public string LockedSourceAppUserModelId { get; set; } = string.Empty;
+
         public OverlayPlacement ToPlacement()
         {
             return new OverlayPlacement(ScreenName ?? string.Empty, NormalizeEdge(Edge), OffsetRatio);
@@ -56,6 +58,7 @@ namespace AppleMusicDesktopLyrics.App
         public void Normalize()
         {
             Edge = NormalizeEdge(Edge);
+            LockedSourceAppUserModelId = LockedSourceAppUserModelId ?? string.Empty;
             OffsetRatio = Math.Max(0, Math.Min(1, OffsetRatio));
             CacheLimitMegabytes = Math.Max(MinCacheLimitMegabytes, Math.Min(MaxCacheLimitMegabytes, CacheLimitMegabytes));
             HoverAuraSize = Math.Max(MinHoverAuraSize, Math.Min(MaxHoverAuraSize, HoverAuraSize));
