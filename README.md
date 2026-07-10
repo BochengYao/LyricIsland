@@ -17,6 +17,24 @@
 
   Slides in from the top edge while music is playing, then retracts off-screen when playback pauses or stops.
 
+- **模块化歌词岛 / Modular island layouts**
+
+  v2.0 Beta 1 支持封面、歌词、播放控制、歌曲信息、进度和分割线模块；A/C 布局可独立保存，C 模式会在悬停后展开。
+
+  v2.0 Beta 1 supports album art, lyrics, playback controls, track info, progress, and divider modules. A/C layouts are stored independently, and C mode expands on hover.
+
+- **多播放器选择 / Multi-player selection**
+
+  通过 Windows SMTC 读取 Apple Music、QQ 音乐、网易云音乐、酷狗、Spotify、酷我等播放器的媒体会话；可自动选择最近活跃播放器，也可在设置中锁定指定播放器。具体播放器能力以 `docs/testing/v2-beta1-player-matrix.md` 的实测矩阵为准。
+
+  Reads media sessions through Windows SMTC for Apple Music, QQ Music, NetEase, KuGou, Spotify, KuWo, and generic compatible players. Selection can follow the most recently active player or lock to a chosen player in settings. See `docs/testing/v2-beta1-player-matrix.md` for verified per-player capability status.
+
+- **实时布局编辑 / Live island editing**
+
+  设置窗口提供模块工具箱，可将模块拖到真实歌词岛上进行 18 px 吸附、重排、分割线配置、保存或取消。
+
+  The settings window includes a module toolbox for editing the real island with 18 px snapping, reordering, divider configuration, save, and cancel flows.
+
 - **多歌词源 / Multiple lyric sources**
 
   支持 LRCLIB、QQ 音乐、酷狗、网易云等来源，并可设置首选歌词源；首选源不匹配时会临时自动尝试其他来源。
@@ -49,9 +67,9 @@
 
 - **偏好设置 / Preferences**
 
-  设置窗口支持浅色、深色、跟随系统模式，可调整歌词显示、屏幕位置、缓存容量和鼠标避让效果。
+  设置窗口支持浅色、深色、跟随系统模式，可调整歌词显示、屏幕位置、缓存容量、播放器锁定、模块布局和鼠标避让效果。
 
-  The preferences window supports light, dark, and system theme modes, with controls for lyric display, monitor placement, cache size, and mouse avoidance.
+  The preferences window supports light, dark, and system theme modes, with controls for lyric display, monitor placement, cache size, player locking, module layout, and mouse avoidance.
 
 - **本地缓存 / Local cache**
 
@@ -113,6 +131,15 @@ After focusing the island:
 - `R`：重置歌词偏移，回到默认提前 800 ms。
 
   `R`: reset lyric offset to the default 800 ms early.
+- `Ctrl+Alt+Left`：全局热键，歌词偏移减少 500 ms。
+
+  `Ctrl+Alt+Left`: global hotkey, decrease lyric offset by 500 ms.
+- `Ctrl+Alt+Right`：全局热键，歌词偏移增加 500 ms。
+
+  `Ctrl+Alt+Right`: global hotkey, increase lyric offset by 500 ms.
+- `Ctrl+Alt+Down`：全局热键，重置歌词偏移。
+
+  `Ctrl+Alt+Down`: global hotkey, reset lyric offset.
 - 右键歌词岛：打开偏好设置。
 
   Right-click the island: open preferences.
