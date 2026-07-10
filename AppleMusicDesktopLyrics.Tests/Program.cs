@@ -86,6 +86,8 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("line mode segment uses theme-aware colors", LineModeSegmentUsesThemeAwareColors);
             suite.Run("does not use apple music ocr fallback when lyrics sources miss", DoesNotUseAppleMusicOcrFallbackWhenLyricsSourcesMiss);
             suite.Run("shows tray icon on startup", ShowsTrayIconOnStartup);
+            suite.Run("main window keeps startup hint without media session", MainWindowKeepsStartupHintWithoutMediaSession);
+            suite.Run("startup hint waits for user confirmation before countdown", StartupHintWaitsForUserConfirmationBeforeCountdown);
             suite.Run("native SMTC service keeps persistent session subscriptions", NativeSmtcServiceKeepsPersistentSessionSubscriptions);
             suite.Run("native playback rejects stale lyrics and removes PowerShell bridge", NativePlaybackRejectsStaleLyricsAndRemovesPowerShellBridge);
             return suite.ExitCode;
@@ -1019,6 +1021,31 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.True(mainWindowSource.Contains("Assets") && mainWindowSource.Contains("app.ico"));
             Assert.True(projectSource.Contains("Assets\\app.ico"));
             Assert.True(projectSource.Contains("CopyToOutputDirectory=\"Always\""));
+        }
+
+        static void MainWindowKeepsStartupHintWithoutMediaSession()
+        {
+            var root = GetSolutionRoot();
+            var mainWindowSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs"));
+            var branchStart = mainWindowSource.IndexOf("if (selected == null)", StringComparison.Ordinal);
+            var selectedNullBranch = mainWindowSource.Substring(branchStart, 520);
+
+            Assert.True(selectedNullBranch.Contains("IsStartupHintActive()"));
+            Assert.True(selectedNullBranch.Contains("ShowIsland();"));
+        }
+
+        static void StartupHintWaitsForUserConfirmationBeforeCountdown()
+        {
+            var root = GetSolutionRoot();
+            var mainWindowSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs"));
+            var hintStart = mainWindowSource.IndexOf("public void ShowWaitingForPlaybackHint()", StringComparison.Ordinal);
+            var hintEnd = mainWindowSource.IndexOf("private async Task RefreshAsync()", hintStart, StringComparison.Ordinal);
+            var hintMethod = mainWindowSource.Substring(hintStart, hintEnd - hintStart);
+
+            Assert.True(hintMethod.Contains("startupHintAwaitingConfirmation = true"));
+            Assert.True(hintMethod.Contains("点击歌词岛或按任意键确认"));
+            Assert.False(hintMethod.Contains("startupHintTimer.Start();"));
+            Assert.True(mainWindowSource.Contains("ConfirmStartupHint();"));
         }
 
         static void NativeSmtcServiceKeepsPersistentSessionSubscriptions()

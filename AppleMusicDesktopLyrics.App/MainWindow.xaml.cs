@@ -50,6 +50,7 @@ namespace AppleMusicDesktopLyrics.App
         private TimeSpan currentEffectivePosition;
         private TimelineReliability currentTimelineReliability;
         private DispatcherTimer startupHintTimer;
+        private bool startupHintAwaitingConfirmation;
         private Forms.NotifyIcon trayIcon;
         private int positionAnimationVersion;
         private bool horizontalDragActive;
@@ -265,23 +266,37 @@ namespace AppleMusicDesktopLyrics.App
                 return;
             }
 
-            SetIslandText("Apple Music 桌面歌词已启动", "等待 Apple Music 播放...");
+            startupHintAwaitingConfirmation = true;
+            startupHintTimer?.Stop();
+            SetIslandText("歌词岛已启动，等待播放内容", "这不是故障：点击歌词岛或按任意键确认");
             ShowIsland();
             if (startupHintTimer == null)
             {
-                startupHintTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
+                startupHintTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(6) };
                 startupHintTimer.Tick += (sender, args) =>
                 {
                     startupHintTimer.Stop();
+                    startupHintAwaitingConfirmation = false;
                     if (currentTrack == null)
                     {
                         HideIsland(true);
                     }
                 };
             }
+        }
 
-            startupHintTimer.Stop();
-            startupHintTimer.Start();
+        private void ConfirmStartupHint()
+        {
+            if (!startupHintAwaitingConfirmation)
+            {
+                return;
+            }
+
+            startupHintAwaitingConfirmation = false;
+            SetIslandText("确认收到", "未播放内容时，歌词岛将在几秒后自动收起");
+            ShowIsland();
+            startupHintTimer?.Stop();
+            startupHintTimer?.Start();
         }
 
         private async Task RefreshAsync()
@@ -308,9 +323,18 @@ namespace AppleMusicDesktopLyrics.App
                     lyricsSearchFinished = false;
                     pausedSinceUtc = null;
                     lyricLoadGeneration++;
+                    if (IsStartupHintActive())
+                    {
+                        ShowIsland();
+                        return;
+                    }
+
                     HideIsland(true);
                     return;
                 }
+
+                startupHintAwaitingConfirmation = false;
+                startupHintTimer?.Stop();
 
                 if (selected.PlaybackStatus == MediaPlaybackStatus.Paused)
                 {
@@ -695,7 +719,8 @@ namespace AppleMusicDesktopLyrics.App
 
         private bool IsStartupHintActive()
         {
-            return startupHintTimer != null && startupHintTimer.IsEnabled;
+            return startupHintAwaitingConfirmation ||
+                startupHintTimer != null && startupHintTimer.IsEnabled;
         }
 
         private OverlayPoint GetVisiblePosition()
@@ -1236,7 +1261,13 @@ namespace AppleMusicDesktopLyrics.App
         private void Window_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             var shouldForwardClick = horizontalDragPending && !horizontalDragActive && ShouldForwardLeftClickThrough();
+            var shouldConfirmStartupHint = horizontalDragPending && !horizontalDragActive;
             FinishHorizontalDrag();
+            if (shouldConfirmStartupHint)
+            {
+                ConfirmStartupHint();
+            }
+
             if (shouldForwardClick)
             {
                 ForwardClickThroughToUnderlyingWindow();
@@ -1271,6 +1302,13 @@ namespace AppleMusicDesktopLyrics.App
 
         private void Window_KeyDown(object sender, KeyEventArgs e)
         {
+            if (startupHintAwaitingConfirmation)
+            {
+                ConfirmStartupHint();
+                e.Handled = true;
+                return;
+            }
+
             if (e.Key == Key.Right || e.Key == Key.Up)
             {
                 lyricOffset += TimeSpan.FromMilliseconds(200);
