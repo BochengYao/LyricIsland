@@ -53,6 +53,8 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("keeps repeated divider modules", KeepsRepeatedDividerModules);
             suite.Run("settings schema contains independent layouts", SettingsSchemaContainsIndependentLayouts);
             suite.Run("settings store backs up corrupt JSON", SettingsStoreBacksUpCorruptJson);
+            suite.Run("builds island geometry for measured module size", BuildsIslandGeometryForMeasuredModuleSize);
+            suite.Run("module host exposes all v2 module views", ModuleHostExposesAllV2ModuleViews);
             suite.Run("estimates missing playback timeline", EstimatesMissingPlaybackTimeline);
             suite.Run("freezes estimated timeline while paused", FreezesEstimatedTimelineWhilePaused);
             suite.Run("accepts large real timeline correction", AcceptsLargeRealTimelineCorrection);
@@ -614,6 +616,28 @@ namespace AppleMusicDesktopLyrics.Tests
 
             Assert.True(source.Contains(".corrupt-"));
             Assert.True(source.Contains("File.Copy"));
+        }
+
+        static void BuildsIslandGeometryForMeasuredModuleSize()
+        {
+            var path = IslandGeometryBuilder.BuildTopPath(720, 84);
+
+            Assert.True(path.Contains("L 720,0"));
+            Assert.True(path.Contains("L 69,79"));
+        }
+
+        static void ModuleHostExposesAllV2ModuleViews()
+        {
+            var root = GetSolutionRoot();
+            var source = File.ReadAllText(Path.Combine(
+                root, "AppleMusicDesktopLyrics.App", "Modules", "IslandModuleHost.xaml.cs"));
+
+            Assert.True(source.Contains("LyricsModuleView"));
+            Assert.True(source.Contains("AlbumArtModuleView"));
+            Assert.True(source.Contains("PlaybackControlsModuleView"));
+            Assert.True(source.Contains("TrackInfoModuleView"));
+            Assert.True(source.Contains("ProgressModuleView"));
+            Assert.True(source.Contains("DividerModuleView"));
         }
 
         static void EstimatesMissingPlaybackTimeline()

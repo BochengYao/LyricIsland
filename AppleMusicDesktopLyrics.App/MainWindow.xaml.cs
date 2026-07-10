@@ -9,8 +9,10 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Interop;
 using System.Windows.Threading;
+using AppleMusicDesktopLyrics.App.Modules;
 using AppleMusicDesktopLyrics.Core;
 using AppleMusicDesktopLyrics.App.Media;
+using AppleMusicDesktopLyrics.Core.Layout;
 using AppleMusicDesktopLyrics.Core.Media;
 using Drawing = System.Drawing;
 using Forms = System.Windows.Forms;
@@ -38,11 +40,10 @@ namespace AppleMusicDesktopLyrics.App
         private bool lyricsSearchFinished;
         private bool islandVisible;
         private TimeSpan lyricOffset = TimeSpan.FromMilliseconds(800);
+        private TimeSpan currentEffectivePosition;
+        private TimelineReliability currentTimelineReliability;
         private DispatcherTimer startupHintTimer;
         private Forms.NotifyIcon trayIcon;
-        private readonly LyricTextTransitionTracker lyricTextTransitionTracker = new LyricTextTransitionTracker();
-        private string displayedPrimary;
-        private string displayedSecondary;
         private int positionAnimationVersion;
         private bool horizontalDragActive;
         private bool horizontalDragPending;
@@ -63,6 +64,9 @@ namespace AppleMusicDesktopLyrics.App
         public MainWindow()
         {
             InitializeComponent();
+            ModuleHost.PreviousRequested += async (sender, args) => await PreviousRequested();
+            ModuleHost.PlayPauseRequested += async (sender, args) => await PlayPauseRequested();
+            ModuleHost.NextRequested += async (sender, args) => await NextRequested();
 
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             var cacheRoot = System.IO.Path.Combine(appData, "AppleMusicDesktopLyrics", "lyrics");
@@ -288,6 +292,8 @@ namespace AppleMusicDesktopLyrics.App
                     selected.Position,
                     selected.HasReliableTimeline,
                     selected.PlaybackStatus);
+                currentEffectivePosition = timeline.Position;
+                currentTimelineReliability = timeline.Reliability;
                 var track = TrackIdentityCleaner.Clean(
                     new TrackIdentity(selected.Title, selected.Artist, selected.Duration, selected.Album));
                 if (IsNewTrack(track))
@@ -488,7 +494,7 @@ namespace AppleMusicDesktopLyrics.App
                     placementSettings.HoverSpectrumStops,
                     16);
                 IslandShape.OpacityMask = backgroundHoverOpacityMask;
-                LyricsContent.OpacityMask = lyricsHoverOpacityMask;
+                ModuleHost.OpacityMask = lyricsHoverOpacityMask;
             }
 
             UpdateHoverOpacityMaskIntensity(backgroundHoverOpacityMask, placementSettings.HoverSpectrumStops, 0, intensity);
@@ -497,7 +503,7 @@ namespace AppleMusicDesktopLyrics.App
             backgroundHoverOpacityMask.Center = localPoint;
             backgroundHoverOpacityMask.GradientOrigin = localPoint;
 
-            var lyricsPoint = IslandShell.TranslatePoint(localPoint, LyricsContent);
+            var lyricsPoint = IslandShell.TranslatePoint(localPoint, ModuleHost);
             lyricsHoverOpacityMask.Center = lyricsPoint;
             lyricsHoverOpacityMask.GradientOrigin = lyricsPoint;
         }
@@ -595,7 +601,7 @@ namespace AppleMusicDesktopLyrics.App
             hoverFadeAnimationVersion++;
             hoverFadeOutActive = false;
             IslandShape.OpacityMask = null;
-            LyricsContent.OpacityMask = null;
+            ModuleHost.OpacityMask = null;
             backgroundHoverOpacityMask = null;
             lyricsHoverOpacityMask = null;
         }
@@ -810,18 +816,31 @@ namespace AppleMusicDesktopLyrics.App
 
         private void UpdateIslandShape()
         {
-            IslandShape.Data = Geometry.Parse(OverlayShapePath.GetPath(placementSettings.Edge));
+            ModuleHost.ApplyLayout(GetActiveLayoutProfile());
+            ApplyMeasuredIslandSize();
             IslandShape.Visibility = Visibility.Visible;
             IslandBackground.Opacity = 1.0;
             HideHoverTransparency();
+        }
 
-            var primaryBrush = Brushes.White;
-            var secondaryBrush = new SolidColorBrush(Color.FromArgb(217, 255, 255, 255));
+        private IslandLayoutProfile GetActiveLayoutProfile()
+        {
+            var layouts = placementSettings?.IslandLayouts ?? IslandLayoutDefaults.Create();
+            layouts.Normalize();
+            return layouts.Mode == IslandLayoutMode.Expandable
+                ? layouts.CompactCollapsed
+                : layouts.Horizontal;
+        }
 
-            PrimaryLyricText.Foreground = primaryBrush;
-            IncomingPrimaryLyricText.Foreground = primaryBrush;
-            SecondaryLyricText.Foreground = secondaryBrush;
-            IncomingSecondaryLyricText.Foreground = secondaryBrush;
+        private void ApplyMeasuredIslandSize()
+        {
+            ModuleHost.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            var screen = ResolveScreen();
+            Width = Math.Min(screen.WorkWidth, Math.Max(240, ModuleHost.DesiredSize.Width + 28));
+            Height = Math.Max(60, ModuleHost.DesiredSize.Height + 18);
+            IslandShell.Width = Width;
+            IslandShell.Height = Height;
+            IslandShape.Data = Geometry.Parse(IslandGeometryBuilder.BuildTopPath(Width, Height));
         }
 
         private void SetIslandText(string primary, string secondary)
@@ -831,139 +850,15 @@ namespace AppleMusicDesktopLyrics.App
 
         private void SetIslandText(string primary, string secondary, TimeSpan lineDuration)
         {
-            primary = primary ?? string.Empty;
-            secondary = secondary ?? string.Empty;
-
-            if (displayedPrimary == primary && displayedSecondary == secondary)
+            ModuleHost.Update(new IslandRenderState
             {
-                return;
-            }
-
-            var shouldAnimate = lyricTextTransitionTracker.Update(primary, secondary);
-            displayedPrimary = primary;
-            displayedSecondary = secondary;
-
-            if (!shouldAnimate)
-            {
-                ApplyCurrentLyricsText(primary, secondary);
-                ResetLyricsAnimationState();
-                QueueMarquee(lineDuration);
-                return;
-            }
-
-            IncomingPrimaryLyricText.Text = primary;
-            IncomingSecondaryLyricText.Text = secondary;
-            IncomingSecondaryLyricText.Visibility = string.IsNullOrWhiteSpace(secondary) ? Visibility.Collapsed : Visibility.Visible;
-            IncomingLyricsPanel.Opacity = 0;
-            IncomingLyricsTransform.Y = 10;
-            CurrentLyricsPanel.Opacity = 1;
-            CurrentLyricsTransform.Y = 0;
-
-            var easing = new QuarticEase { EasingMode = EasingMode.EaseOut };
-            var duration = TimeSpan.FromMilliseconds(280);
-
-            var outgoingOpacity = new DoubleAnimation(0, duration) { EasingFunction = easing };
-            var outgoingMove = new DoubleAnimation(-9, duration) { EasingFunction = easing };
-            var incomingOpacity = new DoubleAnimation(1, duration) { EasingFunction = easing };
-            var incomingMove = new DoubleAnimation(0, duration) { EasingFunction = easing };
-
-            incomingOpacity.Completed += (sender, args) =>
-            {
-                ApplyCurrentLyricsText(primary, secondary);
-                ResetLyricsAnimationState();
-                QueueMarquee(lineDuration);
-            };
-
-            CurrentLyricsPanel.BeginAnimation(OpacityProperty, outgoingOpacity);
-            CurrentLyricsTransform.BeginAnimation(TranslateTransform.YProperty, outgoingMove);
-            IncomingLyricsPanel.BeginAnimation(OpacityProperty, incomingOpacity);
-            IncomingLyricsTransform.BeginAnimation(TranslateTransform.YProperty, incomingMove);
-        }
-
-        private void ApplyCurrentLyricsText(string primary, string secondary)
-        {
-            StopMarquee();
-            PrimaryLyricText.Text = primary ?? string.Empty;
-            SecondaryLyricText.Text = secondary ?? string.Empty;
-            SecondaryLyricText.Visibility = string.IsNullOrWhiteSpace(secondary) ? Visibility.Collapsed : Visibility.Visible;
-        }
-
-        private void ResetLyricsAnimationState()
-        {
-            CurrentLyricsPanel.BeginAnimation(OpacityProperty, null);
-            CurrentLyricsTransform.BeginAnimation(TranslateTransform.YProperty, null);
-            IncomingLyricsPanel.BeginAnimation(OpacityProperty, null);
-            IncomingLyricsTransform.BeginAnimation(TranslateTransform.YProperty, null);
-
-            CurrentLyricsPanel.Opacity = 1;
-            CurrentLyricsTransform.Y = 0;
-            IncomingLyricsPanel.Opacity = 0;
-            IncomingLyricsTransform.Y = 10;
-        }
-
-        private void QueueMarquee(TimeSpan lineDuration)
-        {
-            Dispatcher.BeginInvoke(new Action(() =>
-            {
-                StartMarqueeIfNeeded(PrimaryLyricText, PrimaryLyricTransform, PrimaryLyricClip, lineDuration);
-                StartMarqueeIfNeeded(SecondaryLyricText, SecondaryLyricTransform, SecondaryLyricClip, lineDuration);
-            }), DispatcherPriority.Background);
-        }
-
-        private void StartMarqueeIfNeeded(System.Windows.Controls.TextBlock textBlock, TranslateTransform transform, FrameworkElement clip, TimeSpan lineDuration)
-        {
-            transform.BeginAnimation(TranslateTransform.XProperty, null);
-            transform.X = 0;
-            textBlock.Width = double.NaN;
-            System.Windows.Controls.Canvas.SetLeft(textBlock, 0);
-
-            if (string.IsNullOrWhiteSpace(textBlock.Text) || textBlock.Visibility != Visibility.Visible)
-            {
-                return;
-            }
-
-            var availableWidth = clip.ActualWidth;
-            if (availableWidth <= 0)
-            {
-                availableWidth = 436;
-            }
-
-            textBlock.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            var textWidth = textBlock.DesiredSize.Width;
-            textBlock.Width = textWidth;
-
-            if (textWidth <= availableWidth)
-            {
-                System.Windows.Controls.Canvas.SetLeft(textBlock, (availableWidth - textWidth) / 2);
-                return;
-            }
-
-            var overflow = textWidth - availableWidth + 28;
-            var duration = TimeSpan.FromMilliseconds(Math.Max(1800, lineDuration.TotalMilliseconds - 450));
-            System.Windows.Controls.Canvas.SetLeft(textBlock, 0);
-
-            var animation = new DoubleAnimation
-            {
-                From = 0,
-                To = -overflow,
-                BeginTime = TimeSpan.FromMilliseconds(260),
-                Duration = duration,
-                EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
-                FillBehavior = FillBehavior.HoldEnd
-            };
-            transform.BeginAnimation(TranslateTransform.XProperty, animation);
-        }
-
-        private void StopMarquee()
-        {
-            PrimaryLyricTransform.BeginAnimation(TranslateTransform.XProperty, null);
-            SecondaryLyricTransform.BeginAnimation(TranslateTransform.XProperty, null);
-            PrimaryLyricTransform.X = 0;
-            SecondaryLyricTransform.X = 0;
-            PrimaryLyricText.Width = double.NaN;
-            SecondaryLyricText.Width = double.NaN;
-            System.Windows.Controls.Canvas.SetLeft(PrimaryLyricText, 0);
-            System.Windows.Controls.Canvas.SetLeft(SecondaryLyricText, 0);
+                Session = currentSession,
+                PrimaryLyric = primary ?? string.Empty,
+                SecondaryLyric = secondary ?? string.Empty,
+                TimelineReliability = currentTimelineReliability,
+                EffectivePosition = currentEffectivePosition,
+                LineDuration = lineDuration
+            });
         }
 
         private Task PreviousRequested()

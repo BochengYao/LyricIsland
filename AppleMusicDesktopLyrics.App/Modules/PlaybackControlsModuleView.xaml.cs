@@ -1,0 +1,82 @@
+using System;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using AppleMusicDesktopLyrics.Core.Media;
+
+namespace AppleMusicDesktopLyrics.App.Modules
+{
+    public partial class PlaybackControlsModuleView : UserControl, IIslandModuleView
+    {
+        public PlaybackControlsModuleView()
+        {
+            InitializeComponent();
+        }
+
+        public event EventHandler PreviousRequested;
+        public event EventHandler PlayPauseRequested;
+        public event EventHandler NextRequested;
+
+        public void Update(IslandRenderState state)
+        {
+            var session = state?.Session;
+            PreviousButton.IsEnabled = session?.Controls.CanSkipPrevious == true;
+            PlayPauseButton.IsEnabled = session != null &&
+                (session.PlaybackStatus == MediaPlaybackStatus.Playing
+                    ? session.Controls.CanPause : session.Controls.CanPlay);
+            NextButton.IsEnabled = session?.Controls.CanSkipNext == true;
+            PlayPauseGlyph.Text = session?.PlaybackStatus == MediaPlaybackStatus.Playing ? "Ⅱ" : "▶";
+        }
+
+        private void PreviousButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            PreviousRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void PlayPauseButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            PlayPauseRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void NextButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            NextRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void Button_MouseEnter(object sender, MouseEventArgs e)
+        {
+            AnimateButton((Button)sender, Color.FromArgb(0x24, 255, 255, 255), 1.0, 120);
+        }
+
+        private void Button_MouseLeave(object sender, MouseEventArgs e)
+        {
+            AnimateButton((Button)sender, Colors.Transparent, 1.0, 120);
+        }
+
+        private void Button_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            AnimateButton((Button)sender, Color.FromArgb(0x3D, 255, 255, 255), 0.92, 80);
+        }
+
+        private void Button_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            AnimateButton((Button)sender, Color.FromArgb(0x24, 255, 255, 255), 1.0, 140);
+        }
+
+        private static void AnimateButton(Button button, Color color, double scale, int milliseconds)
+        {
+            var border = button.Template.FindName("HitBackground", button) as Border;
+            if (border == null) return;
+            var duration = TimeSpan.FromMilliseconds(milliseconds);
+            border.Background = border.Background as SolidColorBrush ?? new SolidColorBrush(Colors.Transparent);
+            border.Background.BeginAnimation(SolidColorBrush.ColorProperty,
+                new ColorAnimation(color, duration));
+            var transform = border.RenderTransform as ScaleTransform ?? new ScaleTransform(1, 1);
+            border.RenderTransformOrigin = new System.Windows.Point(0.5, 0.5);
+            border.RenderTransform = transform;
+            transform.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(scale, duration));
+            transform.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(scale, duration));
+        }
+    }
+}
