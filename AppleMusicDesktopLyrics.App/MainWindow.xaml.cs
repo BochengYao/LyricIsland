@@ -25,6 +25,8 @@ namespace AppleMusicDesktopLyrics.App
         private readonly DispatcherTimer hoverProximityTimer;
         private readonly IMediaSessionService mediaSessions;
         private readonly TimelineCoordinator timelineCoordinator;
+        private readonly IslandInteractionController interactionController = new IslandInteractionController();
+        private readonly DateTimeOffset interactionClockOriginUtc = DateTimeOffset.UtcNow;
         private MediaSessionSnapshot currentSession;
         private DateTimeOffset? pausedSinceUtc;
         private int lyricLoadGeneration;
@@ -52,6 +54,7 @@ namespace AppleMusicDesktopLyrics.App
         private RadialGradientBrush lyricsHoverOpacityMask;
         private int hoverFadeAnimationVersion;
         private bool hoverFadeOutActive;
+        private IslandInteractionState appliedInteractionState = IslandInteractionState.Collapsed;
         private const double DragStartThreshold = 4.0;
         private const int WM_NCHITTEST = 0x0084;
         private const int HTTRANSPARENT = -1;
@@ -404,6 +407,7 @@ namespace AppleMusicDesktopLyrics.App
 
         private void ShowIsland()
         {
+            ApplyInteractionState(interactionController.GetState(GetInteractionClock()));
             var point = GetVisiblePosition();
             AnimateTo(point.Left, point.Top);
             islandVisible = true;
@@ -415,6 +419,8 @@ namespace AppleMusicDesktopLyrics.App
         {
             hoverProximityTimer.Stop();
             HideHoverTransparency();
+            interactionController.PointerLeft(GetInteractionClock());
+            ApplyInteractionState(IslandInteractionState.Collapsed);
             var point = GetHiddenPosition();
             if (animated)
             {
@@ -558,6 +564,7 @@ namespace AppleMusicDesktopLyrics.App
                 return;
             }
 
+            UpdateInteractionStateLayout();
             var cursor = Forms.Cursor.Position;
             var localPoint = PointFromScreen(new Point(cursor.X, cursor.Y));
             var detectionRange = GetHoverDetectionRange();
@@ -816,20 +823,47 @@ namespace AppleMusicDesktopLyrics.App
 
         private void UpdateIslandShape()
         {
-            ModuleHost.ApplyLayout(GetActiveLayoutProfile());
-            ApplyMeasuredIslandSize();
+            ApplyInteractionState(interactionController.GetState(GetInteractionClock()));
             IslandShape.Visibility = Visibility.Visible;
             IslandBackground.Opacity = 1.0;
             HideHoverTransparency();
         }
 
-        private IslandLayoutProfile GetActiveLayoutProfile()
+        private void ApplyInteractionState(IslandInteractionState state)
         {
             var layouts = placementSettings?.IslandLayouts ?? IslandLayoutDefaults.Create();
             layouts.Normalize();
-            return layouts.Mode == IslandLayoutMode.Expandable
-                ? layouts.CompactCollapsed
-                : layouts.Horizontal;
+
+            var profile = layouts.Mode == IslandLayoutMode.HorizontalBlocks
+                ? layouts.Horizontal
+                : state == IslandInteractionState.Collapsed || state == IslandInteractionState.Hidden
+                    ? layouts.CompactCollapsed
+                    : layouts.CompactExpanded;
+
+            appliedInteractionState = state;
+            ModuleHost.ApplyLayout(profile);
+            ApplyMeasuredIslandSize();
+            if (islandVisible)
+            {
+                var point = GetVisiblePosition();
+                ClearPositionAnimation();
+                Left = point.Left;
+                Top = point.Top;
+            }
+        }
+
+        private void UpdateInteractionStateLayout()
+        {
+            var state = interactionController.GetState(GetInteractionClock());
+            if (state != appliedInteractionState)
+            {
+                ApplyInteractionState(state);
+            }
+        }
+
+        private TimeSpan GetInteractionClock()
+        {
+            return DateTimeOffset.UtcNow - interactionClockOriginUtc;
         }
 
         private void ApplyMeasuredIslandSize()
@@ -1042,6 +1076,8 @@ namespace AppleMusicDesktopLyrics.App
 
         private void Window_MouseEnter(object sender, MouseEventArgs e)
         {
+            interactionController.PointerEntered(GetInteractionClock());
+            UpdateInteractionStateLayout();
             if (islandVisible)
             {
                 ShowHoverTransparency(e.GetPosition(IslandShell));
@@ -1050,6 +1086,8 @@ namespace AppleMusicDesktopLyrics.App
 
         private void Window_MouseLeave(object sender, MouseEventArgs e)
         {
+            interactionController.PointerLeft(GetInteractionClock());
+            UpdateInteractionStateLayout();
             UpdateHoverProximity();
         }
 

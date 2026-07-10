@@ -55,6 +55,9 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("settings store backs up corrupt JSON", SettingsStoreBacksUpCorruptJson);
             suite.Run("builds island geometry for measured module size", BuildsIslandGeometryForMeasuredModuleSize);
             suite.Run("module host exposes all v2 module views", ModuleHostExposesAllV2ModuleViews);
+            suite.Run("expands C mode after hover delay", ExpandsCModeAfterHoverDelay);
+            suite.Run("collapses C mode after leave delay", CollapsesCModeAfterLeaveDelay);
+            suite.Run("keeps island expanded while editing", KeepsIslandExpandedWhileEditing);
             suite.Run("estimates missing playback timeline", EstimatesMissingPlaybackTimeline);
             suite.Run("freezes estimated timeline while paused", FreezesEstimatedTimelineWhilePaused);
             suite.Run("accepts large real timeline correction", AcceptsLargeRealTimelineCorrection);
@@ -638,6 +641,33 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.True(source.Contains("TrackInfoModuleView"));
             Assert.True(source.Contains("ProgressModuleView"));
             Assert.True(source.Contains("DividerModuleView"));
+        }
+
+        static void ExpandsCModeAfterHoverDelay()
+        {
+            var controller = new IslandInteractionController();
+            controller.PointerEntered(TimeSpan.Zero);
+
+            Assert.Equal(IslandInteractionState.Collapsed, controller.GetState(TimeSpan.FromMilliseconds(179)));
+            Assert.Equal(IslandInteractionState.Expanded, controller.GetState(TimeSpan.FromMilliseconds(180)));
+        }
+
+        static void CollapsesCModeAfterLeaveDelay()
+        {
+            var controller = new IslandInteractionController();
+            controller.PointerEntered(TimeSpan.Zero);
+            controller.PointerLeft(TimeSpan.FromMilliseconds(200));
+
+            Assert.Equal(IslandInteractionState.Expanded, controller.GetState(TimeSpan.FromMilliseconds(1099)));
+            Assert.Equal(IslandInteractionState.Collapsed, controller.GetState(TimeSpan.FromMilliseconds(1100)));
+        }
+
+        static void KeepsIslandExpandedWhileEditing()
+        {
+            var controller = new IslandInteractionController();
+            controller.SetEditing(true);
+
+            Assert.Equal(IslandInteractionState.Editing, controller.GetState(TimeSpan.FromHours(1)));
         }
 
         static void EstimatesMissingPlaybackTimeline()
