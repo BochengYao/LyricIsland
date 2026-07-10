@@ -58,6 +58,9 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("expands C mode after hover delay", ExpandsCModeAfterHoverDelay);
             suite.Run("collapses C mode after leave delay", CollapsesCModeAfterLeaveDelay);
             suite.Run("keeps island expanded while editing", KeepsIslandExpandedWhileEditing);
+            suite.Run("snaps module within eighteen pixels", SnapsModuleWithinEighteenPixels);
+            suite.Run("moves module after crossing midpoint", MovesModuleAfterCrossingMidpoint);
+            suite.Run("cancels layout draft without mutating original", CancelsLayoutDraftWithoutMutatingOriginal);
             suite.Run("estimates missing playback timeline", EstimatesMissingPlaybackTimeline);
             suite.Run("freezes estimated timeline while paused", FreezesEstimatedTimelineWhilePaused);
             suite.Run("accepts large real timeline correction", AcceptsLargeRealTimelineCorrection);
@@ -668,6 +671,39 @@ namespace AppleMusicDesktopLyrics.Tests
             controller.SetEditing(true);
 
             Assert.Equal(IslandInteractionState.Editing, controller.GetState(TimeSpan.FromHours(1)));
+        }
+
+        static void SnapsModuleWithinEighteenPixels()
+        {
+            var bounds = new[] { new LayoutInsertionTarget(0, 100), new LayoutInsertionTarget(1, 220) };
+
+            Assert.Equal(1, LayoutEditSession.FindInsertionIndex(204, bounds, 18));
+            Assert.Equal(-1, LayoutEditSession.FindInsertionIndex(180, bounds, 18));
+        }
+
+        static void MovesModuleAfterCrossingMidpoint()
+        {
+            var profile = new IslandLayoutProfile();
+            profile.Modules.Add(new IslandModuleInstance(IslandModuleType.AlbumArt));
+            profile.Modules.Add(new IslandModuleInstance(IslandModuleType.Lyrics));
+            var session = new LayoutEditSession(profile);
+
+            session.Move(session.Draft.Modules[0].Id, 2);
+
+            Assert.Equal(IslandModuleType.Lyrics, session.Draft.Modules[0].Type);
+            Assert.Equal(IslandModuleType.AlbumArt, session.Draft.Modules[1].Type);
+        }
+
+        static void CancelsLayoutDraftWithoutMutatingOriginal()
+        {
+            var profile = new IslandLayoutProfile();
+            profile.Modules.Add(new IslandModuleInstance(IslandModuleType.Lyrics));
+            var session = new LayoutEditSession(profile);
+
+            session.Add(IslandModuleType.Divider, 1);
+            session.Cancel();
+
+            Assert.Equal(1, profile.Modules.Count);
         }
 
         static void EstimatesMissingPlaybackTimeline()

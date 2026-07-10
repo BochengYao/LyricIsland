@@ -32,6 +32,10 @@
         </Path>
         <modules:IslandModuleHost x:Name="ModuleHost"
                                   HorizontalAlignment="Center"
-                                  VerticalAlignment="Center" />
+                                  VerticalAlignment="Center"
+                                  AllowDrop="True"
+                                  DragOver="ModuleHost_DragOver"
+                                  DragLeave="ModuleHost_DragLeave"
+                                  Drop="ModuleHost_Drop" />
     </Grid>
 </Window>

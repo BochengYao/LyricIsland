@@ -560,6 +560,12 @@
                                      Checked="SectionButton_Checked"
                                      Style="{StaticResource SidebarButtonStyle}"
                                      Content="鼠标避让" />
+                        <RadioButton x:Name="LayoutSectionButton"
+                                     GroupName="SettingsSection"
+                                     Tag="Layout"
+                                     Checked="SectionButton_Checked"
+                                     Style="{StaticResource SidebarButtonStyle}"
+                                     Content="模块布局" />
                     </StackPanel>
                 </Border>
 
@@ -1043,6 +1049,118 @@
                                        Grid.Row="10"
                                        Grid.Column="2"
                                        Style="{StaticResource SettingValue}" />
+                        </Grid>
+
+                        <Grid x:Name="LayoutSettingsPanel"
+                              Visibility="Collapsed">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="112" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Row="0"
+                                       Grid.ColumnSpan="2"
+                                       Margin="0,0,0,22"
+                                       FontSize="17"
+                                       FontWeight="SemiBold"
+                                       Text="模块布局" />
+
+                            <TextBlock Grid.Row="1"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,16"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="编辑布局" />
+                            <ComboBox x:Name="EditedLayoutComboBox"
+                                      Grid.Row="1"
+                                      Grid.Column="1"
+                                      Margin="0,0,0,16"
+                                      DisplayMemberPath="DisplayName"
+                                      SelectedValuePath="Value"
+                                      SelectionChanged="EditedLayoutComboBox_SelectionChanged" />
+
+                            <TextBlock Grid.Row="2"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,16"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="模块工具箱" />
+                            <ItemsControl x:Name="ModuleToolbox"
+                                          Grid.Row="2"
+                                          Grid.Column="1"
+                                          Margin="0,0,0,16"
+                                          PreviewMouseMove="ModuleToolbox_PreviewMouseMove">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,0,8,8"
+                                                Padding="10,6"
+                                                Background="{DynamicResource SettingsControlBackgroundBrush}"
+                                                BorderBrush="{DynamicResource SettingsControlBorderBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="9">
+                                            <TextBlock Text="{Binding DisplayName}" />
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Grid.Row="3"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,16"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="分割线" />
+                            <StackPanel Grid.Row="3"
+                                        Grid.Column="1"
+                                        Margin="0,0,0,16">
+                                <TextBlock Margin="0,0,0,8"
+                                           Style="{StaticResource SettingLabel}"
+                                           Text="透明度" />
+                                <Slider x:Name="DividerOpacitySlider"
+                                        Minimum="0"
+                                        Maximum="1"
+                                        SmallChange="0.05" />
+                                <TextBlock Margin="0,10,0,8"
+                                           Style="{StaticResource SettingLabel}"
+                                           Text="左右间距" />
+                                <Slider x:Name="DividerSpacingSlider"
+                                        Minimum="0"
+                                        Maximum="64"
+                                        SmallChange="1" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="4"
+                                        Grid.Column="1"
+                                        Margin="0,0,0,16"
+                                        Orientation="Horizontal">
+                                <Button Margin="0,0,8,0"
+                                        Content="恢复默认"
+                                        Click="ResetLayoutButton_Click" />
+                                <Button Margin="0,0,8,0"
+                                        Content="删除分割线"
+                                        Click="RemoveSelectedModule_Click" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="5"
+                                        Grid.Column="1"
+                                        Orientation="Horizontal">
+                                <Button Margin="0,0,8,0"
+                                        Content="保存布局"
+                                        Style="{StaticResource PrimaryButtonStyle}"
+                                        Click="SaveLayoutButton_Click" />
+                                <Button Content="取消编辑"
+                                        Click="CancelLayoutButton_Click" />
+                            </StackPanel>
                         </Grid>
                     </Grid>
                 </Border>

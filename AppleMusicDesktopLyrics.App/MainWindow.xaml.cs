@@ -9,6 +9,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Interop;
 using System.Windows.Threading;
+using AppleMusicDesktopLyrics.App.LayoutEditing;
 using AppleMusicDesktopLyrics.App.Modules;
 using AppleMusicDesktopLyrics.Core;
 using AppleMusicDesktopLyrics.App.Media;
@@ -38,6 +39,9 @@ namespace AppleMusicDesktopLyrics.App
         private TrackIdentity currentTrack;
         private OverlayPlacementSettings placementSettings;
         private LyricsSourcePreference selectedLyricsSource = LyricsSourcePreference.Automatic;
+        private LayoutEditSession layoutEditSession;
+        private IslandLayoutMode layoutEditingMode = IslandLayoutMode.HorizontalBlocks;
+        private bool layoutEditing;
         private bool refreshingState;
         private bool lyricsSearchFinished;
         private bool islandVisible;
@@ -834,7 +838,9 @@ namespace AppleMusicDesktopLyrics.App
             var layouts = placementSettings?.IslandLayouts ?? IslandLayoutDefaults.Create();
             layouts.Normalize();
 
-            var profile = layouts.Mode == IslandLayoutMode.HorizontalBlocks
+            var profile = layoutEditing && layoutEditSession != null
+                ? layoutEditSession.Draft
+                : layouts.Mode == IslandLayoutMode.HorizontalBlocks
                 ? layouts.Horizontal
                 : state == IslandInteractionState.Collapsed || state == IslandInteractionState.Hidden
                     ? layouts.CompactCollapsed
@@ -938,11 +944,141 @@ namespace AppleMusicDesktopLyrics.App
 
         private void OpenPlacementSettingsWindow()
         {
-            var window = new PlacementSettingsWindow(screenCatalog.GetScreens(), placementSettings, ApplyPlacementSettings)
+            var window = new PlacementSettingsWindow(
+                screenCatalog.GetScreens(),
+                placementSettings,
+                ApplyPlacementSettings,
+                BeginLayoutEditing,
+                SaveLayoutEditing,
+                CancelLayoutEditing)
             {
                 Owner = this
             };
             window.ShowDialog();
+        }
+
+        private void BeginLayoutEditing(IslandLayoutMode mode, bool resetToDefault)
+        {
+            placementSettings.IslandLayouts = placementSettings.IslandLayouts ?? IslandLayoutDefaults.Create();
+            placementSettings.IslandLayouts.Mode = mode;
+            layoutEditingMode = mode;
+            var profile = resetToDefault
+                ? GetDefaultLayoutProfile(mode)
+                : GetEditableLayoutProfile(mode);
+            layoutEditSession = new LayoutEditSession(profile);
+            layoutEditing = true;
+            interactionController.SetEditing(true);
+            ApplyInteractionState(IslandInteractionState.Editing);
+            ShowIsland();
+        }
+
+        private void SaveLayoutEditing()
+        {
+            if (!layoutEditing || layoutEditSession == null)
+            {
+                return;
+            }
+
+            var committed = layoutEditSession.Commit();
+            SetEditableLayoutProfile(layoutEditingMode, committed);
+            layoutEditSession = null;
+            layoutEditing = false;
+            interactionController.SetEditing(false);
+            placementSettings.Normalize();
+            settingsStore.Save(placementSettings);
+            UpdateIslandShape();
+        }
+
+        private void CancelLayoutEditing()
+        {
+            if (!layoutEditing)
+            {
+                return;
+            }
+
+            layoutEditSession?.Cancel();
+            layoutEditSession = null;
+            layoutEditing = false;
+            interactionController.SetEditing(false);
+            UpdateIslandShape();
+        }
+
+        private IslandLayoutProfile GetEditableLayoutProfile(IslandLayoutMode mode)
+        {
+            placementSettings.IslandLayouts.Normalize();
+            return mode == IslandLayoutMode.HorizontalBlocks
+                ? placementSettings.IslandLayouts.Horizontal
+                : placementSettings.IslandLayouts.CompactExpanded;
+        }
+
+        private static IslandLayoutProfile GetDefaultLayoutProfile(IslandLayoutMode mode)
+        {
+            return mode == IslandLayoutMode.HorizontalBlocks
+                ? IslandLayoutDefaults.CreateHorizontal()
+                : IslandLayoutDefaults.CreateExpanded();
+        }
+
+        private void SetEditableLayoutProfile(IslandLayoutMode mode, IslandLayoutProfile profile)
+        {
+            placementSettings.IslandLayouts = placementSettings.IslandLayouts ?? IslandLayoutDefaults.Create();
+            if (mode == IslandLayoutMode.HorizontalBlocks)
+            {
+                placementSettings.IslandLayouts.Horizontal = profile;
+            }
+            else
+            {
+                placementSettings.IslandLayouts.CompactExpanded = profile;
+            }
+        }
+
+        private void ModuleHost_DragOver(object sender, DragEventArgs e)
+        {
+            if (!layoutEditing || layoutEditSession == null)
+            {
+                e.Effects = DragDropEffects.None;
+                e.Handled = true;
+                return;
+            }
+
+            var index = FindModuleInsertionIndex(e.GetPosition(ModuleHost).X);
+            e.Effects = index >= 0 ? DragDropEffects.Move : DragDropEffects.None;
+            e.Handled = true;
+        }
+
+        private void ModuleHost_Drop(object sender, DragEventArgs e)
+        {
+            if (!layoutEditing || layoutEditSession == null)
+            {
+                return;
+            }
+
+            var index = FindModuleInsertionIndex(e.GetPosition(ModuleHost).X);
+            var payload = e.Data.GetData(typeof(IslandLayoutDragPayload)) as IslandLayoutDragPayload;
+            if (index >= 0 && payload != null)
+            {
+                if (payload.NewType.HasValue)
+                {
+                    layoutEditSession.Add(payload.NewType.Value, index);
+                }
+                else if (!string.IsNullOrWhiteSpace(payload.ExistingInstanceId))
+                {
+                    layoutEditSession.Move(payload.ExistingInstanceId, index);
+                }
+
+                ApplyInteractionState(IslandInteractionState.Editing);
+            }
+
+            e.Handled = true;
+        }
+
+        private void ModuleHost_DragLeave(object sender, DragEventArgs e)
+        {
+            e.Handled = true;
+        }
+
+        private int FindModuleInsertionIndex(double pointerX)
+        {
+            return LayoutEditSession.FindInsertionIndex(pointerX, ModuleHost.BuildInsertionTargets(), 18);
         }
 
         private static ILyricsClient CreateLyricsClient(LyricsSourcePreference source)
