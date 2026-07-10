@@ -82,6 +82,16 @@ namespace AppleMusicDesktopLyrics.App.Modules
             }
         }
 
+        public void ShowTransientMessage(string message, TimeSpan duration)
+        {
+            Update(new IslandRenderState
+            {
+                PrimaryLyric = message ?? string.Empty,
+                SecondaryLyric = string.Empty,
+                LineDuration = duration
+            });
+        }
+
         public IReadOnlyList<LayoutInsertionTarget> BuildInsertionTargets()
         {
             var targets = new List<LayoutInsertionTarget>();

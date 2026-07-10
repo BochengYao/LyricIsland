@@ -10,12 +10,14 @@ using Microsoft.Win32;
 using AppleMusicDesktopLyrics.App.LayoutEditing;
 using AppleMusicDesktopLyrics.Core;
 using AppleMusicDesktopLyrics.Core.Layout;
+using AppleMusicDesktopLyrics.Core.Media;
 
 namespace AppleMusicDesktopLyrics.App
 {
     public partial class PlacementSettingsWindow : Window
     {
         private readonly IReadOnlyList<OverlayScreenArea> screens;
+        private readonly IReadOnlyList<MediaSessionSnapshot> playerSessions;
         private readonly Action<OverlayPlacementSettings> applySettings;
         private readonly Action<IslandLayoutMode, bool> beginLayoutEditing;
         private readonly Action saveLayoutEditing;
@@ -30,12 +32,14 @@ namespace AppleMusicDesktopLyrics.App
             IReadOnlyList<OverlayScreenArea> screens,
             OverlayPlacementSettings currentSettings,
             Action<OverlayPlacementSettings> applySettings,
+            IReadOnlyList<MediaSessionSnapshot> playerSessions = null,
             Action<IslandLayoutMode, bool> beginLayoutEditing = null,
             Action saveLayoutEditing = null,
             Action cancelLayoutEditing = null)
         {
             InitializeComponent();
             this.screens = screens ?? new List<OverlayScreenArea>().AsReadOnly();
+            this.playerSessions = playerSessions ?? new List<MediaSessionSnapshot>().AsReadOnly();
             this.applySettings = applySettings ?? throw new ArgumentNullException(nameof(applySettings));
             this.beginLayoutEditing = beginLayoutEditing;
             this.saveLayoutEditing = saveLayoutEditing;
@@ -76,6 +80,7 @@ namespace AppleMusicDesktopLyrics.App
             PassThroughOnHoverCheckBox.IsChecked = settings.PassThroughOnHover;
             SetHoverSpectrumControls(settings.HoverSpectrumStops);
             InitializeLayoutEditingControls(settings);
+            InitializePlayerSelection(settings);
             UpdateTranslationLineModeLock();
             UpdateSettingValueLabels();
             LyricsSectionButton.IsChecked = true;
@@ -127,6 +132,7 @@ namespace AppleMusicDesktopLyrics.App
             settings.PassThroughOnHover = PassThroughOnHoverCheckBox.IsChecked == true;
             settings.SettingsTheme = selectedThemePreference;
             settings.LyricsSource = ReadLyricsSource();
+            settings.LockedSourceAppUserModelId = PlayerSelectionComboBox.SelectedValue as string ?? string.Empty;
             settings.UseMultiLineDisplay = ReadUseMultiLineDisplay();
             settings.ShowTranslation = ShowTranslationCheckBox.IsChecked == true;
             settings.IslandLayouts.Mode = ReadEditedLayoutMode();
@@ -157,6 +163,27 @@ namespace AppleMusicDesktopLyrics.App
             DividerOpacitySlider.Value = 0.22;
             DividerSpacingSlider.Value = 4;
             suppressLayoutSelectionChanged = false;
+        }
+
+        private void InitializePlayerSelection(OverlayPlacementSettings settings)
+        {
+            var playerOptions = new List<PlayerSelectionOption>
+            {
+                new PlayerSelectionOption(string.Empty, "自动选择")
+            };
+            playerOptions.AddRange(playerSessions
+                .Where(session => session != null && !string.IsNullOrWhiteSpace(session.SourceAppUserModelId))
+                .GroupBy(session => session.SourceAppUserModelId, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.First())
+                .OrderBy(session => session.PlayerDisplayName)
+                .Select(session => new PlayerSelectionOption(
+                    session.SourceAppUserModelId,
+                    string.IsNullOrWhiteSpace(session.PlayerDisplayName)
+                        ? session.SourceAppUserModelId
+                        : session.PlayerDisplayName)));
+
+            PlayerSelectionComboBox.ItemsSource = playerOptions;
+            PlayerSelectionComboBox.SelectedValue = settings.LockedSourceAppUserModelId ?? string.Empty;
         }
 
         private IslandLayoutMode ReadEditedLayoutMode()
@@ -696,6 +723,24 @@ namespace AppleMusicDesktopLyrics.App
             }
 
             public IslandModuleType Value { get; }
+
+            public string DisplayName { get; }
+
+            public override string ToString()
+            {
+                return DisplayName;
+            }
+        }
+
+        private sealed class PlayerSelectionOption
+        {
+            public PlayerSelectionOption(string value, string displayName)
+            {
+                Value = value ?? string.Empty;
+                DisplayName = displayName ?? string.Empty;
+            }
+
+            public string Value { get; }
 
             public string DisplayName { get; }
 

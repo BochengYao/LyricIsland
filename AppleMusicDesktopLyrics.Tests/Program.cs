@@ -61,6 +61,8 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("snaps module within eighteen pixels", SnapsModuleWithinEighteenPixels);
             suite.Run("moves module after crossing midpoint", MovesModuleAfterCrossingMidpoint);
             suite.Run("cancels layout draft without mutating original", CancelsLayoutDraftWithoutMutatingOriginal);
+            suite.Run("uses approved lyric offset hotkeys", UsesApprovedLyricOffsetHotkeys);
+            suite.Run("settings exposes automatic and locked player selection", SettingsExposesPlayerSelection);
             suite.Run("estimates missing playback timeline", EstimatesMissingPlaybackTimeline);
             suite.Run("freezes estimated timeline while paused", FreezesEstimatedTimelineWhilePaused);
             suite.Run("accepts large real timeline correction", AcceptsLargeRealTimelineCorrection);
@@ -704,6 +706,25 @@ namespace AppleMusicDesktopLyrics.Tests
             session.Cancel();
 
             Assert.Equal(1, profile.Modules.Count);
+        }
+
+        static void UsesApprovedLyricOffsetHotkeys()
+        {
+            var source = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "AppleMusicDesktopLyrics.App", "HotkeySettings.cs"));
+
+            Assert.True(source.Contains("Ctrl+Alt+Left"));
+            Assert.True(source.Contains("Ctrl+Alt+Right"));
+            Assert.True(source.Contains("Ctrl+Alt+Down"));
+        }
+
+        static void SettingsExposesPlayerSelection()
+        {
+            var xaml = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml"));
+
+            Assert.True(xaml.Contains("x:Name=\"PlayerSelectionComboBox\""));
+            Assert.True(xaml.Contains("自动选择"));
         }
 
         static void EstimatesMissingPlaybackTimeline()

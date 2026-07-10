@@ -29,6 +29,7 @@ namespace AppleMusicDesktopLyrics.App
         private readonly IslandInteractionController interactionController = new IslandInteractionController();
         private readonly DateTimeOffset interactionClockOriginUtc = DateTimeOffset.UtcNow;
         private MediaSessionSnapshot currentSession;
+        private GlobalHotkeyService hotkeyService;
         private DateTimeOffset? pausedSinceUtc;
         private int lyricLoadGeneration;
         private readonly LyricsCache cache;
@@ -86,6 +87,7 @@ namespace AppleMusicDesktopLyrics.App
             settingsStore = new OverlaySettingsStore(settingsPath);
             placementSettings = settingsStore.Load();
             selectedLyricsSource = placementSettings.LyricsSource;
+            lyricOffset = TimeSpan.FromMilliseconds(placementSettings.DefaultLyricOffsetMilliseconds);
             cache = new LyricsCache(cacheRoot, GetCacheLimitBytes(placementSettings));
             UpdateIslandShape();
             lyricsClient = CreateLyricsClient(selectedLyricsSource);
@@ -114,10 +116,15 @@ namespace AppleMusicDesktopLyrics.App
                     ShowIsland();
                 }
             };
-            SourceInitialized += (sender, args) => InstallWindowMessageHook();
+            SourceInitialized += (sender, args) =>
+            {
+                InstallWindowMessageHook();
+                RegisterGlobalHotkeys();
+            };
             Closed += (sender, args) =>
             {
                 timer.Stop();
+                hotkeyService?.Dispose();
                 mediaSessions.Dispose();
                 DisposeTrayIcon();
             };
@@ -180,12 +187,46 @@ namespace AppleMusicDesktopLyrics.App
 
         private IntPtr WindowMessageHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
+            if (hotkeyService != null && hotkeyService.HandleMessage(msg, wParam))
+            {
+                handled = true;
+                return IntPtr.Zero;
+            }
+
             if (msg == WM_NCHITTEST)
             {
                 handled = false;
             }
 
             return IntPtr.Zero;
+        }
+
+        private void RegisterGlobalHotkeys()
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            if (hwnd == IntPtr.Zero)
+            {
+                return;
+            }
+
+            hotkeyService?.Dispose();
+            hotkeyService = new GlobalHotkeyService(hwnd);
+            const uint modAltControl = 0x0001 | 0x0002;
+            hotkeyService.Register(1, modAltControl, 0x25, () => AdjustLyricOffset(-500, false));
+            hotkeyService.Register(2, modAltControl, 0x27, () => AdjustLyricOffset(500, false));
+            hotkeyService.Register(3, modAltControl, 0x28, () => AdjustLyricOffset(0, true));
+        }
+
+        private void AdjustLyricOffset(int deltaMilliseconds, bool reset)
+        {
+            var milliseconds = reset
+                ? placementSettings.DefaultLyricOffsetMilliseconds
+                : (int)lyricOffset.TotalMilliseconds + deltaMilliseconds;
+            milliseconds = Math.Max(-10000, Math.Min(10000, milliseconds));
+            lyricOffset = TimeSpan.FromMilliseconds(milliseconds);
+            ModuleHost.ShowTransientMessage(
+                "歌词偏移 " + (milliseconds / 1000.0).ToString("+0.0;-0.0;0.0") + "s",
+                TimeSpan.FromSeconds(1.2));
         }
 
         private bool ShouldPassThroughMouseHit()
@@ -948,6 +989,7 @@ namespace AppleMusicDesktopLyrics.App
                 screenCatalog.GetScreens(),
                 placementSettings,
                 ApplyPlacementSettings,
+                mediaSessions.Sessions,
                 BeginLayoutEditing,
                 SaveLayoutEditing,
                 CancelLayoutEditing)

@@ -1060,6 +1060,7 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="112" />
@@ -1090,9 +1091,27 @@
                                        Grid.Column="0"
                                        Margin="0,0,16,16"
                                        Style="{StaticResource SettingLabel}"
+                                       Text="播放器" />
+                            <ComboBox x:Name="PlayerSelectionComboBox"
+                                      Grid.Row="2"
+                                      Grid.Column="1"
+                                      Margin="0,0,0,16"
+                                      DisplayMemberPath="DisplayName"
+                                      SelectedValuePath="Value" />
+                            <TextBlock Grid.Row="2"
+                                       Grid.Column="1"
+                                       Margin="0,38,0,16"
+                                       Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                       FontSize="11"
+                                       Text="自动选择会跟随最近活跃的播放器" />
+
+                            <TextBlock Grid.Row="3"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,16"
+                                       Style="{StaticResource SettingLabel}"
                                        Text="模块工具箱" />
                             <ItemsControl x:Name="ModuleToolbox"
-                                          Grid.Row="2"
+                                          Grid.Row="3"
                                           Grid.Column="1"
                                           Margin="0,0,0,16"
                                           PreviewMouseMove="ModuleToolbox_PreviewMouseMove">
@@ -1115,12 +1134,12 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
 
-                            <TextBlock Grid.Row="3"
+                            <TextBlock Grid.Row="4"
                                        Grid.Column="0"
                                        Margin="0,0,16,16"
                                        Style="{StaticResource SettingLabel}"
                                        Text="分割线" />
-                            <StackPanel Grid.Row="3"
+                            <StackPanel Grid.Row="4"
                                         Grid.Column="1"
                                         Margin="0,0,0,16">
                                 <TextBlock Margin="0,0,0,8"
@@ -1139,7 +1158,7 @@
                                         SmallChange="1" />
                             </StackPanel>
 
-                            <StackPanel Grid.Row="4"
+                            <StackPanel Grid.Row="5"
                                         Grid.Column="1"
                                         Margin="0,0,0,16"
                                         Orientation="Horizontal">
@@ -1151,7 +1170,7 @@
                                         Click="RemoveSelectedModule_Click" />
                             </StackPanel>
 
-                            <StackPanel Grid.Row="5"
+                            <StackPanel Grid.Row="6"
                                         Grid.Column="1"
                                         Orientation="Horizontal">
                                 <Button Margin="0,0,8,0"
