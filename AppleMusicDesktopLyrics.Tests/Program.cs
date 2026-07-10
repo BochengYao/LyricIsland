@@ -51,6 +51,8 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("uses generic profile for unknown players", UsesGenericProfileForUnknownPlayers);
             suite.Run("creates independent A and C layouts", CreatesIndependentAAndCLayouts);
             suite.Run("keeps repeated divider modules", KeepsRepeatedDividerModules);
+            suite.Run("settings schema contains independent layouts", SettingsSchemaContainsIndependentLayouts);
+            suite.Run("settings store backs up corrupt JSON", SettingsStoreBacksUpCorruptJson);
             suite.Run("estimates missing playback timeline", EstimatesMissingPlaybackTimeline);
             suite.Run("freezes estimated timeline while paused", FreezesEstimatedTimelineWhilePaused);
             suite.Run("accepts large real timeline correction", AcceptsLargeRealTimelineCorrection);
@@ -592,6 +594,26 @@ namespace AppleMusicDesktopLyrics.Tests
             profile.Normalize();
 
             Assert.Equal(2, profile.Modules.Count);
+        }
+
+        static void SettingsSchemaContainsIndependentLayouts()
+        {
+            var source = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "AppleMusicDesktopLyrics.App", "OverlayPlacementSettings.cs"));
+
+            Assert.True(source.Contains("SchemaVersion"));
+            Assert.True(source.Contains("IslandLayoutSettings"));
+            Assert.True(source.Contains("LockedSourceAppUserModelId"));
+            Assert.True(source.Contains("LyricOffsetHotkeys"));
+        }
+
+        static void SettingsStoreBacksUpCorruptJson()
+        {
+            var source = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "AppleMusicDesktopLyrics.App", "OverlayPlacementSettings.cs"));
+
+            Assert.True(source.Contains(".corrupt-"));
+            Assert.True(source.Contains("File.Copy"));
         }
 
         static void EstimatesMissingPlaybackTimeline()

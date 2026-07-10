@@ -1066,23 +1066,11 @@ namespace AppleMusicDesktopLyrics.App
 
         private OverlayPlacementSettings CreateSettingsFromPlacement(OverlayPlacement placement)
         {
-            return new OverlayPlacementSettings
-            {
-                ScreenName = placement.ScreenName,
-                Edge = placement.Edge,
-                OffsetRatio = placement.OffsetRatio,
-                CacheLimitMegabytes = placementSettings.CacheLimitMegabytes,
-                HoverAuraSize = placementSettings.HoverAuraSize,
-                HoverDetectionRange = placementSettings.HoverDetectionRange,
-                HoverAuraAspectRatio = placementSettings.HoverAuraAspectRatio,
-                HoverTransparencyPercent = placementSettings.HoverTransparencyPercent,
-                HoverSpectrumStops = placementSettings.HoverSpectrumStops,
-                PassThroughOnHover = placementSettings.PassThroughOnHover,
-                LyricsSource = placementSettings.LyricsSource,
-                UseMultiLineDisplay = placementSettings.UseMultiLineDisplay,
-                ShowTranslation = placementSettings.ShowTranslation,
-                LockedSourceAppUserModelId = placementSettings.LockedSourceAppUserModelId
-            };
+            var clone = placementSettings.DeepClone();
+            clone.ScreenName = placement.ScreenName;
+            clone.Edge = placement.Edge;
+            clone.OffsetRatio = placement.OffsetRatio;
+            return clone;
         }
 
         private static byte GetOpacityAlpha(int transparencyPercent)
