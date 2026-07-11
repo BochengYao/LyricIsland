@@ -62,7 +62,7 @@ namespace AppleMusicDesktopLyrics.App
         private bool hoverFadeOutActive;
         private IslandInteractionState appliedInteractionState = IslandInteractionState.Collapsed;
         private const double DragStartThreshold = 4.0;
-        private const double IslandHorizontalShapePadding = 160;
+        private const double IslandHorizontalShapePadding = 84;
         private const int WM_NCHITTEST = 0x0084;
         private const int HTTRANSPARENT = -1;
         private const int VK_RBUTTON = 0x02;
@@ -634,6 +634,12 @@ namespace AppleMusicDesktopLyrics.App
                 return;
             }
 
+            if (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift))
+            {
+                HideHoverTransparency();
+                return;
+            }
+
             UpdateInteractionStateLayout();
             var cursor = Forms.Cursor.Position;
             var localPoint = PointFromScreen(new Point(cursor.X, cursor.Y));
@@ -989,9 +995,17 @@ namespace AppleMusicDesktopLyrics.App
         {
             var session = currentSession;
             if (session == null) return;
-            if (await command(session.SessionId))
+
+            try
             {
-                await mediaSessions.RefreshAsync();
+                if (await command(session.SessionId))
+                {
+                    await mediaSessions.RefreshAsync();
+                }
+            }
+            catch
+            {
+                // SMTC commands can fail when the player closes or changes sessions between click and dispatch.
             }
         }
 
@@ -1018,7 +1032,8 @@ namespace AppleMusicDesktopLyrics.App
                 mediaSessions.Sessions,
                 BeginLayoutEditing,
                 SaveLayoutEditing,
-                CancelLayoutEditing)
+                CancelLayoutEditing,
+                UpdateLyricsWidth)
             {
                 Owner = this
             };
@@ -1038,6 +1053,22 @@ namespace AppleMusicDesktopLyrics.App
             interactionController.SetEditing(true);
             ApplyInteractionState(IslandInteractionState.Editing);
             ShowIsland();
+        }
+
+        private void UpdateLyricsWidth(IslandLayoutMode mode, double width)
+        {
+            if (!layoutEditing || layoutEditSession == null)
+            {
+                return;
+            }
+
+            var normalized = IslandModuleInstance.NormalizeLyricsWidth(width);
+            foreach (var module in layoutEditSession.Draft.Modules.Where(module => module.Type == IslandModuleType.Lyrics))
+            {
+                module.LyricsWidth = normalized;
+            }
+
+            ApplyInteractionState(IslandInteractionState.Editing);
         }
 
         private void SaveLayoutEditing()
@@ -1314,6 +1345,13 @@ namespace AppleMusicDesktopLyrics.App
 
         private void Window_KeyDown(object sender, KeyEventArgs e)
         {
+            if (e.Key == Key.LeftShift || e.Key == Key.RightShift)
+            {
+                HideHoverTransparency();
+                e.Handled = true;
+                return;
+            }
+
             if (startupHintAwaitingConfirmation)
             {
                 ConfirmStartupHint();
@@ -1332,6 +1370,15 @@ namespace AppleMusicDesktopLyrics.App
             else if (e.Key == Key.R)
             {
                 lyricOffset = TimeSpan.FromMilliseconds(800);
+            }
+        }
+
+        private void Window_KeyUp(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.LeftShift || e.Key == Key.RightShift)
+            {
+                UpdateHoverProximity();
+                e.Handled = true;
             }
         }
     }

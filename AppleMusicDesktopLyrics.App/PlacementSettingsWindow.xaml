@@ -1117,6 +1117,7 @@
                                            Grid.Column="1"
                                            Margin="0,0,0,16"
                                            PreviewMouseLeftButtonDown="ModuleToolbox_PreviewMouseLeftButtonDown"
+                                           PreviewMouseLeftButtonUp="ModuleToolbox_PreviewMouseLeftButtonUp"
                                            PreviewMouseMove="ModuleToolbox_PreviewMouseMove">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>

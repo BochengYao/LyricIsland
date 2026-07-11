@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -27,7 +28,8 @@ namespace AppleMusicDesktopLyrics.App.Modules
             profile = profile ?? IslandLayoutDefaults.CreateCollapsed();
             profile.Normalize();
 
-            var nextSignature = string.Join("|", profile.Modules.Select(module => module.Id + ":" + module.Type));
+            var nextSignature = string.Join("|", profile.Modules.Select(module =>
+                module.Id + ":" + module.Type + ":" + module.LyricsWidth.ToString("0.##", CultureInfo.InvariantCulture)));
             if (nextSignature == layoutSignature)
             {
                 return;

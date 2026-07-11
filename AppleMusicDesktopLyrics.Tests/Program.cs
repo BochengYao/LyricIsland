@@ -30,6 +30,7 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("builds stable cache paths from song identity", BuildsStableCachePathsFromSongIdentity);
             suite.Run("evicts least recently used song cache files to stay under size limit", EvictsLeastRecentlyUsedSongCacheFilesToStayUnderSizeLimit);
             suite.Run("uses lrc lib search as the primary lyrics lookup", UsesLrcLibSearchAsPrimaryLyricsLookup);
+            suite.Run("falls back from album scoped lrc lib search", FallsBackFromAlbumScopedLrcLibSearch);
             suite.Run("returns empty lyrics when lrc lib reports 404", ReturnsEmptyLyricsWhenLrcLibReports404);
             suite.Run("returns empty lyrics when lrc lib request times out", ReturnsEmptyLyricsWhenLrcLibRequestTimesOut);
             suite.Run("fetches synced lyrics from netease response", FetchesSyncedLyricsFromNetEaseResponse);
@@ -62,6 +63,8 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("module toolbox captures mouse down for drag", ModuleToolboxCapturesMouseDownForDrag);
             suite.Run("lyrics module exposes configurable width", LyricsModuleExposesConfigurableWidth);
             suite.Run("island background width reserves shaped edge padding", IslandBackgroundWidthReservesShapedEdgePadding);
+            suite.Run("playback controls use apple music style glyphs", PlaybackControlsUseAppleMusicStyleGlyphs);
+            suite.Run("shift temporarily suppresses hover transparency", ShiftTemporarilySuppressesHoverTransparency);
             suite.Run("snaps module within eighteen pixels", SnapsModuleWithinEighteenPixels);
             suite.Run("moves module after crossing midpoint", MovesModuleAfterCrossingMidpoint);
             suite.Run("cancels layout draft without mutating original", CancelsLayoutDraftWithoutMutatingOriginal);
@@ -306,6 +309,26 @@ namespace AppleMusicDesktopLyrics.Tests
 
             Assert.Equal("[00:01.00]hello\n[00:02.00]world", lrc);
             Assert.Equal("https://lrclib.net/api/search?track_name=Song%20Name&artist_name=Singer%20Name", requested.AbsoluteUri);
+        }
+
+        static void FallsBackFromAlbumScopedLrcLibSearch()
+        {
+            var requests = new List<Uri>();
+            var client = new LrcLibClient(uri =>
+            {
+                requests.Add(uri);
+                return requests.Count == 1
+                    ? "[]"
+                    : "[{\"trackName\":\"Song Name\",\"artistName\":\"Singer Name\",\"syncedLyrics\":\"[00:01.00]fallback\"}]";
+            });
+
+            var lrc = client.GetSyncedLyricsAsync(new TrackIdentity("Song Name", "Singer Name", TimeSpan.FromSeconds(210), "Album Name"))
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.Equal("[00:01.00]fallback", lrc);
+            Assert.Equal("https://lrclib.net/api/search?track_name=Song%20Name&artist_name=Singer%20Name&album_name=Album%20Name", requests[0].AbsoluteUri);
+            Assert.Equal("https://lrclib.net/api/search?track_name=Song%20Name&artist_name=Singer%20Name", requests[1].AbsoluteUri);
         }
 
         static void ReturnsEmptyLyricsWhenLrcLibReports404()
@@ -729,6 +752,27 @@ namespace AppleMusicDesktopLyrics.Tests
 
             Assert.True(source.Contains("IslandHorizontalShapePadding"));
             Assert.True(source.Contains("ModuleHost.DesiredSize.Width + IslandHorizontalShapePadding"));
+        }
+
+        static void PlaybackControlsUseAppleMusicStyleGlyphs()
+        {
+            var root = GetSolutionRoot();
+            var source = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "Modules", "PlaybackControlsModuleView.xaml"));
+
+            Assert.True(source.Contains("x:Name=\"PlayPauseGlyph\""));
+            Assert.True(source.Contains("x:Name=\"PauseGlyph\""));
+            Assert.True(source.Contains("Data=\"M 0,11"));
+            Assert.False(source.Contains("Text=\"⏮\""));
+            Assert.False(source.Contains("Text=\"⏭\""));
+        }
+
+        static void ShiftTemporarilySuppressesHoverTransparency()
+        {
+            var root = GetSolutionRoot();
+            var source = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs"));
+
+            Assert.True(source.Contains("Keyboard.IsKeyDown(Key.LeftShift)"));
+            Assert.True(source.Contains("Window_KeyUp"));
         }
 
         static void SnapsModuleWithinEighteenPixels()

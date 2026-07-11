@@ -22,12 +22,14 @@ namespace AppleMusicDesktopLyrics.App
         private readonly Action<IslandLayoutMode, bool> beginLayoutEditing;
         private readonly Action saveLayoutEditing;
         private readonly Action cancelLayoutEditing;
+        private readonly Action<IslandLayoutMode, double> updateLyricsWidth;
         private readonly int initialCacheLimitMegabytes;
         private OverlayPlacementSettings workingSettings;
         private SettingsThemePreference selectedThemePreference = SettingsThemePreference.System;
         private bool layoutEditingActive;
         private bool suppressLayoutSelectionChanged;
         private Point? moduleToolboxDragStartPoint;
+        private ModuleToolboxOption moduleToolboxDragOption;
 
         public PlacementSettingsWindow(
             IReadOnlyList<OverlayScreenArea> screens,
@@ -36,7 +38,8 @@ namespace AppleMusicDesktopLyrics.App
             IReadOnlyList<MediaSessionSnapshot> playerSessions = null,
             Action<IslandLayoutMode, bool> beginLayoutEditing = null,
             Action saveLayoutEditing = null,
-            Action cancelLayoutEditing = null)
+            Action cancelLayoutEditing = null,
+            Action<IslandLayoutMode, double> updateLyricsWidth = null)
         {
             InitializeComponent();
             this.screens = screens ?? new List<OverlayScreenArea>().AsReadOnly();
@@ -45,6 +48,7 @@ namespace AppleMusicDesktopLyrics.App
             this.beginLayoutEditing = beginLayoutEditing;
             this.saveLayoutEditing = saveLayoutEditing;
             this.cancelLayoutEditing = cancelLayoutEditing;
+            this.updateLyricsWidth = updateLyricsWidth;
 
             ScreenComboBox.ItemsSource = this.screens
                 .Select((screen, index) => new ScreenOption(screen.Name, "显示器 " + (index + 1) + " (" + (int)screen.WorkWidth + " x " + (int)screen.WorkHeight + ")"))
@@ -267,7 +271,19 @@ namespace AppleMusicDesktopLyrics.App
         private void ModuleToolbox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             moduleToolboxDragStartPoint = e.GetPosition(ModuleToolbox);
+            moduleToolboxDragOption = FindModuleToolboxOption(e.OriginalSource as DependencyObject);
+            ModuleToolbox.CaptureMouse();
             e.Handled = true;
+        }
+
+        private void ModuleToolbox_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            moduleToolboxDragStartPoint = null;
+            moduleToolboxDragOption = null;
+            if (Mouse.Captured == ModuleToolbox)
+            {
+                ModuleToolbox.ReleaseMouseCapture();
+            }
         }
 
         private void ModuleToolbox_PreviewMouseMove(object sender, MouseEventArgs e)
@@ -275,6 +291,11 @@ namespace AppleMusicDesktopLyrics.App
             if (e.LeftButton != MouseButtonState.Pressed)
             {
                 moduleToolboxDragStartPoint = null;
+                moduleToolboxDragOption = null;
+                if (Mouse.Captured == ModuleToolbox)
+                {
+                    ModuleToolbox.ReleaseMouseCapture();
+                }
                 return;
             }
 
@@ -290,22 +311,35 @@ namespace AppleMusicDesktopLyrics.App
                 return;
             }
 
-            var source = e.OriginalSource as DependencyObject;
-            while (source != null)
+            var option = moduleToolboxDragOption ?? FindModuleToolboxOption(e.OriginalSource as DependencyObject);
+            if (option != null)
+            {
+                var payload = new IslandLayoutDragPayload { NewType = option.Value };
+                if (Mouse.Captured == ModuleToolbox)
+                {
+                    ModuleToolbox.ReleaseMouseCapture();
+                }
+                DragDrop.DoDragDrop(ModuleToolbox, new DataObject(typeof(IslandLayoutDragPayload), payload), DragDropEffects.Copy);
+                moduleToolboxDragStartPoint = null;
+                moduleToolboxDragOption = null;
+                e.Handled = true;
+                return;
+            }
+
+        }
+
+        private ModuleToolboxOption FindModuleToolboxOption(DependencyObject source)
+        {
+            var container = ItemsControl.ContainerFromElement(ModuleToolbox, source) as FrameworkElement;
+            var option = container?.DataContext as ModuleToolboxOption;
+            while (option == null && source != null)
             {
                 var element = source as FrameworkElement;
-                var option = element?.DataContext as ModuleToolboxOption;
-                if (option != null)
-                {
-                    var payload = new IslandLayoutDragPayload { NewType = option.Value };
-                    DragDrop.DoDragDrop(ModuleToolbox, new DataObject(typeof(IslandLayoutDragPayload), payload), DragDropEffects.Copy);
-                    moduleToolboxDragStartPoint = null;
-                    e.Handled = true;
-                    return;
-                }
-
+                option = element?.DataContext as ModuleToolboxOption;
                 source = VisualTreeHelper.GetParent(source);
             }
+
+            return option;
         }
 
         private void SaveLayoutEditingIfActive()
@@ -341,6 +375,7 @@ namespace AppleMusicDesktopLyrics.App
             if (ReferenceEquals(sender, LyricsWidthSlider))
             {
                 ApplyLyricsWidth(workingSettings, LyricsWidthSlider.Value);
+                updateLyricsWidth?.Invoke(ReadEditedLayoutMode(), LyricsWidthSlider.Value);
             }
             UpdateSettingValueLabels();
         }

@@ -1,12 +1,12 @@
 <UserControl x:Class="AppleMusicDesktopLyrics.App.Modules.PlaybackControlsModuleView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Width="126"
-             Height="40">
+             Width="144"
+             Height="48">
     <UserControl.Resources>
         <Style x:Key="PlaybackIconButtonStyle" TargetType="Button">
-          <Setter Property="Width" Value="40" />
-          <Setter Property="Height" Value="34" />
+          <Setter Property="Width" Value="44" />
+          <Setter Property="Height" Value="40" />
           <Setter Property="Background" Value="Transparent" />
           <Setter Property="BorderThickness" Value="0" />
           <Setter Property="Foreground" Value="White" />
@@ -36,7 +36,7 @@
           </Setter>
         </Style>
     </UserControl.Resources>
-    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
         <Button x:Name="PreviousButton"
                 Style="{StaticResource PlaybackIconButtonStyle}"
                 Click="PreviousButton_Click"
@@ -44,7 +44,7 @@
                 MouseLeave="Button_MouseLeave"
                 PreviewMouseLeftButtonDown="Button_PreviewMouseLeftButtonDown"
                 PreviewMouseLeftButtonUp="Button_PreviewMouseLeftButtonUp">
-            <TextBlock Text="⏮" FontSize="15" />
+            <Path Width="28" Height="22" Stretch="Fill" Fill="White" Data="M 0,11 L 12,3 L 12,8 L 27,0 L 27,22 L 12,14 L 12,19 Z" />
         </Button>
         <Button x:Name="PlayPauseButton"
                 Style="{StaticResource PlaybackIconButtonStyle}"
@@ -53,7 +53,13 @@
                 MouseLeave="Button_MouseLeave"
                 PreviewMouseLeftButtonDown="Button_PreviewMouseLeftButtonDown"
                 PreviewMouseLeftButtonUp="Button_PreviewMouseLeftButtonUp">
-            <TextBlock x:Name="PlayPauseGlyph" Text="▶" FontSize="16" />
+            <Grid x:Name="PlayPauseGlyph" Width="18" Height="22">
+                <Path x:Name="PlayGlyph" Width="18" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center" Fill="White" Data="M 0,0 L 18,11 L 0,22 Z" Visibility="Collapsed" />
+                <StackPanel x:Name="PauseGlyph" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Border Width="5" Height="22" CornerRadius="2" Background="White" />
+                    <Border Width="5" Height="22" Margin="4,0,0,0" CornerRadius="2" Background="White" />
+                </StackPanel>
+            </Grid>
         </Button>
         <Button x:Name="NextButton"
                 Style="{StaticResource PlaybackIconButtonStyle}"
@@ -62,7 +68,7 @@
                 MouseLeave="Button_MouseLeave"
                 PreviewMouseLeftButtonDown="Button_PreviewMouseLeftButtonDown"
                 PreviewMouseLeftButtonUp="Button_PreviewMouseLeftButtonUp">
-            <TextBlock Text="⏭" FontSize="15" />
+            <Path Width="28" Height="22" Stretch="Fill" Fill="White" Data="M 0,0 L 15,8 L 15,3 L 28,11 L 15,19 L 15,14 L 0,22 Z" />
         </Button>
     </StackPanel>
 </UserControl>

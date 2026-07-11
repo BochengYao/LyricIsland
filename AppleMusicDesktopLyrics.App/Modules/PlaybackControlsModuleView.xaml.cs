@@ -26,7 +26,9 @@ namespace AppleMusicDesktopLyrics.App.Modules
                 (session.PlaybackStatus == MediaPlaybackStatus.Playing
                     ? session.Controls.CanPause : session.Controls.CanPlay);
             NextButton.IsEnabled = session?.Controls.CanSkipNext == true;
-            PlayPauseGlyph.Text = session?.PlaybackStatus == MediaPlaybackStatus.Playing ? "Ⅱ" : "▶";
+            var isPlaying = session?.PlaybackStatus == MediaPlaybackStatus.Playing;
+            PlayGlyph.Visibility = isPlaying ? System.Windows.Visibility.Collapsed : System.Windows.Visibility.Visible;
+            PauseGlyph.Visibility = isPlaying ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
         }
 
         private void PreviousButton_Click(object sender, System.Windows.RoutedEventArgs e)
@@ -69,10 +71,29 @@ namespace AppleMusicDesktopLyrics.App.Modules
             var border = button.Template.FindName("HitBackground", button) as Border;
             if (border == null) return;
             var duration = TimeSpan.FromMilliseconds(milliseconds);
-            border.Background = border.Background as SolidColorBrush ?? new SolidColorBrush(Colors.Transparent);
-            border.Background.BeginAnimation(SolidColorBrush.ColorProperty,
+            var brush = border.Background as SolidColorBrush;
+            if (brush == null)
+            {
+                brush = new SolidColorBrush(Colors.Transparent);
+            }
+            else if (brush.IsFrozen)
+            {
+                brush = brush.Clone();
+            }
+
+            border.Background = brush;
+            brush.BeginAnimation(SolidColorBrush.ColorProperty,
                 new ColorAnimation(color, duration));
-            var transform = border.RenderTransform as ScaleTransform ?? new ScaleTransform(1, 1);
+            var transform = border.RenderTransform as ScaleTransform;
+            if (transform == null)
+            {
+                transform = new ScaleTransform(1, 1);
+            }
+            else if (transform.IsFrozen)
+            {
+                transform = transform.Clone();
+            }
+
             border.RenderTransformOrigin = new System.Windows.Point(0.5, 0.5);
             border.RenderTransform = transform;
             transform.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(scale, duration));

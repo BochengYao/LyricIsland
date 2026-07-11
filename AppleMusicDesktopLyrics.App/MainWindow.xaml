@@ -13,6 +13,7 @@
         Topmost="True"
         Focusable="True"
         KeyDown="Window_KeyDown"
+        KeyUp="Window_KeyUp"
         MouseEnter="Window_MouseEnter"
         MouseLeave="Window_MouseLeave"
         MouseLeftButtonDown="Window_MouseLeftButtonDown"
