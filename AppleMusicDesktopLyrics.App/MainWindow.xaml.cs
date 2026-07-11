@@ -550,6 +550,16 @@ namespace AppleMusicDesktopLyrics.App
 
         private void ShowHoverTransparency(Point localPoint, double intensity)
         {
+            if (IsHoverTransparencySuppressed())
+            {
+                if (backgroundHoverOpacityMask != null || lyricsHoverOpacityMask != null)
+                {
+                    HideHoverTransparency();
+                }
+
+                return;
+            }
+
             if (hoverFadeOutActive)
             {
                 HideHoverTransparency();
@@ -634,7 +644,7 @@ namespace AppleMusicDesktopLyrics.App
                 return;
             }
 
-            if (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift))
+            if (IsHoverTransparencySuppressed())
             {
                 HideHoverTransparency();
                 return;
@@ -663,6 +673,11 @@ namespace AppleMusicDesktopLyrics.App
         private double GetHoverDetectionRange()
         {
             return Math.Max(OverlayPlacementSettings.MinHoverDetectionRange, placementSettings.HoverDetectionRange);
+        }
+
+        private static bool IsHoverTransparencySuppressed()
+        {
+            return Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift);
         }
 
         private double GetDistanceToIsland(Point localPoint)
