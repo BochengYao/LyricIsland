@@ -22,6 +22,8 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("selects current lyric line with translation", SelectsCurrentLyricLineWithTranslation);
             suite.Run("selects one display line when multiline is disabled", SelectsOneDisplayLineWhenMultilineIsDisabled);
             suite.Run("selects translated display lines when translation is enabled", SelectsTranslatedDisplayLinesWhenTranslationIsEnabled);
+            suite.Run("uses one line for translation placeholder", UsesOneLineForTranslationPlaceholder);
+            suite.Run("does not reuse stale translation for next lyric", DoesNotReuseStaleTranslationForNextLyric);
             suite.Run("parses lyrics package without translation", ParsesLyricsPackageWithoutTranslation);
             suite.Run("detects whether lyrics package has translation", DetectsWhetherLyricsPackageHasTranslation);
             suite.Run("gets current lyric line duration", GetsCurrentLyricLineDuration);
@@ -64,6 +66,7 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("lyrics module exposes configurable width", LyricsModuleExposesConfigurableWidth);
             suite.Run("island background width reserves shaped edge padding", IslandBackgroundWidthReservesShapedEdgePadding);
             suite.Run("playback controls use apple music style glyphs", PlaybackControlsUseAppleMusicStyleGlyphs);
+            suite.Run("playback controls are not consumed by layout drag", PlaybackControlsAreNotConsumedByLayoutDrag);
             suite.Run("shift temporarily suppresses hover transparency", ShiftTemporarilySuppressesHoverTransparency);
             suite.Run("snaps module within eighteen pixels", SnapsModuleWithinEighteenPixels);
             suite.Run("moves module after crossing midpoint", MovesModuleAfterCrossingMidpoint);
@@ -197,6 +200,32 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.Equal(2, lines.Count);
             Assert.Equal("hello", lines[0].Text);
             Assert.Equal("你好", lines[1].Text);
+        }
+
+        static void UsesOneLineForTranslationPlaceholder()
+        {
+            var lyrics = LyricsPackageParser.Parse(
+                "[00:01.00]Ohhhhh\n" +
+                LyricsPackageParser.TranslationSeparator + "\n" +
+                "[00:01.00]//");
+
+            var lines = LyricsDisplaySelector.Select(lyrics, TimeSpan.FromSeconds(2), TimeSpan.Zero, true, true);
+
+            Assert.Equal(1, lines.Count);
+            Assert.Equal("Ohhhhh", lines[0].Text);
+        }
+
+        static void DoesNotReuseStaleTranslationForNextLyric()
+        {
+            var lyrics = LyricsPackageParser.Parse(
+                "[00:01.00]first\n[00:04.00]second\n" +
+                LyricsPackageParser.TranslationSeparator + "\n" +
+                "[00:01.00]第一句");
+
+            var lines = LyricsDisplaySelector.Select(lyrics, TimeSpan.FromSeconds(5), TimeSpan.Zero, true, true);
+
+            Assert.Equal(1, lines.Count);
+            Assert.Equal("second", lines[0].Text);
         }
 
         static void ParsesLyricsPackageWithoutTranslation()
@@ -752,6 +781,7 @@ namespace AppleMusicDesktopLyrics.Tests
 
             Assert.True(source.Contains("IslandHorizontalShapePadding"));
             Assert.True(source.Contains("ModuleHost.DesiredSize.Width + IslandHorizontalShapePadding"));
+            Assert.True(source.Contains("IslandHorizontalShapePadding = 144"));
         }
 
         static void PlaybackControlsUseAppleMusicStyleGlyphs()
@@ -761,9 +791,22 @@ namespace AppleMusicDesktopLyrics.Tests
 
             Assert.True(source.Contains("x:Name=\"PlayPauseGlyph\""));
             Assert.True(source.Contains("x:Name=\"PauseGlyph\""));
-            Assert.True(source.Contains("Data=\"M 0,11"));
+            Assert.True(source.Contains("Data=\"M 11,1 L 11,19 L 0,10 Z M 23,1"));
+            Assert.True(source.Contains("Width=\"108\""));
             Assert.False(source.Contains("Text=\"⏮\""));
             Assert.False(source.Contains("Text=\"⏭\""));
+        }
+
+        static void PlaybackControlsAreNotConsumedByLayoutDrag()
+        {
+            var root = GetSolutionRoot();
+            var hostSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "Modules", "IslandModuleHost.xaml.cs"));
+            var windowSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs"));
+            var controlsSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "Modules", "PlaybackControlsModuleView.xaml.cs"));
+
+            Assert.True(hostSource.Contains("!LayoutEditingEnabled"));
+            Assert.True(windowSource.Contains("IsInteractiveMouseSource"));
+            Assert.True(controlsSource.Contains("PlayPauseButton.IsEnabled = session != null"));
         }
 
         static void ShiftTemporarilySuppressesHoverTransparency()

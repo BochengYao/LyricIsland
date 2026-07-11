@@ -21,11 +21,9 @@ namespace AppleMusicDesktopLyrics.App.Modules
         public void Update(IslandRenderState state)
         {
             var session = state?.Session;
-            PreviousButton.IsEnabled = session?.Controls.CanSkipPrevious == true;
-            PlayPauseButton.IsEnabled = session != null &&
-                (session.PlaybackStatus == MediaPlaybackStatus.Playing
-                    ? session.Controls.CanPause : session.Controls.CanPlay);
-            NextButton.IsEnabled = session?.Controls.CanSkipNext == true;
+            PreviousButton.IsEnabled = session != null;
+            PlayPauseButton.IsEnabled = session != null;
+            NextButton.IsEnabled = session != null;
             var isPlaying = session?.PlaybackStatus == MediaPlaybackStatus.Playing;
             PlayGlyph.Visibility = isPlaying ? System.Windows.Visibility.Collapsed : System.Windows.Visibility.Visible;
             PauseGlyph.Visibility = isPlaying ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;

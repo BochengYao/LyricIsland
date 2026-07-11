@@ -62,7 +62,7 @@ namespace AppleMusicDesktopLyrics.App
         private bool hoverFadeOutActive;
         private IslandInteractionState appliedInteractionState = IslandInteractionState.Collapsed;
         private const double DragStartThreshold = 4.0;
-        private const double IslandHorizontalShapePadding = 84;
+        private const double IslandHorizontalShapePadding = 144;
         private const int WM_NCHITTEST = 0x0084;
         private const int HTTRANSPARENT = -1;
         private const int VK_RBUTTON = 0x02;
@@ -1065,6 +1065,7 @@ namespace AppleMusicDesktopLyrics.App
                 : GetEditableLayoutProfile(mode);
             layoutEditSession = new LayoutEditSession(profile);
             layoutEditing = true;
+            ModuleHost.LayoutEditingEnabled = true;
             interactionController.SetEditing(true);
             ApplyInteractionState(IslandInteractionState.Editing);
             ShowIsland();
@@ -1097,6 +1098,7 @@ namespace AppleMusicDesktopLyrics.App
             SetEditableLayoutProfile(layoutEditingMode, committed);
             layoutEditSession = null;
             layoutEditing = false;
+            ModuleHost.LayoutEditingEnabled = false;
             interactionController.SetEditing(false);
             placementSettings.Normalize();
             settingsStore.Save(placementSettings);
@@ -1113,6 +1115,7 @@ namespace AppleMusicDesktopLyrics.App
             layoutEditSession?.Cancel();
             layoutEditSession = null;
             layoutEditing = false;
+            ModuleHost.LayoutEditingEnabled = false;
             interactionController.SetEditing(false);
             UpdateIslandShape();
         }
@@ -1260,6 +1263,11 @@ namespace AppleMusicDesktopLyrics.App
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            if (IsInteractiveMouseSource(e.OriginalSource as DependencyObject))
+            {
+                return;
+            }
+
             BeginPotentialHorizontalDrag(e);
             e.Handled = true;
         }
@@ -1307,6 +1315,12 @@ namespace AppleMusicDesktopLyrics.App
 
         private void Window_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
+            if (IsInteractiveMouseSource(e.OriginalSource as DependencyObject))
+            {
+                FinishHorizontalDrag();
+                return;
+            }
+
             var wasStartupHintAwaitingConfirmation = startupHintAwaitingConfirmation;
             var shouldForwardClick = horizontalDragPending && !horizontalDragActive && ShouldForwardLeftClickThrough();
             var shouldConfirmStartupHint = horizontalDragPending && !horizontalDragActive;
@@ -1332,6 +1346,21 @@ namespace AppleMusicDesktopLyrics.App
             }
 
             e.Handled = true;
+        }
+
+        private static bool IsInteractiveMouseSource(DependencyObject source)
+        {
+            while (source != null)
+            {
+                if (source is Button)
+                {
+                    return true;
+                }
+
+                source = VisualTreeHelper.GetParent(source);
+            }
+
+            return false;
         }
 
         private void Window_MouseRightButtonDown(object sender, MouseButtonEventArgs e)

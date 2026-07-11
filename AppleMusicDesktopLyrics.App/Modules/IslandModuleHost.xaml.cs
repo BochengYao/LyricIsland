@@ -23,6 +23,8 @@ namespace AppleMusicDesktopLyrics.App.Modules
         public event EventHandler PlayPauseRequested;
         public event EventHandler NextRequested;
 
+        public bool LayoutEditingEnabled { get; set; }
+
         public void ApplyLayout(IslandLayoutProfile profile)
         {
             profile = profile ?? IslandLayoutDefaults.CreateCollapsed();
@@ -123,7 +125,7 @@ namespace AppleMusicDesktopLyrics.App.Modules
 
         private void ModuleView_PreviewMouseMove(object sender, MouseEventArgs e)
         {
-            if (e.LeftButton != MouseButtonState.Pressed)
+            if (!LayoutEditingEnabled || e.LeftButton != MouseButtonState.Pressed)
             {
                 return;
             }

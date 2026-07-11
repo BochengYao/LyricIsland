@@ -9,7 +9,7 @@
           <Setter Property="Height" Value="36" />
           <Setter Property="Background" Value="Transparent" />
           <Setter Property="BorderThickness" Value="0" />
-          <Setter Property="Foreground" Value="White" />
+          <Setter Property="Foreground" Value="#D8D8D8" />
           <Setter Property="Template">
             <Setter.Value>
               <ControlTemplate TargetType="Button">
@@ -44,7 +44,7 @@
                 MouseLeave="Button_MouseLeave"
                 PreviewMouseLeftButtonDown="Button_PreviewMouseLeftButtonDown"
                 PreviewMouseLeftButtonUp="Button_PreviewMouseLeftButtonUp">
-            <Path Width="22" Height="18" Stretch="Fill" Fill="White" Data="M 0,11 L 12,3 L 12,8 L 27,0 L 27,22 L 12,14 L 12,19 Z" />
+            <Path Width="23" Height="18" Stretch="Fill" Fill="#D8D8D8" Data="M 11,1 L 11,19 L 0,10 Z M 23,1 L 23,19 L 12,10 Z" />
         </Button>
         <Button x:Name="PlayPauseButton"
                 Style="{StaticResource PlaybackIconButtonStyle}"
@@ -54,10 +54,10 @@
                 PreviewMouseLeftButtonDown="Button_PreviewMouseLeftButtonDown"
                 PreviewMouseLeftButtonUp="Button_PreviewMouseLeftButtonUp">
             <Grid x:Name="PlayPauseGlyph" Width="16" Height="18">
-                <Path x:Name="PlayGlyph" Width="16" Height="18" HorizontalAlignment="Center" VerticalAlignment="Center" Fill="White" Data="M 0,0 L 18,11 L 0,22 Z" Visibility="Collapsed" />
+                <Path x:Name="PlayGlyph" Width="16" Height="18" HorizontalAlignment="Center" VerticalAlignment="Center" Fill="#D8D8D8" Data="M 0,0 L 18,11 L 0,22 Z" Visibility="Collapsed" />
                 <StackPanel x:Name="PauseGlyph" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <Border Width="4" Height="18" CornerRadius="2" Background="White" />
-                    <Border Width="4" Height="18" Margin="4,0,0,0" CornerRadius="2" Background="White" />
+                    <Border Width="4" Height="18" CornerRadius="2" Background="#D8D8D8" />
+                    <Border Width="4" Height="18" Margin="4,0,0,0" CornerRadius="2" Background="#D8D8D8" />
                 </StackPanel>
             </Grid>
         </Button>
@@ -68,7 +68,7 @@
                 MouseLeave="Button_MouseLeave"
                 PreviewMouseLeftButtonDown="Button_PreviewMouseLeftButtonDown"
                 PreviewMouseLeftButtonUp="Button_PreviewMouseLeftButtonUp">
-            <Path Width="22" Height="18" Stretch="Fill" Fill="White" Data="M 0,0 L 15,8 L 15,3 L 28,11 L 15,19 L 15,14 L 0,22 Z" />
+            <Path Width="23" Height="18" Stretch="Fill" Fill="#D8D8D8" Data="M 0,1 L 0,19 L 11,10 Z M 12,1 L 12,19 L 23,10 Z" />
         </Button>
     </StackPanel>
 </UserControl>
