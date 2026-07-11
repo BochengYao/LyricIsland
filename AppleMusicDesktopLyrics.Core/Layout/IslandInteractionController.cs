@@ -6,12 +6,18 @@ namespace AppleMusicDesktopLyrics.Core.Layout
     {
         private TimeSpan? enteredAt;
         private TimeSpan? leftAt;
+        private TimeSpan? expandedAt;
         private bool clickExpanded;
         private bool editing;
 
+        public TimeSpan ExpandedDuration { get; set; } = TimeSpan.FromSeconds(5);
+
         public void PointerEntered(TimeSpan now)
         {
-            enteredAt = now;
+            if (!enteredAt.HasValue)
+            {
+                enteredAt = now;
+            }
             leftAt = null;
         }
 
@@ -29,6 +35,7 @@ namespace AppleMusicDesktopLyrics.Core.Layout
         {
             clickExpanded = !clickExpanded;
             enteredAt = now;
+            expandedAt = clickExpanded ? now : (TimeSpan?)null;
             leftAt = null;
         }
 
@@ -44,9 +51,10 @@ namespace AppleMusicDesktopLyrics.Core.Layout
                 return IslandInteractionState.Collapsed;
             }
 
-            if (leftAt != null && now - leftAt.Value >= TimeSpan.FromMilliseconds(900))
+            if (clickExpanded && expandedAt.HasValue && now - expandedAt.Value >= ExpandedDuration)
             {
                 clickExpanded = false;
+                expandedAt = null;
                 return IslandInteractionState.Collapsed;
             }
 

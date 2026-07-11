@@ -705,11 +705,48 @@
                                        Grid.Column="2"
                                        Style="{StaticResource SettingValue}"
                                        Text="上方" />
+
+                            <TextBlock Grid.Row="3"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,18"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="无播放后收起" />
+                            <Slider x:Name="NoPlaybackAutoRetractSlider"
+                                    Grid.Row="3"
+                                    Grid.Column="1"
+                                    Margin="0,0,10,18"
+                                    Minimum="0"
+                                    Maximum="300"
+                                    TickFrequency="1"
+                                    ValueChanged="SettingSlider_ValueChanged" />
+                            <TextBlock x:Name="NoPlaybackAutoRetractValueText"
+                                       Grid.Row="3"
+                                       Grid.Column="2"
+                                       Margin="0,0,0,18"
+                                       Style="{StaticResource SettingValue}" />
+
+                            <TextBlock Grid.Row="4"
+                                       Grid.Column="0"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="展开停留" />
+                            <Slider x:Name="ExpandedAutoCollapseSlider"
+                                    Grid.Row="4"
+                                    Grid.Column="1"
+                                    Margin="0,0,10,0"
+                                    Minimum="1"
+                                    Maximum="60"
+                                    TickFrequency="1"
+                                    ValueChanged="SettingSlider_ValueChanged" />
+                            <TextBlock x:Name="ExpandedAutoCollapseValueText"
+                                       Grid.Row="4"
+                                       Grid.Column="2"
+                                       Style="{StaticResource SettingValue}" />
                         </Grid>
 
                         <Grid x:Name="CacheSettingsPanel"
                               Visibility="Collapsed">
                             <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
@@ -739,11 +776,44 @@
                                            Style="{StaticResource SettingLabel}"
                                            Text="MB" />
                             </DockPanel>
+
+                            <Border Grid.Row="2"
+                                    Grid.ColumnSpan="2"
+                                    Margin="0,24,0,0"
+                                    Padding="16"
+                                    Background="{DynamicResource SettingsControlBackgroundBrush}"
+                                    BorderBrush="{DynamicResource SettingsControlBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="12">
+                                <StackPanel>
+                                    <TextBlock FontWeight="SemiBold"
+                                               Text="缓存有什么用？" />
+                                    <TextBlock Margin="0,8,0,0"
+                                               Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                               TextWrapping="Wrap"
+                                               Text="歌词缓存会保存已经下载过的同步歌词。下次播放同一首歌时可直接读取，启动更快，也能减少重复请求。" />
+                                    <TextBlock Margin="0,14,0,0"
+                                               FontWeight="SemiBold"
+                                               Text="容量估算" />
+                                    <TextBlock Margin="0,8,0,0"
+                                               Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                               TextWrapping="Wrap"
+                                               Text="按每首同步歌词平均约 10 KB 估算：1 MB ≈ 100 首；500 MB ≈ 50,000 首；1000 MB ≈ 100,000 首。实际数量会随歌词长度变化。" />
+                                    <TextBlock Margin="0,14,0,0"
+                                               FontWeight="SemiBold"
+                                               Text="自动清理流程" />
+                                    <TextBlock Margin="0,8,0,0"
+                                               Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                               TextWrapping="Wrap"
+                                               Text="每次写入新歌词或修改容量后都会检查总大小；超过上限时，从最久未使用的歌词开始删除，直到重新低于容量上限。正在常听的歌词会更晚被清理。" />
+                                </StackPanel>
+                            </Border>
                         </Grid>
 
                         <Grid x:Name="HoverSettingsPanel"
                               Visibility="Collapsed">
                             <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
@@ -1208,9 +1278,10 @@
 
                             <TextBlock Grid.Row="5"
                                        Grid.Column="0"
-                                       Margin="0,0,16,16"
+                                       Margin="0,3,16,16"
+                                       VerticalAlignment="Top"
                                        Style="{StaticResource SettingLabel}"
-                                       Text="分割线" />
+                                       Text="分割线样式" />
                             <StackPanel Grid.Row="5"
                                         Grid.Column="1"
                                         Margin="0,0,0,16">
@@ -1220,14 +1291,16 @@
                                 <Slider x:Name="DividerOpacitySlider"
                                         Minimum="0"
                                         Maximum="1"
-                                        SmallChange="0.05" />
+                                        SmallChange="0.05"
+                                        ValueChanged="SettingSlider_ValueChanged" />
                                 <TextBlock Margin="0,10,0,8"
                                            Style="{StaticResource SettingLabel}"
                                            Text="左右间距" />
                                 <Slider x:Name="DividerSpacingSlider"
                                         Minimum="0"
                                         Maximum="64"
-                                        SmallChange="1" />
+                                        SmallChange="1"
+                                        ValueChanged="SettingSlider_ValueChanged" />
                             </StackPanel>
 
                             <StackPanel Grid.Row="6"

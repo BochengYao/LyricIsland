@@ -32,7 +32,11 @@ namespace AppleMusicDesktopLyrics.App.Modules
             profile.Normalize();
 
             var nextSignature = string.Join("|", profile.Modules.Select(module =>
-                module.Id + ":" + module.Type + ":" + module.LyricsWidth.ToString("0.##", CultureInfo.InvariantCulture)));
+                module.Id + ":" + module.Type + ":" +
+                module.LyricsWidth.ToString("0.##", CultureInfo.InvariantCulture) + ":" +
+                module.DividerOpacity.ToString("0.###", CultureInfo.InvariantCulture) + ":" +
+                module.MarginBefore.ToString("0.##", CultureInfo.InvariantCulture) + ":" +
+                module.MarginAfter.ToString("0.##", CultureInfo.InvariantCulture)));
             if (nextSignature == layoutSignature)
             {
                 return;

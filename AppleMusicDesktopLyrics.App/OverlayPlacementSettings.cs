@@ -20,6 +20,9 @@ namespace AppleMusicDesktopLyrics.App
         public const double MaxHoverAuraAspectRatio = 2.0;
         public const int MinHoverTransparencyPercent = 0;
         public const int MaxHoverTransparencyPercent = 100;
+        public const int MinAutoRetractSeconds = 1;
+        public const int MinNoPlaybackAutoRetractSeconds = 0;
+        public const int MaxAutoRetractSeconds = 300;
 
         public int SchemaVersion { get; set; } = 2;
 
@@ -57,6 +60,10 @@ namespace AppleMusicDesktopLyrics.App
 
         public int DefaultLyricOffsetMilliseconds { get; set; } = 800;
 
+        public int NoPlaybackAutoRetractSeconds { get; set; } = 6;
+
+        public int ExpandedAutoCollapseSeconds { get; set; } = 5;
+
         public string LockedSourceAppUserModelId { get; set; } = string.Empty;
 
         public OverlayPlacement ToPlacement()
@@ -86,6 +93,12 @@ namespace AppleMusicDesktopLyrics.App
             DefaultLyricOffsetMilliseconds = Math.Max(
                 -10000,
                 Math.Min(10000, DefaultLyricOffsetMilliseconds));
+            NoPlaybackAutoRetractSeconds = Math.Max(
+                MinNoPlaybackAutoRetractSeconds,
+                Math.Min(MaxAutoRetractSeconds, NoPlaybackAutoRetractSeconds));
+            ExpandedAutoCollapseSeconds = Math.Max(
+                MinAutoRetractSeconds,
+                Math.Min(MaxAutoRetractSeconds, ExpandedAutoCollapseSeconds));
             SchemaVersion = 2;
             OffsetRatio = Math.Max(0, Math.Min(1, OffsetRatio));
             CacheLimitMegabytes = Math.Max(MinCacheLimitMegabytes, Math.Min(MaxCacheLimitMegabytes, CacheLimitMegabytes));

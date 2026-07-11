@@ -19,6 +19,7 @@
         MouseLeftButtonDown="Window_MouseLeftButtonDown"
         MouseLeftButtonUp="Window_MouseLeftButtonUp"
         MouseMove="Window_MouseMove"
+        SizeChanged="Window_SizeChanged"
         MouseRightButtonDown="Window_MouseRightButtonDown">
     <Grid x:Name="IslandShell"
           Width="560"

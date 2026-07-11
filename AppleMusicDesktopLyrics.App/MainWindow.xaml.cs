@@ -31,6 +31,7 @@ namespace AppleMusicDesktopLyrics.App
         private MediaSessionSnapshot currentSession;
         private GlobalHotkeyService hotkeyService;
         private DateTimeOffset? pausedSinceUtc;
+        private DateTimeOffset? noPlaybackSinceUtc;
         private int lyricLoadGeneration;
         private readonly LyricsCache cache;
         private readonly OverlaySettingsStore settingsStore;
@@ -61,8 +62,11 @@ namespace AppleMusicDesktopLyrics.App
         private int hoverFadeAnimationVersion;
         private bool hoverFadeOutActive;
         private IslandInteractionState appliedInteractionState = IslandInteractionState.Collapsed;
+        private PlacementSettingsWindow settingsWindow;
+        private int islandSizeAnimationVersion;
         private const double DragStartThreshold = 4.0;
         private const double IslandHorizontalShapePadding = 144;
+        private const double HoverMaskContentRadiusScale = 1.0;
         private const int WM_NCHITTEST = 0x0084;
         private const int HTTRANSPARENT = -1;
         private const int VK_RBUTTON = 0x02;
@@ -90,6 +94,7 @@ namespace AppleMusicDesktopLyrics.App
             placementSettings = settingsStore.Load();
             selectedLyricsSource = placementSettings.LyricsSource;
             lyricOffset = TimeSpan.FromMilliseconds(placementSettings.DefaultLyricOffsetMilliseconds);
+            interactionController.ExpandedDuration = TimeSpan.FromSeconds(placementSettings.ExpandedAutoCollapseSeconds);
             cache = new LyricsCache(cacheRoot, GetCacheLimitBytes(placementSettings));
             UpdateIslandShape();
             lyricsClient = CreateLyricsClient(selectedLyricsSource);
@@ -283,17 +288,19 @@ namespace AppleMusicDesktopLyrics.App
             ShowIsland();
             if (startupHintTimer == null)
             {
-                startupHintTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(6) };
+                startupHintTimer = new DispatcherTimer();
                 startupHintTimer.Tick += (sender, args) =>
                 {
                     startupHintTimer.Stop();
                     startupHintAwaitingConfirmation = false;
                     if (currentTrack == null)
                     {
+                        noPlaybackSinceUtc = DateTimeOffset.UtcNow - TimeSpan.FromSeconds(placementSettings.NoPlaybackAutoRetractSeconds);
                         HideIsland(true);
                     }
                 };
             }
+            startupHintTimer.Interval = TimeSpan.FromSeconds(Math.Max(1, placementSettings.NoPlaybackAutoRetractSeconds));
         }
 
         private void ConfirmStartupHint()
@@ -304,10 +311,22 @@ namespace AppleMusicDesktopLyrics.App
             }
 
             startupHintAwaitingConfirmation = false;
-            SetIslandText("确认收到", "未播放内容时，歌词岛将在几秒后自动收起");
+            var autoRetractSeconds = placementSettings.NoPlaybackAutoRetractSeconds;
+            SetIslandText(
+                "确认收到",
+                autoRetractSeconds == 0
+                    ? "未播放内容时，歌词岛将保持显示"
+                    : "未播放内容时，歌词岛将在 " + autoRetractSeconds + " 秒后自动收起");
             ShowIsland();
             startupHintTimer?.Stop();
-            startupHintTimer?.Start();
+            if (startupHintTimer != null)
+            {
+                startupHintTimer.Interval = TimeSpan.FromSeconds(Math.Max(1, autoRetractSeconds));
+                if (autoRetractSeconds > 0)
+                {
+                    startupHintTimer.Start();
+                }
+            }
         }
 
         private async Task RefreshAsync()
@@ -329,25 +348,53 @@ namespace AppleMusicDesktopLyrics.App
 
                 if (selected == null)
                 {
+                    if (IsStartupHintActive())
+                    {
+                        noPlaybackSinceUtc = null;
+                        ShowIsland();
+                        return;
+                    }
+
+                    if (placementSettings.NoPlaybackAutoRetractSeconds == 0)
+                    {
+                        noPlaybackSinceUtc = null;
+                        if (islandVisible)
+                        {
+                            ShowIsland();
+                        }
+                        return;
+                    }
+
+                    if (!noPlaybackSinceUtc.HasValue)
+                    {
+                        noPlaybackSinceUtc = DateTimeOffset.UtcNow;
+                    }
+
+                    var noPlaybackFor = DateTimeOffset.UtcNow - noPlaybackSinceUtc.Value;
+                    if (noPlaybackFor < TimeSpan.FromSeconds(placementSettings.NoPlaybackAutoRetractSeconds))
+                    {
+                        if (islandVisible)
+                        {
+                            ShowIsland();
+                        }
+                        return;
+                    }
+
                     currentTrack = null;
                     currentLyrics = new TimedLyrics(new LyricLine[0]);
                     lyricsSearchFinished = false;
                     pausedSinceUtc = null;
                     lyricLoadGeneration++;
-                    if (IsStartupHintActive())
-                    {
-                        ShowIsland();
-                        return;
-                    }
 
                     HideIsland(true);
                     return;
                 }
 
+                noPlaybackSinceUtc = null;
                 startupHintAwaitingConfirmation = false;
                 startupHintTimer?.Stop();
 
-                if (selected.PlaybackStatus == MediaPlaybackStatus.Paused)
+                if (selected.PlaybackStatus != MediaPlaybackStatus.Playing)
                 {
                     if (!pausedSinceUtc.HasValue) pausedSinceUtc = DateTimeOffset.UtcNow;
                 }
@@ -365,7 +412,10 @@ namespace AppleMusicDesktopLyrics.App
                     selected.PlaybackStatus,
                     pausedFor,
                     IsStartupHintActive(),
-                    false))
+                    false,
+                    placementSettings.NoPlaybackAutoRetractSeconds == 0
+                        ? TimeSpan.MaxValue
+                        : TimeSpan.FromSeconds(placementSettings.NoPlaybackAutoRetractSeconds)))
                 {
                     HideIsland(true);
                     return;
@@ -519,17 +569,24 @@ namespace AppleMusicDesktopLyrics.App
         private void AnimateTo(double targetLeft, double targetTop)
         {
             var version = ++positionAnimationVersion;
+            var retracting = targetTop < Top;
             var leftAnimation = new DoubleAnimation
             {
                 To = targetLeft,
                 Duration = TimeSpan.FromMilliseconds(260),
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                EasingFunction = new QuarticEase
+                {
+                    EasingMode = retracting ? EasingMode.EaseIn : EasingMode.EaseOut
+                }
             };
             var topAnimation = new DoubleAnimation
             {
                 To = targetTop,
                 Duration = TimeSpan.FromMilliseconds(260),
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                EasingFunction = new QuarticEase
+                {
+                    EasingMode = retracting ? EasingMode.EaseIn : EasingMode.EaseOut
+                }
             };
             topAnimation.Completed += (sender, args) =>
             {
@@ -578,7 +635,7 @@ namespace AppleMusicDesktopLyrics.App
             if (backgroundHoverOpacityMask == null)
             {
                 var backgroundRadius = GetHoverMaskRadius(1.0);
-                var lyricsRadius = GetHoverMaskRadius(0.9);
+                var lyricsRadius = GetHoverMaskRadius(HoverMaskContentRadiusScale);
                 backgroundHoverOpacityMask = CreateHoverOpacityMask(
                     backgroundRadius.Width,
                     backgroundRadius.Height,
@@ -588,13 +645,13 @@ namespace AppleMusicDesktopLyrics.App
                     lyricsRadius.Width,
                     lyricsRadius.Height,
                     placementSettings.HoverSpectrumStops,
-                    16);
+                    0);
                 IslandShape.OpacityMask = backgroundHoverOpacityMask;
                 ModuleHost.OpacityMask = lyricsHoverOpacityMask;
             }
 
             UpdateHoverOpacityMaskIntensity(backgroundHoverOpacityMask, placementSettings.HoverSpectrumStops, 0, intensity);
-            UpdateHoverOpacityMaskIntensity(lyricsHoverOpacityMask, placementSettings.HoverSpectrumStops, 16, intensity);
+            UpdateHoverOpacityMaskIntensity(lyricsHoverOpacityMask, placementSettings.HoverSpectrumStops, 0, intensity);
 
             backgroundHoverOpacityMask.Center = localPoint;
             backgroundHoverOpacityMask.GradientOrigin = localPoint;
@@ -626,8 +683,9 @@ namespace AppleMusicDesktopLyrics.App
                 var transparency = Math.Max(0, Math.Min(100, stop.TransparencyPercent + extraTransparencyPercent));
                 mask.GradientStops.Add(new GradientStop(
                     Color.FromArgb(GetOpacityAlpha(transparency), 255, 255, 255),
-                    Math.Max(0, Math.Min(1, stop.PositionPercent / 100.0))));
+                    Math.Max(0, Math.Min(0.9, stop.PositionPercent / 100.0 * 0.9))));
             }
+            mask.GradientStops.Add(new GradientStop(Colors.White, 1.0));
 
             return mask;
         }
@@ -791,8 +849,11 @@ namespace AppleMusicDesktopLyrics.App
         {
             var previousSource = placementSettings.LyricsSource;
             var previousShowTranslation = placementSettings.ShowTranslation;
+            var editedLayouts = placementSettings.IslandLayouts;
             placementSettings = settings ?? new OverlayPlacementSettings();
+            placementSettings.IslandLayouts = editedLayouts ?? placementSettings.IslandLayouts;
             placementSettings.Normalize();
+            interactionController.ExpandedDuration = TimeSpan.FromSeconds(placementSettings.ExpandedAutoCollapseSeconds);
             cache.SetMaxBytes(GetCacheLimitBytes(placementSettings));
             selectedLyricsSource = placementSettings.LyricsSource;
             lyricsClient = CreateLyricsClient(selectedLyricsSource);
@@ -939,6 +1000,10 @@ namespace AppleMusicDesktopLyrics.App
         {
             var layouts = placementSettings?.IslandLayouts ?? IslandLayoutDefaults.Create();
             layouts.Normalize();
+            var animateSize = !layoutEditing &&
+                layouts.Mode == IslandLayoutMode.Expandable &&
+                (appliedInteractionState == IslandInteractionState.Collapsed && state == IslandInteractionState.Expanded ||
+                 appliedInteractionState == IslandInteractionState.Expanded && state == IslandInteractionState.Collapsed);
 
             var profile = layoutEditing && layoutEditSession != null
                 ? layoutEditSession.Draft
@@ -950,8 +1015,8 @@ namespace AppleMusicDesktopLyrics.App
 
             appliedInteractionState = state;
             ModuleHost.ApplyLayout(profile);
-            ApplyMeasuredIslandSize();
-            if (islandVisible)
+            ApplyMeasuredIslandSize(animateSize);
+            if (islandVisible && !animateSize)
             {
                 var point = GetVisiblePosition();
                 ClearPositionAnimation();
@@ -974,15 +1039,102 @@ namespace AppleMusicDesktopLyrics.App
             return DateTimeOffset.UtcNow - interactionClockOriginUtc;
         }
 
-        private void ApplyMeasuredIslandSize()
+        private void ApplyMeasuredIslandSize(bool animated = false)
         {
             ModuleHost.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
             var screen = ResolveScreen();
-            Width = Math.Min(screen.WorkWidth, Math.Max(240, ModuleHost.DesiredSize.Width + IslandHorizontalShapePadding));
-            Height = Math.Max(60, ModuleHost.DesiredSize.Height + 18);
-            IslandShell.Width = Width;
-            IslandShell.Height = Height;
-            IslandShape.Data = Geometry.Parse(IslandGeometryBuilder.BuildTopPath(Width, Height));
+            var targetWidth = Math.Min(screen.WorkWidth, Math.Max(240, ModuleHost.DesiredSize.Width + IslandHorizontalShapePadding));
+            var targetHeight = Math.Max(60, ModuleHost.DesiredSize.Height + 18);
+            if (animated && IsLoaded)
+            {
+                AnimateIslandSize(targetWidth, targetHeight);
+                return;
+            }
+
+            islandSizeAnimationVersion++;
+            BeginAnimation(WidthProperty, null);
+            BeginAnimation(HeightProperty, null);
+            Width = targetWidth;
+            Height = targetHeight;
+            UpdateIslandSizeVisuals(targetWidth, targetHeight);
+        }
+
+        private void AnimateIslandSize(double targetWidth, double targetHeight)
+        {
+            var startWidth = ActualWidth > 0 ? ActualWidth : Width;
+            var startHeight = ActualHeight > 0 ? ActualHeight : Height;
+            var expanding = targetWidth > startWidth || targetHeight > startHeight;
+            var version = ++islandSizeAnimationVersion;
+            var duration = TimeSpan.FromMilliseconds(240);
+            var widthAnimation = new DoubleAnimation(startWidth, targetWidth, duration)
+            {
+                EasingFunction = new QuarticEase
+                {
+                    EasingMode = expanding ? EasingMode.EaseOut : EasingMode.EaseInOut
+                }
+            };
+            var heightAnimation = new DoubleAnimation(startHeight, targetHeight, duration)
+            {
+                EasingFunction = new QuarticEase
+                {
+                    EasingMode = expanding ? EasingMode.EaseOut : EasingMode.EaseInOut
+                }
+            };
+            var contentAnimation = new DoubleAnimation(0.58, 1.0, TimeSpan.FromMilliseconds(210))
+            {
+                EasingFunction = new SineEase { EasingMode = EasingMode.EaseOut }
+            };
+
+            Width = targetWidth;
+            Height = targetHeight;
+            heightAnimation.Completed += (sender, args) =>
+            {
+                if (version != islandSizeAnimationVersion)
+                {
+                    return;
+                }
+
+                BeginAnimation(WidthProperty, null);
+                BeginAnimation(HeightProperty, null);
+                ModuleHost.BeginAnimation(OpacityProperty, null);
+                Width = targetWidth;
+                Height = targetHeight;
+                ModuleHost.Opacity = 1.0;
+                UpdateIslandSizeVisuals(targetWidth, targetHeight);
+                if (islandVisible)
+                {
+                    var point = GetVisiblePosition();
+                    Left = point.Left;
+                    Top = point.Top;
+                }
+            };
+
+            BeginAnimation(WidthProperty, widthAnimation);
+            BeginAnimation(HeightProperty, heightAnimation);
+            ModuleHost.BeginAnimation(OpacityProperty, contentAnimation);
+        }
+
+        private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            UpdateIslandSizeVisuals(ActualWidth, ActualHeight);
+            if (islandVisible && !horizontalDragActive)
+            {
+                var point = GetVisiblePosition();
+                Left = point.Left;
+                Top = point.Top;
+            }
+        }
+
+        private void UpdateIslandSizeVisuals(double width, double height)
+        {
+            if (width <= 0 || height <= 0)
+            {
+                return;
+            }
+
+            IslandShell.Width = width;
+            IslandShell.Height = height;
+            IslandShape.Data = Geometry.Parse(IslandGeometryBuilder.BuildTopPath(width, height));
         }
 
         private void SetIslandText(string primary, string secondary)
@@ -1054,7 +1206,13 @@ namespace AppleMusicDesktopLyrics.App
 
         private void OpenPlacementSettingsWindow()
         {
-            var window = new PlacementSettingsWindow(
+            if (settingsWindow != null)
+            {
+                settingsWindow.Activate();
+                return;
+            }
+
+            settingsWindow = new PlacementSettingsWindow(
                 screenCatalog.GetScreens(),
                 placementSettings,
                 ApplyPlacementSettings,
@@ -1062,11 +1220,14 @@ namespace AppleMusicDesktopLyrics.App
                 BeginLayoutEditing,
                 SaveLayoutEditing,
                 CancelLayoutEditing,
-                UpdateLyricsWidth)
+                UpdateLyricsWidth,
+                UpdateDividerSettings,
+                RemoveDividers)
             {
                 Owner = this
             };
-            window.ShowDialog();
+            settingsWindow.Closed += (sender, args) => settingsWindow = null;
+            settingsWindow.Show();
         }
 
         private void BeginLayoutEditing(IslandLayoutMode mode, bool resetToDefault)
@@ -1098,6 +1259,36 @@ namespace AppleMusicDesktopLyrics.App
                 module.LyricsWidth = normalized;
             }
 
+            ApplyInteractionState(IslandInteractionState.Editing);
+        }
+
+        private void UpdateDividerSettings(IslandLayoutMode mode, double opacity, double spacing)
+        {
+            if (!layoutEditing || layoutEditSession == null || mode != layoutEditingMode)
+            {
+                return;
+            }
+
+            var normalizedOpacity = Math.Max(0, Math.Min(1, opacity));
+            var normalizedSpacing = Math.Max(0, Math.Min(64, spacing));
+            foreach (var divider in layoutEditSession.Draft.Modules.Where(module => module.Type == IslandModuleType.Divider))
+            {
+                divider.DividerOpacity = normalizedOpacity;
+                divider.MarginBefore = normalizedSpacing;
+                divider.MarginAfter = normalizedSpacing;
+            }
+
+            ApplyInteractionState(IslandInteractionState.Editing);
+        }
+
+        private void RemoveDividers(IslandLayoutMode mode)
+        {
+            if (!layoutEditing || layoutEditSession == null || mode != layoutEditingMode)
+            {
+                return;
+            }
+
+            layoutEditSession.Draft.Modules.RemoveAll(module => module.Type == IslandModuleType.Divider);
             ApplyInteractionState(IslandInteractionState.Editing);
         }
 
