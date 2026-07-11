@@ -27,6 +27,7 @@ namespace AppleMusicDesktopLyrics.App
         private SettingsThemePreference selectedThemePreference = SettingsThemePreference.System;
         private bool layoutEditingActive;
         private bool suppressLayoutSelectionChanged;
+        private Point? moduleToolboxDragStartPoint;
 
         public PlacementSettingsWindow(
             IReadOnlyList<OverlayScreenArea> screens,
@@ -136,6 +137,7 @@ namespace AppleMusicDesktopLyrics.App
             settings.UseMultiLineDisplay = ReadUseMultiLineDisplay();
             settings.ShowTranslation = ShowTranslationCheckBox.IsChecked == true;
             settings.IslandLayouts.Mode = ReadEditedLayoutMode();
+            ApplyLyricsWidth(settings, LyricsWidthSlider.Value);
             settings.Normalize();
             workingSettings = settings.DeepClone();
             return settings;
@@ -154,12 +156,13 @@ namespace AppleMusicDesktopLyrics.App
             };
             EditedLayoutComboBox.ItemsSource = new[]
             {
-                new LayoutModeOption(IslandLayoutMode.HorizontalBlocks, "A 模式：水平模块"),
-                new LayoutModeOption(IslandLayoutMode.Expandable, "C 模式：悬停展开")
+                new LayoutModeOption(IslandLayoutMode.HorizontalBlocks, "水平模块"),
+                new LayoutModeOption(IslandLayoutMode.Expandable, "单击展开")
             };
 
             suppressLayoutSelectionChanged = true;
             EditedLayoutComboBox.SelectedValue = settings.IslandLayouts.Mode;
+            LyricsWidthSlider.Value = GetLyricsWidth(settings);
             DividerOpacitySlider.Value = 0.22;
             DividerSpacingSlider.Value = 4;
             suppressLayoutSelectionChanged = false;
@@ -193,6 +196,39 @@ namespace AppleMusicDesktopLyrics.App
                 : IslandLayoutMode.HorizontalBlocks;
         }
 
+        private static double GetLyricsWidth(OverlayPlacementSettings settings)
+        {
+            var profile = settings?.IslandLayouts?.Horizontal;
+            var lyrics = profile?.Modules?.FirstOrDefault(module => module.Type == IslandModuleType.Lyrics);
+            return IslandModuleInstance.NormalizeLyricsWidth(lyrics?.LyricsWidth ?? IslandModuleInstance.DefaultLyricsWidth);
+        }
+
+        private static void ApplyLyricsWidth(OverlayPlacementSettings settings, double width)
+        {
+            if (settings?.IslandLayouts == null)
+            {
+                return;
+            }
+
+            var normalized = IslandModuleInstance.NormalizeLyricsWidth(width);
+            ApplyLyricsWidth(settings.IslandLayouts.Horizontal, normalized);
+            ApplyLyricsWidth(settings.IslandLayouts.CompactCollapsed, normalized);
+            ApplyLyricsWidth(settings.IslandLayouts.CompactExpanded, normalized);
+        }
+
+        private static void ApplyLyricsWidth(IslandLayoutProfile profile, double width)
+        {
+            if (profile?.Modules == null)
+            {
+                return;
+            }
+
+            foreach (var module in profile.Modules.Where(module => module.Type == IslandModuleType.Lyrics))
+            {
+                module.LyricsWidth = width;
+            }
+        }
+
         private void EditedLayoutComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (suppressLayoutSelectionChanged || beginLayoutEditing == null)
@@ -200,6 +236,7 @@ namespace AppleMusicDesktopLyrics.App
                 return;
             }
 
+            LyricsWidthSlider.Value = GetLyricsWidth(workingSettings);
             layoutEditingActive = true;
             beginLayoutEditing(ReadEditedLayoutMode(), false);
         }
@@ -208,6 +245,7 @@ namespace AppleMusicDesktopLyrics.App
         {
             workingSettings.IslandLayouts = IslandLayoutDefaults.Create();
             workingSettings.IslandLayouts.Mode = ReadEditedLayoutMode();
+            LyricsWidthSlider.Value = GetLyricsWidth(workingSettings);
             beginLayoutEditing?.Invoke(ReadEditedLayoutMode(), true);
             layoutEditingActive = beginLayoutEditing != null;
         }
@@ -226,9 +264,28 @@ namespace AppleMusicDesktopLyrics.App
         {
         }
 
+        private void ModuleToolbox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            moduleToolboxDragStartPoint = e.GetPosition(ModuleToolbox);
+            e.Handled = true;
+        }
+
         private void ModuleToolbox_PreviewMouseMove(object sender, MouseEventArgs e)
         {
             if (e.LeftButton != MouseButtonState.Pressed)
+            {
+                moduleToolboxDragStartPoint = null;
+                return;
+            }
+
+            if (!moduleToolboxDragStartPoint.HasValue)
+            {
+                return;
+            }
+
+            var currentPoint = e.GetPosition(ModuleToolbox);
+            if (Math.Abs(currentPoint.X - moduleToolboxDragStartPoint.Value.X) < SystemParameters.MinimumHorizontalDragDistance &&
+                Math.Abs(currentPoint.Y - moduleToolboxDragStartPoint.Value.Y) < SystemParameters.MinimumVerticalDragDistance)
             {
                 return;
             }
@@ -242,6 +299,8 @@ namespace AppleMusicDesktopLyrics.App
                 {
                     var payload = new IslandLayoutDragPayload { NewType = option.Value };
                     DragDrop.DoDragDrop(ModuleToolbox, new DataObject(typeof(IslandLayoutDragPayload), payload), DragDropEffects.Copy);
+                    moduleToolboxDragStartPoint = null;
+                    e.Handled = true;
                     return;
                 }
 
@@ -279,6 +338,10 @@ namespace AppleMusicDesktopLyrics.App
 
         private void SettingSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
+            if (ReferenceEquals(sender, LyricsWidthSlider))
+            {
+                ApplyLyricsWidth(workingSettings, LyricsWidthSlider.Value);
+            }
             UpdateSettingValueLabels();
         }
 
@@ -521,7 +584,7 @@ namespace AppleMusicDesktopLyrics.App
 
         private void UpdateSettingValueLabels()
         {
-            if (HoverAuraSizeValueText == null || SpectrumEdgeTransparencyValueText == null)
+            if (HoverAuraSizeValueText == null || SpectrumEdgeTransparencyValueText == null || LyricsWidthValueText == null)
             {
                 return;
             }
@@ -534,6 +597,7 @@ namespace AppleMusicDesktopLyrics.App
             SpectrumCenterTransparencyValueText.Text = ((int)Math.Round(SpectrumCenterTransparencySlider.Value)).ToString(CultureInfo.InvariantCulture) + "%";
             SpectrumMidTransparencyValueText.Text = ((int)Math.Round(SpectrumMidTransparencySlider.Value)).ToString(CultureInfo.InvariantCulture) + "%";
             SpectrumEdgeTransparencyValueText.Text = ((int)Math.Round(SpectrumEdgeTransparencySlider.Value)).ToString(CultureInfo.InvariantCulture) + "%";
+            LyricsWidthValueText.Text = ((int)Math.Round(LyricsWidthSlider.Value)).ToString(CultureInfo.InvariantCulture) + " px";
             UpdateSpectrumPreview();
             UpdateHoverShapePreview();
         }

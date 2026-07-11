@@ -42,7 +42,9 @@ namespace AppleMusicDesktopLyrics.App.Modules
                 switch (module.Type)
                 {
                     case IslandModuleType.Lyrics:
-                        view = new LyricsModuleView();
+                        var lyrics = new LyricsModuleView();
+                        lyrics.ApplyModuleSettings(module.LyricsWidth);
+                        view = lyrics;
                         break;
                     case IslandModuleType.AlbumArt:
                         view = new AlbumArtModuleView();
@@ -67,9 +69,19 @@ namespace AppleMusicDesktopLyrics.App.Modules
                         continue;
                 }
 
+                ApplyModuleSettings(view, module);
                 view.Tag = module.Id;
                 view.PreviewMouseMove += ModuleView_PreviewMouseMove;
                 ModulePanel.Children.Add(view);
+            }
+        }
+
+        private static void ApplyModuleSettings(FrameworkElement view, IslandModuleInstance module)
+        {
+            var lyrics = view as LyricsModuleView;
+            if (lyrics != null)
+            {
+                lyrics.ApplyModuleSettings(module.LyricsWidth);
             }
         }
 

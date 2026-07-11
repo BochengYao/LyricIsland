@@ -19,6 +19,7 @@ namespace AppleMusicDesktopLyrics.Core.Layout
                 module.DividerOpacity = Math.Max(0, Math.Min(1, module.DividerOpacity));
                 module.MarginBefore = Math.Max(0, Math.Min(64, module.MarginBefore));
                 module.MarginAfter = Math.Max(0, Math.Min(64, module.MarginAfter));
+                module.LyricsWidth = IslandModuleInstance.NormalizeLyricsWidth(module.LyricsWidth);
             }
         }
     }

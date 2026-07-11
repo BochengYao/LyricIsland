@@ -575,11 +575,12 @@
                     <Grid>
                         <Grid x:Name="LyricsSettingsPanel">
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="112" />
                                 <ColumnDefinition Width="*" />
@@ -1051,17 +1052,18 @@
                                        Style="{StaticResource SettingValue}" />
                         </Grid>
 
-                        <Grid x:Name="LayoutSettingsPanel"
-                              Visibility="Collapsed">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
+                         <Grid x:Name="LayoutSettingsPanel"
+                               Visibility="Collapsed">
+                             <Grid.RowDefinitions>
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="112" />
                                 <ColumnDefinition Width="*" />
@@ -1110,11 +1112,12 @@
                                        Margin="0,0,16,16"
                                        Style="{StaticResource SettingLabel}"
                                        Text="模块工具箱" />
-                            <ItemsControl x:Name="ModuleToolbox"
-                                          Grid.Row="3"
-                                          Grid.Column="1"
-                                          Margin="0,0,0,16"
-                                          PreviewMouseMove="ModuleToolbox_PreviewMouseMove">
+                           <ItemsControl x:Name="ModuleToolbox"
+                                           Grid.Row="3"
+                                           Grid.Column="1"
+                                           Margin="0,0,0,16"
+                                           PreviewMouseLeftButtonDown="ModuleToolbox_PreviewMouseLeftButtonDown"
+                                           PreviewMouseMove="ModuleToolbox_PreviewMouseMove">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
                                         <WrapPanel />
@@ -1138,8 +1141,28 @@
                                        Grid.Column="0"
                                        Margin="0,0,16,16"
                                        Style="{StaticResource SettingLabel}"
+                                       Text="歌词宽度" />
+                            <Grid Grid.Row="4"
+                                  Grid.Column="1"
+                                  Margin="0,0,0,16">
+                                <Slider x:Name="LyricsWidthSlider"
+                                        Margin="0,0,64,0"
+                                        Minimum="220"
+                                        Maximum="900"
+                                        SmallChange="10"
+                                        TickFrequency="20"
+                                        ValueChanged="SettingSlider_ValueChanged" />
+                                <TextBlock x:Name="LyricsWidthValueText"
+                                           HorizontalAlignment="Right"
+                                           Style="{StaticResource SettingValue}" />
+                            </Grid>
+
+                            <TextBlock Grid.Row="5"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,16"
+                                       Style="{StaticResource SettingLabel}"
                                        Text="分割线" />
-                            <StackPanel Grid.Row="4"
+                            <StackPanel Grid.Row="5"
                                         Grid.Column="1"
                                         Margin="0,0,0,16">
                                 <TextBlock Margin="0,0,0,8"
@@ -1158,7 +1181,7 @@
                                         SmallChange="1" />
                             </StackPanel>
 
-                            <StackPanel Grid.Row="5"
+                            <StackPanel Grid.Row="6"
                                         Grid.Column="1"
                                         Margin="0,0,0,16"
                                         Orientation="Horizontal">
@@ -1170,7 +1193,7 @@
                                         Click="RemoveSelectedModule_Click" />
                             </StackPanel>
 
-                            <StackPanel Grid.Row="6"
+                            <StackPanel Grid.Row="7"
                                         Grid.Column="1"
                                         Orientation="Horizontal">
                                 <Button Margin="0,0,8,0"

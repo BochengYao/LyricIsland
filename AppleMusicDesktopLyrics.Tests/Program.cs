@@ -55,9 +55,13 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("settings store backs up corrupt JSON", SettingsStoreBacksUpCorruptJson);
             suite.Run("builds island geometry for measured module size", BuildsIslandGeometryForMeasuredModuleSize);
             suite.Run("module host exposes all v2 module views", ModuleHostExposesAllV2ModuleViews);
-            suite.Run("expands C mode after hover delay", ExpandsCModeAfterHoverDelay);
-            suite.Run("collapses C mode after leave delay", CollapsesCModeAfterLeaveDelay);
+            suite.Run("click expands expandable mode and hover does not", ClickExpandsExpandableModeAndHoverDoesNot);
+            suite.Run("click expanded mode collapses after leave delay", ClickExpandedModeCollapsesAfterLeaveDelay);
             suite.Run("keeps island expanded while editing", KeepsIslandExpandedWhileEditing);
+            suite.Run("settings layout mode labels are product facing", SettingsLayoutModeLabelsAreProductFacing);
+            suite.Run("module toolbox captures mouse down for drag", ModuleToolboxCapturesMouseDownForDrag);
+            suite.Run("lyrics module exposes configurable width", LyricsModuleExposesConfigurableWidth);
+            suite.Run("island background width reserves shaped edge padding", IslandBackgroundWidthReservesShapedEdgePadding);
             suite.Run("snaps module within eighteen pixels", SnapsModuleWithinEighteenPixels);
             suite.Run("moves module after crossing midpoint", MovesModuleAfterCrossingMidpoint);
             suite.Run("cancels layout draft without mutating original", CancelsLayoutDraftWithoutMutatingOriginal);
@@ -650,19 +654,22 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.True(source.Contains("DividerModuleView"));
         }
 
-        static void ExpandsCModeAfterHoverDelay()
+        static void ClickExpandsExpandableModeAndHoverDoesNot()
         {
             var controller = new IslandInteractionController();
             controller.PointerEntered(TimeSpan.Zero);
 
-            Assert.Equal(IslandInteractionState.Collapsed, controller.GetState(TimeSpan.FromMilliseconds(179)));
-            Assert.Equal(IslandInteractionState.Expanded, controller.GetState(TimeSpan.FromMilliseconds(180)));
+            Assert.Equal(IslandInteractionState.Collapsed, controller.GetState(TimeSpan.FromSeconds(5)));
+
+            controller.ToggleExpanded(TimeSpan.FromSeconds(5));
+
+            Assert.Equal(IslandInteractionState.Expanded, controller.GetState(TimeSpan.FromSeconds(5)));
         }
 
-        static void CollapsesCModeAfterLeaveDelay()
+        static void ClickExpandedModeCollapsesAfterLeaveDelay()
         {
             var controller = new IslandInteractionController();
-            controller.PointerEntered(TimeSpan.Zero);
+            controller.ToggleExpanded(TimeSpan.Zero);
             controller.PointerLeft(TimeSpan.FromMilliseconds(200));
 
             Assert.Equal(IslandInteractionState.Expanded, controller.GetState(TimeSpan.FromMilliseconds(1099)));
@@ -675,6 +682,53 @@ namespace AppleMusicDesktopLyrics.Tests
             controller.SetEditing(true);
 
             Assert.Equal(IslandInteractionState.Editing, controller.GetState(TimeSpan.FromHours(1)));
+        }
+
+        static void SettingsLayoutModeLabelsAreProductFacing()
+        {
+            var source = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml.cs"));
+
+            Assert.True(source.Contains("水平模块"));
+            Assert.True(source.Contains("单击展开"));
+            Assert.False(source.Contains("A 模式"));
+            Assert.False(source.Contains("C 模式"));
+            Assert.False(source.Contains("悬停展开"));
+        }
+
+        static void ModuleToolboxCapturesMouseDownForDrag()
+        {
+            var root = GetSolutionRoot();
+            var xaml = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml"));
+            var source = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml.cs"));
+
+            Assert.True(xaml.Contains("PreviewMouseLeftButtonDown=\"ModuleToolbox_PreviewMouseLeftButtonDown\""));
+            Assert.True(source.Contains("ModuleToolbox_PreviewMouseLeftButtonDown"));
+            Assert.True(source.Contains("moduleToolboxDragStartPoint"));
+            Assert.True(source.Contains("e.Handled = true"));
+        }
+
+        static void LyricsModuleExposesConfigurableWidth()
+        {
+            var root = GetSolutionRoot();
+            var instanceSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.Core", "Layout", "IslandModuleInstance.cs"));
+            var hostSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "Modules", "IslandModuleHost.xaml.cs"));
+            var lyricsXaml = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "Modules", "LyricsModuleView.xaml"));
+
+            Assert.True(instanceSource.Contains("LyricsWidth"));
+            Assert.True(instanceSource.Contains("DefaultLyricsWidth"));
+            Assert.True(hostSource.Contains("ApplyModuleSettings"));
+            Assert.True(hostSource.Contains("module.LyricsWidth"));
+            Assert.False(lyricsXaml.Contains("Width=\"436\""));
+        }
+
+        static void IslandBackgroundWidthReservesShapedEdgePadding()
+        {
+            var source = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs"));
+
+            Assert.True(source.Contains("IslandHorizontalShapePadding"));
+            Assert.True(source.Contains("ModuleHost.DesiredSize.Width + IslandHorizontalShapePadding"));
         }
 
         static void SnapsModuleWithinEighteenPixels()

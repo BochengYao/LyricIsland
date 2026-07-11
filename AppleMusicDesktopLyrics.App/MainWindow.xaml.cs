@@ -62,6 +62,7 @@ namespace AppleMusicDesktopLyrics.App
         private bool hoverFadeOutActive;
         private IslandInteractionState appliedInteractionState = IslandInteractionState.Collapsed;
         private const double DragStartThreshold = 4.0;
+        private const double IslandHorizontalShapePadding = 160;
         private const int WM_NCHITTEST = 0x0084;
         private const int HTTRANSPARENT = -1;
         private const int VK_RBUTTON = 0x02;
@@ -942,7 +943,7 @@ namespace AppleMusicDesktopLyrics.App
         {
             ModuleHost.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
             var screen = ResolveScreen();
-            Width = Math.Min(screen.WorkWidth, Math.Max(240, ModuleHost.DesiredSize.Width + 28));
+            Width = Math.Min(screen.WorkWidth, Math.Max(240, ModuleHost.DesiredSize.Width + IslandHorizontalShapePadding));
             Height = Math.Max(60, ModuleHost.DesiredSize.Height + 18);
             IslandShell.Width = Width;
             IslandShell.Height = Height;
@@ -1260,12 +1261,23 @@ namespace AppleMusicDesktopLyrics.App
 
         private void Window_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
+            var wasStartupHintAwaitingConfirmation = startupHintAwaitingConfirmation;
             var shouldForwardClick = horizontalDragPending && !horizontalDragActive && ShouldForwardLeftClickThrough();
             var shouldConfirmStartupHint = horizontalDragPending && !horizontalDragActive;
+            var shouldToggleExpandableLayout = shouldConfirmStartupHint &&
+                !wasStartupHintAwaitingConfirmation &&
+                placementSettings?.IslandLayouts?.Mode == IslandLayoutMode.Expandable;
             FinishHorizontalDrag();
             if (shouldConfirmStartupHint)
             {
                 ConfirmStartupHint();
+            }
+
+            if (shouldToggleExpandableLayout)
+            {
+                interactionController.ToggleExpanded(GetInteractionClock());
+                UpdateInteractionStateLayout();
+                shouldForwardClick = false;
             }
 
             if (shouldForwardClick)

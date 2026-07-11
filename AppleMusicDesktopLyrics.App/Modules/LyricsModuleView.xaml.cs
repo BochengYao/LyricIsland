@@ -5,6 +5,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using AppleMusicDesktopLyrics.Core;
+using AppleMusicDesktopLyrics.Core.Layout;
 
 namespace AppleMusicDesktopLyrics.App.Modules
 {
@@ -17,6 +18,12 @@ namespace AppleMusicDesktopLyrics.App.Modules
         public LyricsModuleView()
         {
             InitializeComponent();
+            ApplyModuleSettings(IslandModuleInstance.DefaultLyricsWidth);
+        }
+
+        public void ApplyModuleSettings(double lyricsWidth)
+        {
+            Width = IslandModuleInstance.NormalizeLyricsWidth(lyricsWidth);
         }
 
         public void Update(IslandRenderState state)
@@ -121,7 +128,7 @@ namespace AppleMusicDesktopLyrics.App.Modules
             var availableWidth = clip.ActualWidth;
             if (availableWidth <= 0)
             {
-                availableWidth = 436;
+                availableWidth = ActualWidth > 0 ? ActualWidth : Width;
             }
 
             textBlock.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
