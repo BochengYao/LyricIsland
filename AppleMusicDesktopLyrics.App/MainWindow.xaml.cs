@@ -213,10 +213,20 @@ namespace AppleMusicDesktopLyrics.App
 
             hotkeyService?.Dispose();
             hotkeyService = new GlobalHotkeyService(hwnd);
-            const uint modAltControl = 0x0001 | 0x0002;
-            hotkeyService.Register(1, modAltControl, 0x25, () => AdjustLyricOffset(-500, false));
-            hotkeyService.Register(2, modAltControl, 0x27, () => AdjustLyricOffset(500, false));
-            hotkeyService.Register(3, modAltControl, 0x28, () => AdjustLyricOffset(0, true));
+            var configured = placementSettings?.LyricOffsetHotkeys ?? HotkeySettings.CreateDefault();
+            RegisterConfiguredHotkey(1, configured.Earlier, () => AdjustLyricOffset(-500, false));
+            RegisterConfiguredHotkey(2, configured.Later, () => AdjustLyricOffset(500, false));
+            RegisterConfiguredHotkey(3, configured.Reset, () => AdjustLyricOffset(0, true));
+        }
+
+        private void RegisterConfiguredHotkey(int id, string gesture, Action action)
+        {
+            uint modifiers;
+            uint virtualKey;
+            if (HotkeyGestureParser.TryParseGlobal(gesture, out modifiers, out virtualKey))
+            {
+                hotkeyService.Register(id, modifiers, virtualKey, action);
+            }
         }
 
         private void AdjustLyricOffset(int deltaMilliseconds, bool reset)
@@ -638,13 +648,15 @@ namespace AppleMusicDesktopLyrics.App
 
         private void UpdateHoverProximity()
         {
+            var suppressHoverTransparency = IsHoverTransparencySuppressed();
+            ModuleHost.SetPlaybackInteractionEnabled(suppressHoverTransparency);
             if (!islandVisible || !IsVisible)
             {
                 HideHoverTransparency();
                 return;
             }
 
-            if (IsHoverTransparencySuppressed())
+            if (suppressHoverTransparency)
             {
                 HideHoverTransparency();
                 return;
@@ -675,9 +687,10 @@ namespace AppleMusicDesktopLyrics.App
             return Math.Max(OverlayPlacementSettings.MinHoverDetectionRange, placementSettings.HoverDetectionRange);
         }
 
-        private static bool IsHoverTransparencySuppressed()
+        private bool IsHoverTransparencySuppressed()
         {
-            return Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift);
+            var gesture = placementSettings?.LyricOffsetHotkeys?.TemporaryInteraction ?? "Ctrl";
+            return HotkeyGestureParser.IsPressed(gesture);
         }
 
         private double GetDistanceToIsland(Point localPoint)
@@ -784,6 +797,7 @@ namespace AppleMusicDesktopLyrics.App
             selectedLyricsSource = placementSettings.LyricsSource;
             lyricsClient = CreateLyricsClient(selectedLyricsSource);
             settingsStore.Save(placementSettings);
+            RegisterGlobalHotkeys();
             UpdateIslandShape();
             if (currentTrack != null && previousSource != placementSettings.LyricsSource)
             {
@@ -1158,7 +1172,11 @@ namespace AppleMusicDesktopLyrics.App
             }
 
             var index = FindModuleInsertionIndex(e.GetPosition(ModuleHost).X);
-            e.Effects = index >= 0 ? DragDropEffects.Move : DragDropEffects.None;
+            var payload = e.Data.GetData(typeof(IslandLayoutDragPayload)) as IslandLayoutDragPayload;
+            var acceptedEffect = payload?.NewType.HasValue == true
+                ? DragDropEffects.Copy
+                : DragDropEffects.Move;
+            e.Effects = index >= 0 && payload != null ? acceptedEffect : DragDropEffects.None;
             e.Handled = true;
         }
 
@@ -1195,7 +1213,15 @@ namespace AppleMusicDesktopLyrics.App
 
         private int FindModuleInsertionIndex(double pointerX)
         {
-            return LayoutEditSession.FindInsertionIndex(pointerX, ModuleHost.BuildInsertionTargets(), 18);
+            var targets = ModuleHost.BuildInsertionTargets();
+            var snapped = LayoutEditSession.FindInsertionIndex(pointerX, targets, 18);
+            if (snapped >= 0)
+            {
+                return snapped;
+            }
+
+            var nearest = targets.OrderBy(target => Math.Abs(target.X - pointerX)).FirstOrDefault();
+            return nearest?.Index ?? 0;
         }
 
         private static ILyricsClient CreateLyricsClient(LyricsSourcePreference source)
@@ -1389,8 +1415,9 @@ namespace AppleMusicDesktopLyrics.App
 
         private void Window_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.LeftShift || e.Key == Key.RightShift)
+            if (IsHoverTransparencySuppressed())
             {
+                ModuleHost.SetPlaybackInteractionEnabled(true);
                 HideHoverTransparency();
                 e.Handled = true;
                 return;
@@ -1403,27 +1430,12 @@ namespace AppleMusicDesktopLyrics.App
                 return;
             }
 
-            if (e.Key == Key.Right || e.Key == Key.Up)
-            {
-                lyricOffset += TimeSpan.FromMilliseconds(200);
-            }
-            else if (e.Key == Key.Left || e.Key == Key.Down)
-            {
-                lyricOffset -= TimeSpan.FromMilliseconds(200);
-            }
-            else if (e.Key == Key.R)
-            {
-                lyricOffset = TimeSpan.FromMilliseconds(800);
-            }
         }
 
         private void Window_KeyUp(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.LeftShift || e.Key == Key.RightShift)
-            {
-                UpdateHoverProximity();
-                e.Handled = true;
-            }
+            ModuleHost.SetPlaybackInteractionEnabled(IsHoverTransparencySuppressed());
+            UpdateHoverProximity();
         }
     }
 }

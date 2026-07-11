@@ -37,6 +37,10 @@
                                   AllowDrop="True"
                                   DragOver="ModuleHost_DragOver"
                                   DragLeave="ModuleHost_DragLeave"
-                                  Drop="ModuleHost_Drop" />
+                                  Drop="ModuleHost_Drop">
+            <modules:IslandModuleHost.RenderTransform>
+                <TranslateTransform Y="-2.5" />
+            </modules:IslandModuleHost.RenderTransform>
+        </modules:IslandModuleHost>
     </Grid>
 </Window>

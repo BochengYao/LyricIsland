@@ -58,6 +58,7 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("settings store backs up corrupt JSON", SettingsStoreBacksUpCorruptJson);
             suite.Run("builds island geometry for measured module size", BuildsIslandGeometryForMeasuredModuleSize);
             suite.Run("module host exposes all v2 module views", ModuleHostExposesAllV2ModuleViews);
+            suite.Run("album art is centered with a rounded clip", AlbumArtIsCenteredWithRoundedClip);
             suite.Run("click expands expandable mode and hover does not", ClickExpandsExpandableModeAndHoverDoesNot);
             suite.Run("click expanded mode collapses after leave delay", ClickExpandedModeCollapsesAfterLeaveDelay);
             suite.Run("keeps island expanded while editing", KeepsIslandExpandedWhileEditing);
@@ -67,7 +68,7 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("island background width reserves shaped edge padding", IslandBackgroundWidthReservesShapedEdgePadding);
             suite.Run("playback controls use apple music style glyphs", PlaybackControlsUseAppleMusicStyleGlyphs);
             suite.Run("playback controls are not consumed by layout drag", PlaybackControlsAreNotConsumedByLayoutDrag);
-            suite.Run("shift temporarily suppresses hover transparency", ShiftTemporarilySuppressesHoverTransparency);
+            suite.Run("configured key temporarily suppresses hover transparency", ConfiguredKeyTemporarilySuppressesHoverTransparency);
             suite.Run("snaps module within eighteen pixels", SnapsModuleWithinEighteenPixels);
             suite.Run("moves module after crossing midpoint", MovesModuleAfterCrossingMidpoint);
             suite.Run("cancels layout draft without mutating original", CancelsLayoutDraftWithoutMutatingOriginal);
@@ -706,6 +707,18 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.True(source.Contains("DividerModuleView"));
         }
 
+        static void AlbumArtIsCenteredWithRoundedClip()
+        {
+            var root = GetSolutionRoot();
+            var albumArt = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "Modules", "AlbumArtModuleView.xaml"));
+            var mainWindow = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml"));
+
+            Assert.True(albumArt.Contains("Width=\"60\""));
+            Assert.True(albumArt.Contains("RectangleGeometry Rect=\"0,0,42,42\" RadiusX=\"4\" RadiusY=\"4\""));
+            Assert.True(albumArt.Contains("VerticalAlignment=\"Center\""));
+            Assert.True(mainWindow.Contains("TranslateTransform Y=\"-2.5\""));
+        }
+
         static void ClickExpandsExpandableModeAndHoverDoesNot()
         {
             var controller = new IslandInteractionController();
@@ -753,11 +766,14 @@ namespace AppleMusicDesktopLyrics.Tests
             var root = GetSolutionRoot();
             var xaml = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml"));
             var source = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml.cs"));
+            var mainWindowSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs"));
 
             Assert.True(xaml.Contains("PreviewMouseLeftButtonDown=\"ModuleToolbox_PreviewMouseLeftButtonDown\""));
             Assert.True(source.Contains("ModuleToolbox_PreviewMouseLeftButtonDown"));
             Assert.True(source.Contains("moduleToolboxDragStartPoint"));
             Assert.True(source.Contains("e.Handled = true"));
+            Assert.True(mainWindowSource.Contains("? DragDropEffects.Copy"));
+            Assert.True(mainWindowSource.Contains("OrderBy(target => Math.Abs(target.X - pointerX))"));
         }
 
         static void LyricsModuleExposesConfigurableWidth()
@@ -807,14 +823,19 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.True(hostSource.Contains("!LayoutEditingEnabled"));
             Assert.True(windowSource.Contains("IsInteractiveMouseSource"));
             Assert.True(controlsSource.Contains("PlayPauseButton.IsEnabled = session != null"));
+            Assert.True(controlsSource.Contains("PlayPauseButton.IsHitTestVisible = value"));
+            Assert.True(windowSource.Contains("SetPlaybackInteractionEnabled(suppressHoverTransparency)"));
         }
 
-        static void ShiftTemporarilySuppressesHoverTransparency()
+        static void ConfiguredKeyTemporarilySuppressesHoverTransparency()
         {
             var root = GetSolutionRoot();
             var source = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs"));
+            var hotkeys = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "HotkeySettings.cs"));
 
-            Assert.True(source.Contains("Keyboard.IsKeyDown(Key.LeftShift)"));
+            Assert.True(source.Contains("TemporaryInteraction"));
+            Assert.True(source.Contains("HotkeyGestureParser.IsPressed"));
+            Assert.True(hotkeys.Contains("TemporaryInteraction = \"Ctrl\""));
             Assert.True(source.Contains("Window_KeyUp"));
         }
 
@@ -853,12 +874,18 @@ namespace AppleMusicDesktopLyrics.Tests
 
         static void UsesApprovedLyricOffsetHotkeys()
         {
-            var source = File.ReadAllText(Path.Combine(
-                GetSolutionRoot(), "AppleMusicDesktopLyrics.App", "HotkeySettings.cs"));
+            var root = GetSolutionRoot();
+            var source = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "HotkeySettings.cs"));
+            var settingsXaml = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml"));
 
             Assert.True(source.Contains("Ctrl+Alt+Left"));
             Assert.True(source.Contains("Ctrl+Alt+Right"));
             Assert.True(source.Contains("Ctrl+Alt+Down"));
+            Assert.True(source.Contains("TemporaryInteraction"));
+            Assert.True(settingsXaml.Contains("EarlierHotkeyTextBox"));
+            Assert.True(settingsXaml.Contains("LaterHotkeyTextBox"));
+            Assert.True(settingsXaml.Contains("ResetHotkeyTextBox"));
+            Assert.True(settingsXaml.Contains("TemporaryInteractionHotkeyTextBox"));
         }
 
         static void SettingsExposesPlayerSelection()

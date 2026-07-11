@@ -13,6 +13,7 @@ namespace AppleMusicDesktopLyrics.App.Modules
     public partial class IslandModuleHost : UserControl
     {
         private string layoutSignature = string.Empty;
+        private bool playbackInteractionEnabled;
 
         public IslandModuleHost()
         {
@@ -55,6 +56,7 @@ namespace AppleMusicDesktopLyrics.App.Modules
                         break;
                     case IslandModuleType.PlaybackControls:
                         var controls = new PlaybackControlsModuleView();
+                        controls.SetInteractionEnabled(playbackInteractionEnabled);
                         controls.PreviousRequested += (sender, args) => PreviousRequested?.Invoke(this, EventArgs.Empty);
                         controls.PlayPauseRequested += (sender, args) => PlayPauseRequested?.Invoke(this, EventArgs.Empty);
                         controls.NextRequested += (sender, args) => NextRequested?.Invoke(this, EventArgs.Empty);
@@ -95,6 +97,20 @@ namespace AppleMusicDesktopLyrics.App.Modules
             foreach (var child in ModulePanel.Children.OfType<IIslandModuleView>())
             {
                 child.Update(state);
+            }
+        }
+
+        public void SetPlaybackInteractionEnabled(bool value)
+        {
+            if (playbackInteractionEnabled == value)
+            {
+                return;
+            }
+
+            playbackInteractionEnabled = value;
+            foreach (var controls in ModulePanel.Children.OfType<PlaybackControlsModuleView>())
+            {
+                controls.SetInteractionEnabled(value);
             }
         }
 

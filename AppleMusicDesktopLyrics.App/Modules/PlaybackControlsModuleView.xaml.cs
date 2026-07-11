@@ -12,11 +12,19 @@ namespace AppleMusicDesktopLyrics.App.Modules
         public PlaybackControlsModuleView()
         {
             InitializeComponent();
+            SetInteractionEnabled(false);
         }
 
         public event EventHandler PreviousRequested;
         public event EventHandler PlayPauseRequested;
         public event EventHandler NextRequested;
+
+        public void SetInteractionEnabled(bool value)
+        {
+            PreviousButton.IsHitTestVisible = value;
+            PlayPauseButton.IsHitTestVisible = value;
+            NextButton.IsHitTestVisible = value;
+        }
 
         public void Update(IslandRenderState state)
         {

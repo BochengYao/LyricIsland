@@ -560,6 +560,12 @@
                                      Checked="SectionButton_Checked"
                                      Style="{StaticResource SidebarButtonStyle}"
                                      Content="鼠标避让" />
+                        <RadioButton x:Name="HotkeysSectionButton"
+                                     GroupName="SettingsSection"
+                                     Tag="Hotkeys"
+                                     Checked="SectionButton_Checked"
+                                     Style="{StaticResource SidebarButtonStyle}"
+                                     Content="快捷键" />
                         <RadioButton x:Name="LayoutSectionButton"
                                      GroupName="SettingsSection"
                                      Tag="Layout"
@@ -1050,6 +1056,48 @@
                                        Grid.Row="10"
                                        Grid.Column="2"
                                        Style="{StaticResource SettingValue}" />
+                        </Grid>
+
+                        <Grid x:Name="HotkeySettingsPanel"
+                              Visibility="Collapsed">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="150" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Row="0"
+                                       Grid.ColumnSpan="2"
+                                       Margin="0,0,0,22"
+                                       FontSize="17"
+                                       FontWeight="SemiBold"
+                                       Text="快捷键" />
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,0,16,16" Style="{StaticResource SettingLabel}" Text="歌词提前 0.5 秒" />
+                            <TextBox x:Name="EarlierHotkeyTextBox" Grid.Row="1" Grid.Column="1" Margin="0,0,0,16" />
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Margin="0,0,16,16" Style="{StaticResource SettingLabel}" Text="歌词延后 0.5 秒" />
+                            <TextBox x:Name="LaterHotkeyTextBox" Grid.Row="2" Grid.Column="1" Margin="0,0,0,16" />
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Margin="0,0,16,16" Style="{StaticResource SettingLabel}" Text="重置歌词偏移" />
+                            <TextBox x:Name="ResetHotkeyTextBox" Grid.Row="3" Grid.Column="1" Margin="0,0,0,16" />
+
+                            <TextBlock Grid.Row="4" Grid.Column="0" Margin="0,0,16,16" Style="{StaticResource SettingLabel}" Text="临时启用交互" />
+                            <TextBox x:Name="TemporaryInteractionHotkeyTextBox" Grid.Row="4" Grid.Column="1" Margin="0,0,0,16" />
+
+                            <TextBlock Grid.Row="5"
+                                       Grid.ColumnSpan="2"
+                                       Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                       FontSize="11"
+                                       TextWrapping="Wrap"
+                                       Text="组合键使用 + 分隔，例如 Ctrl+Alt+Left。默认按住 Ctrl 关闭透明并启用音乐控制。" />
                         </Grid>
 
                          <Grid x:Name="LayoutSettingsPanel"

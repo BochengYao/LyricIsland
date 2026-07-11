@@ -82,6 +82,7 @@ namespace AppleMusicDesktopLyrics.App
             Edge = NormalizeEdge(Edge);
             LockedSourceAppUserModelId = LockedSourceAppUserModelId ?? string.Empty;
             LyricOffsetHotkeys = LyricOffsetHotkeys ?? HotkeySettings.CreateDefault();
+            LyricOffsetHotkeys.Normalize();
             DefaultLyricOffsetMilliseconds = Math.Max(
                 -10000,
                 Math.Min(10000, DefaultLyricOffsetMilliseconds));

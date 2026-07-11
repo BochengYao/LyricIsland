@@ -83,6 +83,10 @@ namespace AppleMusicDesktopLyrics.App
             HoverDetectionRangeSlider.Value = settings.HoverDetectionRange;
             HoverAuraAspectRatioSlider.Value = settings.HoverAuraAspectRatio;
             PassThroughOnHoverCheckBox.IsChecked = settings.PassThroughOnHover;
+            EarlierHotkeyTextBox.Text = settings.LyricOffsetHotkeys.Earlier;
+            LaterHotkeyTextBox.Text = settings.LyricOffsetHotkeys.Later;
+            ResetHotkeyTextBox.Text = settings.LyricOffsetHotkeys.Reset;
+            TemporaryInteractionHotkeyTextBox.Text = settings.LyricOffsetHotkeys.TemporaryInteraction;
             SetHoverSpectrumControls(settings.HoverSpectrumStops);
             InitializeLayoutEditingControls(settings);
             InitializePlayerSelection(settings);
@@ -140,6 +144,13 @@ namespace AppleMusicDesktopLyrics.App
             settings.LockedSourceAppUserModelId = PlayerSelectionComboBox.SelectedValue as string ?? string.Empty;
             settings.UseMultiLineDisplay = ReadUseMultiLineDisplay();
             settings.ShowTranslation = ShowTranslationCheckBox.IsChecked == true;
+            settings.LyricOffsetHotkeys = new HotkeySettings
+            {
+                Earlier = EarlierHotkeyTextBox.Text,
+                Later = LaterHotkeyTextBox.Text,
+                Reset = ResetHotkeyTextBox.Text,
+                TemporaryInteraction = TemporaryInteractionHotkeyTextBox.Text
+            };
             settings.IslandLayouts.Mode = ReadEditedLayoutMode();
             ApplyLyricsWidth(settings, LyricsWidthSlider.Value);
             settings.Normalize();
@@ -563,6 +574,7 @@ namespace AppleMusicDesktopLyrics.App
                 PositionSettingsPanel == null ||
                 CacheSettingsPanel == null ||
                 HoverSettingsPanel == null ||
+                HotkeySettingsPanel == null ||
                 LayoutSettingsPanel == null)
             {
                 return;
@@ -572,6 +584,7 @@ namespace AppleMusicDesktopLyrics.App
             PositionSettingsPanel.Visibility = section == "Position" ? Visibility.Visible : Visibility.Collapsed;
             CacheSettingsPanel.Visibility = section == "Cache" ? Visibility.Visible : Visibility.Collapsed;
             HoverSettingsPanel.Visibility = section == "Hover" ? Visibility.Visible : Visibility.Collapsed;
+            HotkeySettingsPanel.Visibility = section == "Hotkeys" ? Visibility.Visible : Visibility.Collapsed;
             LayoutSettingsPanel.Visibility = section == "Layout" ? Visibility.Visible : Visibility.Collapsed;
             if (section == "Layout" && beginLayoutEditing != null && !layoutEditingActive)
             {
