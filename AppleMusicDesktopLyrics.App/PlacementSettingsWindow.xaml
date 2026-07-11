@@ -777,37 +777,24 @@
                                            Text="MB" />
                             </DockPanel>
 
-                            <Border Grid.Row="2"
-                                    Grid.ColumnSpan="2"
-                                    Margin="0,24,0,0"
-                                    Padding="16"
-                                    Background="{DynamicResource SettingsControlBackgroundBrush}"
-                                    BorderBrush="{DynamicResource SettingsControlBorderBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="12">
-                                <StackPanel>
-                                    <TextBlock FontWeight="SemiBold"
-                                               Text="缓存有什么用？" />
-                                    <TextBlock Margin="0,8,0,0"
-                                               Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
-                                               TextWrapping="Wrap"
-                                               Text="歌词缓存会保存已经下载过的同步歌词。下次播放同一首歌时可直接读取，启动更快，也能减少重复请求。" />
-                                    <TextBlock Margin="0,14,0,0"
-                                               FontWeight="SemiBold"
-                                               Text="容量估算" />
-                                    <TextBlock Margin="0,8,0,0"
-                                               Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
-                                               TextWrapping="Wrap"
-                                               Text="按每首同步歌词平均约 10 KB 估算：1 MB ≈ 100 首；500 MB ≈ 50,000 首；1000 MB ≈ 100,000 首。实际数量会随歌词长度变化。" />
-                                    <TextBlock Margin="0,14,0,0"
-                                               FontWeight="SemiBold"
-                                               Text="自动清理流程" />
-                                    <TextBlock Margin="0,8,0,0"
-                                               Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
-                                               TextWrapping="Wrap"
-                                               Text="每次写入新歌词或修改容量后都会检查总大小；超过上限时，从最久未使用的歌词开始删除，直到重新低于容量上限。正在常听的歌词会更晚被清理。" />
-                                </StackPanel>
-                            </Border>
+                            <StackPanel Grid.Row="2"
+                                        Grid.ColumnSpan="2"
+                                        Margin="0,24,0,0">
+                                <TextBlock Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                           FontSize="11"
+                                           TextWrapping="Wrap"
+                                           Text="用途：保存已经下载过的同步歌词。下次播放同一首歌时可以直接读取，减少等待和重复请求。" />
+                                <TextBlock Margin="0,9,0,0"
+                                           Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                           FontSize="11"
+                                           TextWrapping="Wrap"
+                                           Text="容量估算：按每首约 10 KB 计算，1 MB ≈ 100 首；500 MB ≈ 50,000 首；1000 MB ≈ 100,000 首。实际数量会随歌词长度变化。" />
+                                <TextBlock Margin="0,9,0,0"
+                                           Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                           FontSize="11"
+                                           TextWrapping="Wrap"
+                                           Text="自动清理：写入歌词或修改容量后检查总大小；超过上限时优先删除最久未使用的歌词，直到低于容量上限。" />
+                            </StackPanel>
                         </Grid>
 
                         <Grid x:Name="HoverSettingsPanel"
@@ -1244,12 +1231,14 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Margin="0,0,8,8"
-                                                Padding="10,6"
-                                                Background="{DynamicResource SettingsControlBackgroundBrush}"
-                                                BorderBrush="{DynamicResource SettingsControlBorderBrush}"
-                                                BorderThickness="1"
-                                                CornerRadius="9">
+                                         <Border Margin="0,0,8,8"
+                                                 Padding="10,6"
+                                                 Background="{DynamicResource SettingsControlBackgroundBrush}"
+                                                 BorderBrush="{DynamicResource SettingsControlBorderBrush}"
+                                                 BorderThickness="1"
+                                                 CornerRadius="9"
+                                                 Cursor="Hand"
+                                                 ToolTip="单击添加到当前布局，或拖动到上方歌词岛指定位置">
                                             <TextBlock Text="{Binding DisplayName}" />
                                         </Border>
                                     </DataTemplate>

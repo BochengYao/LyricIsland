@@ -25,6 +25,7 @@ namespace AppleMusicDesktopLyrics.App
         private readonly Action<IslandLayoutMode, double> updateLyricsWidth;
         private readonly Action<IslandLayoutMode, double, double> updateDividerSettings;
         private readonly Action<IslandLayoutMode> removeDividers;
+        private readonly Action<IslandModuleType> addModule;
         private readonly int initialCacheLimitMegabytes;
         private OverlayPlacementSettings workingSettings;
         private SettingsThemePreference selectedThemePreference = SettingsThemePreference.System;
@@ -44,7 +45,8 @@ namespace AppleMusicDesktopLyrics.App
             Action cancelLayoutEditing = null,
             Action<IslandLayoutMode, double> updateLyricsWidth = null,
             Action<IslandLayoutMode, double, double> updateDividerSettings = null,
-            Action<IslandLayoutMode> removeDividers = null)
+            Action<IslandLayoutMode> removeDividers = null,
+            Action<IslandModuleType> addModule = null)
         {
             InitializeComponent();
             this.screens = screens ?? new List<OverlayScreenArea>().AsReadOnly();
@@ -56,6 +58,7 @@ namespace AppleMusicDesktopLyrics.App
             this.updateLyricsWidth = updateLyricsWidth;
             this.updateDividerSettings = updateDividerSettings;
             this.removeDividers = removeDividers;
+            this.addModule = addModule;
 
             ScreenComboBox.ItemsSource = this.screens
                 .Select((screen, index) => new ScreenOption(screen.Name, "显示器 " + (index + 1) + " (" + (int)screen.WorkWidth + " x " + (int)screen.WorkHeight + ")"))
@@ -393,11 +396,22 @@ namespace AppleMusicDesktopLyrics.App
 
         private void ModuleToolbox_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
+            var option = moduleToolboxDragOption ?? FindModuleToolboxOption(e.OriginalSource as DependencyObject);
+            var currentPoint = e.GetPosition(ModuleToolbox);
+            var isClick = moduleToolboxDragStartPoint.HasValue &&
+                Math.Abs(currentPoint.X - moduleToolboxDragStartPoint.Value.X) < SystemParameters.MinimumHorizontalDragDistance &&
+                Math.Abs(currentPoint.Y - moduleToolboxDragStartPoint.Value.Y) < SystemParameters.MinimumVerticalDragDistance;
             moduleToolboxDragStartPoint = null;
             moduleToolboxDragOption = null;
             if (Mouse.Captured == ModuleToolbox)
             {
                 ModuleToolbox.ReleaseMouseCapture();
+            }
+
+            if (isClick && option != null)
+            {
+                addModule?.Invoke(option.Value);
+                e.Handled = true;
             }
         }
 

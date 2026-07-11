@@ -250,6 +250,7 @@ namespace AppleMusicDesktopLyrics.App
         {
             if (placementSettings == null ||
                 !placementSettings.PassThroughOnHover ||
+                layoutEditing ||
                 !islandVisible ||
                 !IsVisible ||
                 IsRightMouseButtonDown())
@@ -1222,7 +1223,8 @@ namespace AppleMusicDesktopLyrics.App
                 CancelLayoutEditing,
                 UpdateLyricsWidth,
                 UpdateDividerSettings,
-                RemoveDividers)
+                RemoveDividers,
+                AddModuleFromToolbox)
             {
                 Owner = this
             };
@@ -1241,6 +1243,7 @@ namespace AppleMusicDesktopLyrics.App
             layoutEditSession = new LayoutEditSession(profile);
             layoutEditing = true;
             ModuleHost.LayoutEditingEnabled = true;
+            ModuleHost.IsHitTestVisible = true;
             interactionController.SetEditing(true);
             ApplyInteractionState(IslandInteractionState.Editing);
             ShowIsland();
@@ -1289,6 +1292,17 @@ namespace AppleMusicDesktopLyrics.App
             }
 
             layoutEditSession.Draft.Modules.RemoveAll(module => module.Type == IslandModuleType.Divider);
+            ApplyInteractionState(IslandInteractionState.Editing);
+        }
+
+        private void AddModuleFromToolbox(IslandModuleType type)
+        {
+            if (!layoutEditing || layoutEditSession == null)
+            {
+                return;
+            }
+
+            layoutEditSession.Add(type, layoutEditSession.Draft.Modules.Count);
             ApplyInteractionState(IslandInteractionState.Editing);
         }
 

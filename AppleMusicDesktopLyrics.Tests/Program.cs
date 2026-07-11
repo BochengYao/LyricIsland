@@ -783,8 +783,13 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.True(source.Contains("ModuleToolbox_PreviewMouseLeftButtonDown"));
             Assert.True(source.Contains("moduleToolboxDragStartPoint"));
             Assert.True(source.Contains("e.Handled = true"));
+            Assert.True(source.Contains("addModule?.Invoke"));
+            Assert.True(mainWindowSource.Contains("AddModuleFromToolbox"));
+            Assert.True(mainWindowSource.Contains("layoutEditing ||"));
             Assert.True(mainWindowSource.Contains("? DragDropEffects.Copy"));
             Assert.True(mainWindowSource.Contains("OrderBy(target => Math.Abs(target.X - pointerX))"));
+            var mainWindowXaml = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml"));
+            Assert.True(mainWindowXaml.Contains("AllowDrop=\"True\""));
         }
 
         static void SettingsStaysModelessWhileEditingModules()
