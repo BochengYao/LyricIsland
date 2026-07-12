@@ -26,6 +26,7 @@ namespace AppleMusicDesktopLyrics.App
         private readonly Action<IslandLayoutMode, double, double> updateDividerSettings;
         private readonly Action<IslandLayoutMode> removeDividers;
         private readonly Action<IslandModuleType> addModule;
+        private readonly Action<string> removeModule;
         private readonly int initialCacheLimitMegabytes;
         private OverlayPlacementSettings workingSettings;
         private SettingsThemePreference selectedThemePreference = SettingsThemePreference.System;
@@ -46,7 +47,8 @@ namespace AppleMusicDesktopLyrics.App
             Action<IslandLayoutMode, double> updateLyricsWidth = null,
             Action<IslandLayoutMode, double, double> updateDividerSettings = null,
             Action<IslandLayoutMode> removeDividers = null,
-            Action<IslandModuleType> addModule = null)
+            Action<IslandModuleType> addModule = null,
+            Action<string> removeModule = null)
         {
             InitializeComponent();
             this.screens = screens ?? new List<OverlayScreenArea>().AsReadOnly();
@@ -59,6 +61,7 @@ namespace AppleMusicDesktopLyrics.App
             this.updateDividerSettings = updateDividerSettings;
             this.removeDividers = removeDividers;
             this.addModule = addModule;
+            this.removeModule = removeModule;
 
             ScreenComboBox.ItemsSource = this.screens
                 .Select((screen, index) => new ScreenOption(screen.Name, "显示器 " + (index + 1) + " (" + (int)screen.WorkWidth + " x " + (int)screen.WorkHeight + ")"))
@@ -210,12 +213,12 @@ namespace AppleMusicDesktopLyrics.App
         {
             ModuleToolbox.ItemsSource = new[]
             {
-                new ModuleToolboxOption(IslandModuleType.Lyrics, "歌词"),
-                new ModuleToolboxOption(IslandModuleType.AlbumArt, "封面"),
-                new ModuleToolboxOption(IslandModuleType.PlaybackControls, "播放控制"),
-                new ModuleToolboxOption(IslandModuleType.TrackInfo, "歌曲信息"),
-                new ModuleToolboxOption(IslandModuleType.Progress, "进度"),
-                new ModuleToolboxOption(IslandModuleType.Divider, "分割线")
+                new ModuleToolboxOption(IslandModuleType.Lyrics, "歌词", "M3,3 L15,3 L15,5 L3,5 Z M3,8 L13,8 L13,10 L3,10 Z M3,13 L10,13 L10,15 L3,15 Z"),
+                new ModuleToolboxOption(IslandModuleType.AlbumArt, "封面", "M2,2 L16,2 L16,16 L2,16 Z M4,13 L8,8 L11,11 L13,9 L15,13 Z M12,5 A2,2 0 1 1 11.99,5 Z"),
+                new ModuleToolboxOption(IslandModuleType.PlaybackControls, "播放", "M3,2 L3,16 L13,9 Z M14,2 L16,2 L16,16 L14,16 Z"),
+                new ModuleToolboxOption(IslandModuleType.TrackInfo, "信息", "M2,3 L16,3 L16,5 L2,5 Z M2,8 L13,8 L13,10 L2,10 Z M2,13 L10,13 L10,15 L2,15 Z"),
+                new ModuleToolboxOption(IslandModuleType.Progress, "进度", "M2,8 L16,8 L16,10 L2,10 Z M9,6 A3,3 0 1 1 8.99,6 Z"),
+                new ModuleToolboxOption(IslandModuleType.Divider, "分割", "M8,1 L10,1 L10,17 L8,17 Z")
             };
             EditedLayoutComboBox.ItemsSource = new[]
             {
@@ -455,6 +458,31 @@ namespace AppleMusicDesktopLyrics.App
                 return;
             }
 
+        }
+
+        private void ModuleToolbox_DragOver(object sender, DragEventArgs e)
+        {
+            var payload = e.Data.GetData(typeof(IslandLayoutDragPayload)) as IslandLayoutDragPayload;
+            e.Effects = !string.IsNullOrWhiteSpace(payload?.ExistingInstanceId)
+                ? DragDropEffects.Move
+                : DragDropEffects.None;
+            e.Handled = true;
+        }
+
+        private void ModuleToolbox_Drop(object sender, DragEventArgs e)
+        {
+            var payload = e.Data.GetData(typeof(IslandLayoutDragPayload)) as IslandLayoutDragPayload;
+            if (!string.IsNullOrWhiteSpace(payload?.ExistingInstanceId))
+            {
+                removeModule?.Invoke(payload.ExistingInstanceId);
+                e.Effects = DragDropEffects.Move;
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+            }
+
+            e.Handled = true;
         }
 
         private ModuleToolboxOption FindModuleToolboxOption(DependencyObject source)
@@ -959,15 +987,18 @@ namespace AppleMusicDesktopLyrics.App
 
         private sealed class ModuleToolboxOption
         {
-            public ModuleToolboxOption(IslandModuleType value, string displayName)
+            public ModuleToolboxOption(IslandModuleType value, string displayName, string iconData)
             {
                 Value = value;
                 DisplayName = displayName;
+                IconGeometry = Geometry.Parse(iconData);
             }
 
             public IslandModuleType Value { get; }
 
             public string DisplayName { get; }
+
+            public Geometry IconGeometry { get; }
 
             public override string ToString()
             {

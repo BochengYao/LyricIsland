@@ -5,6 +5,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using AppleMusicDesktopLyrics.App.LayoutEditing;
 using AppleMusicDesktopLyrics.Core.Layout;
 
@@ -14,10 +15,22 @@ namespace AppleMusicDesktopLyrics.App.Modules
     {
         private string layoutSignature = string.Empty;
         private bool playbackInteractionEnabled;
+        private readonly Border insertionPlaceholder;
 
         public IslandModuleHost()
         {
             InitializeComponent();
+            insertionPlaceholder = new Border
+            {
+                Width = 44,
+                Height = 42,
+                Margin = new Thickness(5, 3, 5, 3),
+                Background = (Brush)new BrushConverter().ConvertFromString("#181677FF"),
+                BorderBrush = (Brush)new BrushConverter().ConvertFromString("#661677FF"),
+                BorderThickness = new Thickness(1.5),
+                CornerRadius = new CornerRadius(9),
+                IsHitTestVisible = false
+            };
         }
 
         public event EventHandler PreviousRequested;
@@ -132,15 +145,57 @@ namespace AppleMusicDesktopLyrics.App.Modules
         {
             var targets = new List<LayoutInsertionTarget>();
             var x = 0.0;
-            for (var index = 0; index < ModulePanel.Children.Count; index++)
+            var modules = ModulePanel.Children
+                .OfType<FrameworkElement>()
+                .Where(element => !ReferenceEquals(element, insertionPlaceholder))
+                .ToList();
+            for (var index = 0; index < modules.Count; index++)
             {
                 targets.Add(new LayoutInsertionTarget(index, x));
-                var element = ModulePanel.Children[index] as FrameworkElement;
+                var element = modules[index];
                 x += element?.ActualWidth > 0 ? element.ActualWidth : element?.DesiredSize.Width ?? 0;
             }
 
-            targets.Add(new LayoutInsertionTarget(ModulePanel.Children.Count, x));
+            targets.Add(new LayoutInsertionTarget(modules.Count, x));
             return targets;
+        }
+
+        public void ShowInsertionPreview(int index, double suggestedWidth)
+        {
+            ModulePanel.Children.Remove(insertionPlaceholder);
+            insertionPlaceholder.Width = Math.Max(28, Math.Min(120, suggestedWidth));
+            var moduleCount = ModulePanel.Children.Count;
+            ModulePanel.Children.Insert(Math.Max(0, Math.Min(index, moduleCount)), insertionPlaceholder);
+        }
+
+        public void ClearInsertionPreview()
+        {
+            ModulePanel.Children.Remove(insertionPlaceholder);
+        }
+
+        public double GetDragPreviewWidth(IslandLayoutDragPayload payload)
+        {
+            if (!string.IsNullOrWhiteSpace(payload?.ExistingInstanceId))
+            {
+                var existing = ModulePanel.Children
+                    .OfType<FrameworkElement>()
+                    .FirstOrDefault(element => string.Equals(element.Tag as string, payload.ExistingInstanceId, StringComparison.Ordinal));
+                if (existing != null)
+                {
+                    return existing.ActualWidth > 0 ? existing.ActualWidth : existing.DesiredSize.Width;
+                }
+            }
+
+            switch (payload?.NewType)
+            {
+                case IslandModuleType.AlbumArt: return 60;
+                case IslandModuleType.PlaybackControls: return 108;
+                case IslandModuleType.TrackInfo: return 168;
+                case IslandModuleType.Progress: return 148;
+                case IslandModuleType.Divider: return 18;
+                case IslandModuleType.Lyrics: return 120;
+                default: return 44;
+            }
         }
 
         private void ModuleView_PreviewMouseMove(object sender, MouseEventArgs e)
@@ -158,7 +213,16 @@ namespace AppleMusicDesktopLyrics.App.Modules
             }
 
             var payload = new IslandLayoutDragPayload { ExistingInstanceId = id };
-            DragDrop.DoDragDrop(element, new DataObject(typeof(IslandLayoutDragPayload), payload), DragDropEffects.Move);
+            element.Opacity = 0.38;
+            try
+            {
+                DragDrop.DoDragDrop(element, new DataObject(typeof(IslandLayoutDragPayload), payload), DragDropEffects.Move);
+            }
+            finally
+            {
+                element.Opacity = 1.0;
+                ClearInsertionPreview();
+            }
         }
     }
 }

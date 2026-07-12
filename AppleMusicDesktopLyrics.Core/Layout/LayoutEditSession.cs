@@ -19,6 +19,16 @@ namespace AppleMusicDesktopLyrics.Core.Layout
 
         public void Add(IslandModuleType type, int index)
         {
+            if (type != IslandModuleType.Divider)
+            {
+                var existing = Draft.Modules.FirstOrDefault(module => module.Type == type);
+                if (existing != null)
+                {
+                    Move(existing.Id, index);
+                    return;
+                }
+            }
+
             Draft.Modules.Insert(Math.Max(0, Math.Min(index, Draft.Modules.Count)),
                 new IslandModuleInstance(type));
         }

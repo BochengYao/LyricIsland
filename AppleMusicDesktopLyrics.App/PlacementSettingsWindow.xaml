@@ -1217,13 +1217,16 @@
                                        Margin="0,0,16,16"
                                        Style="{StaticResource SettingLabel}"
                                        Text="模块工具箱" />
+                            <StackPanel Grid.Row="3"
+                                        Grid.Column="1"
+                                        Margin="0,0,0,16">
                            <ItemsControl x:Name="ModuleToolbox"
-                                           Grid.Row="3"
-                                           Grid.Column="1"
-                                           Margin="0,0,0,16"
-                                           PreviewMouseLeftButtonDown="ModuleToolbox_PreviewMouseLeftButtonDown"
-                                           PreviewMouseLeftButtonUp="ModuleToolbox_PreviewMouseLeftButtonUp"
-                                           PreviewMouseMove="ModuleToolbox_PreviewMouseMove">
+                                            AllowDrop="True"
+                                            PreviewMouseLeftButtonDown="ModuleToolbox_PreviewMouseLeftButtonDown"
+                                            PreviewMouseLeftButtonUp="ModuleToolbox_PreviewMouseLeftButtonUp"
+                                            PreviewMouseMove="ModuleToolbox_PreviewMouseMove"
+                                            DragOver="ModuleToolbox_DragOver"
+                                            Drop="ModuleToolbox_Drop">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
                                         <WrapPanel />
@@ -1231,19 +1234,36 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                         <Border Margin="0,0,8,8"
-                                                 Padding="10,6"
+                                         <Border Width="58"
+                                                 Margin="0,0,8,8"
+                                                 Padding="7,6"
                                                  Background="{DynamicResource SettingsControlBackgroundBrush}"
                                                  BorderBrush="{DynamicResource SettingsControlBorderBrush}"
                                                  BorderThickness="1"
                                                  CornerRadius="9"
                                                  Cursor="Hand"
                                                  ToolTip="单击添加到当前布局，或拖动到上方歌词岛指定位置">
-                                            <TextBlock Text="{Binding DisplayName}" />
-                                        </Border>
+                                             <StackPanel>
+                                                 <Path Width="19"
+                                                       Height="19"
+                                                       HorizontalAlignment="Center"
+                                                       Data="{Binding IconGeometry}"
+                                                       Fill="{DynamicResource SettingsControlForegroundBrush}"
+                                                       Stretch="Uniform" />
+                                                 <TextBlock Margin="0,4,0,0"
+                                                            HorizontalAlignment="Center"
+                                                            Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                                            FontSize="9.5"
+                                                            Text="{Binding DisplayName}" />
+                                             </StackPanel>
+                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                             </ItemsControl>
+                                <TextBlock Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                           FontSize="10"
+                                           Text="单击添加；拖上岛内插入；岛内左右拖动排序；拖回这里删除。" />
+                            </StackPanel>
 
                             <TextBlock Grid.Row="4"
                                        Grid.Column="0"

@@ -1224,7 +1224,8 @@ namespace AppleMusicDesktopLyrics.App
                 UpdateLyricsWidth,
                 UpdateDividerSettings,
                 RemoveDividers,
-                AddModuleFromToolbox)
+                AddModuleFromToolbox,
+                RemoveModuleFromToolbox)
             {
                 Owner = this
             };
@@ -1306,6 +1307,18 @@ namespace AppleMusicDesktopLyrics.App
             ApplyInteractionState(IslandInteractionState.Editing);
         }
 
+        private void RemoveModuleFromToolbox(string instanceId)
+        {
+            if (!layoutEditing || layoutEditSession == null || string.IsNullOrWhiteSpace(instanceId))
+            {
+                return;
+            }
+
+            layoutEditSession.Remove(instanceId);
+            ModuleHost.ClearInsertionPreview();
+            ApplyInteractionState(IslandInteractionState.Editing);
+        }
+
         private void SaveLayoutEditing()
         {
             if (!layoutEditing || layoutEditSession == null)
@@ -1382,11 +1395,20 @@ namespace AppleMusicDesktopLyrics.App
                 ? DragDropEffects.Copy
                 : DragDropEffects.Move;
             e.Effects = index >= 0 && payload != null ? acceptedEffect : DragDropEffects.None;
+            if (e.Effects != DragDropEffects.None)
+            {
+                ModuleHost.ShowInsertionPreview(index, ModuleHost.GetDragPreviewWidth(payload));
+            }
+            else
+            {
+                ModuleHost.ClearInsertionPreview();
+            }
             e.Handled = true;
         }
 
         private void ModuleHost_Drop(object sender, DragEventArgs e)
         {
+            ModuleHost.ClearInsertionPreview();
             if (!layoutEditing || layoutEditSession == null)
             {
                 return;
@@ -1413,6 +1435,7 @@ namespace AppleMusicDesktopLyrics.App
 
         private void ModuleHost_DragLeave(object sender, DragEventArgs e)
         {
+            ModuleHost.ClearInsertionPreview();
             e.Handled = true;
         }
 
@@ -1494,6 +1517,11 @@ namespace AppleMusicDesktopLyrics.App
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            if (layoutEditing && IsModuleHostMouseSource(e.OriginalSource as DependencyObject))
+            {
+                return;
+            }
+
             if (IsInteractiveMouseSource(e.OriginalSource as DependencyObject))
             {
                 return;
@@ -1584,6 +1612,21 @@ namespace AppleMusicDesktopLyrics.App
             while (source != null)
             {
                 if (source is Button)
+                {
+                    return true;
+                }
+
+                source = VisualTreeHelper.GetParent(source);
+            }
+
+            return false;
+        }
+
+        private bool IsModuleHostMouseSource(DependencyObject source)
+        {
+            while (source != null)
+            {
+                if (ReferenceEquals(source, ModuleHost))
                 {
                     return true;
                 }

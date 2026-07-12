@@ -74,6 +74,8 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("configured key temporarily suppresses hover transparency", ConfiguredKeyTemporarilySuppressesHoverTransparency);
             suite.Run("snaps module within eighteen pixels", SnapsModuleWithinEighteenPixels);
             suite.Run("moves module after crossing midpoint", MovesModuleAfterCrossingMidpoint);
+            suite.Run("moves singleton module instead of duplicating it", MovesSingletonModuleInsteadOfDuplicatingIt);
+            suite.Run("layout drag shows snapped insertion placeholder", LayoutDragShowsSnappedInsertionPlaceholder);
             suite.Run("cancels layout draft without mutating original", CancelsLayoutDraftWithoutMutatingOriginal);
             suite.Run("uses approved lyric offset hotkeys", UsesApprovedLyricOffsetHotkeys);
             suite.Run("settings exposes automatic and locked player selection", SettingsExposesPlayerSelection);
@@ -788,6 +790,7 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.True(mainWindowSource.Contains("layoutEditing ||"));
             Assert.True(mainWindowSource.Contains("? DragDropEffects.Copy"));
             Assert.True(mainWindowSource.Contains("OrderBy(target => Math.Abs(target.X - pointerX))"));
+            Assert.True(mainWindowSource.Contains("layoutEditing && IsModuleHostMouseSource"));
             var mainWindowXaml = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml"));
             Assert.True(mainWindowXaml.Contains("AllowDrop=\"True\""));
         }
@@ -915,6 +918,37 @@ namespace AppleMusicDesktopLyrics.Tests
 
             Assert.Equal(IslandModuleType.Lyrics, session.Draft.Modules[0].Type);
             Assert.Equal(IslandModuleType.AlbumArt, session.Draft.Modules[1].Type);
+        }
+
+        static void MovesSingletonModuleInsteadOfDuplicatingIt()
+        {
+            var profile = new IslandLayoutProfile();
+            profile.Modules.Add(new IslandModuleInstance(IslandModuleType.AlbumArt));
+            profile.Modules.Add(new IslandModuleInstance(IslandModuleType.Lyrics));
+            var session = new LayoutEditSession(profile);
+
+            session.Add(IslandModuleType.AlbumArt, 2);
+            session.Add(IslandModuleType.Divider, 2);
+            session.Add(IslandModuleType.Divider, 3);
+
+            Assert.Equal(1, session.Draft.Modules.FindAll(module => module.Type == IslandModuleType.AlbumArt).Count);
+            Assert.Equal(2, session.Draft.Modules.FindAll(module => module.Type == IslandModuleType.Divider).Count);
+        }
+
+        static void LayoutDragShowsSnappedInsertionPlaceholder()
+        {
+            var root = GetSolutionRoot();
+            var host = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "Modules", "IslandModuleHost.xaml.cs"));
+            var settingsXaml = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml"));
+            var settingsSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml.cs"));
+
+            Assert.True(host.Contains("insertionPlaceholder"));
+            Assert.True(host.Contains("ShowInsertionPreview"));
+            Assert.True(host.Contains("#661677FF"));
+            Assert.True(host.Contains("CornerRadius = new CornerRadius(9)"));
+            Assert.True(settingsXaml.Contains("ModuleToolbox_Drop"));
+            Assert.True(settingsXaml.Contains("IconGeometry"));
+            Assert.True(settingsSource.Contains("removeModule?.Invoke"));
         }
 
         static void CancelsLayoutDraftWithoutMutatingOriginal()
