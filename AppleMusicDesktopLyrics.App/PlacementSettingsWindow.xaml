@@ -782,16 +782,22 @@
                                         Margin="0,24,0,0">
                                 <TextBlock Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
                                            FontSize="11"
+                                           LineHeight="18"
+                                           LineStackingStrategy="BlockLineHeight"
                                            TextWrapping="Wrap"
                                            Text="用途：保存已经下载过的同步歌词。下次播放同一首歌时可以直接读取，减少等待和重复请求。" />
-                                <TextBlock Margin="0,9,0,0"
+                                <TextBlock Margin="0,5,0,0"
                                            Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
                                            FontSize="11"
+                                           LineHeight="18"
+                                           LineStackingStrategy="BlockLineHeight"
                                            TextWrapping="Wrap"
                                            Text="容量估算：按每首约 10 KB 计算，1 MB ≈ 100 首；500 MB ≈ 50,000 首；1000 MB ≈ 100,000 首。实际数量会随歌词长度变化。" />
-                                <TextBlock Margin="0,9,0,0"
+                                <TextBlock Margin="0,5,0,0"
                                            Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
                                            FontSize="11"
+                                           LineHeight="18"
+                                           LineStackingStrategy="BlockLineHeight"
                                            TextWrapping="Wrap"
                                            Text="自动清理：写入歌词或修改容量后检查总大小；超过上限时优先删除最久未使用的歌词，直到低于容量上限。" />
                             </StackPanel>
@@ -1199,18 +1205,17 @@
                                        Margin="0,0,16,16"
                                        Style="{StaticResource SettingLabel}"
                                        Text="播放器" />
-                            <ComboBox x:Name="PlayerSelectionComboBox"
-                                      Grid.Row="2"
-                                      Grid.Column="1"
-                                      Margin="0,0,0,16"
-                                      DisplayMemberPath="DisplayName"
-                                      SelectedValuePath="Value" />
-                            <TextBlock Grid.Row="2"
-                                       Grid.Column="1"
-                                       Margin="0,38,0,16"
-                                       Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
-                                       FontSize="11"
-                                       Text="自动选择会跟随最近活跃的播放器" />
+                            <StackPanel Grid.Row="2"
+                                        Grid.Column="1"
+                                        Margin="0,0,0,16">
+                                <ComboBox x:Name="PlayerSelectionComboBox"
+                                          DisplayMemberPath="DisplayName"
+                                          SelectedValuePath="Value" />
+                                <TextBlock Margin="0,5,0,0"
+                                           Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                           FontSize="10.5"
+                                           Text="自动选择会跟随最近活跃的播放器" />
+                            </StackPanel>
 
                             <TextBlock Grid.Row="3"
                                        Grid.Column="0"
@@ -1234,15 +1239,15 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                         <Border Width="58"
+                                         <Border Width="{Binding PreviewWidth}"
                                                  Margin="0,0,8,8"
                                                  Padding="7,6"
                                                  Background="{DynamicResource SettingsControlBackgroundBrush}"
                                                  BorderBrush="{DynamicResource SettingsControlBorderBrush}"
                                                  BorderThickness="1"
                                                  CornerRadius="9"
-                                                 Cursor="Hand"
-                                                 ToolTip="单击添加到当前布局，或拖动到上方歌词岛指定位置">
+                                                 Cursor="SizeAll"
+                                                 ToolTip="拖动到上方歌词岛指定位置">
                                              <StackPanel>
                                                  <Path Width="19"
                                                        Height="19"
@@ -1262,7 +1267,7 @@
                              </ItemsControl>
                                 <TextBlock Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
                                            FontSize="10"
-                                           Text="单击添加；拖上岛内插入；岛内左右拖动排序；拖回这里删除。" />
+                                           Text="拖上岛内插入；岛内左右拖动排序；拖回这里删除。" />
                             </StackPanel>
 
                             <TextBlock Grid.Row="4"

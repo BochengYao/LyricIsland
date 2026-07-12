@@ -785,8 +785,11 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.True(source.Contains("ModuleToolbox_PreviewMouseLeftButtonDown"));
             Assert.True(source.Contains("moduleToolboxDragStartPoint"));
             Assert.True(source.Contains("e.Handled = true"));
-            Assert.True(source.Contains("addModule?.Invoke"));
-            Assert.True(mainWindowSource.Contains("AddModuleFromToolbox"));
+            Assert.False(source.Contains("addModule?.Invoke"));
+            Assert.False(mainWindowSource.Contains("AddModuleFromToolbox"));
+            Assert.True(source.Contains("setModuleDragActive?.Invoke(true)"));
+            Assert.True(mainWindowSource.Contains("moduleDragActive ||"));
+            Assert.True(mainWindowSource.Contains("if (settingsWindow != null)"));
             Assert.True(mainWindowSource.Contains("layoutEditing ||"));
             Assert.True(mainWindowSource.Contains("? DragDropEffects.Copy"));
             Assert.True(mainWindowSource.Contains("OrderBy(target => Math.Abs(target.X - pointerX))"));
@@ -946,9 +949,12 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.True(host.Contains("ShowInsertionPreview"));
             Assert.True(host.Contains("#661677FF"));
             Assert.True(host.Contains("CornerRadius = new CornerRadius(9)"));
+            Assert.True(host.Contains("insertionPreviewIndex == index"));
             Assert.True(settingsXaml.Contains("ModuleToolbox_Drop"));
             Assert.True(settingsXaml.Contains("IconGeometry"));
+            Assert.True(settingsXaml.Contains("Width=\"{Binding PreviewWidth}\""));
             Assert.True(settingsSource.Contains("removeModule?.Invoke"));
+            Assert.True(settingsSource.Contains("PreviewWidth = previewWidth"));
         }
 
         static void CancelsLayoutDraftWithoutMutatingOriginal()

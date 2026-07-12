@@ -16,6 +16,8 @@ namespace AppleMusicDesktopLyrics.App.Modules
         private string layoutSignature = string.Empty;
         private bool playbackInteractionEnabled;
         private readonly Border insertionPlaceholder;
+        private int insertionPreviewIndex = -1;
+        private double insertionPreviewWidth = -1;
 
         public IslandModuleHost()
         {
@@ -162,15 +164,30 @@ namespace AppleMusicDesktopLyrics.App.Modules
 
         public void ShowInsertionPreview(int index, double suggestedWidth)
         {
+            var previewWidth = Math.Max(28, Math.Min(120, suggestedWidth));
+            if (insertionPreviewIndex == index &&
+                Math.Abs(insertionPreviewWidth - previewWidth) < 0.5 &&
+                ModulePanel.Children.Contains(insertionPlaceholder))
+            {
+                return;
+            }
+
             ModulePanel.Children.Remove(insertionPlaceholder);
-            insertionPlaceholder.Width = Math.Max(28, Math.Min(120, suggestedWidth));
+            insertionPlaceholder.Width = previewWidth;
             var moduleCount = ModulePanel.Children.Count;
-            ModulePanel.Children.Insert(Math.Max(0, Math.Min(index, moduleCount)), insertionPlaceholder);
+            insertionPreviewIndex = Math.Max(0, Math.Min(index, moduleCount));
+            insertionPreviewWidth = previewWidth;
+            ModulePanel.Children.Insert(insertionPreviewIndex, insertionPlaceholder);
         }
 
         public void ClearInsertionPreview()
         {
-            ModulePanel.Children.Remove(insertionPlaceholder);
+            if (ModulePanel.Children.Contains(insertionPlaceholder))
+            {
+                ModulePanel.Children.Remove(insertionPlaceholder);
+                insertionPreviewIndex = -1;
+                insertionPreviewWidth = -1;
+            }
         }
 
         public double GetDragPreviewWidth(IslandLayoutDragPayload payload)

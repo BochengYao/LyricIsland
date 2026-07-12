@@ -64,6 +64,7 @@ namespace AppleMusicDesktopLyrics.App
         private IslandInteractionState appliedInteractionState = IslandInteractionState.Collapsed;
         private PlacementSettingsWindow settingsWindow;
         private int islandSizeAnimationVersion;
+        private bool moduleDragActive;
         private const double DragStartThreshold = 4.0;
         private const double IslandHorizontalShapePadding = 144;
         private const double HoverMaskContentRadiusScale = 1.0;
@@ -749,7 +750,7 @@ namespace AppleMusicDesktopLyrics.App
         private bool IsHoverTransparencySuppressed()
         {
             var gesture = placementSettings?.LyricOffsetHotkeys?.TemporaryInteraction ?? "Ctrl";
-            return HotkeyGestureParser.IsPressed(gesture);
+            return moduleDragActive || HotkeyGestureParser.IsPressed(gesture);
         }
 
         private double GetDistanceToIsland(Point localPoint)
@@ -1224,8 +1225,8 @@ namespace AppleMusicDesktopLyrics.App
                 UpdateLyricsWidth,
                 UpdateDividerSettings,
                 RemoveDividers,
-                AddModuleFromToolbox,
-                RemoveModuleFromToolbox)
+                RemoveModuleFromToolbox,
+                SetModuleDragActive)
             {
                 Owner = this
             };
@@ -1296,17 +1297,6 @@ namespace AppleMusicDesktopLyrics.App
             ApplyInteractionState(IslandInteractionState.Editing);
         }
 
-        private void AddModuleFromToolbox(IslandModuleType type)
-        {
-            if (!layoutEditing || layoutEditSession == null)
-            {
-                return;
-            }
-
-            layoutEditSession.Add(type, layoutEditSession.Draft.Modules.Count);
-            ApplyInteractionState(IslandInteractionState.Editing);
-        }
-
         private void RemoveModuleFromToolbox(string instanceId)
         {
             if (!layoutEditing || layoutEditSession == null || string.IsNullOrWhiteSpace(instanceId))
@@ -1317,6 +1307,19 @@ namespace AppleMusicDesktopLyrics.App
             layoutEditSession.Remove(instanceId);
             ModuleHost.ClearInsertionPreview();
             ApplyInteractionState(IslandInteractionState.Editing);
+        }
+
+        private void SetModuleDragActive(bool value)
+        {
+            moduleDragActive = value;
+            if (value)
+            {
+                HideHoverTransparency();
+            }
+            else
+            {
+                UpdateHoverProximity();
+            }
         }
 
         private void SaveLayoutEditing()
@@ -1382,6 +1385,7 @@ namespace AppleMusicDesktopLyrics.App
 
         private void ModuleHost_DragOver(object sender, DragEventArgs e)
         {
+            SetModuleDragActive(true);
             if (!layoutEditing || layoutEditSession == null)
             {
                 e.Effects = DragDropEffects.None;
@@ -1409,6 +1413,7 @@ namespace AppleMusicDesktopLyrics.App
         private void ModuleHost_Drop(object sender, DragEventArgs e)
         {
             ModuleHost.ClearInsertionPreview();
+            SetModuleDragActive(false);
             if (!layoutEditing || layoutEditSession == null)
             {
                 return;
@@ -1436,6 +1441,7 @@ namespace AppleMusicDesktopLyrics.App
         private void ModuleHost_DragLeave(object sender, DragEventArgs e)
         {
             ModuleHost.ClearInsertionPreview();
+            SetModuleDragActive(false);
             e.Handled = true;
         }
 
@@ -1517,6 +1523,11 @@ namespace AppleMusicDesktopLyrics.App
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            if (settingsWindow != null)
+            {
+                return;
+            }
+
             if (layoutEditing && IsModuleHostMouseSource(e.OriginalSource as DependencyObject))
             {
                 return;
