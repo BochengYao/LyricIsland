@@ -1,0 +1,9 @@
+{
+  "name": "lyric-island",
+  "installCommand": "npm ci",
+  "buildCommand": "npm run build",
+  "entry": "./dist/server/index.js",
+  "assets": {
+    "directory": "./dist/client"
+  }
+}
