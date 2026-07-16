@@ -1,9 +1,9 @@
 {
   "name": "lyric-island",
   "installCommand": "npm ci",
-  "buildCommand": "npm run build",
-  "entry": "./esa-entry.js",
+  "buildCommand": "npm run build:esa",
   "assets": {
-    "directory": "./dist/client"
+    "directory": "./out",
+    "notFoundStrategy": "404Page"
   }
 }

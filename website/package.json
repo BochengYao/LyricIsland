@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "vinext build && node scripts/prepare-sites.mjs",
+    "build:esa": "node scripts/build-esa-static.mjs",
     "build:next": "next build",
     "start": "vinext start",
     "typecheck": "tsc --noEmit",
