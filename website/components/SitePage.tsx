@@ -92,7 +92,7 @@ export function SitePage({ locale }: Props) {
                   </span>
                 ) : item.label}
                 {item.kind === "store" && (
-                  <ExternalArrow className="navExternalArrow" />
+                  <ExternalArrow className="navExternalArrow" variant="nav" />
                 )}
               </a>
             ))}
@@ -130,7 +130,7 @@ export function SitePage({ locale }: Props) {
                       </span>
                     ) : item.label}
                     {item.kind === "store" && (
-                      <ExternalArrow className="navExternalArrow" />
+                      <ExternalArrow className="navExternalArrow" variant="nav" />
                     )}
                   </a>
                 ))}
