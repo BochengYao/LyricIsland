@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ExternalArrow } from "@/components/ExternalArrow";
 import { Eyebrow, LogoLockup } from "@/components/SitePage";
 import { SelectiveTextReveal } from "@/components/SelectiveTextReveal";
 import {
@@ -97,7 +98,7 @@ export function UpdatesPage({ locale }: Props) {
               rel="noreferrer"
             >
               {copy.storeLabel}
-              <span aria-hidden="true">↗</span>
+              <ExternalArrow />
             </a>
           </div>
         </section>

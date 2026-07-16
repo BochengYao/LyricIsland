@@ -340,25 +340,35 @@ p {
   gap: 0;
 }
 
-.navExternalArrow {
+.externalArrow {
   position: relative;
   z-index: 1;
   display: inline-grid;
   flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
+  width: 22px;
+  height: 22px;
   place-items: center;
 }
 
-.navExternalArrow svg {
+.externalArrow svg {
   display: block;
   width: 100%;
   height: 100%;
   fill: none;
   stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.7;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+  stroke-width: 2.4;
+}
+
+.navExternalArrow {
+  width: 21px;
+  height: 21px;
+}
+
+.button .externalArrow {
+  width: 24px;
+  height: 24px;
 }
 
 .navFeatureLink .navExternalArrow {
@@ -1542,6 +1552,9 @@ p {
 }
 
 .footerColumn a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   width: fit-content;
   min-height: 32px;
   color: rgba(255, 255, 255, 0.86);

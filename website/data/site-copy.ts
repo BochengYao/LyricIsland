@@ -265,8 +265,8 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       ],
       resources: "资源",
       resourceLinks: [
-        { label: "Microsoft Store ↗", href: microsoftStoreUrl },
-        { label: "GitHub：v1.0 与源码 ↗", href: "https://github.com/BochengYao/AppleMusicDesktopLyrics" },
+        { label: "Microsoft Store", href: microsoftStoreUrl },
+        { label: "GitHub：v1.0 与源码", href: "https://github.com/BochengYao/AppleMusicDesktopLyrics" },
         { label: "更新内容", href: "/updates" },
         { label: "用户激励计划", href: "/incentives" },
         { label: "English", href: "/en" }
@@ -428,8 +428,8 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       ],
       resources: "Resources",
       resourceLinks: [
-        { label: "Microsoft Store ↗", href: microsoftStoreUrl },
-        { label: "GitHub: v1.0 & source ↗", href: "https://github.com/BochengYao/AppleMusicDesktopLyrics" },
+        { label: "Microsoft Store", href: microsoftStoreUrl },
+        { label: "GitHub: v1.0 & source", href: "https://github.com/BochengYao/AppleMusicDesktopLyrics" },
         { label: "Updates", href: "/en/updates" },
         { label: "Community rewards", href: "/en/incentives" },
         { label: "中文", href: "/" }

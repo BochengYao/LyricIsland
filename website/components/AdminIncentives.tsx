@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ExternalArrow } from "@/components/ExternalArrow";
 import { useEffect, useMemo, useState } from "react";
 import { LogoLockup } from "@/components/SitePage";
 import type {
@@ -193,7 +194,7 @@ export function AdminIncentives() {
           <button className={panel === "previews" ? "isActive" : ""} onClick={() => setPanel("previews")}>版本预告</button>
         </nav>
         <div className="adminSidebarBottom">
-          <Link href="/incentives" target="_blank">查看前台 ↗</Link>
+          <Link href="/incentives" target="_blank">查看前台 <ExternalArrow /></Link>
           <button onClick={logout}>退出登录</button>
         </div>
       </aside>
@@ -222,7 +223,7 @@ export function AdminIncentives() {
                   </header>
                   <p className="reviewBody">{item.body}</p>
                   <div className="reviewIdentity"><span>@{item.nickname}</span><a href={`mailto:${item.email}`}>{item.email}</a></div>
-                  {item.attachments.length > 0 && <div className="reviewAttachments">{item.attachments.map((attachment) => attachment.signedUrl ? <a href={attachment.signedUrl} target="_blank" rel="noreferrer" key={attachment.path}>{attachment.type.startsWith("video/") ? "视频" : "图片"} · {attachment.name} ↗</a> : <span key={attachment.path}>{attachment.name}</span>)}</div>}
+                  {item.attachments.length > 0 && <div className="reviewAttachments">{item.attachments.map((attachment) => attachment.signedUrl ? <a href={attachment.signedUrl} target="_blank" rel="noreferrer" key={attachment.path}>{attachment.type.startsWith("video/") ? "视频" : "图片"} · {attachment.name} <ExternalArrow /></a> : <span key={attachment.path}>{attachment.name}</span>)}</div>}
                   <div className="reviewControls">
                     <label><span>审阅状态</span><select value={item.status} onChange={(event) => editSubmission(item.id, { status: event.target.value as SubmissionStatus })}>{Object.entries(statusLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
                     <label><span>奖励</span><select value={item.reward_status} onChange={(event) => editSubmission(item.id, { reward_status: event.target.value as RewardStatus })}>{Object.entries(rewardLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>

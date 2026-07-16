@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { AnimatedFaqItem } from "@/components/AnimatedFaqItem";
+import { ExternalArrow } from "@/components/ExternalArrow";
 import { IslandDemo } from "@/components/IslandDemo";
 import { SelectiveTextReveal } from "@/components/SelectiveTextReveal";
 import { SmoothSectionScroll } from "@/components/SmoothSectionScroll";
@@ -91,11 +92,7 @@ export function SitePage({ locale }: Props) {
                   </span>
                 ) : item.label}
                 {item.kind === "store" && (
-                  <span className="navExternalArrow" aria-hidden="true">
-                    <svg viewBox="0 0 18 18" focusable="false">
-                      <path d="M3.5 14.5 14.5 3.5M7 3.5h7.5V11" />
-                    </svg>
-                  </span>
+                  <ExternalArrow className="navExternalArrow" />
                 )}
               </a>
             ))}
@@ -133,11 +130,7 @@ export function SitePage({ locale }: Props) {
                       </span>
                     ) : item.label}
                     {item.kind === "store" && (
-                      <span className="navExternalArrow" aria-hidden="true">
-                        <svg viewBox="0 0 18 18" focusable="false">
-                          <path d="M3.5 14.5 14.5 3.5M7 3.5h7.5V11" />
-                        </svg>
-                      </span>
+                      <ExternalArrow className="navExternalArrow" />
                     )}
                   </a>
                 ))}
@@ -167,7 +160,7 @@ export function SitePage({ locale }: Props) {
                   rel="noreferrer"
                 >
                   {copy.storeLabel}
-                  <span aria-hidden="true">↗</span>
+                  <ExternalArrow />
                 </a>
               </div>
             </div>
@@ -365,7 +358,7 @@ export function SitePage({ locale }: Props) {
                 rel="noreferrer"
               >
                 {copy.closing.button}
-                <span aria-hidden="true">↗</span>
+                <ExternalArrow />
               </a>
             </div>
           </div>
@@ -393,6 +386,7 @@ export function SitePage({ locale }: Props) {
                 link.href.startsWith("http") ? (
                   <a href={link.href} target="_blank" rel="noreferrer" key={link.href}>
                     {link.label}
+                    <ExternalArrow />
                   </a>
                 ) : (
                   <Link href={link.href} key={link.href}>
