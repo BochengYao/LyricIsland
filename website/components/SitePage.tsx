@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AnimatedFaqItem } from "@/components/AnimatedFaqItem";
 import { ExternalArrow } from "@/components/ExternalArrow";
 import { IslandDemo } from "@/components/IslandDemo";
+import { PlayerOrbit } from "@/components/PlayerOrbit";
 import { SelectiveTextReveal } from "@/components/SelectiveTextReveal";
 import { SmoothSectionScroll } from "@/components/SmoothSectionScroll";
 import {
@@ -282,22 +283,7 @@ export function SitePage({ locale }: Props) {
                 <p className="finePrint">{copy.compatibility.note}</p>
               </div>
             </div>
-            <div className="playerOrbit" aria-label={copy.compatibility.title}>
-              <svg
-                className="playerArcLines"
-                viewBox="0 0 1000 340"
-                preserveAspectRatio="none"
-                aria-hidden="true"
-              >
-                <ellipse cx="500" cy="260" rx="500" ry="240" />
-                <ellipse cx="500" cy="280" rx="390" ry="180" />
-              </svg>
-              {copy.compatibility.players.map((player, index) => (
-                <span className={"playerPill playerPill" + (index + 1)} key={player}>
-                  {player}
-                </span>
-              ))}
-            </div>
+            <PlayerOrbit label={copy.compatibility.title} players={copy.compatibility.players} />
           </div>
         </section>
 

@@ -1216,71 +1216,8 @@ p {
   transform: translate(-50%, -50%);
 }
 
-@keyframes playerArcFallback {
-  0% {
-    top: 96%;
-    left: -8%;
-  }
-
-  7% {
-    top: 76.5%;
-    left: 0;
-  }
-
-  16% {
-    top: 34%;
-    left: 10%;
-  }
-
-  25% {
-    top: 20%;
-    left: 20%;
-  }
-
-  34% {
-    top: 12%;
-    left: 30%;
-  }
-
-  43% {
-    top: 7.5%;
-    left: 40%;
-  }
-
-  50% {
-    top: 6%;
-    left: 50%;
-  }
-
-  57% {
-    top: 7.5%;
-    left: 60%;
-  }
-
-  66% {
-    top: 12%;
-    left: 70%;
-  }
-
-  75% {
-    top: 20%;
-    left: 80%;
-  }
-
-  84% {
-    top: 34%;
-    left: 90%;
-  }
-
-  93% {
-    top: 76.5%;
-    left: 100%;
-  }
-
-  100% {
-    top: 96%;
-    left: 108%;
-  }
+.playerPillDuplicate {
+  display: none;
 }
 
 @media (min-width: 1024px) {
@@ -1300,34 +1237,12 @@ p {
       top: 0;
       right: auto;
       bottom: auto;
-      left: -8%;
-      transform: translate(-50%, -50%);
-      animation: playerArcFallback 27s linear infinite;
-      will-change: top, left;
+      left: 0;
+      will-change: transform, opacity;
     }
 
-    .playerPill1 {
-      animation-delay: -22.5s;
-    }
-
-    .playerPill2 {
-      animation-delay: -18s;
-    }
-
-    .playerPill3 {
-      animation-delay: -13.5s;
-    }
-
-    .playerPill4 {
-      animation-delay: -9s;
-    }
-
-    .playerPill5 {
-      animation-delay: -4.5s;
-    }
-
-    .playerPill6 {
-      animation-delay: 0s;
+    .playerPillDuplicate {
+      display: inline-flex;
     }
   }
 }
