@@ -65,10 +65,10 @@ export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
     languageName: "EN",
     languageHref: "/en/incentives",
     eyebrow: "一起把歌词岛做得更好",
-    title: "你的想法，值得一个认真回应。",
+    title: "你的想法\n值得被听到",
     intro:
-      "在这里提出新功能或报告 Bug。我们会在后台逐条审阅；采纳后会通过你留下的邮箱联系并发放对应奖励。",
-    privacyNote: "昵称与邮箱只用于确认提交和发放奖励，会保存在本机 Cookie 中，两个提交页自动共用。",
+      "在这里提出新功能或报告 Bug。我们会在后台逐条审阅；采纳后会通过邮箱联系并发放对应奖励。",
+    privacyNote: "昵称与邮箱只用于确认提交和发放奖励。",
     tabs: { feature: "新功能提议", bug: "Bug 提交" },
     feature: {
       eyebrow: "新功能提议",
@@ -121,10 +121,10 @@ export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
     languageName: "中文",
     languageHref: "/incentives",
     eyebrow: "Help shape Lyric Island",
-    title: "A thoughtful idea deserves a thoughtful reply.",
+    title: "Your idea\ndeserves to be heard",
     intro:
-      "Suggest a feature or report a bug here. Every submission enters the same review queue, and we will contact you by email when an accepted contribution earns a reward.",
-    privacyNote: "Your nickname and email are used only for follow-up and rewards. They stay in a local cookie and are shared by both forms.",
+      "Suggest a feature or report a bug here. We review every submission; if accepted, we will contact you by email and issue the corresponding reward.",
+    privacyNote: "Your nickname and email are used only to confirm submissions and issue rewards.",
     tabs: { feature: "Feature ideas", bug: "Bug reports" },
     feature: {
       eyebrow: "Feature ideas",

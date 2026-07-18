@@ -424,7 +424,9 @@ export function IncentivePage({ locale }: { locale: Locale }) {
         <section className="incentivesHero sectionContainer">
           <Eyebrow reveal>{copy.eyebrow}</Eyebrow>
           <div className="incentivesHeroGrid">
-            <h1 data-text-reveal="title">{copy.title}</h1>
+            <h1 data-text-reveal="title" style={{ whiteSpace: "pre-line" }}>
+              {copy.title}
+            </h1>
             <div>
               <p>{copy.intro}</p>
               <small>{copy.privacyNote}</small>
