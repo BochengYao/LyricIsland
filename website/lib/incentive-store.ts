@@ -14,6 +14,42 @@ type SupabaseConfig = {
   bucket: string;
 };
 
+type StoredSubmission = Omit<
+  IncentiveSubmission,
+  "developer_reply" | "is_flagged" | "is_public"
+> & { reviewer_note: string | null };
+
+const REVIEW_META_PREFIX = "[[lyric-island-review:v1]]";
+
+function decodeReviewMeta(value: string | null | undefined) {
+  if (!value?.startsWith(REVIEW_META_PREFIX)) {
+    return { developer_reply: value || null, is_flagged: false, is_public: false };
+  }
+  try {
+    const parsed = JSON.parse(value.slice(REVIEW_META_PREFIX.length)) as Record<string, unknown>;
+    return {
+      developer_reply: typeof parsed.reply === "string" && parsed.reply ? parsed.reply : null,
+      is_flagged: parsed.flagged === true,
+      is_public: parsed.public === true
+    };
+  } catch {
+    return { developer_reply: null, is_flagged: false, is_public: false };
+  }
+}
+
+function encodeReviewMeta(meta: { developer_reply: string | null; is_flagged: boolean; is_public: boolean }) {
+  return `${REVIEW_META_PREFIX}${JSON.stringify({
+    reply: meta.developer_reply ?? "",
+    flagged: meta.is_flagged,
+    public: meta.is_public
+  })}`;
+}
+
+function toSubmission(row: StoredSubmission): IncentiveSubmission {
+  const { reviewer_note, ...submission } = row;
+  return { ...submission, ...decodeReviewMeta(reviewer_note) };
+}
+
 function getConfig(): SupabaseConfig {
   const url = process.env.SUPABASE_URL?.replace(/\/$/, "");
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -101,7 +137,7 @@ export async function createSubmission(input: {
   body: string;
   attachments: SubmissionAttachment[];
 }) {
-  const rows = await supabase<IncentiveSubmission[]>(
+  const rows = await supabase<StoredSubmission[]>(
     "/rest/v1/incentive_submissions",
     {
       method: "POST",
@@ -109,12 +145,12 @@ export async function createSubmission(input: {
       body: JSON.stringify(input)
     }
   );
-  return rows[0];
+  return toSubmission(rows[0]);
 }
 
 export async function getPublicIncentives(voterHash?: string) {
-  const rows = await supabase<Array<PublicSuggestion & { attachments?: SubmissionAttachment[] }>>(
-    "/rest/v1/incentive_submissions?select=id,nickname,title,body,created_at,like_count,attachments&kind=eq.feature&status=eq.accepted&order=updated_at.desc&limit=12"
+  const rows = await supabase<Array<Pick<StoredSubmission, "id" | "kind" | "nickname" | "title" | "body" | "created_at" | "like_count" | "attachments" | "reviewer_note">>>(
+    "/rest/v1/incentive_submissions?select=id,kind,nickname,title,body,created_at,like_count,attachments,reviewer_note&order=updated_at.desc&limit=100"
   );
   const likedRows = voterHash
     ? await supabase<Array<{ submission_id: string }>>(
@@ -122,11 +158,13 @@ export async function getPublicIncentives(voterHash?: string) {
       )
     : [];
   const likedIds = new Set(likedRows.map((row) => row.submission_id));
-  const suggestions = await Promise.all(rows.map(async ({ attachments, ...suggestion }) => {
+  const publicRows = rows.filter((row) => decodeReviewMeta(row.reviewer_note).is_public).slice(0, 24);
+  const suggestions = await Promise.all(publicRows.map(async ({ attachments, reviewer_note, ...suggestion }) => {
     const first = attachments?.[0];
     const url = first ? await createSignedUrl(first.path) : undefined;
     return {
       ...suggestion,
+      developer_reply: decodeReviewMeta(reviewer_note).developer_reply,
       liked: likedIds.has(suggestion.id),
       ...(first && url
         ? { attachment: { name: first.name, type: first.type, url } }
@@ -143,19 +181,35 @@ export async function toggleSuggestionLike(
   submissionId: string,
   voterTokenHash: string
 ) {
-  const rows = await supabase<Array<{ liked: boolean; like_count: number }>>(
-    "/rest/v1/rpc/toggle_incentive_like",
-    {
+  const submissions = await supabase<Array<{ id: string; like_count: number; reviewer_note: string | null }>>(
+    `/rest/v1/incentive_submissions?select=id,like_count,reviewer_note&id=eq.${encodeURIComponent(submissionId)}&limit=1`
+  );
+  const submission = submissions[0];
+  if (!submission || !decodeReviewMeta(submission.reviewer_note).is_public) {
+    throw new Error("Suggestion is not available for likes");
+  }
+  const existing = await supabase<Array<{ submission_id: string }>>(
+    `/rest/v1/incentive_likes?select=submission_id&submission_id=eq.${encodeURIComponent(submissionId)}&voter_token_hash=eq.${encodeURIComponent(voterTokenHash)}&limit=1`
+  );
+  const liked = existing.length === 0;
+  if (liked) {
+    await supabase<Array<{ submission_id: string }>>("/rest/v1/incentive_likes", {
       method: "POST",
       headers: headers("return=representation"),
-      body: JSON.stringify({
-        p_submission_id: submissionId,
-        p_voter_token_hash: voterTokenHash
-      })
-    }
+      body: JSON.stringify({ submission_id: submissionId, voter_token_hash: voterTokenHash })
+    });
+  } else {
+    await supabase<Array<{ submission_id: string }>>(
+      `/rest/v1/incentive_likes?submission_id=eq.${encodeURIComponent(submissionId)}&voter_token_hash=eq.${encodeURIComponent(voterTokenHash)}`,
+      { method: "DELETE", headers: headers("return=representation") }
+    );
+  }
+  const likeCount = Math.max(0, submission.like_count + (liked ? 1 : -1));
+  await supabase<StoredSubmission[]>(
+    `/rest/v1/incentive_submissions?id=eq.${encodeURIComponent(submissionId)}`,
+    { method: "PATCH", headers: headers("return=representation"), body: JSON.stringify({ like_count: likeCount }) }
   );
-  if (!rows[0]) throw new Error("Like update returned no result");
-  return rows[0];
+  return { liked, like_count: likeCount };
 }
 
 async function createSignedUrl(path: string) {
@@ -179,11 +233,13 @@ async function createSignedUrl(path: string) {
 }
 
 export async function listSubmissions() {
-  const rows = await supabase<IncentiveSubmission[]>(
+  const rows = await supabase<StoredSubmission[]>(
     "/rest/v1/incentive_submissions?select=*&order=created_at.desc&limit=200"
   );
   return Promise.all(
-    rows.map(async (row) => ({
+    rows.map(async (storedRow) => {
+      const row = toSubmission(storedRow);
+      return ({
       ...row,
       attachments: await Promise.all(
         (row.attachments ?? []).map(async (attachment) => ({
@@ -191,7 +247,7 @@ export async function listSubmissions() {
           signedUrl: await createSignedUrl(attachment.path)
         }))
       )
-    }))
+    });})
   );
 }
 
@@ -200,18 +256,35 @@ export async function updateSubmission(
   changes: {
     status?: SubmissionStatus;
     reward_status?: RewardStatus;
-    reviewer_note?: string | null;
+    developer_reply?: string | null;
+    is_flagged?: boolean;
+    is_public?: boolean;
   }
 ) {
-  const rows = await supabase<IncentiveSubmission[]>(
+  const currentRows = await supabase<StoredSubmission[]>(
+    `/rest/v1/incentive_submissions?select=*&id=eq.${encodeURIComponent(id)}&limit=1`
+  );
+  const current = currentRows[0];
+  if (!current) throw new Error("Submission not found");
+  const currentMeta = decodeReviewMeta(current.reviewer_note);
+  const { developer_reply, is_flagged, is_public, ...storedChanges } = changes;
+  const rows = await supabase<StoredSubmission[]>(
     `/rest/v1/incentive_submissions?id=eq.${encodeURIComponent(id)}`,
     {
       method: "PATCH",
       headers: headers("return=representation"),
-      body: JSON.stringify({ ...changes, updated_at: new Date().toISOString() })
+      body: JSON.stringify({
+        ...storedChanges,
+        reviewer_note: encodeReviewMeta({
+          developer_reply: developer_reply !== undefined ? developer_reply : currentMeta.developer_reply,
+          is_flagged: is_flagged !== undefined ? is_flagged : currentMeta.is_flagged,
+          is_public: is_public !== undefined ? is_public : currentMeta.is_public
+        }),
+        updated_at: new Date().toISOString()
+      })
     }
   );
-  return rows[0];
+  return toSubmission(rows[0]);
 }
 
 export async function listReleasePreviews() {

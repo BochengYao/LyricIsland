@@ -81,6 +81,8 @@ export function v2Suggestions(locale: Locale): PublicSuggestion[] {
     created_at: item.created_at,
     title: item[locale][0],
     body: item[locale][1],
+    kind: "feature",
+    developer_reply: null,
     like_count: 0,
     liked: false
   }));

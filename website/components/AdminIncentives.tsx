@@ -100,7 +100,9 @@ export function AdminIncentives() {
         id: item.id,
         status: item.status,
         reward_status: item.reward_status,
-        reviewer_note: item.reviewer_note ?? ""
+        developer_reply: item.developer_reply ?? "",
+        is_flagged: item.is_flagged,
+        is_public: item.is_public
       })
     });
     const result = (await response.json()) as { error?: string; submission?: IncentiveSubmission };
@@ -117,7 +119,7 @@ export function AdminIncentives() {
   const visibleSubmissions = useMemo(() => submissions.filter((item) =>
     (kindFilter === "all" || item.kind === kindFilter) &&
     (statusFilter === "all" || item.status === statusFilter)
-  ), [submissions, kindFilter, statusFilter]);
+  ).sort((left, right) => Number(right.is_flagged) - Number(left.is_flagged)), [submissions, kindFilter, statusFilter]);
 
   async function createPreview(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -217,7 +219,7 @@ export function AdminIncentives() {
             </header>
             <div className="submissionQueue">
               {visibleSubmissions.map((item) => (
-                <article className="reviewCard" key={item.id}>
+                <article className={`reviewCard ${item.is_flagged ? "isFlagged" : ""}`} key={item.id}>
                   <header>
                     <div><span className={`kindBadge ${item.kind}`}>{item.kind === "feature" ? "新功能" : "Bug"}</span><time>{new Date(item.created_at).toLocaleString("zh-CN")}</time>{item.kind === "feature" && <span aria-label={`点赞 ${item.like_count}`}>♥ {item.like_count}</span>}</div>
                     <strong>{item.title}</strong>
@@ -228,7 +230,8 @@ export function AdminIncentives() {
                   <div className="reviewControls">
                     <div className="reviewOption"><span>审阅状态</span><div className="reviewButtonGroup">{Object.entries(statusLabels).map(([value, label]) => <button type="button" className={item.status === value ? "isActive" : ""} aria-pressed={item.status === value} onClick={() => editSubmission(item.id, { status: value as SubmissionStatus })} key={value}>{label}</button>)}</div></div>
                     <div className="reviewOption"><span>奖励</span><div className="reviewButtonGroup">{Object.entries(rewardLabels).map(([value, label]) => <button type="button" className={item.reward_status === value ? "isActive" : ""} aria-pressed={item.reward_status === value} onClick={() => editSubmission(item.id, { reward_status: value as RewardStatus })} key={value}>{label}</button>)}</div></div>
-                    <label className="reviewNote"><span>内部备注</span><textarea value={item.reviewer_note ?? ""} onChange={(event) => editSubmission(item.id, { reviewer_note: event.target.value })} rows={2} placeholder="可选" /></label>
+                    <div className="reviewOption"><span>管理</span><div className="reviewButtonGroup"><button type="button" className={item.is_flagged ? "isFlagged" : ""} aria-pressed={item.is_flagged} onClick={() => editSubmission(item.id, { is_flagged: !item.is_flagged })}>🚩 {item.is_flagged ? "已红旗标注" : "红旗标注"}</button><button type="button" className={item.is_public ? "isPublic" : ""} aria-pressed={item.is_public} onClick={() => editSubmission(item.id, { is_public: !item.is_public })}>{item.is_public ? "✓ 正在前台展示" : "在前台展示"}</button></div></div>
+                    <label className="reviewNote"><span>开发者回复</span><textarea value={item.developer_reply ?? ""} onChange={(event) => editSubmission(item.id, { developer_reply: event.target.value })} rows={2} placeholder="回复后会随公开卡片展示；不回复则前台不显示此区域" /></label>
                     <div className="reviewSaveRow"><span className={savedId === item.id ? "reviewSaved isVisible" : "reviewSaved"} role="status">✓ 已保存</span><button className="button buttonPrimary" onClick={() => saveSubmission(item)} disabled={savingId === item.id}>{savingId === item.id ? "保存中…" : "保存审阅"}</button></div>
                   </div>
                 </article>

@@ -15,6 +15,7 @@ const VOTER_SECONDS = 60 * 60 * 24 * 365;
 const MAX_FILES = 3;
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
 const MAX_TOTAL_SIZE = 30 * 1024 * 1024;
+const REVIEW_META_PREFIX = "[[lyric-island-review:v1]]";
 const ALLOWED_MIME_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -24,6 +25,35 @@ const ALLOWED_MIME_TYPES = new Set([
   "video/webm",
   "video/quicktime"
 ]);
+
+function decodeReviewMeta(value) {
+  if (!value || !value.startsWith(REVIEW_META_PREFIX)) {
+    return { developer_reply: value || null, is_flagged: false, is_public: false };
+  }
+  try {
+    const parsed = JSON.parse(value.slice(REVIEW_META_PREFIX.length));
+    return {
+      developer_reply: typeof parsed.reply === "string" && parsed.reply ? parsed.reply : null,
+      is_flagged: parsed.flagged === true,
+      is_public: parsed.public === true
+    };
+  } catch {
+    return { developer_reply: null, is_flagged: false, is_public: false };
+  }
+}
+
+function encodeReviewMeta(meta) {
+  return `${REVIEW_META_PREFIX}${JSON.stringify({
+    reply: meta.developer_reply || "",
+    flagged: meta.is_flagged === true,
+    public: meta.is_public === true
+  })}`;
+}
+
+function toSubmission(row) {
+  const { reviewer_note, ...submission } = row;
+  return { ...submission, ...decodeReviewMeta(reviewer_note) };
+}
 
 function json(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
@@ -246,7 +276,7 @@ async function createSignedUrls(paths) {
 
 async function getPublicIncentives(voterHash) {
   const suggestionRequest = supabase(
-    "/rest/v1/incentive_submissions?select=id,nickname,title,body,created_at,like_count,attachments&kind=eq.feature&status=eq.accepted&order=updated_at.desc&limit=12"
+    "/rest/v1/incentive_submissions?select=id,kind,nickname,title,body,created_at,like_count,attachments,reviewer_note&order=updated_at.desc&limit=100"
   );
   const likesRequest = voterHash
     ? supabase(
@@ -262,15 +292,17 @@ async function getPublicIncentives(voterHash) {
     previewRequest
   ]);
   const likedIds = new Set(likedRows.map((row) => row.submission_id));
-  const firstAttachments = rows
+  const publicRows = rows.filter((row) => decodeReviewMeta(row.reviewer_note).is_public).slice(0, 24);
+  const firstAttachments = publicRows
     .map((row) => row.attachments && row.attachments[0])
     .filter(Boolean);
   const signedUrls = await createSignedUrls(firstAttachments.map((item) => item.path));
-  const suggestions = rows.map(({ attachments, ...suggestion }) => {
+  const suggestions = publicRows.map(({ attachments, reviewer_note, ...suggestion }) => {
     const first = attachments && attachments[0];
     const url = first ? signedUrls.get(first.path) : undefined;
     return {
       ...suggestion,
+      developer_reply: decodeReviewMeta(reviewer_note).developer_reply,
       liked: likedIds.has(suggestion.id),
       ...(first && url
         ? { attachment: { name: first.name, type: first.type, url } }
@@ -281,16 +313,36 @@ async function getPublicIncentives(voterHash) {
 }
 
 async function toggleSuggestionLike(submissionId, voterTokenHash) {
-  const rows = await supabase("/rest/v1/rpc/toggle_incentive_like", {
-    method: "POST",
+  const submissions = await supabase(
+    `/rest/v1/incentive_submissions?select=id,like_count,reviewer_note&id=eq.${encodeURIComponent(submissionId)}&limit=1`
+  );
+  const submission = submissions[0];
+  if (!submission || !decodeReviewMeta(submission.reviewer_note).is_public) {
+    throw new Error("Suggestion is not available for likes");
+  }
+  const existing = await supabase(
+    `/rest/v1/incentive_likes?select=submission_id&submission_id=eq.${encodeURIComponent(submissionId)}&voter_token_hash=eq.${encodeURIComponent(voterTokenHash)}&limit=1`
+  );
+  const liked = existing.length === 0;
+  if (liked) {
+    await supabase("/rest/v1/incentive_likes", {
+      method: "POST",
+      headers: supabaseHeaders("return=representation"),
+      body: JSON.stringify({ submission_id: submissionId, voter_token_hash: voterTokenHash })
+    });
+  } else {
+    await supabase(
+      `/rest/v1/incentive_likes?submission_id=eq.${encodeURIComponent(submissionId)}&voter_token_hash=eq.${encodeURIComponent(voterTokenHash)}`,
+      { method: "DELETE", headers: supabaseHeaders("return=representation") }
+    );
+  }
+  const likeCount = Math.max(0, submission.like_count + (liked ? 1 : -1));
+  await supabase(`/rest/v1/incentive_submissions?id=eq.${encodeURIComponent(submissionId)}`, {
+    method: "PATCH",
     headers: supabaseHeaders("return=representation"),
-    body: JSON.stringify({
-      p_submission_id: submissionId,
-      p_voter_token_hash: voterTokenHash
-    })
+    body: JSON.stringify({ like_count: likeCount })
   });
-  if (!rows[0]) throw new Error("Like update returned no result");
-  return rows[0];
+  return { liked, like_count: likeCount };
 }
 
 async function listSubmissions() {
@@ -299,7 +351,9 @@ async function listSubmissions() {
   );
   const attachments = rows.flatMap((row) => row.attachments || []);
   const signedUrls = await createSignedUrls(attachments.map((item) => item.path));
-  return rows.map((row) => ({
+  return rows.map((storedRow) => {
+    const row = toSubmission(storedRow);
+    return ({
     ...row,
     attachments: (row.attachments || []).map((attachment) => ({
       ...attachment,
@@ -307,19 +361,34 @@ async function listSubmissions() {
         ? { signedUrl: signedUrls.get(attachment.path) }
         : {})
     }))
-  }));
+  });});
 }
 
 async function updateSubmission(id, changes) {
+  const currentRows = await supabase(
+    `/rest/v1/incentive_submissions?select=*&id=eq.${encodeURIComponent(id)}&limit=1`
+  );
+  const current = currentRows[0];
+  if (!current) throw new Error("Submission not found");
+  const currentMeta = decodeReviewMeta(current.reviewer_note);
+  const { developer_reply, is_flagged, is_public, ...storedChanges } = changes;
   const rows = await supabase(
     `/rest/v1/incentive_submissions?id=eq.${encodeURIComponent(id)}`,
     {
       method: "PATCH",
       headers: supabaseHeaders("return=representation"),
-      body: JSON.stringify({ ...changes, updated_at: new Date().toISOString() })
+      body: JSON.stringify({
+        ...storedChanges,
+        reviewer_note: encodeReviewMeta({
+          developer_reply: developer_reply !== undefined ? developer_reply : currentMeta.developer_reply,
+          is_flagged: is_flagged !== undefined ? is_flagged : currentMeta.is_flagged,
+          is_public: is_public !== undefined ? is_public : currentMeta.is_public
+        }),
+        updated_at: new Date().toISOString()
+      })
     }
   );
-  return rows[0];
+  return toSubmission(rows[0]);
 }
 
 async function listReleasePreviews() {
@@ -528,17 +597,21 @@ async function handleAdminSubmissions(request) {
     const id = typeof body.id === "string" ? body.id : "";
     const status = statuses.includes(body.status) ? body.status : undefined;
     const reward = rewards.includes(body.reward_status) ? body.reward_status : undefined;
-    const note =
-      typeof body.reviewer_note === "string"
-        ? body.reviewer_note.trim().slice(0, 2000)
+    const reply =
+      typeof body.developer_reply === "string"
+        ? body.developer_reply.trim().slice(0, 2000)
         : undefined;
-    if (!id || (!status && !reward && note === undefined)) {
+    const isFlagged = typeof body.is_flagged === "boolean" ? body.is_flagged : undefined;
+    const isPublic = typeof body.is_public === "boolean" ? body.is_public : undefined;
+    if (!id || (!status && !reward && reply === undefined && isFlagged === undefined && isPublic === undefined)) {
       return jsonError("Invalid update");
     }
     const submission = await updateSubmission(id, {
       ...(status ? { status } : {}),
       ...(reward ? { reward_status: reward } : {}),
-      ...(note !== undefined ? { reviewer_note: note || null } : {})
+      ...(reply !== undefined ? { developer_reply: reply || null } : {}),
+      ...(isFlagged !== undefined ? { is_flagged: isFlagged } : {}),
+      ...(isPublic !== undefined ? { is_public: isPublic } : {})
     });
     return json({ submission });
   } catch {

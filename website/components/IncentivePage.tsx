@@ -263,15 +263,19 @@ function AcceptedRail({
                       aria-hidden={!accessible}
                     >
                       <div className="acceptedCard">
-                        <time className="acceptedTime" dateTime={item.created_at}>
-                          {new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US", {
-                            year: "numeric",
-                            month: locale === "zh" ? "2-digit" : "short",
-                            day: "2-digit"
-                          }).format(new Date(item.created_at))}
-                        </time>
+                        <div className="acceptedCardTop">
+                          <time className="acceptedTime" dateTime={item.created_at}>
+                            {new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US", {
+                              year: "numeric",
+                              month: locale === "zh" ? "2-digit" : "short",
+                              day: "2-digit"
+                            }).format(new Date(item.created_at))}
+                          </time>
+                          <span className={`acceptedKind ${item.kind}`}>{item.kind === "bug" ? "Bug" : locale === "zh" ? "建议" : "Idea"}</span>
+                        </div>
                         <h3>{item.title}</h3>
                         <p>{item.body}</p>
+                        {item.developer_reply && <div className="acceptedDeveloperReply"><strong>{locale === "zh" ? "开发者回复" : "Developer reply"}</strong><p>{item.developer_reply}</p></div>}
                         {item.attachment && (
                           <a
                             className={`acceptedAttachment ${item.attachment.type.startsWith("video/") ? "isVideo" : "isImage"}`}
@@ -449,7 +453,7 @@ export function IncentivePage({ locale }: { locale: Locale }) {
         <section className="acceptedSection">
           <div className="sectionContainer acceptedHeading">
             <Eyebrow reveal>{copy.feature.acceptedEyebrow}</Eyebrow>
-            <h2 data-text-reveal="title">{copy.feature.acceptedTitle}</h2>
+            <div><h2 data-text-reveal="title">{copy.feature.acceptedTitle}</h2><p>{copy.feature.acceptedSubtitle}</p></div>
           </div>
           <AcceptedRail suggestions={suggestions} emptyText={copy.feature.acceptedEmpty} locale={locale} onLike={toggleLike} poppingId={poppingId} />
         </section>

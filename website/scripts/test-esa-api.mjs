@@ -43,15 +43,17 @@ globalThis.fetch = async (input, init = {}) => {
   if (url.includes("/rest/v1/incentive_likes?")) {
     return response([{ submission_id: "11111111-1111-4111-8111-111111111111" }]);
   }
-  if (url.includes("kind=eq.feature")) {
+  if (url.includes("incentive_submissions?select=id,kind,nickname,title,body,created_at,like_count,attachments,reviewer_note")) {
     return response([
       {
         id: "11111111-1111-4111-8111-111111111111",
+        kind: "feature",
         nickname: "Tester",
         title: "A useful suggestion",
         body: "This is a sufficiently detailed public suggestion.",
         created_at: "2026-07-18T00:00:00.000Z",
         like_count: 1,
+        reviewer_note: '[[lyric-island-review:v1]]{"reply":"Planned for the next version.","flagged":false,"public":true}',
         attachments: [
           {
             path: "11111111-1111-4111-8111-111111111111/image.png",
@@ -127,6 +129,7 @@ try {
   const publicData = await publicResponse.json();
   assert.equal(publicData.configured, true);
   assert.equal(publicData.suggestions[0].liked, true);
+  assert.equal(publicData.suggestions[0].developer_reply, "Planned for the next version.");
   assert.match(publicData.suggestions[0].attachment.url, /token=test$/);
   assert.equal(calls.length, 4, "public API must stay within ESA's four-subrequest limit");
   assert.ok(

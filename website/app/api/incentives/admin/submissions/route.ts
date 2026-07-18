@@ -29,16 +29,20 @@ export async function PATCH(request: Request) {
     const reward = rewards.includes(body.reward_status as RewardStatus)
       ? (body.reward_status as RewardStatus)
       : undefined;
-    const note = typeof body.reviewer_note === "string"
-      ? body.reviewer_note.trim().slice(0, 2000)
+    const reply = typeof body.developer_reply === "string"
+      ? body.developer_reply.trim().slice(0, 2000)
       : undefined;
-    if (!id || (!status && !reward && note === undefined)) {
+    const isFlagged = typeof body.is_flagged === "boolean" ? body.is_flagged : undefined;
+    const isPublic = typeof body.is_public === "boolean" ? body.is_public : undefined;
+    if (!id || (!status && !reward && reply === undefined && isFlagged === undefined && isPublic === undefined)) {
       return Response.json({ error: "Invalid update" }, { status: 400 });
     }
     const submission = await updateSubmission(id, {
       ...(status ? { status } : {}),
       ...(reward ? { reward_status: reward } : {}),
-      ...(note !== undefined ? { reviewer_note: note || null } : {})
+      ...(reply !== undefined ? { developer_reply: reply || null } : {}),
+      ...(isFlagged !== undefined ? { is_flagged: isFlagged } : {}),
+      ...(isPublic !== undefined ? { is_public: isPublic } : {})
     });
     return Response.json({ submission });
   } catch {

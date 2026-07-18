@@ -2554,6 +2554,12 @@ p {
   max-width: 760px;
 }
 
+.acceptedHeading > div > p {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 16px;
+}
+
 .acceptedWaterfallViewport {
   position: relative;
   height: 780px;
@@ -2637,10 +2643,10 @@ p {
 .acceptedCardFrame {
   --accepted-card-surface: var(--white);
   display: grid;
-  flex: 0 0 304px;
+  flex: 0 0 356px;
   place-items: center;
   width: 100%;
-  height: 304px;
+  height: 356px;
 }
 
 .acceptedCard {
@@ -2649,11 +2655,35 @@ p {
   flex-direction: column;
   gap: 10px;
   width: min(calc(100% - 14px), 252px);
-  height: 276px;
+  height: 328px;
   padding: 24px 25px 20px;
   border: 1px solid var(--accepted-card-surface);
   border-radius: 40px;
   background: var(--accepted-card-surface);
+}
+
+.acceptedCardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.acceptedKind {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 0 9px;
+  border-radius: var(--radius-pill);
+  background: var(--ink);
+  color: var(--white);
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.acceptedKind.bug {
+  background: #ff7140;
 }
 
 .acceptedTime {
@@ -2678,6 +2708,24 @@ p {
   line-height: 1.45;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 4;
+}
+
+.acceptedDeveloperReply {
+  padding: 9px 11px;
+  border-radius: 12px;
+  background: rgba(20, 20, 19, 0.07);
+}
+
+.acceptedDeveloperReply strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 10px;
+}
+
+.acceptedDeveloperReply p {
+  -webkit-line-clamp: 2;
+  color: var(--charcoal);
+  font-size: 11px;
 }
 
 .acceptedMeta {
@@ -3246,6 +3294,11 @@ p {
   letter-spacing: -0.02em;
 }
 
+.reviewCard.isFlagged {
+  border-color: #e5483f;
+  box-shadow: inset 4px 0 0 #e5483f;
+}
+
 .kindBadge {
   display: inline-flex;
   align-items: center;
@@ -3335,6 +3388,18 @@ p {
   border-color: var(--ink);
   background: var(--ink);
   color: var(--white);
+}
+
+.reviewButtonGroup button.isFlagged {
+  border-color: #c9362d;
+  background: #fff0ed;
+  color: #a82620;
+}
+
+.reviewButtonGroup button.isPublic {
+  border-color: #176b45;
+  background: #e1f4e9;
+  color: #176b45;
 }
 
 .reviewControls textarea {

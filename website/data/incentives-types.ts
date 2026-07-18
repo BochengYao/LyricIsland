@@ -21,14 +21,16 @@ export type IncentiveSubmission = {
   like_count: number;
   status: SubmissionStatus;
   reward_status: RewardStatus;
-  reviewer_note: string | null;
+  developer_reply: string | null;
+  is_flagged: boolean;
+  is_public: boolean;
   created_at: string;
   updated_at: string;
 };
 
 export type PublicSuggestion = Pick<
   IncentiveSubmission,
-  "id" | "nickname" | "title" | "body" | "created_at" | "like_count"
+  "id" | "kind" | "nickname" | "title" | "body" | "created_at" | "like_count" | "developer_reply"
 > & {
   liked: boolean;
   attachment?: {
