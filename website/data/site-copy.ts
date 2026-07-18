@@ -63,7 +63,6 @@ export type SiteCopy = {
     names: string[];
   };
   compatibility: {
-    eyebrow: string;
     title: string;
     body: string;
     note: string;
@@ -202,11 +201,10 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       names: ["专辑封面", "同步歌词", "播放控制", "歌曲信息", "播放进度", "分割线"]
     },
     compatibility: {
-      eyebrow: "跟随正在播放的声音",
-      title: "一个歌词岛，适配多个 Windows 播放器。",
+      title: "一个歌词岛，适配多种播放器",
       body:
-        "通过 Windows SMTC 读取当前媒体会话。你可以跟随最近活跃的播放器，也可以在设置里锁定指定播放器。",
-      note: "具体控制和时间轴能力取决于播放器通过 Windows 提供的信息。",
+        "通过 Windows SMTC 读取当前媒体会话。可以跟随最近活跃的播放器，也允许在设置里锁定指定播放器。",
+      note: "*网易云音乐由于接口限制无法实时同步歌曲进度（播放器内拖动进度条无法同步）。",
       players: ["Apple Music", "QQ 音乐", "网易云音乐", "酷狗音乐", "Spotify", "酷我音乐", "通用 SMTC"]
     },
     sources: {
@@ -363,11 +361,11 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       names: ["Album art", "Synced lyrics", "Playback controls", "Track info", "Progress", "Divider"]
     },
     compatibility: {
-      eyebrow: "Follow the sound",
-      title: "One island for multiple Windows players.",
+      title: "One island, made for many players",
       body:
-        "Lyric Island reads the current media session through Windows SMTC. Follow the most recently active player or lock one in Settings.",
-      note: "Available controls and timeline quality depend on the information each player exposes to Windows.",
+        "Lyric Island reads the current media session through Windows SMTC. It can follow the most recently active player and also lets you lock a specific player in Settings.",
+      note:
+        "*NetEase Cloud Music cannot synchronize song progress in real time due to API limitations (seeking in the player will not synchronize).",
       players: sharedPlayers
     },
     sources: {

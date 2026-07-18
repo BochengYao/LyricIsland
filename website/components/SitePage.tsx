@@ -306,7 +306,6 @@ export function SitePage({ locale }: Props) {
 
         <section className="compatibilitySection" id="players" data-snap-section>
           <div className="sectionContainer">
-            <Eyebrow reveal>{copy.compatibility.eyebrow}</Eyebrow>
             <div className="sectionTitleGrid">
               <h2 data-text-reveal="title">{copy.compatibility.title}</h2>
               <div>
