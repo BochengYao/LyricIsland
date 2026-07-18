@@ -55,7 +55,11 @@ function supabaseHeaders(prefer) {
   requireSupabase();
   return {
     apikey: CONFIG.supabaseKey,
-    Authorization: `Bearer ${CONFIG.supabaseKey}`,
+    // Current sb_secret_ keys are opaque API keys, not JWT bearer tokens.
+    // Keep Authorization only for the legacy JWT-based service_role key.
+    ...(CONFIG.supabaseKey.startsWith("sb_")
+      ? {}
+      : { Authorization: `Bearer ${CONFIG.supabaseKey}` }),
     "Content-Type": "application/json",
     ...(prefer ? { Prefer: prefer } : {})
   };
@@ -186,7 +190,9 @@ async function uploadAttachments(files, submissionId) {
         method: "POST",
         headers: {
           apikey: CONFIG.supabaseKey,
-          Authorization: `Bearer ${CONFIG.supabaseKey}`,
+          ...(CONFIG.supabaseKey.startsWith("sb_")
+            ? {}
+            : { Authorization: `Bearer ${CONFIG.supabaseKey}` }),
           "Content-Type": file.type,
           "x-upsert": "false"
         },

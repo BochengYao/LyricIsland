@@ -129,6 +129,14 @@ try {
   assert.equal(publicData.suggestions[0].liked, true);
   assert.match(publicData.suggestions[0].attachment.url, /token=test$/);
   assert.equal(calls.length, 4, "public API must stay within ESA's four-subrequest limit");
+  assert.ok(
+    calls.every((call) => call.init.headers.apikey === values.__ESA_SUPABASE_SERVICE_ROLE_KEY__),
+    "every Supabase request must send the secret in the apikey header"
+  );
+  assert.ok(
+    calls.every((call) => !("Authorization" in call.init.headers)),
+    "opaque sb_secret_ keys must not be sent as bearer JWTs"
+  );
 
   const loginResponse = await api.fetch(
     new Request("https://lyric-island.top/api/incentives/admin/login", {
