@@ -633,6 +633,13 @@ def test_admin_dashboard(page: Page) -> None:
     page.get_by_role("button", name="版本预告").click()
     expect(page.get_by_role("heading", name="发布版本预告")).to_be_visible()
     expect(page.locator(".previewEditor")).to_be_visible()
+    expect(page.get_by_label("更新内容（中文）")).to_be_visible()
+    expect(page.get_by_label("Update content (English)")).to_be_visible()
+    tbd_button = page.get_by_role("button", name="上线时间待定")
+    expect(tbd_button).to_be_visible()
+    tbd_button.click()
+    expect(tbd_button).to_have_attribute("aria-pressed", "true")
+    expect(page.get_by_label("预计上线时间")).to_be_disabled()
 
 
 def test_submission_validation(page: Page) -> None:

@@ -451,10 +451,11 @@ function lines(value) {
 }
 
 function previewPayload(body) {
+  const version = typeof body.version === "string" ? body.version.trim().slice(0, 40) : "";
   return {
-    version: typeof body.version === "string" ? body.version.trim().slice(0, 40) : "",
-    title_zh: typeof body.title_zh === "string" ? body.title_zh.trim().slice(0, 160) : "",
-    title_en: typeof body.title_en === "string" ? body.title_en.trim().slice(0, 160) : "",
+    version,
+    title_zh: version,
+    title_en: version,
     body_zh: typeof body.body_zh === "string" ? body.body_zh.trim().slice(0, 2400) : "",
     body_en: typeof body.body_en === "string" ? body.body_en.trim().slice(0, 2400) : "",
     highlights_zh: lines(body.highlights_zh),
@@ -632,8 +633,8 @@ async function handleAdminPreviews(request) {
   if (request.method === "POST") {
     try {
       const payload = previewPayload(await request.json());
-      if (!payload.version || !payload.title_zh || !payload.body_zh) {
-        return jsonError("版本号、中文标题和中文说明为必填项");
+      if (!payload.version || !payload.body_zh || !payload.body_en) {
+        return jsonError("版本号、中英文更新内容均为必填项");
       }
       return json({ preview: await createReleasePreview(payload) }, 201);
     } catch {

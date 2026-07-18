@@ -3446,19 +3446,30 @@ p {
   align-items: end;
 }
 
-.previewEditor .previewDateTbd {
-  display: flex;
+.previewDateTbdButton {
+  display: inline-flex;
   min-height: 52px;
   align-items: center;
-  gap: 10px;
-  padding: 0 8px;
+  justify-content: center;
+  padding: 0 24px;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 750;
   white-space: nowrap;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
 }
 
-.previewEditor .previewDateTbd input {
-  width: 18px;
-  min-height: 18px;
-  padding: 0;
+.previewDateTbdButton:hover {
+  transform: translateY(-1px);
+}
+
+.previewDateTbdButton.isActive {
+  background: var(--ink);
+  color: #fff;
 }
 
 .previewEditorActions {

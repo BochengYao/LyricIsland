@@ -113,6 +113,15 @@ globalThis.fetch = async (input, init = {}) => {
     const body = JSON.parse(init.body);
     return response([{ ...body, status: "pending" }], 201);
   }
+  if (url.endsWith("/rest/v1/release_previews") && init.method === "POST") {
+    const body = JSON.parse(init.body);
+    return response([{
+      id: "22222222-2222-4222-8222-222222222222",
+      ...body,
+      created_at: "2026-07-18T00:00:00.000Z",
+      updated_at: "2026-07-18T00:00:00.000Z"
+    }], 201);
+  }
   throw new Error(`Unexpected fetch in ESA API test: ${url}`);
 };
 
@@ -165,6 +174,32 @@ try {
   const adminData = await adminResponse.json();
   assert.match(adminData.submissions[0].attachments[0].signedUrl, /token=test$/);
   assert.equal(calls.length, 2, "admin queue must batch attachment signing");
+
+  calls.length = 0;
+  const previewResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/previews", {
+      method: "POST",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({
+        version: "v2.2 Preview",
+        body_zh: "中文更新内容。",
+        body_en: "English release notes.",
+        target_date: "",
+        status: "draft"
+      })
+    })
+  );
+  assert.equal(previewResponse.status, 201);
+  const previewData = await previewResponse.json();
+  assert.equal(previewData.preview.title_zh, "v2.2 Preview");
+  assert.equal(previewData.preview.title_en, "v2.2 Preview");
+  assert.equal(previewData.preview.body_zh, "中文更新内容。");
+  assert.equal(previewData.preview.body_en, "English release notes.");
+  assert.equal(previewData.preview.target_date, null);
 
   const form = new FormData();
   form.set("kind", "feature");

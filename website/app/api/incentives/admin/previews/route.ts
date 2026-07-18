@@ -8,14 +8,14 @@ import {
 function previewPayload(body: Record<string, unknown>) {
   const status = body.status === "published" ? "published" : "draft";
   const version = typeof body.version === "string" ? body.version.trim().slice(0, 40) : "";
-  const content = typeof body.content === "string" ? body.content.trim().slice(0, 2400) : "";
+  const bodyZh = typeof body.body_zh === "string" ? body.body_zh.trim().slice(0, 2400) : "";
+  const bodyEn = typeof body.body_en === "string" ? body.body_en.trim().slice(0, 2400) : "";
   return {
     version,
-    // Keep the existing database columns compatible while exposing one content field in the admin UI.
     title_zh: version,
-    title_en: "",
-    body_zh: content,
-    body_en: "",
+    title_en: version,
+    body_zh: bodyZh,
+    body_en: bodyEn,
     highlights_zh: [] as string[],
     highlights_en: [] as string[],
     target_date: typeof body.target_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.target_date)
@@ -43,8 +43,8 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as Record<string, unknown>;
     const payload = previewPayload(body);
-    if (!payload.version || !payload.body_zh) {
-      return Response.json({ error: "版本号和预告内容为必填项" }, { status: 400 });
+    if (!payload.version || !payload.body_zh || !payload.body_en) {
+      return Response.json({ error: "版本号、中英文更新内容均为必填项" }, { status: 400 });
     }
     return Response.json({ preview: await createReleasePreview(payload) }, { status: 201 });
   } catch {

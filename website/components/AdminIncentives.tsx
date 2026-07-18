@@ -127,7 +127,8 @@ export function AdminIncentives() {
     const form = new FormData(event.currentTarget);
     const payload = {
       version: form.get("version"),
-      content: form.get("content"),
+      body_zh: form.get("body_zh"),
+      body_en: form.get("body_en"),
       target_date: previewDateTbd ? "" : form.get("target_date"),
       status: form.get("intent")
     };
@@ -246,16 +247,26 @@ export function AdminIncentives() {
               <div className="previewEditorMeta">
                 <label><span>版本号</span><input name="version" placeholder="例如：v2.1 Beta" required /></label>
                 <label><span>预计上线时间</span><input name="target_date" type="date" disabled={previewDateTbd} /></label>
-                <label className="previewDateTbd"><input type="checkbox" checked={previewDateTbd} onChange={(event) => setPreviewDateTbd(event.target.checked)} /><span>上线时间待定</span></label>
+                <button
+                  className={`previewDateTbdButton ${previewDateTbd ? "isActive" : ""}`}
+                  type="button"
+                  aria-pressed={previewDateTbd}
+                  onClick={() => setPreviewDateTbd((current) => !current)}
+                >
+                  {previewDateTbd ? "✓ 上线时间待定" : "上线时间待定"}
+                </button>
               </div>
-              <label><span>预告内容</span><textarea name="content" rows={8} placeholder="写下这个版本准备带来的变化……" required /></label>
+              <div className="previewEditorLanguages">
+                <label><span>更新内容（中文）</span><textarea name="body_zh" rows={9} placeholder="用中文写下这个版本准备带来的变化……" required /></label>
+                <label><span>Update content (English)</span><textarea name="body_en" rows={9} placeholder="Describe the changes in this release in English…" required /></label>
+              </div>
               <div className="previewEditorActions">
                 <button className="button buttonSecondary" type="submit" name="intent" value="draft">保存草稿</button>
                 <button className="button buttonPrimary" type="submit" name="intent" value="published">发布预告</button>
               </div>
             </form>
             <div className="previewAdminList">
-              {previews.map((preview) => <article key={preview.id}><div><span className={preview.status}>{preview.status === "published" ? "已发布" : "草稿"}</span><small>{preview.version} · 预计上线：{preview.target_date ?? "待定"}</small><p>{preview.body_zh}</p></div><button className="button buttonSecondary" onClick={() => togglePreview(preview)}>{preview.status === "published" ? "撤回为草稿" : "发布到前台"}</button></article>)}
+              {previews.map((preview) => <article key={preview.id}><div><span className={preview.status}>{preview.status === "published" ? "已发布" : "草稿"}</span><small>{preview.version} · 预计上线：{preview.target_date ?? "待定"}</small><p lang="zh-CN">中文：{preview.body_zh}</p>{preview.body_en && <p lang="en">English: {preview.body_en}</p>}</div><button className="button buttonSecondary" onClick={() => togglePreview(preview)}>{preview.status === "published" ? "撤回为草稿" : "发布到前台"}</button></article>)}
               {!previews.length && <p className="adminEmpty">还没有版本预告。</p>}
             </div>
           </>
