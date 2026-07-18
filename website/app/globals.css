@@ -1050,14 +1050,16 @@ p {
 }
 
 .modulesCopy h2 {
-  white-space: pre-line;
+  white-space: normal;
 }
 
-.editorNote {
-  padding-top: 24px;
-  border-top: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 14px !important;
+.modulesTitleLine {
+  display: block;
+}
+
+.modulesTitleLineNoWrap {
+  white-space: nowrap;
+  font-size: clamp(0.78em, 3.4vw, 1em);
 }
 
 .moduleComposer {
@@ -1122,18 +1124,13 @@ p {
   font-size: 12px;
 }
 
-.moduleTray i {
-  display: grid;
+.moduleTrayIcon {
   flex: 0 0 auto;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  margin-right: 10px;
-  border-radius: 50%;
-  background: var(--white);
-  color: var(--ink);
-  font-size: 11px;
-  font-style: normal;
+  width: 24px;
+  height: 24px;
+  margin-right: 12px;
+  color: rgba(255, 255, 255, 0.9);
+  fill: currentColor;
 }
 
 .compatibilitySection {

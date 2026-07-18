@@ -60,7 +60,6 @@ export type SiteCopy = {
     eyebrow: string;
     title: string;
     body: string;
-    editorNote: string;
     names: string[];
   };
   compatibility: {
@@ -197,10 +196,9 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
     },
     modules: {
       eyebrow: "由你组合",
-      title: "不只是歌词\n而是你的音乐 HUD。",
+      title: "不只是歌词\n而是你的音乐 HUD",
       body:
         "v2 把歌词岛拆成可组合模块。新增水平积木与自动折叠两种布局，适配你的各种需求。",
-      editorNote: "在设置中把模块拖到真实歌词岛，18 px 吸附、重排、保存或取消。",
       names: ["专辑封面", "同步歌词", "播放控制", "歌曲信息", "播放进度", "分割线"]
     },
     compatibility: {
@@ -359,11 +357,9 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
     },
     modules: {
       eyebrow: "Compose your own",
-      title: "More than lyrics\nYour music HUD, built around you.",
+      title: "More than lyrics\nYour music HUD, built around you",
       body:
         "v2 turns Lyric Island into reusable modules. New horizontal blocks and auto-collapse layouts adapt to whatever you need.",
-      editorNote:
-        "Drag modules onto the real island in Settings, with 18 px snapping, reordering, save, and cancel flows.",
       names: ["Album art", "Synced lyrics", "Playback controls", "Track info", "Progress", "Divider"]
     },
     compatibility: {
