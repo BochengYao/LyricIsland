@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "Xiaolai Nav";
+  src: url("/fonts/xiaolai-nav.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
 :root {
   --canvas: #f3f0ee;
   --surface: #fcfbfa;
@@ -271,9 +279,9 @@ p {
   position: relative;
   isolation: isolate;
   color: #704900;
-  font-family: YouYuan, "幼圆", "Comic Sans MS", "Segoe Print", KaiTi, cursive;
+  font-family: "Xiaolai Nav", YouYuan, "幼圆", "Comic Sans MS", "Segoe Print", KaiTi, cursive;
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 400;
   letter-spacing: 0.055em;
 }
 
