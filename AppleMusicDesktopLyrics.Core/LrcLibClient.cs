@@ -33,7 +33,16 @@ namespace AppleMusicDesktopLyrics.Core
             }
 
             var cleanedTrack = TrackIdentityCleaner.Clean(track);
-            return await TryGetLyricsAsync(BuildSearchRequestUri(cleanedTrack), cleanedTrack).ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(cleanedTrack.Album))
+            {
+                var albumMatch = await TryGetLyricsAsync(BuildSearchRequestUri(cleanedTrack, true), cleanedTrack).ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(albumMatch))
+                {
+                    return albumMatch;
+                }
+            }
+
+            return await TryGetLyricsAsync(BuildSearchRequestUri(cleanedTrack, false), cleanedTrack).ConfigureAwait(false);
         }
 
         private async Task<string> TryGetLyricsAsync(Uri uri, TrackIdentity track)
@@ -131,11 +140,16 @@ namespace AppleMusicDesktopLyrics.Core
             return 0;
         }
 
-        private static Uri BuildSearchRequestUri(TrackIdentity track)
+        private static Uri BuildSearchRequestUri(TrackIdentity track, bool includeAlbum)
         {
             var url = "https://lrclib.net/api/search" +
                 "?track_name=" + Uri.EscapeDataString(track.Title) +
                 "&artist_name=" + Uri.EscapeDataString(track.Artist);
+            if (includeAlbum && !string.IsNullOrWhiteSpace(track.Album))
+            {
+                url += "&album_name=" + Uri.EscapeDataString(track.Album);
+            }
+
             return new Uri(url);
         }
 

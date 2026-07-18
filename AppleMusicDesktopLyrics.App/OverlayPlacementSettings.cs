@@ -4,6 +4,7 @@ using System.Linq;
 using System.IO;
 using System.Text.Json;
 using AppleMusicDesktopLyrics.Core;
+using AppleMusicDesktopLyrics.Core.Layout;
 
 namespace AppleMusicDesktopLyrics.App
 {
@@ -19,6 +20,13 @@ namespace AppleMusicDesktopLyrics.App
         public const double MaxHoverAuraAspectRatio = 2.0;
         public const int MinHoverTransparencyPercent = 0;
         public const int MaxHoverTransparencyPercent = 100;
+        public const int MinAutoRetractSeconds = 1;
+        public const int MinNoPlaybackAutoRetractSeconds = 0;
+        public const int MaxAutoRetractSeconds = 300;
+
+        public int SchemaVersion { get; set; } = 2;
+
+        public IslandLayoutSettings IslandLayouts { get; set; } = IslandLayoutDefaults.Create();
 
         public string ScreenName { get; set; }
 
@@ -48,14 +56,50 @@ namespace AppleMusicDesktopLyrics.App
 
         public bool ShowTranslation { get; set; } = true;
 
+        public HotkeySettings LyricOffsetHotkeys { get; set; } = HotkeySettings.CreateDefault();
+
+        public int DefaultLyricOffsetMilliseconds { get; set; } = 800;
+
+        public int NoPlaybackAutoRetractSeconds { get; set; } = 6;
+
+        public int ExpandedAutoCollapseSeconds { get; set; } = 5;
+
+        public string LockedSourceAppUserModelId { get; set; } = string.Empty;
+
         public OverlayPlacement ToPlacement()
         {
             return new OverlayPlacement(ScreenName ?? string.Empty, NormalizeEdge(Edge), OffsetRatio);
         }
 
+        public OverlayPlacementSettings DeepClone()
+        {
+            var json = JsonSerializer.Serialize(this);
+            return JsonSerializer.Deserialize<OverlayPlacementSettings>(json)
+                ?? new OverlayPlacementSettings();
+        }
+
         public void Normalize()
         {
+            if (SchemaVersion < 2 || IslandLayouts == null)
+            {
+                IslandLayouts = IslandLayoutDefaults.Create();
+            }
+
+            IslandLayouts.Normalize();
             Edge = NormalizeEdge(Edge);
+            LockedSourceAppUserModelId = LockedSourceAppUserModelId ?? string.Empty;
+            LyricOffsetHotkeys = LyricOffsetHotkeys ?? HotkeySettings.CreateDefault();
+            LyricOffsetHotkeys.Normalize();
+            DefaultLyricOffsetMilliseconds = Math.Max(
+                -10000,
+                Math.Min(10000, DefaultLyricOffsetMilliseconds));
+            NoPlaybackAutoRetractSeconds = Math.Max(
+                MinNoPlaybackAutoRetractSeconds,
+                Math.Min(MaxAutoRetractSeconds, NoPlaybackAutoRetractSeconds));
+            ExpandedAutoCollapseSeconds = Math.Max(
+                MinAutoRetractSeconds,
+                Math.Min(MaxAutoRetractSeconds, ExpandedAutoCollapseSeconds));
+            SchemaVersion = 2;
             OffsetRatio = Math.Max(0, Math.Min(1, OffsetRatio));
             CacheLimitMegabytes = Math.Max(MinCacheLimitMegabytes, Math.Min(MaxCacheLimitMegabytes, CacheLimitMegabytes));
             HoverAuraSize = Math.Max(MinHoverAuraSize, Math.Min(MaxHoverAuraSize, HoverAuraSize));
@@ -179,6 +223,12 @@ namespace AppleMusicDesktopLyrics.App
             }
             catch
             {
+                if (File.Exists(path))
+                {
+                    var backup = path + ".corrupt-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
+                    File.Copy(path, backup, true);
+                }
+
                 return new OverlayPlacementSettings();
             }
         }

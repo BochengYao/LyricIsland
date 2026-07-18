@@ -18,7 +18,7 @@ namespace AppleMusicDesktopLyrics.Core
             if (showTranslation)
             {
                 var translated = lyrics.GetCurrentTranslationLine(position, offset);
-                if (!string.IsNullOrWhiteSpace(translated.Text))
+                if (HasMatchingTranslation(current, translated))
                 {
                     return new List<LyricLine> { current, translated }.AsReadOnly();
                 }
@@ -27,6 +27,22 @@ namespace AppleMusicDesktopLyrics.Core
             }
 
             return lyrics.GetCurrentLines(position, offset, multiLine ? 2 : 1);
+        }
+
+        private static bool HasMatchingTranslation(LyricLine current, LyricLine translated)
+        {
+            if (current == null || translated == null || string.IsNullOrWhiteSpace(translated.Text))
+            {
+                return false;
+            }
+
+            var text = translated.Text.Trim();
+            if (text.Length > 0 && text.Trim('/', '／').Length == 0)
+            {
+                return false;
+            }
+
+            return Math.Abs((current.Timestamp - translated.Timestamp).TotalMilliseconds) <= 1000;
         }
     }
 }

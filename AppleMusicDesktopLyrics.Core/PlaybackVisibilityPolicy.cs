@@ -1,3 +1,6 @@
+using System;
+using AppleMusicDesktopLyrics.Core.Media;
+
 namespace AppleMusicDesktopLyrics.Core
 {
     public static class PlaybackVisibilityPolicy
@@ -9,12 +12,42 @@ namespace AppleMusicDesktopLyrics.Core
 
         public static bool ShouldHide(bool hasSession, string title, bool isPlaying, bool keepVisibleHintActive)
         {
-            if (keepVisibleHintActive)
-            {
-                return false;
-            }
+            return ShouldHide(
+                hasSession,
+                title,
+                isPlaying ? MediaPlaybackStatus.Playing : MediaPlaybackStatus.Stopped,
+                TimeSpan.Zero,
+                keepVisibleHintActive,
+                false);
+        }
 
-            return !hasSession || string.IsNullOrWhiteSpace(title) || !isPlaying;
+        public static bool ShouldHide(
+            bool hasSession,
+            string title,
+            MediaPlaybackStatus status,
+            TimeSpan pausedFor,
+            bool keepVisibleHintActive,
+            bool layoutEditing)
+        {
+            if (keepVisibleHintActive || layoutEditing) return false;
+            if (!hasSession || string.IsNullOrWhiteSpace(title)) return true;
+            if (status == MediaPlaybackStatus.Playing) return false;
+            return status != MediaPlaybackStatus.Paused || pausedFor >= TimeSpan.FromSeconds(5);
+        }
+
+        public static bool ShouldHide(
+            bool hasSession,
+            string title,
+            MediaPlaybackStatus status,
+            TimeSpan inactiveFor,
+            bool keepVisibleHintActive,
+            bool layoutEditing,
+            TimeSpan autoRetractDelay)
+        {
+            if (keepVisibleHintActive || layoutEditing) return false;
+            if (!hasSession || string.IsNullOrWhiteSpace(title)) return true;
+            if (status == MediaPlaybackStatus.Playing) return false;
+            return inactiveFor >= autoRetractDelay;
         }
     }
 }

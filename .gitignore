@@ -3,5 +3,6 @@ obj/
 publish/
 tools/
 .vs/
+.worktrees/
 *.user
 *.suo

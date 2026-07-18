@@ -6,15 +6,19 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <Version>2.0.0-beta.1</Version>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <FileVersion>2.0.0.1</FileVersion>
+    <InformationalVersion>2.0.0-beta.1</InformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.SDK.Contracts" Version="10.0.19041.1" />
     <ProjectReference Include="..\AppleMusicDesktopLyrics.Core\AppleMusicDesktopLyrics.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="Assets\app.ico" CopyToOutputDirectory="Always" />
-    <Content Include="..\scripts\now-playing.ps1" Link="scripts\now-playing.ps1" CopyToOutputDirectory="Always" />
   </ItemGroup>
 
   <ItemGroup>

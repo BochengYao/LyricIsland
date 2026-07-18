@@ -5,6 +5,8 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using AppleMusicDesktopLyrics.Core;
+using AppleMusicDesktopLyrics.Core.Layout;
+using AppleMusicDesktopLyrics.Core.Media;
 
 namespace AppleMusicDesktopLyrics.Tests
 {
@@ -20,6 +22,8 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("selects current lyric line with translation", SelectsCurrentLyricLineWithTranslation);
             suite.Run("selects one display line when multiline is disabled", SelectsOneDisplayLineWhenMultilineIsDisabled);
             suite.Run("selects translated display lines when translation is enabled", SelectsTranslatedDisplayLinesWhenTranslationIsEnabled);
+            suite.Run("uses one line for translation placeholder", UsesOneLineForTranslationPlaceholder);
+            suite.Run("does not reuse stale translation for next lyric", DoesNotReuseStaleTranslationForNextLyric);
             suite.Run("parses lyrics package without translation", ParsesLyricsPackageWithoutTranslation);
             suite.Run("detects whether lyrics package has translation", DetectsWhetherLyricsPackageHasTranslation);
             suite.Run("gets current lyric line duration", GetsCurrentLyricLineDuration);
@@ -28,6 +32,7 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("builds stable cache paths from song identity", BuildsStableCachePathsFromSongIdentity);
             suite.Run("evicts least recently used song cache files to stay under size limit", EvictsLeastRecentlyUsedSongCacheFilesToStayUnderSizeLimit);
             suite.Run("uses lrc lib search as the primary lyrics lookup", UsesLrcLibSearchAsPrimaryLyricsLookup);
+            suite.Run("falls back from album scoped lrc lib search", FallsBackFromAlbumScopedLrcLibSearch);
             suite.Run("returns empty lyrics when lrc lib reports 404", ReturnsEmptyLyricsWhenLrcLibReports404);
             suite.Run("returns empty lyrics when lrc lib request times out", ReturnsEmptyLyricsWhenLrcLibRequestTimesOut);
             suite.Run("fetches synced lyrics from netease response", FetchesSyncedLyricsFromNetEaseResponse);
@@ -40,10 +45,49 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("prefers translated fallback lyrics source", PrefersTranslatedFallbackLyricsSource);
             suite.Run("uses fallback lyrics source when primary source throws", UsesFallbackLyricsSourceWhenPrimarySourceThrows);
             suite.Run("cleans combined now playing titles", CleansCombinedNowPlayingTitles);
+            suite.Run("removes featured artist credit from now playing titles", RemovesFeaturedArtistCreditFromNowPlayingTitles);
+            suite.Run("matches lyric candidates when now playing title includes featured artist", MatchesLyricCandidatesWhenNowPlayingTitleIncludesFeaturedArtist);
+            suite.Run("prefers locked media session", PrefersLockedMediaSession);
+            suite.Run("prefers most recently active playing session", PrefersMostRecentlyActivePlayingSession);
+            suite.Run("falls back when locked session disappears", FallsBackWhenLockedSessionDisappears);
+            suite.Run("classifies target SMTC players", ClassifiesTargetSmtcPlayers);
+            suite.Run("uses generic profile for unknown players", UsesGenericProfileForUnknownPlayers);
+            suite.Run("creates independent A and C layouts", CreatesIndependentAAndCLayouts);
+            suite.Run("keeps repeated divider modules", KeepsRepeatedDividerModules);
+            suite.Run("settings schema contains independent layouts", SettingsSchemaContainsIndependentLayouts);
+            suite.Run("settings store backs up corrupt JSON", SettingsStoreBacksUpCorruptJson);
+            suite.Run("builds island geometry for measured module size", BuildsIslandGeometryForMeasuredModuleSize);
+            suite.Run("module host exposes all v2 module views", ModuleHostExposesAllV2ModuleViews);
+            suite.Run("album art is centered with a rounded clip", AlbumArtIsCenteredWithRoundedClip);
+            suite.Run("click expands expandable mode and hover does not", ClickExpandsExpandableModeAndHoverDoesNot);
+            suite.Run("click expanded mode uses configured duration", ClickExpandedModeUsesConfiguredDuration);
+            suite.Run("keeps island expanded while editing", KeepsIslandExpandedWhileEditing);
+            suite.Run("settings layout mode labels are product facing", SettingsLayoutModeLabelsAreProductFacing);
+            suite.Run("module toolbox captures mouse down for drag", ModuleToolboxCapturesMouseDownForDrag);
+            suite.Run("settings stays modeless while editing modules", SettingsStaysModelessWhileEditingModules);
+            suite.Run("expandable island animates measured size", ExpandableIslandAnimatesMeasuredSize);
+            suite.Run("auto retract delays are configurable", AutoRetractDelaysAreConfigurable);
+            suite.Run("lyrics module exposes configurable width", LyricsModuleExposesConfigurableWidth);
+            suite.Run("island background width reserves shaped edge padding", IslandBackgroundWidthReservesShapedEdgePadding);
+            suite.Run("playback controls use apple music style glyphs", PlaybackControlsUseAppleMusicStyleGlyphs);
+            suite.Run("playback controls are not consumed by layout drag", PlaybackControlsAreNotConsumedByLayoutDrag);
+            suite.Run("configured key temporarily suppresses hover transparency", ConfiguredKeyTemporarilySuppressesHoverTransparency);
+            suite.Run("snaps module within eighteen pixels", SnapsModuleWithinEighteenPixels);
+            suite.Run("moves module after crossing midpoint", MovesModuleAfterCrossingMidpoint);
+            suite.Run("moves singleton module instead of duplicating it", MovesSingletonModuleInsteadOfDuplicatingIt);
+            suite.Run("layout drag shows snapped insertion placeholder", LayoutDragShowsSnappedInsertionPlaceholder);
+            suite.Run("cancels layout draft without mutating original", CancelsLayoutDraftWithoutMutatingOriginal);
+            suite.Run("uses approved lyric offset hotkeys", UsesApprovedLyricOffsetHotkeys);
+            suite.Run("settings exposes automatic and locked player selection", SettingsExposesPlayerSelection);
+            suite.Run("estimates missing playback timeline", EstimatesMissingPlaybackTimeline);
+            suite.Run("freezes estimated timeline while paused", FreezesEstimatedTimelineWhilePaused);
+            suite.Run("accepts large real timeline correction", AcceptsLargeRealTimelineCorrection);
             suite.Run("allows only one named application instance", AllowsOnlyOneNamedApplicationInstance);
             suite.Run("signals the existing application instance", SignalsExistingApplicationInstance);
             suite.Run("keeps island visible while playing even without lyrics", KeepsIslandVisibleWhilePlayingEvenWithoutLyrics);
             suite.Run("keeps island visible during startup hint", KeepsIslandVisibleDuringStartupHint);
+            suite.Run("keeps paused island available during grace period", KeepsPausedIslandAvailableDuringGracePeriod);
+            suite.Run("hides paused island after grace period", HidesPausedIslandAfterGracePeriod);
             suite.Run("calculates top-only overlay positions", CalculatesTopOnlyOverlayPositions);
             suite.Run("calculates hidden top-only overlay positions", CalculatesHiddenTopOnlyOverlayPositions);
             suite.Run("snaps dragged overlay to top edge", SnapsDraggedOverlayToTopEdge);
@@ -54,10 +98,18 @@ namespace AppleMusicDesktopLyrics.Tests
             suite.Run("mouse avoidance settings exposes click through option", MouseAvoidanceSettingsExposesClickThroughOption);
             suite.Run("click through keeps left drag available", ClickThroughKeepsLeftDragAvailable);
             suite.Run("settings window exposes theme mode switcher", SettingsWindowExposesThemeModeSwitcher);
+            suite.Run("system theme follows Windows changes live", SystemThemeFollowsWindowsChangesLive);
+            suite.Run("cache settings explains capacity and cleanup", CacheSettingsExplainsCapacityAndCleanup);
+            suite.Run("divider settings update layout modules", DividerSettingsUpdateLayoutModules);
+            suite.Run("hover mask restores full opacity outside aura", HoverMaskRestoresFullOpacityOutsideAura);
             suite.Run("settings first open text uses theme resources", SettingsFirstOpenTextUsesThemeResources);
             suite.Run("line mode segment uses theme-aware colors", LineModeSegmentUsesThemeAwareColors);
-            suite.Run("uses apple music ocr fallback when lyrics sources miss", UsesAppleMusicOcrFallbackWhenLyricsSourcesMiss);
+            suite.Run("does not use apple music ocr fallback when lyrics sources miss", DoesNotUseAppleMusicOcrFallbackWhenLyricsSourcesMiss);
             suite.Run("shows tray icon on startup", ShowsTrayIconOnStartup);
+            suite.Run("main window keeps startup hint without media session", MainWindowKeepsStartupHintWithoutMediaSession);
+            suite.Run("startup hint waits for user confirmation before countdown", StartupHintWaitsForUserConfirmationBeforeCountdown);
+            suite.Run("native SMTC service keeps persistent session subscriptions", NativeSmtcServiceKeepsPersistentSessionSubscriptions);
+            suite.Run("native playback rejects stale lyrics and removes PowerShell bridge", NativePlaybackRejectsStaleLyricsAndRemovesPowerShellBridge);
             return suite.ExitCode;
         }
 
@@ -158,6 +210,32 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.Equal(2, lines.Count);
             Assert.Equal("hello", lines[0].Text);
             Assert.Equal("你好", lines[1].Text);
+        }
+
+        static void UsesOneLineForTranslationPlaceholder()
+        {
+            var lyrics = LyricsPackageParser.Parse(
+                "[00:01.00]Ohhhhh\n" +
+                LyricsPackageParser.TranslationSeparator + "\n" +
+                "[00:01.00]//");
+
+            var lines = LyricsDisplaySelector.Select(lyrics, TimeSpan.FromSeconds(2), TimeSpan.Zero, true, true);
+
+            Assert.Equal(1, lines.Count);
+            Assert.Equal("Ohhhhh", lines[0].Text);
+        }
+
+        static void DoesNotReuseStaleTranslationForNextLyric()
+        {
+            var lyrics = LyricsPackageParser.Parse(
+                "[00:01.00]first\n[00:04.00]second\n" +
+                LyricsPackageParser.TranslationSeparator + "\n" +
+                "[00:01.00]第一句");
+
+            var lines = LyricsDisplaySelector.Select(lyrics, TimeSpan.FromSeconds(5), TimeSpan.Zero, true, true);
+
+            Assert.Equal(1, lines.Count);
+            Assert.Equal("second", lines[0].Text);
         }
 
         static void ParsesLyricsPackageWithoutTranslation()
@@ -270,6 +348,26 @@ namespace AppleMusicDesktopLyrics.Tests
 
             Assert.Equal("[00:01.00]hello\n[00:02.00]world", lrc);
             Assert.Equal("https://lrclib.net/api/search?track_name=Song%20Name&artist_name=Singer%20Name", requested.AbsoluteUri);
+        }
+
+        static void FallsBackFromAlbumScopedLrcLibSearch()
+        {
+            var requests = new List<Uri>();
+            var client = new LrcLibClient(uri =>
+            {
+                requests.Add(uri);
+                return requests.Count == 1
+                    ? "[]"
+                    : "[{\"trackName\":\"Song Name\",\"artistName\":\"Singer Name\",\"syncedLyrics\":\"[00:01.00]fallback\"}]";
+            });
+
+            var lrc = client.GetSyncedLyricsAsync(new TrackIdentity("Song Name", "Singer Name", TimeSpan.FromSeconds(210), "Album Name"))
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.Equal("[00:01.00]fallback", lrc);
+            Assert.Equal("https://lrclib.net/api/search?track_name=Song%20Name&artist_name=Singer%20Name&album_name=Album%20Name", requests[0].AbsoluteUri);
+            Assert.Equal("https://lrclib.net/api/search?track_name=Song%20Name&artist_name=Singer%20Name", requests[1].AbsoluteUri);
         }
 
         static void ReturnsEmptyLyricsWhenLrcLibReports404()
@@ -488,6 +586,449 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.Equal("Taylor Swift", track.Artist);
         }
 
+        static void RemovesFeaturedArtistCreditFromNowPlayingTitles()
+        {
+            var track = TrackIdentityCleaner.Clean(new TrackIdentity(
+                "Dark Horse (feat. Juicy J)",
+                "Katy Perry",
+                TimeSpan.FromSeconds(215),
+                "PRISM"));
+
+            Assert.Equal("Dark Horse", track.Title);
+            Assert.Equal("Katy Perry", track.Artist);
+        }
+
+        static void MatchesLyricCandidatesWhenNowPlayingTitleIncludesFeaturedArtist()
+        {
+            var track = new TrackIdentity(
+                "Dark Horse (feat. Juicy J)",
+                "Katy Perry",
+                TimeSpan.FromSeconds(215),
+                "PRISM");
+
+            Assert.True(LyricsCandidateMatcher.IsReasonable(
+                track,
+                "Dark Horse",
+                "Katy Perry",
+                "PRISM",
+                TimeSpan.FromSeconds(215)));
+        }
+
+        static void PrefersLockedMediaSession()
+        {
+            var now = DateTimeOffset.Parse("2026-07-03T10:00:00+08:00");
+            var spotify = MediaSessionSnapshot.CreateForTest("spotify", MediaPlaybackStatus.Playing, now);
+            var qq = MediaSessionSnapshot.CreateForTest("qqmusic", MediaPlaybackStatus.Paused, now.AddSeconds(-3));
+
+            Assert.Equal("qqmusic", SessionSelectionPolicy.Select(new[] { spotify, qq }, "qqmusic", null).SessionId);
+        }
+
+        static void PrefersMostRecentlyActivePlayingSession()
+        {
+            var now = DateTimeOffset.Parse("2026-07-03T10:00:00+08:00");
+            var older = MediaSessionSnapshot.CreateForTest("spotify", MediaPlaybackStatus.Playing, now.AddSeconds(-5));
+            var newer = MediaSessionSnapshot.CreateForTest("kugou", MediaPlaybackStatus.Playing, now);
+
+            Assert.Equal("kugou", SessionSelectionPolicy.Select(new[] { older, newer }, "", older.SessionId).SessionId);
+        }
+
+        static void FallsBackWhenLockedSessionDisappears()
+        {
+            var now = DateTimeOffset.Parse("2026-07-03T10:00:00+08:00");
+            var available = MediaSessionSnapshot.CreateForTest("spotify", MediaPlaybackStatus.Playing, now);
+
+            Assert.Equal("spotify", SessionSelectionPolicy.Select(new[] { available }, "missing", null).SessionId);
+        }
+
+        static void ClassifiesTargetSmtcPlayers()
+        {
+            Assert.Equal(PlayerKind.QQMusic, PlayerProfileCatalog.Resolve("Tencent.QQMusic.exe").Kind);
+            Assert.Equal(PlayerKind.NetEaseCloudMusicUwp, PlayerProfileCatalog.Resolve("NetEase.CloudMusicUWP_abc!App").Kind);
+            Assert.Equal(PlayerKind.KuGou, PlayerProfileCatalog.Resolve("KuGou.exe").Kind);
+            Assert.Equal(PlayerKind.Spotify, PlayerProfileCatalog.Resolve("Spotify.exe").Kind);
+            Assert.Equal(PlayerKind.Kuwo, PlayerProfileCatalog.Resolve("KwMusic.exe").Kind);
+            Assert.Equal(PlayerKind.AppleMusic, PlayerProfileCatalog.Resolve("AppleMusic.exe").Kind);
+        }
+
+        static void UsesGenericProfileForUnknownPlayers()
+        {
+            Assert.Equal(PlayerKind.Generic, PlayerProfileCatalog.Resolve("Example.Player").Kind);
+        }
+
+        static void CreatesIndependentAAndCLayouts()
+        {
+            var settings = IslandLayoutDefaults.Create();
+            settings.Horizontal.Modules.RemoveAt(0);
+
+            Assert.Equal(IslandModuleType.Lyrics, settings.CompactCollapsed.Modules[0].Type);
+            Assert.True(settings.Horizontal.Modules.Count != settings.CompactExpanded.Modules.Count);
+        }
+
+        static void KeepsRepeatedDividerModules()
+        {
+            var profile = new IslandLayoutProfile();
+            profile.Modules.Add(new IslandModuleInstance(IslandModuleType.Divider));
+            profile.Modules.Add(new IslandModuleInstance(IslandModuleType.Divider));
+            profile.Normalize();
+
+            Assert.Equal(2, profile.Modules.Count);
+        }
+
+        static void SettingsSchemaContainsIndependentLayouts()
+        {
+            var source = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "AppleMusicDesktopLyrics.App", "OverlayPlacementSettings.cs"));
+
+            Assert.True(source.Contains("SchemaVersion"));
+            Assert.True(source.Contains("IslandLayoutSettings"));
+            Assert.True(source.Contains("LockedSourceAppUserModelId"));
+            Assert.True(source.Contains("LyricOffsetHotkeys"));
+        }
+
+        static void SettingsStoreBacksUpCorruptJson()
+        {
+            var source = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "AppleMusicDesktopLyrics.App", "OverlayPlacementSettings.cs"));
+
+            Assert.True(source.Contains(".corrupt-"));
+            Assert.True(source.Contains("File.Copy"));
+        }
+
+        static void BuildsIslandGeometryForMeasuredModuleSize()
+        {
+            var path = IslandGeometryBuilder.BuildTopPath(720, 84);
+
+            Assert.True(path.Contains("L 720,0"));
+            Assert.True(path.Contains("L 69,79"));
+        }
+
+        static void ModuleHostExposesAllV2ModuleViews()
+        {
+            var root = GetSolutionRoot();
+            var source = File.ReadAllText(Path.Combine(
+                root, "AppleMusicDesktopLyrics.App", "Modules", "IslandModuleHost.xaml.cs"));
+
+            Assert.True(source.Contains("LyricsModuleView"));
+            Assert.True(source.Contains("AlbumArtModuleView"));
+            Assert.True(source.Contains("PlaybackControlsModuleView"));
+            Assert.True(source.Contains("TrackInfoModuleView"));
+            Assert.True(source.Contains("ProgressModuleView"));
+            Assert.True(source.Contains("DividerModuleView"));
+        }
+
+        static void AlbumArtIsCenteredWithRoundedClip()
+        {
+            var root = GetSolutionRoot();
+            var albumArt = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "Modules", "AlbumArtModuleView.xaml"));
+            var mainWindow = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml"));
+
+            Assert.True(albumArt.Contains("Width=\"60\""));
+            Assert.True(albumArt.Contains("RectangleGeometry Rect=\"0,0,42,42\" RadiusX=\"4\" RadiusY=\"4\""));
+            Assert.True(albumArt.Contains("VerticalAlignment=\"Center\""));
+            Assert.True(mainWindow.Contains("TranslateTransform Y=\"-2.5\""));
+        }
+
+        static void ClickExpandsExpandableModeAndHoverDoesNot()
+        {
+            var controller = new IslandInteractionController();
+            controller.PointerEntered(TimeSpan.Zero);
+
+            Assert.Equal(IslandInteractionState.Collapsed, controller.GetState(TimeSpan.FromSeconds(5)));
+
+            controller.ToggleExpanded(TimeSpan.FromSeconds(5));
+
+            Assert.Equal(IslandInteractionState.Expanded, controller.GetState(TimeSpan.FromSeconds(5)));
+        }
+
+        static void ClickExpandedModeUsesConfiguredDuration()
+        {
+            var controller = new IslandInteractionController
+            {
+                ExpandedDuration = TimeSpan.FromSeconds(3)
+            };
+            controller.ToggleExpanded(TimeSpan.Zero);
+            controller.PointerLeft(TimeSpan.FromMilliseconds(200));
+            controller.PointerEntered(TimeSpan.FromSeconds(2));
+
+            Assert.Equal(IslandInteractionState.Expanded, controller.GetState(TimeSpan.FromMilliseconds(2999)));
+            Assert.Equal(IslandInteractionState.Collapsed, controller.GetState(TimeSpan.FromMilliseconds(3000)));
+        }
+
+        static void KeepsIslandExpandedWhileEditing()
+        {
+            var controller = new IslandInteractionController();
+            controller.SetEditing(true);
+
+            Assert.Equal(IslandInteractionState.Editing, controller.GetState(TimeSpan.FromHours(1)));
+        }
+
+        static void SettingsLayoutModeLabelsAreProductFacing()
+        {
+            var source = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml.cs"));
+
+            Assert.True(source.Contains("水平模块"));
+            Assert.True(source.Contains("单击展开"));
+            Assert.False(source.Contains("A 模式"));
+            Assert.False(source.Contains("C 模式"));
+            Assert.False(source.Contains("悬停展开"));
+        }
+
+        static void ModuleToolboxCapturesMouseDownForDrag()
+        {
+            var root = GetSolutionRoot();
+            var xaml = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml"));
+            var source = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml.cs"));
+            var mainWindowSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs"));
+
+            Assert.True(xaml.Contains("PreviewMouseLeftButtonDown=\"ModuleToolbox_PreviewMouseLeftButtonDown\""));
+            Assert.True(source.Contains("ModuleToolbox_PreviewMouseLeftButtonDown"));
+            Assert.True(source.Contains("moduleToolboxDragStartPoint"));
+            Assert.True(source.Contains("e.Handled = true"));
+            Assert.False(source.Contains("addModule?.Invoke"));
+            Assert.False(mainWindowSource.Contains("AddModuleFromToolbox"));
+            Assert.True(source.Contains("setModuleDragActive?.Invoke(true)"));
+            Assert.True(mainWindowSource.Contains("moduleDragActive ||"));
+            Assert.True(mainWindowSource.Contains("if (settingsWindow != null)"));
+            Assert.True(mainWindowSource.Contains("layoutEditing ||"));
+            Assert.True(mainWindowSource.Contains("? DragDropEffects.Copy"));
+            Assert.True(mainWindowSource.Contains("OrderBy(target => Math.Abs(target.X - pointerX))"));
+            Assert.True(mainWindowSource.Contains("layoutEditing && IsModuleHostMouseSource"));
+            var mainWindowXaml = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml"));
+            Assert.True(mainWindowXaml.Contains("AllowDrop=\"True\""));
+        }
+
+        static void SettingsStaysModelessWhileEditingModules()
+        {
+            var root = GetSolutionRoot();
+            var mainWindowSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs"));
+            var settingsSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml.cs"));
+
+            Assert.True(mainWindowSource.Contains("settingsWindow.Show();"));
+            Assert.False(mainWindowSource.Contains("window.ShowDialog();"));
+            Assert.True(settingsSource.Contains("Close();"));
+            Assert.False(settingsSource.Contains("DialogResult ="));
+        }
+
+        static void ExpandableIslandAnimatesMeasuredSize()
+        {
+            var root = GetSolutionRoot();
+            var mainWindowSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs"));
+            var mainWindowXaml = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml"));
+
+            Assert.True(mainWindowSource.Contains("AnimateIslandSize"));
+            Assert.True(mainWindowSource.Contains("QuarticEase"));
+            Assert.True(mainWindowSource.Contains("SineEase"));
+            Assert.True(mainWindowXaml.Contains("SizeChanged=\"Window_SizeChanged\""));
+        }
+
+        static void AutoRetractDelaysAreConfigurable()
+        {
+            var root = GetSolutionRoot();
+            var settingsSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "OverlayPlacementSettings.cs"));
+            var settingsXaml = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml"));
+            var mainWindowSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs"));
+
+            Assert.True(settingsSource.Contains("NoPlaybackAutoRetractSeconds"));
+            Assert.True(settingsSource.Contains("ExpandedAutoCollapseSeconds"));
+            Assert.True(settingsXaml.Contains("x:Name=\"NoPlaybackAutoRetractSlider\""));
+            Assert.True(settingsXaml.Contains("x:Name=\"ExpandedAutoCollapseSlider\""));
+            Assert.True(settingsXaml.Contains("Minimum=\"0\""));
+            Assert.True(mainWindowSource.Contains("placementSettings.NoPlaybackAutoRetractSeconds"));
+            Assert.True(mainWindowSource.Contains("placementSettings.ExpandedAutoCollapseSeconds"));
+            Assert.True(mainWindowSource.Contains("TimeSpan.MaxValue"));
+        }
+
+        static void LyricsModuleExposesConfigurableWidth()
+        {
+            var root = GetSolutionRoot();
+            var instanceSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.Core", "Layout", "IslandModuleInstance.cs"));
+            var hostSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "Modules", "IslandModuleHost.xaml.cs"));
+            var lyricsXaml = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "Modules", "LyricsModuleView.xaml"));
+
+            Assert.True(instanceSource.Contains("LyricsWidth"));
+            Assert.True(instanceSource.Contains("DefaultLyricsWidth"));
+            Assert.True(hostSource.Contains("ApplyModuleSettings"));
+            Assert.True(hostSource.Contains("module.LyricsWidth"));
+            Assert.False(lyricsXaml.Contains("Width=\"436\""));
+        }
+
+        static void IslandBackgroundWidthReservesShapedEdgePadding()
+        {
+            var source = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs"));
+
+            Assert.True(source.Contains("IslandHorizontalShapePadding"));
+            Assert.True(source.Contains("ModuleHost.DesiredSize.Width + IslandHorizontalShapePadding"));
+            Assert.True(source.Contains("IslandHorizontalShapePadding = 144"));
+        }
+
+        static void PlaybackControlsUseAppleMusicStyleGlyphs()
+        {
+            var root = GetSolutionRoot();
+            var source = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "Modules", "PlaybackControlsModuleView.xaml"));
+
+            Assert.True(source.Contains("x:Name=\"PlayPauseGlyph\""));
+            Assert.True(source.Contains("x:Name=\"PauseGlyph\""));
+            Assert.True(source.Contains("Data=\"M 11,1 L 11,19 L 0,10 Z M 23,1"));
+            Assert.True(source.Contains("Width=\"108\""));
+            Assert.False(source.Contains("Text=\"⏮\""));
+            Assert.False(source.Contains("Text=\"⏭\""));
+        }
+
+        static void PlaybackControlsAreNotConsumedByLayoutDrag()
+        {
+            var root = GetSolutionRoot();
+            var hostSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "Modules", "IslandModuleHost.xaml.cs"));
+            var windowSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs"));
+            var controlsSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "Modules", "PlaybackControlsModuleView.xaml.cs"));
+
+            Assert.True(hostSource.Contains("!LayoutEditingEnabled"));
+            Assert.True(windowSource.Contains("IsInteractiveMouseSource"));
+            Assert.True(controlsSource.Contains("PlayPauseButton.IsEnabled = session != null"));
+            Assert.True(controlsSource.Contains("PlayPauseButton.IsHitTestVisible = value"));
+            Assert.True(windowSource.Contains("SetPlaybackInteractionEnabled(suppressHoverTransparency)"));
+        }
+
+        static void ConfiguredKeyTemporarilySuppressesHoverTransparency()
+        {
+            var root = GetSolutionRoot();
+            var source = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs"));
+            var hotkeys = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "HotkeySettings.cs"));
+
+            Assert.True(source.Contains("TemporaryInteraction"));
+            Assert.True(source.Contains("HotkeyGestureParser.IsPressed"));
+            Assert.True(hotkeys.Contains("TemporaryInteraction = \"Ctrl\""));
+            Assert.True(source.Contains("Window_KeyUp"));
+        }
+
+        static void SnapsModuleWithinEighteenPixels()
+        {
+            var bounds = new[] { new LayoutInsertionTarget(0, 100), new LayoutInsertionTarget(1, 220) };
+
+            Assert.Equal(1, LayoutEditSession.FindInsertionIndex(204, bounds, 18));
+            Assert.Equal(-1, LayoutEditSession.FindInsertionIndex(180, bounds, 18));
+        }
+
+        static void MovesModuleAfterCrossingMidpoint()
+        {
+            var profile = new IslandLayoutProfile();
+            profile.Modules.Add(new IslandModuleInstance(IslandModuleType.AlbumArt));
+            profile.Modules.Add(new IslandModuleInstance(IslandModuleType.Lyrics));
+            var session = new LayoutEditSession(profile);
+
+            session.Move(session.Draft.Modules[0].Id, 2);
+
+            Assert.Equal(IslandModuleType.Lyrics, session.Draft.Modules[0].Type);
+            Assert.Equal(IslandModuleType.AlbumArt, session.Draft.Modules[1].Type);
+        }
+
+        static void MovesSingletonModuleInsteadOfDuplicatingIt()
+        {
+            var profile = new IslandLayoutProfile();
+            profile.Modules.Add(new IslandModuleInstance(IslandModuleType.AlbumArt));
+            profile.Modules.Add(new IslandModuleInstance(IslandModuleType.Lyrics));
+            var session = new LayoutEditSession(profile);
+
+            session.Add(IslandModuleType.AlbumArt, 2);
+            session.Add(IslandModuleType.Divider, 2);
+            session.Add(IslandModuleType.Divider, 3);
+
+            Assert.Equal(1, session.Draft.Modules.FindAll(module => module.Type == IslandModuleType.AlbumArt).Count);
+            Assert.Equal(2, session.Draft.Modules.FindAll(module => module.Type == IslandModuleType.Divider).Count);
+        }
+
+        static void LayoutDragShowsSnappedInsertionPlaceholder()
+        {
+            var root = GetSolutionRoot();
+            var host = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "Modules", "IslandModuleHost.xaml.cs"));
+            var settingsXaml = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml"));
+            var settingsSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml.cs"));
+
+            Assert.True(host.Contains("insertionPlaceholder"));
+            Assert.True(host.Contains("ShowInsertionPreview"));
+            Assert.True(host.Contains("#661677FF"));
+            Assert.True(host.Contains("CornerRadius = new CornerRadius(9)"));
+            Assert.True(host.Contains("insertionPreviewIndex == index"));
+            Assert.True(settingsXaml.Contains("ModuleToolbox_Drop"));
+            Assert.True(settingsXaml.Contains("IconGeometry"));
+            Assert.True(settingsXaml.Contains("Width=\"{Binding PreviewWidth}\""));
+            Assert.True(settingsSource.Contains("removeModule?.Invoke"));
+            Assert.True(settingsSource.Contains("PreviewWidth = previewWidth"));
+        }
+
+        static void CancelsLayoutDraftWithoutMutatingOriginal()
+        {
+            var profile = new IslandLayoutProfile();
+            profile.Modules.Add(new IslandModuleInstance(IslandModuleType.Lyrics));
+            var session = new LayoutEditSession(profile);
+
+            session.Add(IslandModuleType.Divider, 1);
+            session.Cancel();
+
+            Assert.Equal(1, profile.Modules.Count);
+        }
+
+        static void UsesApprovedLyricOffsetHotkeys()
+        {
+            var root = GetSolutionRoot();
+            var source = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "HotkeySettings.cs"));
+            var settingsXaml = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml"));
+
+            Assert.True(source.Contains("Ctrl+Alt+Left"));
+            Assert.True(source.Contains("Ctrl+Alt+Right"));
+            Assert.True(source.Contains("Ctrl+Alt+Down"));
+            Assert.True(source.Contains("TemporaryInteraction"));
+            Assert.True(settingsXaml.Contains("EarlierHotkeyTextBox"));
+            Assert.True(settingsXaml.Contains("LaterHotkeyTextBox"));
+            Assert.True(settingsXaml.Contains("ResetHotkeyTextBox"));
+            Assert.True(settingsXaml.Contains("TemporaryInteractionHotkeyTextBox"));
+        }
+
+        static void SettingsExposesPlayerSelection()
+        {
+            var xaml = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml"));
+
+            Assert.True(xaml.Contains("x:Name=\"PlayerSelectionComboBox\""));
+            Assert.True(xaml.Contains("自动选择"));
+        }
+
+        static void EstimatesMissingPlaybackTimeline()
+        {
+            var clock = new FakeMonotonicClock();
+            var coordinator = new TimelineCoordinator(clock);
+            coordinator.Update(TimeSpan.FromSeconds(20), true, MediaPlaybackStatus.Playing);
+            clock.Advance(TimeSpan.FromSeconds(3));
+
+            var result = coordinator.Update(TimeSpan.Zero, false, MediaPlaybackStatus.Playing);
+
+            Assert.Equal(TimeSpan.FromSeconds(23), result.Position);
+            Assert.Equal(TimelineReliability.Estimated, result.Reliability);
+        }
+
+        static void FreezesEstimatedTimelineWhilePaused()
+        {
+            var clock = new FakeMonotonicClock();
+            var coordinator = new TimelineCoordinator(clock);
+            coordinator.Update(TimeSpan.FromSeconds(20), true, MediaPlaybackStatus.Playing);
+            clock.Advance(TimeSpan.FromSeconds(2));
+            coordinator.Update(TimeSpan.Zero, false, MediaPlaybackStatus.Paused);
+            clock.Advance(TimeSpan.FromSeconds(5));
+
+            Assert.Equal(TimeSpan.FromSeconds(22), coordinator.Update(TimeSpan.Zero, false, MediaPlaybackStatus.Paused).Position);
+        }
+
+        static void AcceptsLargeRealTimelineCorrection()
+        {
+            var clock = new FakeMonotonicClock();
+            var coordinator = new TimelineCoordinator(clock);
+            coordinator.Update(TimeSpan.FromSeconds(20), true, MediaPlaybackStatus.Playing);
+            clock.Advance(TimeSpan.FromSeconds(2));
+
+            Assert.Equal(TimeSpan.FromSeconds(40), coordinator.Update(TimeSpan.FromSeconds(40), true, MediaPlaybackStatus.Playing).Position);
+        }
+
         static void AllowsOnlyOneNamedApplicationInstance()
         {
             var name = "AppleMusicDesktopLyrics.Tests." + Guid.NewGuid().ToString("N");
@@ -523,6 +1064,18 @@ namespace AppleMusicDesktopLyrics.Tests
         {
             Assert.False(PlaybackVisibilityPolicy.ShouldHide(false, "", false, true));
             Assert.True(PlaybackVisibilityPolicy.ShouldHide(false, "", false, false));
+        }
+
+        static void KeepsPausedIslandAvailableDuringGracePeriod()
+        {
+            Assert.False(PlaybackVisibilityPolicy.ShouldHide(
+                true, "Song", MediaPlaybackStatus.Paused, TimeSpan.FromSeconds(3), false, false));
+        }
+
+        static void HidesPausedIslandAfterGracePeriod()
+        {
+            Assert.True(PlaybackVisibilityPolicy.ShouldHide(
+                true, "Song", MediaPlaybackStatus.Paused, TimeSpan.FromSeconds(6), false, false));
         }
 
         static void CalculatesTopOnlyOverlayPositions()
@@ -610,7 +1163,7 @@ namespace AppleMusicDesktopLyrics.Tests
             var rowDefinitions = xaml.Substring(panelStart, columnsStart - panelStart);
             var rowCount = CountOccurrences(rowDefinitions, "<RowDefinition");
 
-            Assert.True(rowCount >= 8);
+            Assert.True(rowCount >= 11);
             Assert.True(xaml.Contains("x:Name=\"HoverDetectionRangeSlider\""));
             Assert.True(xaml.Contains("Minimum=\"60\""));
         }
@@ -706,21 +1259,14 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.True(xaml.Contains("<Setter Property=\"Opacity\" Value=\"1\" />"));
         }
 
-        static void UsesAppleMusicOcrFallbackWhenLyricsSourcesMiss()
+        static void DoesNotUseAppleMusicOcrFallbackWhenLyricsSourcesMiss()
         {
             var root = GetSolutionRoot();
             var mainWindowSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs"));
-            var fallbackSourcePath = Path.Combine(root, "AppleMusicDesktopLyrics.App", "AppleMusicOcrLyricsReader.cs");
 
-            Assert.True(File.Exists(fallbackSourcePath));
-            var fallbackSource = File.ReadAllText(fallbackSourcePath);
-            Assert.True(mainWindowSource.Contains("appleMusicOcrLyricsReader"));
-            Assert.True(mainWindowSource.Contains("TryReadAppleMusicOcrFallbackAsync"));
-            Assert.True(mainWindowSource.Contains("Apple Music 内置歌词识别"));
-            Assert.True(fallbackSource.Contains("tesseract.exe"));
-            Assert.True(fallbackSource.Contains("CopyFromScreen"));
-            Assert.True(fallbackSource.Contains("BuildHighContrastWhiteTextImage"));
-            Assert.True(fallbackSource.Contains("Codex") && fallbackSource.Contains("插件"));
+            Assert.False(mainWindowSource.Contains("appleMusicOcrLyricsReader"));
+            Assert.False(mainWindowSource.Contains("TryReadAppleMusicOcrFallbackAsync"));
+            Assert.False(mainWindowSource.Contains("Apple Music 内置歌词识别"));
         }
 
         static void ShowsTrayIconOnStartup()
@@ -740,6 +1286,108 @@ namespace AppleMusicDesktopLyrics.Tests
             Assert.True(mainWindowSource.Contains("Assets") && mainWindowSource.Contains("app.ico"));
             Assert.True(projectSource.Contains("Assets\\app.ico"));
             Assert.True(projectSource.Contains("CopyToOutputDirectory=\"Always\""));
+        }
+
+        static void SystemThemeFollowsWindowsChangesLive()
+        {
+            var source = File.ReadAllText(Path.Combine(GetSolutionRoot(), "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml.cs"));
+
+            Assert.True(source.Contains("SystemEvents.UserPreferenceChanged +="));
+            Assert.True(source.Contains("SystemEvents.UserPreferenceChanged -="));
+            Assert.True(source.Contains("selectedThemePreference == SettingsThemePreference.System"));
+        }
+
+        static void CacheSettingsExplainsCapacityAndCleanup()
+        {
+            var xaml = File.ReadAllText(Path.Combine(GetSolutionRoot(), "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml"));
+
+            Assert.True(xaml.Contains("1 MB ≈ 100 首"));
+            Assert.True(xaml.Contains("500 MB ≈ 50,000 首"));
+            Assert.True(xaml.Contains("1000 MB ≈ 100,000 首"));
+            Assert.True(xaml.Contains("最久未使用"));
+        }
+
+        static void DividerSettingsUpdateLayoutModules()
+        {
+            var root = GetSolutionRoot();
+            var settings = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "PlacementSettingsWindow.xaml.cs"));
+            var main = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs"));
+            var host = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "Modules", "IslandModuleHost.xaml.cs"));
+
+            Assert.True(settings.Contains("ApplyDividerSettings"));
+            Assert.True(settings.Contains("updateDividerSettings?.Invoke"));
+            Assert.True(main.Contains("UpdateDividerSettings"));
+            Assert.True(main.Contains("RemoveDividers"));
+            Assert.True(host.Contains("module.DividerOpacity.ToString"));
+            Assert.True(host.Contains("module.MarginBefore.ToString"));
+        }
+
+        static void HoverMaskRestoresFullOpacityOutsideAura()
+        {
+            var source = File.ReadAllText(Path.Combine(GetSolutionRoot(), "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs"));
+
+            Assert.True(source.Contains("HoverMaskContentRadiusScale"));
+            Assert.True(source.Contains("new GradientStop(Colors.White, 1.0)"));
+            Assert.False(source.Contains("placementSettings.HoverSpectrumStops,\n                    16"));
+        }
+
+        static void MainWindowKeepsStartupHintWithoutMediaSession()
+        {
+            var root = GetSolutionRoot();
+            var mainWindowSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs"));
+            var branchStart = mainWindowSource.IndexOf("if (selected == null)", StringComparison.Ordinal);
+            var selectedNullBranch = mainWindowSource.Substring(branchStart, 520);
+
+            Assert.True(selectedNullBranch.Contains("IsStartupHintActive()"));
+            Assert.True(selectedNullBranch.Contains("ShowIsland();"));
+        }
+
+        static void StartupHintWaitsForUserConfirmationBeforeCountdown()
+        {
+            var root = GetSolutionRoot();
+            var mainWindowSource = File.ReadAllText(Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs"));
+            var hintStart = mainWindowSource.IndexOf("public void ShowWaitingForPlaybackHint()", StringComparison.Ordinal);
+            var hintEnd = mainWindowSource.IndexOf("private void ConfirmStartupHint()", hintStart, StringComparison.Ordinal);
+            var hintMethod = mainWindowSource.Substring(hintStart, hintEnd - hintStart);
+
+            Assert.True(hintMethod.Contains("startupHintAwaitingConfirmation = true"));
+            Assert.True(hintMethod.Contains("点击歌词岛或按任意键确认"));
+            Assert.False(hintMethod.Contains("startupHintTimer.Start();"));
+            Assert.True(mainWindowSource.Contains("ConfirmStartupHint();"));
+        }
+
+        static void NativeSmtcServiceKeepsPersistentSessionSubscriptions()
+        {
+            var root = GetSolutionRoot();
+            var projectPath = Path.Combine(root, "AppleMusicDesktopLyrics.App", "AppleMusicDesktopLyrics.App.csproj");
+            var servicePath = Path.Combine(root, "AppleMusicDesktopLyrics.App", "Media", "SmTcMediaSessionService.cs");
+
+            Assert.True(File.Exists(servicePath));
+            var projectSource = File.ReadAllText(projectPath);
+            var serviceSource = File.ReadAllText(servicePath);
+
+            Assert.True(projectSource.Contains("Microsoft.Windows.SDK.Contracts"));
+            Assert.True(projectSource.Contains("10.0.19041.1"));
+            Assert.True(serviceSource.Contains("GlobalSystemMediaTransportControlsSessionManager"));
+            Assert.True(serviceSource.Contains("AttachSession(session)"));
+            Assert.True(serviceSource.Contains("DetachSessions()"));
+            Assert.True(serviceSource.Contains("Session_Changed"));
+        }
+
+        static void NativePlaybackRejectsStaleLyricsAndRemovesPowerShellBridge()
+        {
+            var root = GetSolutionRoot();
+            var mainWindowPath = Path.Combine(root, "AppleMusicDesktopLyrics.App", "MainWindow.xaml.cs");
+            var projectPath = Path.Combine(root, "AppleMusicDesktopLyrics.App", "AppleMusicDesktopLyrics.App.csproj");
+            var mainWindowSource = File.ReadAllText(mainWindowPath);
+            var projectSource = File.ReadAllText(projectPath);
+
+            Assert.True(mainWindowSource.Contains("SessionSelectionPolicy.Select"));
+            Assert.True(mainWindowSource.Contains("lyricLoadGeneration"));
+            Assert.True(mainWindowSource.Contains("generation == lyricLoadGeneration"));
+            Assert.False(mainWindowSource.Contains("PowerShellNowPlayingProvider"));
+            Assert.False(projectSource.Contains("now-playing.ps1"));
+            Assert.False(File.Exists(Path.Combine(root, "scripts", "now-playing.ps1")));
         }
 
         static string GetSolutionRoot()
@@ -770,6 +1418,12 @@ namespace AppleMusicDesktopLyrics.Tests
 
             return count;
         }
+    }
+
+    sealed class FakeMonotonicClock : IMonotonicClock
+    {
+        public TimeSpan Elapsed { get; private set; }
+        public void Advance(TimeSpan value) { Elapsed += value; }
     }
 
     sealed class FakeLyricsClient : ILyricsClient

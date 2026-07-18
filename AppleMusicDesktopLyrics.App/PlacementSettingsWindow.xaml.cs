@@ -7,25 +7,61 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Win32;
+using AppleMusicDesktopLyrics.App.LayoutEditing;
 using AppleMusicDesktopLyrics.Core;
+using AppleMusicDesktopLyrics.Core.Layout;
+using AppleMusicDesktopLyrics.Core.Media;
 
 namespace AppleMusicDesktopLyrics.App
 {
     public partial class PlacementSettingsWindow : Window
     {
         private readonly IReadOnlyList<OverlayScreenArea> screens;
+        private readonly IReadOnlyList<MediaSessionSnapshot> playerSessions;
         private readonly Action<OverlayPlacementSettings> applySettings;
+        private readonly Action<IslandLayoutMode, bool> beginLayoutEditing;
+        private readonly Action saveLayoutEditing;
+        private readonly Action cancelLayoutEditing;
+        private readonly Action<IslandLayoutMode, double> updateLyricsWidth;
+        private readonly Action<IslandLayoutMode, double, double> updateDividerSettings;
+        private readonly Action<IslandLayoutMode> removeDividers;
+        private readonly Action<string> removeModule;
+        private readonly Action<bool> setModuleDragActive;
         private readonly int initialCacheLimitMegabytes;
+        private OverlayPlacementSettings workingSettings;
         private SettingsThemePreference selectedThemePreference = SettingsThemePreference.System;
+        private bool layoutEditingActive;
+        private bool suppressLayoutSelectionChanged;
+        private bool systemThemeEventsSubscribed;
+        private Point? moduleToolboxDragStartPoint;
+        private ModuleToolboxOption moduleToolboxDragOption;
 
         public PlacementSettingsWindow(
             IReadOnlyList<OverlayScreenArea> screens,
             OverlayPlacementSettings currentSettings,
-            Action<OverlayPlacementSettings> applySettings)
+            Action<OverlayPlacementSettings> applySettings,
+            IReadOnlyList<MediaSessionSnapshot> playerSessions = null,
+            Action<IslandLayoutMode, bool> beginLayoutEditing = null,
+            Action saveLayoutEditing = null,
+            Action cancelLayoutEditing = null,
+            Action<IslandLayoutMode, double> updateLyricsWidth = null,
+            Action<IslandLayoutMode, double, double> updateDividerSettings = null,
+            Action<IslandLayoutMode> removeDividers = null,
+            Action<string> removeModule = null,
+            Action<bool> setModuleDragActive = null)
         {
             InitializeComponent();
             this.screens = screens ?? new List<OverlayScreenArea>().AsReadOnly();
+            this.playerSessions = playerSessions ?? new List<MediaSessionSnapshot>().AsReadOnly();
             this.applySettings = applySettings ?? throw new ArgumentNullException(nameof(applySettings));
+            this.beginLayoutEditing = beginLayoutEditing;
+            this.saveLayoutEditing = saveLayoutEditing;
+            this.cancelLayoutEditing = cancelLayoutEditing;
+            this.updateLyricsWidth = updateLyricsWidth;
+            this.updateDividerSettings = updateDividerSettings;
+            this.removeDividers = removeDividers;
+            this.removeModule = removeModule;
+            this.setModuleDragActive = setModuleDragActive;
 
             ScreenComboBox.ItemsSource = this.screens
                 .Select((screen, index) => new ScreenOption(screen.Name, "显示器 " + (index + 1) + " (" + (int)screen.WorkWidth + " x " + (int)screen.WorkHeight + ")"))
@@ -41,6 +77,8 @@ namespace AppleMusicDesktopLyrics.App
 
             var settings = currentSettings ?? new OverlayPlacementSettings();
             settings.Normalize();
+            workingSettings = settings;
+            workingSettings.Normalize();
             initialCacheLimitMegabytes = settings.CacheLimitMegabytes;
             selectedThemePreference = settings.SettingsTheme;
             SetThemeRadioButton(selectedThemePreference);
@@ -53,58 +91,426 @@ namespace AppleMusicDesktopLyrics.App
                 ? this.screens.FirstOrDefault()?.Name
                 : settings.ScreenName;
             OffsetSlider.Value = Math.Max(0, Math.Min(100, settings.OffsetRatio * 100));
+            NoPlaybackAutoRetractSlider.Value = settings.NoPlaybackAutoRetractSeconds;
+            ExpandedAutoCollapseSlider.Value = settings.ExpandedAutoCollapseSeconds;
             CacheLimitTextBox.Text = settings.CacheLimitMegabytes.ToString(CultureInfo.InvariantCulture);
             HoverAuraSizeSlider.Value = settings.HoverAuraSize;
             HoverDetectionRangeSlider.Value = settings.HoverDetectionRange;
             HoverAuraAspectRatioSlider.Value = settings.HoverAuraAspectRatio;
             PassThroughOnHoverCheckBox.IsChecked = settings.PassThroughOnHover;
+            EarlierHotkeyTextBox.Text = settings.LyricOffsetHotkeys.Earlier;
+            LaterHotkeyTextBox.Text = settings.LyricOffsetHotkeys.Later;
+            ResetHotkeyTextBox.Text = settings.LyricOffsetHotkeys.Reset;
+            TemporaryInteractionHotkeyTextBox.Text = settings.LyricOffsetHotkeys.TemporaryInteraction;
             SetHoverSpectrumControls(settings.HoverSpectrumStops);
+            InitializeLayoutEditingControls(settings);
+            InitializePlayerSelection(settings);
             UpdateTranslationLineModeLock();
             UpdateSettingValueLabels();
             LyricsSectionButton.IsChecked = true;
             ShowSection("Lyrics");
             Loaded += (sender, args) =>
             {
+                SubscribeToSystemThemeChanges();
                 ApplySettingsTheme();
                 CenterOnDesktop();
             };
+            Closing += (sender, args) =>
+            {
+                if (layoutEditingActive)
+                {
+                    CancelLayoutEditing();
+                }
+            };
+            Closed += (sender, args) => UnsubscribeFromSystemThemeChanges();
+        }
+
+        private void SubscribeToSystemThemeChanges()
+        {
+            if (systemThemeEventsSubscribed)
+            {
+                return;
+            }
+
+            SystemEvents.UserPreferenceChanged += SystemEvents_UserPreferenceChanged;
+            systemThemeEventsSubscribed = true;
+        }
+
+        private void UnsubscribeFromSystemThemeChanges()
+        {
+            if (!systemThemeEventsSubscribed)
+            {
+                return;
+            }
+
+            SystemEvents.UserPreferenceChanged -= SystemEvents_UserPreferenceChanged;
+            systemThemeEventsSubscribed = false;
+        }
+
+        private void SystemEvents_UserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
+        {
+            if (selectedThemePreference == SettingsThemePreference.System)
+            {
+                Dispatcher.BeginInvoke(new Action(ApplySettingsTheme));
+            }
         }
 
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
+            SaveLayoutEditingIfActive();
             applySettings(ReadSettings());
-            DialogResult = true;
+            Close();
         }
 
         private void ApplyButton_Click(object sender, RoutedEventArgs e)
         {
+            SaveLayoutEditingIfActive();
             applySettings(ReadSettings());
         }
 
         private void CancelButton_Click(object sender, RoutedEventArgs e)
         {
-            DialogResult = false;
+            Close();
         }
 
         private OverlayPlacementSettings ReadSettings()
         {
-            return new OverlayPlacementSettings
+            var settings = workingSettings?.DeepClone() ?? new OverlayPlacementSettings();
+            settings.IslandLayouts = settings.IslandLayouts ?? IslandLayoutDefaults.Create();
+            settings.ScreenName = ScreenComboBox.SelectedValue as string ?? screens.FirstOrDefault()?.Name ?? string.Empty;
+            settings.Edge = OverlayDockEdge.Top;
+            settings.OffsetRatio = OffsetSlider.Value / 100.0;
+            settings.CacheLimitMegabytes = ReadCacheLimitMegabytes();
+            settings.NoPlaybackAutoRetractSeconds = (int)Math.Round(NoPlaybackAutoRetractSlider.Value);
+            settings.ExpandedAutoCollapseSeconds = (int)Math.Round(ExpandedAutoCollapseSlider.Value);
+            settings.HoverAuraSize = (int)Math.Round(HoverAuraSizeSlider.Value);
+            settings.HoverDetectionRange = (int)Math.Round(HoverDetectionRangeSlider.Value);
+            settings.HoverAuraAspectRatio = HoverAuraAspectRatioSlider.Value;
+            settings.HoverTransparencyPercent = (int)Math.Round(SpectrumCenterTransparencySlider.Value);
+            settings.HoverSpectrumStops = ReadHoverSpectrumStops();
+            settings.PassThroughOnHover = PassThroughOnHoverCheckBox.IsChecked == true;
+            settings.SettingsTheme = selectedThemePreference;
+            settings.LyricsSource = ReadLyricsSource();
+            settings.LockedSourceAppUserModelId = PlayerSelectionComboBox.SelectedValue as string ?? string.Empty;
+            settings.UseMultiLineDisplay = ReadUseMultiLineDisplay();
+            settings.ShowTranslation = ShowTranslationCheckBox.IsChecked == true;
+            settings.LyricOffsetHotkeys = new HotkeySettings
             {
-                ScreenName = ScreenComboBox.SelectedValue as string ?? screens.FirstOrDefault()?.Name ?? string.Empty,
-                Edge = OverlayDockEdge.Top,
-                OffsetRatio = OffsetSlider.Value / 100.0,
-                CacheLimitMegabytes = ReadCacheLimitMegabytes(),
-                HoverAuraSize = (int)Math.Round(HoverAuraSizeSlider.Value),
-                HoverDetectionRange = (int)Math.Round(HoverDetectionRangeSlider.Value),
-                HoverAuraAspectRatio = HoverAuraAspectRatioSlider.Value,
-                HoverTransparencyPercent = (int)Math.Round(SpectrumCenterTransparencySlider.Value),
-                HoverSpectrumStops = ReadHoverSpectrumStops(),
-                PassThroughOnHover = PassThroughOnHoverCheckBox.IsChecked == true,
-                SettingsTheme = selectedThemePreference,
-                LyricsSource = ReadLyricsSource(),
-                UseMultiLineDisplay = ReadUseMultiLineDisplay(),
-                ShowTranslation = ShowTranslationCheckBox.IsChecked == true
+                Earlier = EarlierHotkeyTextBox.Text,
+                Later = LaterHotkeyTextBox.Text,
+                Reset = ResetHotkeyTextBox.Text,
+                TemporaryInteraction = TemporaryInteractionHotkeyTextBox.Text
             };
+            settings.IslandLayouts.Mode = ReadEditedLayoutMode();
+            ApplyLyricsWidth(settings, LyricsWidthSlider.Value);
+            ApplyDividerSettings(settings, ReadEditedLayoutMode(), DividerOpacitySlider.Value, DividerSpacingSlider.Value);
+            settings.Normalize();
+            workingSettings = settings.DeepClone();
+            return settings;
+        }
+
+        private void InitializeLayoutEditingControls(OverlayPlacementSettings settings)
+        {
+            ModuleToolbox.ItemsSource = new[]
+            {
+                new ModuleToolboxOption(IslandModuleType.Lyrics, "歌词", 92, "M3,3 L15,3 L15,5 L3,5 Z M3,8 L13,8 L13,10 L3,10 Z M3,13 L10,13 L10,15 L3,15 Z"),
+                new ModuleToolboxOption(IslandModuleType.AlbumArt, "封面", 48, "M2,2 L16,2 L16,16 L2,16 Z M4,13 L8,8 L11,11 L13,9 L15,13 Z M12,5 A2,2 0 1 1 11.99,5 Z"),
+                new ModuleToolboxOption(IslandModuleType.PlaybackControls, "播放", 68, "M3,2 L3,16 L13,9 Z M14,2 L16,2 L16,16 L14,16 Z"),
+                new ModuleToolboxOption(IslandModuleType.TrackInfo, "信息", 78, "M2,3 L16,3 L16,5 L2,5 Z M2,8 L13,8 L13,10 L2,10 Z M2,13 L10,13 L10,15 L2,15 Z"),
+                new ModuleToolboxOption(IslandModuleType.Progress, "进度", 74, "M2,8 L16,8 L16,10 L2,10 Z M9,6 A3,3 0 1 1 8.99,6 Z"),
+                new ModuleToolboxOption(IslandModuleType.Divider, "分割", 38, "M8,1 L10,1 L10,17 L8,17 Z")
+            };
+            EditedLayoutComboBox.ItemsSource = new[]
+            {
+                new LayoutModeOption(IslandLayoutMode.HorizontalBlocks, "水平模块"),
+                new LayoutModeOption(IslandLayoutMode.Expandable, "单击展开")
+            };
+
+            suppressLayoutSelectionChanged = true;
+            EditedLayoutComboBox.SelectedValue = settings.IslandLayouts.Mode;
+            LyricsWidthSlider.Value = GetLyricsWidth(settings);
+            LoadDividerControls(settings.IslandLayouts.Mode);
+            suppressLayoutSelectionChanged = false;
+        }
+
+        private void InitializePlayerSelection(OverlayPlacementSettings settings)
+        {
+            var playerOptions = new List<PlayerSelectionOption>
+            {
+                new PlayerSelectionOption(string.Empty, "自动选择")
+            };
+            playerOptions.AddRange(playerSessions
+                .Where(session => session != null && !string.IsNullOrWhiteSpace(session.SourceAppUserModelId))
+                .GroupBy(session => session.SourceAppUserModelId, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.First())
+                .OrderBy(session => session.PlayerDisplayName)
+                .Select(session => new PlayerSelectionOption(
+                    session.SourceAppUserModelId,
+                    string.IsNullOrWhiteSpace(session.PlayerDisplayName)
+                        ? session.SourceAppUserModelId
+                        : session.PlayerDisplayName)));
+
+            PlayerSelectionComboBox.ItemsSource = playerOptions;
+            PlayerSelectionComboBox.SelectedValue = settings.LockedSourceAppUserModelId ?? string.Empty;
+        }
+
+        private IslandLayoutMode ReadEditedLayoutMode()
+        {
+            return EditedLayoutComboBox.SelectedValue is IslandLayoutMode
+                ? (IslandLayoutMode)EditedLayoutComboBox.SelectedValue
+                : IslandLayoutMode.HorizontalBlocks;
+        }
+
+        private static double GetLyricsWidth(OverlayPlacementSettings settings)
+        {
+            var profile = settings?.IslandLayouts?.Horizontal;
+            var lyrics = profile?.Modules?.FirstOrDefault(module => module.Type == IslandModuleType.Lyrics);
+            return IslandModuleInstance.NormalizeLyricsWidth(lyrics?.LyricsWidth ?? IslandModuleInstance.DefaultLyricsWidth);
+        }
+
+        private static void ApplyLyricsWidth(OverlayPlacementSettings settings, double width)
+        {
+            if (settings?.IslandLayouts == null)
+            {
+                return;
+            }
+
+            var normalized = IslandModuleInstance.NormalizeLyricsWidth(width);
+            ApplyLyricsWidth(settings.IslandLayouts.Horizontal, normalized);
+            ApplyLyricsWidth(settings.IslandLayouts.CompactCollapsed, normalized);
+            ApplyLyricsWidth(settings.IslandLayouts.CompactExpanded, normalized);
+        }
+
+        private static void ApplyLyricsWidth(IslandLayoutProfile profile, double width)
+        {
+            if (profile?.Modules == null)
+            {
+                return;
+            }
+
+            foreach (var module in profile.Modules.Where(module => module.Type == IslandModuleType.Lyrics))
+            {
+                module.LyricsWidth = width;
+            }
+        }
+
+        private static IslandLayoutProfile GetLayoutProfile(OverlayPlacementSettings settings, IslandLayoutMode mode)
+        {
+            if (settings?.IslandLayouts == null)
+            {
+                return null;
+            }
+
+            return mode == IslandLayoutMode.HorizontalBlocks
+                ? settings.IslandLayouts.Horizontal
+                : settings.IslandLayouts.CompactExpanded;
+        }
+
+        private static void GetDividerSettings(OverlayPlacementSettings settings, IslandLayoutMode mode, out double opacity, out double spacing)
+        {
+            var divider = GetLayoutProfile(settings, mode)?.Modules?
+                .FirstOrDefault(module => module.Type == IslandModuleType.Divider);
+            opacity = divider?.DividerOpacity ?? 0.22;
+            spacing = divider == null ? 4 : (divider.MarginBefore + divider.MarginAfter) / 2.0;
+        }
+
+        private static void ApplyDividerSettings(OverlayPlacementSettings settings, IslandLayoutMode mode, double opacity, double spacing)
+        {
+            var profile = GetLayoutProfile(settings, mode);
+            if (profile?.Modules == null)
+            {
+                return;
+            }
+
+            var normalizedOpacity = Math.Max(0, Math.Min(1, opacity));
+            var normalizedSpacing = Math.Max(0, Math.Min(64, spacing));
+            foreach (var divider in profile.Modules.Where(module => module.Type == IslandModuleType.Divider))
+            {
+                divider.DividerOpacity = normalizedOpacity;
+                divider.MarginBefore = normalizedSpacing;
+                divider.MarginAfter = normalizedSpacing;
+            }
+        }
+
+        private static void RemoveDividers(OverlayPlacementSettings settings, IslandLayoutMode mode)
+        {
+            var modules = GetLayoutProfile(settings, mode)?.Modules;
+            modules?.RemoveAll(module => module.Type == IslandModuleType.Divider);
+        }
+
+        private void LoadDividerControls(IslandLayoutMode mode)
+        {
+            double opacity;
+            double spacing;
+            GetDividerSettings(workingSettings, mode, out opacity, out spacing);
+            DividerOpacitySlider.Value = opacity;
+            DividerSpacingSlider.Value = spacing;
+        }
+
+        private void EditedLayoutComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (suppressLayoutSelectionChanged || beginLayoutEditing == null)
+            {
+                return;
+            }
+
+            suppressLayoutSelectionChanged = true;
+            LyricsWidthSlider.Value = GetLyricsWidth(workingSettings);
+            LoadDividerControls(ReadEditedLayoutMode());
+            suppressLayoutSelectionChanged = false;
+            layoutEditingActive = true;
+            beginLayoutEditing(ReadEditedLayoutMode(), false);
+        }
+
+        private void ResetLayoutButton_Click(object sender, RoutedEventArgs e)
+        {
+            workingSettings.IslandLayouts = IslandLayoutDefaults.Create();
+            workingSettings.IslandLayouts.Mode = ReadEditedLayoutMode();
+            LyricsWidthSlider.Value = GetLyricsWidth(workingSettings);
+            LoadDividerControls(ReadEditedLayoutMode());
+            beginLayoutEditing?.Invoke(ReadEditedLayoutMode(), true);
+            layoutEditingActive = beginLayoutEditing != null;
+        }
+
+        private void SaveLayoutButton_Click(object sender, RoutedEventArgs e)
+        {
+            SaveLayoutEditingIfActive();
+        }
+
+        private void CancelLayoutButton_Click(object sender, RoutedEventArgs e)
+        {
+            CancelLayoutEditing();
+        }
+
+        private void RemoveSelectedModule_Click(object sender, RoutedEventArgs e)
+        {
+            var mode = ReadEditedLayoutMode();
+            RemoveDividers(workingSettings, mode);
+            removeDividers?.Invoke(mode);
+        }
+
+        private void ModuleToolbox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            moduleToolboxDragStartPoint = e.GetPosition(ModuleToolbox);
+            moduleToolboxDragOption = FindModuleToolboxOption(e.OriginalSource as DependencyObject);
+            ModuleToolbox.CaptureMouse();
+            e.Handled = true;
+        }
+
+        private void ModuleToolbox_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            moduleToolboxDragStartPoint = null;
+            moduleToolboxDragOption = null;
+            if (Mouse.Captured == ModuleToolbox)
+            {
+                ModuleToolbox.ReleaseMouseCapture();
+            }
+        }
+
+        private void ModuleToolbox_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.LeftButton != MouseButtonState.Pressed)
+            {
+                moduleToolboxDragStartPoint = null;
+                moduleToolboxDragOption = null;
+                if (Mouse.Captured == ModuleToolbox)
+                {
+                    ModuleToolbox.ReleaseMouseCapture();
+                }
+                return;
+            }
+
+            if (!moduleToolboxDragStartPoint.HasValue)
+            {
+                return;
+            }
+
+            var currentPoint = e.GetPosition(ModuleToolbox);
+            if (Math.Abs(currentPoint.X - moduleToolboxDragStartPoint.Value.X) < SystemParameters.MinimumHorizontalDragDistance &&
+                Math.Abs(currentPoint.Y - moduleToolboxDragStartPoint.Value.Y) < SystemParameters.MinimumVerticalDragDistance)
+            {
+                return;
+            }
+
+            var option = moduleToolboxDragOption ?? FindModuleToolboxOption(e.OriginalSource as DependencyObject);
+            if (option != null)
+            {
+                var payload = new IslandLayoutDragPayload { NewType = option.Value };
+                if (Mouse.Captured == ModuleToolbox)
+                {
+                    ModuleToolbox.ReleaseMouseCapture();
+                }
+                setModuleDragActive?.Invoke(true);
+                try
+                {
+                    DragDrop.DoDragDrop(ModuleToolbox, new DataObject(typeof(IslandLayoutDragPayload), payload), DragDropEffects.Copy);
+                }
+                finally
+                {
+                    setModuleDragActive?.Invoke(false);
+                }
+                moduleToolboxDragStartPoint = null;
+                moduleToolboxDragOption = null;
+                e.Handled = true;
+                return;
+            }
+
+        }
+
+        private void ModuleToolbox_DragOver(object sender, DragEventArgs e)
+        {
+            var payload = e.Data.GetData(typeof(IslandLayoutDragPayload)) as IslandLayoutDragPayload;
+            e.Effects = !string.IsNullOrWhiteSpace(payload?.ExistingInstanceId)
+                ? DragDropEffects.Move
+                : DragDropEffects.None;
+            e.Handled = true;
+        }
+
+        private void ModuleToolbox_Drop(object sender, DragEventArgs e)
+        {
+            var payload = e.Data.GetData(typeof(IslandLayoutDragPayload)) as IslandLayoutDragPayload;
+            if (!string.IsNullOrWhiteSpace(payload?.ExistingInstanceId))
+            {
+                removeModule?.Invoke(payload.ExistingInstanceId);
+                e.Effects = DragDropEffects.Move;
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+            }
+
+            e.Handled = true;
+        }
+
+        private ModuleToolboxOption FindModuleToolboxOption(DependencyObject source)
+        {
+            var container = ItemsControl.ContainerFromElement(ModuleToolbox, source) as FrameworkElement;
+            var option = container?.DataContext as ModuleToolboxOption;
+            while (option == null && source != null)
+            {
+                var element = source as FrameworkElement;
+                option = element?.DataContext as ModuleToolboxOption;
+                source = VisualTreeHelper.GetParent(source);
+            }
+
+            return option;
+        }
+
+        private void SaveLayoutEditingIfActive()
+        {
+            if (!layoutEditingActive)
+            {
+                return;
+            }
+
+            saveLayoutEditing?.Invoke();
+            layoutEditingActive = false;
+        }
+
+        private void CancelLayoutEditing()
+        {
+            cancelLayoutEditing?.Invoke();
+            layoutEditingActive = false;
         }
 
         private int ReadCacheLimitMegabytes()
@@ -120,6 +526,18 @@ namespace AppleMusicDesktopLyrics.App
 
         private void SettingSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
+            if (ReferenceEquals(sender, LyricsWidthSlider))
+            {
+                ApplyLyricsWidth(workingSettings, LyricsWidthSlider.Value);
+                updateLyricsWidth?.Invoke(ReadEditedLayoutMode(), LyricsWidthSlider.Value);
+            }
+            else if (!suppressLayoutSelectionChanged &&
+                     (ReferenceEquals(sender, DividerOpacitySlider) || ReferenceEquals(sender, DividerSpacingSlider)))
+            {
+                var mode = ReadEditedLayoutMode();
+                ApplyDividerSettings(workingSettings, mode, DividerOpacitySlider.Value, DividerSpacingSlider.Value);
+                updateDividerSettings?.Invoke(mode, DividerOpacitySlider.Value, DividerSpacingSlider.Value);
+            }
             UpdateSettingValueLabels();
         }
 
@@ -305,7 +723,9 @@ namespace AppleMusicDesktopLyrics.App
             if (LyricsSettingsPanel == null ||
                 PositionSettingsPanel == null ||
                 CacheSettingsPanel == null ||
-                HoverSettingsPanel == null)
+                HoverSettingsPanel == null ||
+                HotkeySettingsPanel == null ||
+                LayoutSettingsPanel == null)
             {
                 return;
             }
@@ -314,6 +734,13 @@ namespace AppleMusicDesktopLyrics.App
             PositionSettingsPanel.Visibility = section == "Position" ? Visibility.Visible : Visibility.Collapsed;
             CacheSettingsPanel.Visibility = section == "Cache" ? Visibility.Visible : Visibility.Collapsed;
             HoverSettingsPanel.Visibility = section == "Hover" ? Visibility.Visible : Visibility.Collapsed;
+            HotkeySettingsPanel.Visibility = section == "Hotkeys" ? Visibility.Visible : Visibility.Collapsed;
+            LayoutSettingsPanel.Visibility = section == "Layout" ? Visibility.Visible : Visibility.Collapsed;
+            if (section == "Layout" && beginLayoutEditing != null && !layoutEditingActive)
+            {
+                layoutEditingActive = true;
+                beginLayoutEditing(ReadEditedLayoutMode(), false);
+            }
         }
 
         private LyricsSourcePreference ReadLyricsSource()
@@ -355,7 +782,8 @@ namespace AppleMusicDesktopLyrics.App
 
         private void UpdateSettingValueLabels()
         {
-            if (HoverAuraSizeValueText == null || SpectrumEdgeTransparencyValueText == null)
+            if (HoverAuraSizeValueText == null || SpectrumEdgeTransparencyValueText == null || LyricsWidthValueText == null ||
+                NoPlaybackAutoRetractValueText == null || ExpandedAutoCollapseValueText == null)
             {
                 return;
             }
@@ -368,6 +796,12 @@ namespace AppleMusicDesktopLyrics.App
             SpectrumCenterTransparencyValueText.Text = ((int)Math.Round(SpectrumCenterTransparencySlider.Value)).ToString(CultureInfo.InvariantCulture) + "%";
             SpectrumMidTransparencyValueText.Text = ((int)Math.Round(SpectrumMidTransparencySlider.Value)).ToString(CultureInfo.InvariantCulture) + "%";
             SpectrumEdgeTransparencyValueText.Text = ((int)Math.Round(SpectrumEdgeTransparencySlider.Value)).ToString(CultureInfo.InvariantCulture) + "%";
+            LyricsWidthValueText.Text = ((int)Math.Round(LyricsWidthSlider.Value)).ToString(CultureInfo.InvariantCulture) + " px";
+            var noPlaybackSeconds = (int)Math.Round(NoPlaybackAutoRetractSlider.Value);
+            NoPlaybackAutoRetractValueText.Text = noPlaybackSeconds == 0
+                ? "永不"
+                : noPlaybackSeconds.ToString(CultureInfo.InvariantCulture) + " 秒";
+            ExpandedAutoCollapseValueText.Text = ((int)Math.Round(ExpandedAutoCollapseSlider.Value)).ToString(CultureInfo.InvariantCulture) + " 秒";
             UpdateSpectrumPreview();
             UpdateHoverShapePreview();
         }
@@ -521,6 +955,66 @@ namespace AppleMusicDesktopLyrics.App
             }
 
             public LyricsSourcePreference Value { get; }
+
+            public string DisplayName { get; }
+
+            public override string ToString()
+            {
+                return DisplayName;
+            }
+        }
+
+        private sealed class LayoutModeOption
+        {
+            public LayoutModeOption(IslandLayoutMode value, string displayName)
+            {
+                Value = value;
+                DisplayName = displayName;
+            }
+
+            public IslandLayoutMode Value { get; }
+
+            public string DisplayName { get; }
+
+            public override string ToString()
+            {
+                return DisplayName;
+            }
+        }
+
+        private sealed class ModuleToolboxOption
+        {
+            public ModuleToolboxOption(IslandModuleType value, string displayName, double previewWidth, string iconData)
+            {
+                Value = value;
+                DisplayName = displayName;
+                PreviewWidth = previewWidth;
+                IconGeometry = Geometry.Parse(iconData);
+            }
+
+            public IslandModuleType Value { get; }
+
+            public string DisplayName { get; }
+
+            public Geometry IconGeometry { get; }
+
+            public double PreviewWidth { get; }
+
+            public override string ToString()
+            {
+                return DisplayName;
+            }
+        }
+
+        private sealed class PlayerSelectionOption
+        {
+            public PlayerSelectionOption(string value, string displayName)
+            {
+                Value = value ?? string.Empty;
+                DisplayName = displayName ?? string.Empty;
+            }
+
+            public string Value { get; }
 
             public string DisplayName { get; }
 

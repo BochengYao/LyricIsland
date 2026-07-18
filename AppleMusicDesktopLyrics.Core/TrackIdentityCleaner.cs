@@ -30,6 +30,7 @@ namespace AppleMusicDesktopLyrics.Core
                 }
             }
 
+            title = TrackTitleNormalizer.RemoveFeaturedArtistCredit(title);
             return new TrackIdentity(title, artist, track.Duration, track.Album);
         }
     }

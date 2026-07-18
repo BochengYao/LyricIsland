@@ -560,6 +560,18 @@
                                      Checked="SectionButton_Checked"
                                      Style="{StaticResource SidebarButtonStyle}"
                                      Content="鼠标避让" />
+                        <RadioButton x:Name="HotkeysSectionButton"
+                                     GroupName="SettingsSection"
+                                     Tag="Hotkeys"
+                                     Checked="SectionButton_Checked"
+                                     Style="{StaticResource SidebarButtonStyle}"
+                                     Content="快捷键" />
+                        <RadioButton x:Name="LayoutSectionButton"
+                                     GroupName="SettingsSection"
+                                     Tag="Layout"
+                                     Checked="SectionButton_Checked"
+                                     Style="{StaticResource SidebarButtonStyle}"
+                                     Content="模块布局" />
                     </StackPanel>
                 </Border>
 
@@ -569,11 +581,12 @@
                     <Grid>
                         <Grid x:Name="LyricsSettingsPanel">
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="112" />
                                 <ColumnDefinition Width="*" />
@@ -692,11 +705,48 @@
                                        Grid.Column="2"
                                        Style="{StaticResource SettingValue}"
                                        Text="上方" />
+
+                            <TextBlock Grid.Row="3"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,18"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="无播放后收起" />
+                            <Slider x:Name="NoPlaybackAutoRetractSlider"
+                                    Grid.Row="3"
+                                    Grid.Column="1"
+                                    Margin="0,0,10,18"
+                                    Minimum="0"
+                                    Maximum="300"
+                                    TickFrequency="1"
+                                    ValueChanged="SettingSlider_ValueChanged" />
+                            <TextBlock x:Name="NoPlaybackAutoRetractValueText"
+                                       Grid.Row="3"
+                                       Grid.Column="2"
+                                       Margin="0,0,0,18"
+                                       Style="{StaticResource SettingValue}" />
+
+                            <TextBlock Grid.Row="4"
+                                       Grid.Column="0"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="展开停留" />
+                            <Slider x:Name="ExpandedAutoCollapseSlider"
+                                    Grid.Row="4"
+                                    Grid.Column="1"
+                                    Margin="0,0,10,0"
+                                    Minimum="1"
+                                    Maximum="60"
+                                    TickFrequency="1"
+                                    ValueChanged="SettingSlider_ValueChanged" />
+                            <TextBlock x:Name="ExpandedAutoCollapseValueText"
+                                       Grid.Row="4"
+                                       Grid.Column="2"
+                                       Style="{StaticResource SettingValue}" />
                         </Grid>
 
                         <Grid x:Name="CacheSettingsPanel"
                               Visibility="Collapsed">
                             <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
@@ -726,11 +776,37 @@
                                            Style="{StaticResource SettingLabel}"
                                            Text="MB" />
                             </DockPanel>
+
+                            <StackPanel Grid.Row="2"
+                                        Grid.ColumnSpan="2"
+                                        Margin="0,24,0,0">
+                                <TextBlock Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                           FontSize="11"
+                                           LineHeight="18"
+                                           LineStackingStrategy="BlockLineHeight"
+                                           TextWrapping="Wrap"
+                                           Text="用途：保存已经下载过的同步歌词。下次播放同一首歌时可以直接读取，减少等待和重复请求。" />
+                                <TextBlock Margin="0,5,0,0"
+                                           Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                           FontSize="11"
+                                           LineHeight="18"
+                                           LineStackingStrategy="BlockLineHeight"
+                                           TextWrapping="Wrap"
+                                           Text="容量估算：按每首约 10 KB 计算，1 MB ≈ 100 首；500 MB ≈ 50,000 首；1000 MB ≈ 100,000 首。实际数量会随歌词长度变化。" />
+                                <TextBlock Margin="0,5,0,0"
+                                           Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                           FontSize="11"
+                                           LineHeight="18"
+                                           LineStackingStrategy="BlockLineHeight"
+                                           TextWrapping="Wrap"
+                                           Text="自动清理：写入歌词或修改容量后检查总大小；超过上限时优先删除最久未使用的歌词，直到低于容量上限。" />
+                            </StackPanel>
                         </Grid>
 
                         <Grid x:Name="HoverSettingsPanel"
                               Visibility="Collapsed">
                             <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
@@ -1043,6 +1119,226 @@
                                        Grid.Row="10"
                                        Grid.Column="2"
                                        Style="{StaticResource SettingValue}" />
+                        </Grid>
+
+                        <Grid x:Name="HotkeySettingsPanel"
+                              Visibility="Collapsed">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="150" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Row="0"
+                                       Grid.ColumnSpan="2"
+                                       Margin="0,0,0,22"
+                                       FontSize="17"
+                                       FontWeight="SemiBold"
+                                       Text="快捷键" />
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,0,16,16" Style="{StaticResource SettingLabel}" Text="歌词提前 0.5 秒" />
+                            <TextBox x:Name="EarlierHotkeyTextBox" Grid.Row="1" Grid.Column="1" Margin="0,0,0,16" />
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Margin="0,0,16,16" Style="{StaticResource SettingLabel}" Text="歌词延后 0.5 秒" />
+                            <TextBox x:Name="LaterHotkeyTextBox" Grid.Row="2" Grid.Column="1" Margin="0,0,0,16" />
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Margin="0,0,16,16" Style="{StaticResource SettingLabel}" Text="重置歌词偏移" />
+                            <TextBox x:Name="ResetHotkeyTextBox" Grid.Row="3" Grid.Column="1" Margin="0,0,0,16" />
+
+                            <TextBlock Grid.Row="4" Grid.Column="0" Margin="0,0,16,16" Style="{StaticResource SettingLabel}" Text="临时启用交互" />
+                            <TextBox x:Name="TemporaryInteractionHotkeyTextBox" Grid.Row="4" Grid.Column="1" Margin="0,0,0,16" />
+
+                            <TextBlock Grid.Row="5"
+                                       Grid.ColumnSpan="2"
+                                       Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                       FontSize="11"
+                                       TextWrapping="Wrap"
+                                       Text="组合键使用 + 分隔，例如 Ctrl+Alt+Left。默认按住 Ctrl 关闭透明并启用音乐控制。" />
+                        </Grid>
+
+                         <Grid x:Name="LayoutSettingsPanel"
+                               Visibility="Collapsed">
+                             <Grid.RowDefinitions>
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                             </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="112" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Row="0"
+                                       Grid.ColumnSpan="2"
+                                       Margin="0,0,0,22"
+                                       FontSize="17"
+                                       FontWeight="SemiBold"
+                                       Text="模块布局" />
+
+                            <TextBlock Grid.Row="1"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,16"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="编辑布局" />
+                            <ComboBox x:Name="EditedLayoutComboBox"
+                                      Grid.Row="1"
+                                      Grid.Column="1"
+                                      Margin="0,0,0,16"
+                                      DisplayMemberPath="DisplayName"
+                                      SelectedValuePath="Value"
+                                      SelectionChanged="EditedLayoutComboBox_SelectionChanged" />
+
+                            <TextBlock Grid.Row="2"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,16"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="播放器" />
+                            <StackPanel Grid.Row="2"
+                                        Grid.Column="1"
+                                        Margin="0,0,0,16">
+                                <ComboBox x:Name="PlayerSelectionComboBox"
+                                          DisplayMemberPath="DisplayName"
+                                          SelectedValuePath="Value" />
+                                <TextBlock Margin="0,5,0,0"
+                                           Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                           FontSize="10.5"
+                                           Text="自动选择会跟随最近活跃的播放器" />
+                            </StackPanel>
+
+                            <TextBlock Grid.Row="3"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,16"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="模块工具箱" />
+                            <StackPanel Grid.Row="3"
+                                        Grid.Column="1"
+                                        Margin="0,0,0,16">
+                           <ItemsControl x:Name="ModuleToolbox"
+                                            AllowDrop="True"
+                                            PreviewMouseLeftButtonDown="ModuleToolbox_PreviewMouseLeftButtonDown"
+                                            PreviewMouseLeftButtonUp="ModuleToolbox_PreviewMouseLeftButtonUp"
+                                            PreviewMouseMove="ModuleToolbox_PreviewMouseMove"
+                                            DragOver="ModuleToolbox_DragOver"
+                                            Drop="ModuleToolbox_Drop">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                         <Border Width="{Binding PreviewWidth}"
+                                                 Margin="0,0,8,8"
+                                                 Padding="7,6"
+                                                 Background="{DynamicResource SettingsControlBackgroundBrush}"
+                                                 BorderBrush="{DynamicResource SettingsControlBorderBrush}"
+                                                 BorderThickness="1"
+                                                 CornerRadius="9"
+                                                 Cursor="SizeAll"
+                                                 ToolTip="拖动到上方歌词岛指定位置">
+                                             <StackPanel>
+                                                 <Path Width="19"
+                                                       Height="19"
+                                                       HorizontalAlignment="Center"
+                                                       Data="{Binding IconGeometry}"
+                                                       Fill="{DynamicResource SettingsControlForegroundBrush}"
+                                                       Stretch="Uniform" />
+                                                 <TextBlock Margin="0,4,0,0"
+                                                            HorizontalAlignment="Center"
+                                                            Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                                            FontSize="9.5"
+                                                            Text="{Binding DisplayName}" />
+                                             </StackPanel>
+                                         </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                             </ItemsControl>
+                                <TextBlock Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                           FontSize="10"
+                                           Text="拖上岛内插入；岛内左右拖动排序；拖回这里删除。" />
+                            </StackPanel>
+
+                            <TextBlock Grid.Row="4"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,16"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="歌词宽度" />
+                            <Grid Grid.Row="4"
+                                  Grid.Column="1"
+                                  Margin="0,0,0,16">
+                                <Slider x:Name="LyricsWidthSlider"
+                                        Margin="0,0,64,0"
+                                        Minimum="220"
+                                        Maximum="900"
+                                        SmallChange="10"
+                                        TickFrequency="20"
+                                        ValueChanged="SettingSlider_ValueChanged" />
+                                <TextBlock x:Name="LyricsWidthValueText"
+                                           HorizontalAlignment="Right"
+                                           Style="{StaticResource SettingValue}" />
+                            </Grid>
+
+                            <TextBlock Grid.Row="5"
+                                       Grid.Column="0"
+                                       Margin="0,3,16,16"
+                                       VerticalAlignment="Top"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="分割线样式" />
+                            <StackPanel Grid.Row="5"
+                                        Grid.Column="1"
+                                        Margin="0,0,0,16">
+                                <TextBlock Margin="0,0,0,8"
+                                           Style="{StaticResource SettingLabel}"
+                                           Text="透明度" />
+                                <Slider x:Name="DividerOpacitySlider"
+                                        Minimum="0"
+                                        Maximum="1"
+                                        SmallChange="0.05"
+                                        ValueChanged="SettingSlider_ValueChanged" />
+                                <TextBlock Margin="0,10,0,8"
+                                           Style="{StaticResource SettingLabel}"
+                                           Text="左右间距" />
+                                <Slider x:Name="DividerSpacingSlider"
+                                        Minimum="0"
+                                        Maximum="64"
+                                        SmallChange="1"
+                                        ValueChanged="SettingSlider_ValueChanged" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="6"
+                                        Grid.Column="1"
+                                        Margin="0,0,0,16"
+                                        Orientation="Horizontal">
+                                <Button Margin="0,0,8,0"
+                                        Content="恢复默认"
+                                        Click="ResetLayoutButton_Click" />
+                                <Button Margin="0,0,8,0"
+                                        Content="删除分割线"
+                                        Click="RemoveSelectedModule_Click" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="7"
+                                        Grid.Column="1"
+                                        Orientation="Horizontal">
+                                <Button Margin="0,0,8,0"
+                                        Content="保存布局"
+                                        Style="{StaticResource PrimaryButtonStyle}"
+                                        Click="SaveLayoutButton_Click" />
+                                <Button Content="取消编辑"
+                                        Click="CancelLayoutButton_Click" />
+                            </StackPanel>
                         </Grid>
                     </Grid>
                 </Border>
