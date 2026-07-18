@@ -253,7 +253,7 @@ export function AdminIncentives() {
                   aria-pressed={previewDateTbd}
                   onClick={() => setPreviewDateTbd((current) => !current)}
                 >
-                  {previewDateTbd ? "✓ 上线时间待定" : "上线时间待定"}
+                  上线时间待定
                 </button>
               </div>
               <div className="previewEditorLanguages">
