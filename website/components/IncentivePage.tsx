@@ -347,8 +347,10 @@ export function IncentivePage({ locale }: { locale: Locale }) {
     fetch("/api/incentives/public")
       .then((response) => response.json())
       .then((data: { suggestions?: PublicSuggestion[]; previews?: ReleasePreview[]; configured?: boolean }) => {
-        setStorageConfigured(Boolean(data.configured && data.suggestions?.length));
-        if (data.suggestions?.length) setSuggestions(data.suggestions);
+        const configured = Boolean(data.configured);
+        setStorageConfigured(configured);
+        if (configured) setSuggestions(data.suggestions ?? []);
+        else if (data.suggestions?.length) setSuggestions(data.suggestions);
         setPreviews(data.previews ?? []);
       })
       .catch(() => undefined);
