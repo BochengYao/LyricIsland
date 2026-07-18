@@ -24,7 +24,7 @@ type ArcSample = {
 
 const ORBIT_HEIGHT = 340;
 const ORBIT_CENTER_Y = 260;
-const ORBIT_DURATION_MS = 27_000;
+const ORBIT_DURATION_MS = 36_000;
 const SAMPLE_COUNT = 720;
 
 const initialGeometry: OrbitGeometry = {
