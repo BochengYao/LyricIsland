@@ -1049,6 +1049,10 @@ p {
   line-height: 1.5;
 }
 
+.modulesCopy h2 {
+  white-space: pre-line;
+}
+
 .editorNote {
   padding-top: 24px;
   border-top: 1px solid var(--line);
