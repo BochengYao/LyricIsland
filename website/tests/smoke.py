@@ -400,9 +400,9 @@ def test_incentive_page(page: Page, path: str, lang: str, mobile: bool = False) 
                 '"body":"为不同桌面保存独立的歌词岛布局。","created_at":"2026-07-11T00:00:00Z","like_count":3,"liked":false}'
                 '],"previews":['
                 '{"id":"preview-1","version":"v2.1 Preview","title_zh":"更安静的桌面交互",'
-                '"title_en":"Quieter desktop interactions","body_zh":"继续打磨避让和收起体验。",'
-                '"body_en":"More polish for avoidance and retraction.","highlights_zh":["更细致的鼠标避让"],'
-                '"highlights_en":["More nuanced pointer avoidance"],"target_date":"2026-09-01",'
+                '"title_en":"Quieter desktop interactions","body_zh":"继续打磨避让。\\n- 收起体验更加顺滑。",'
+                '"body_en":"More polish for avoidance.\\n- Smoother retraction.","highlights_zh":[],'
+                '"highlights_en":[],"target_date":"2026-09-01",'
                 '"status":"published","created_at":"2026-07-14T00:00:00Z",'
                 '"updated_at":"2026-07-14T00:00:00Z","published_at":"2026-07-14T00:00:00Z"}]}'
             ),
@@ -423,6 +423,12 @@ def test_incentive_page(page: Page, path: str, lang: str, mobile: bool = False) 
     assert page.evaluate("document.documentElement.scrollWidth - innerWidth") <= 1
     assert page.locator(".acceptedCard").count() >= 16
     assert 0 < page.locator(".acceptedAttachment").count() < page.locator(".acceptedCard").count()
+    preview_card = page.locator(".previewCard")
+    expect(preview_card.locator(".previewCardMeta")).to_contain_text("v2.1 Preview")
+    expect(preview_card.locator(".previewItemNumber")).to_have_text(["01", "02"])
+    expect(preview_card.locator(".previewItems p")).to_have_text(
+        ["More polish for avoidance.", "Smoother retraction."] if lang == "en" else ["继续打磨避让。", "收起体验更加顺滑。"]
+    )
     expect(page.locator(".acceptedTime").first).to_be_visible()
     expect(page.locator(".acceptedWaterfallColumn")).to_have_count(4)
     visible_columns = page.locator(".acceptedWaterfallColumn").evaluate_all(
