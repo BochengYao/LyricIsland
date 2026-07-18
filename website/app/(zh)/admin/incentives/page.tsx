@@ -1,11 +1,5 @@
-import type { Metadata } from "next";
-import { AdminIncentives } from "@/components/AdminIncentives";
-
-export const metadata: Metadata = {
-  title: "用户反馈后台",
-  robots: { index: false, follow: false }
-};
+import { permanentRedirect } from "next/navigation";
 
 export default function AdminIncentivesPage() {
-  return <AdminIncentives />;
+  permanentRedirect("/admin");
 }

@@ -574,7 +574,7 @@ def test_incentive_page(page: Page, path: str, lang: str, mobile: bool = False) 
 
 
 def test_admin_shell(page: Page) -> None:
-    response = page.goto(BASE_URL + "/admin/incentives", wait_until="networkidle")
+    response = page.goto(BASE_URL + "/admin", wait_until="networkidle")
     assert response is not None and response.ok
     expect(page.get_by_role("heading", name="审阅用户提交")).to_be_visible()
     expect(page.get_by_label("后台密码")).to_be_visible()
@@ -626,7 +626,7 @@ def test_admin_dashboard(page: Page) -> None:
             ),
         ),
     )
-    response = page.goto(BASE_URL + "/admin/incentives", wait_until="networkidle")
+    response = page.goto(BASE_URL + "/admin", wait_until="networkidle")
     assert response is not None and response.ok
     expect(page.get_by_role("heading", name="审阅队列")).to_be_visible()
     expect(page.locator(".reviewCard")).to_have_count(2)

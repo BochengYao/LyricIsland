@@ -4,7 +4,7 @@
 
 1. 在 Supabase SQL Editor 中执行 `supabase/schema.sql`。
 2. 按 `.env.example` 配置五个服务端变量。`SUPABASE_SERVICE_ROLE_KEY` 可以填写当前的 `sb_secret_` 密钥或旧版 `service_role` 密钥，只能放在服务端或 ESA 构建环境变量中，不能添加 `NEXT_PUBLIC_` 前缀。
-3. `ADMIN_PASSWORD` 用于 `/admin/incentives` 登录；`ADMIN_SESSION_SECRET` 建议使用 32 字节以上随机字符串。
+3. `ADMIN_PASSWORD` 用于 `/admin` 登录；`ADMIN_SESSION_SECRET` 建议使用 32 字节以上随机字符串。
 4. 本地开发把变量写入未提交的 `.env.local`。生产环境通过 ESA「函数和 Pages → 基本信息 → 构建信息 → 环境变量」保存，不能写入仓库。
 
 ESA 部署会在构建期间生成仅供边缘函数使用的 `esa-dist/entry.js`。该文件不会进入静态资源目录，也被 Git 忽略；浏览器只能调用 `/api/incentives/*`，不能读取服务器密钥。
