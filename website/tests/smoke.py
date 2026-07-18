@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import os
 import re
 
@@ -592,24 +593,55 @@ def test_waterfall_breakpoint(page: Page, expected_columns: int) -> None:
 
 
 def test_admin_dashboard(page: Page) -> None:
-    page.route(
-        "**/api/incentives/admin/submissions",
-        lambda route: route.fulfill(
+    saved_reviews: list[dict] = []
+
+    def handle_submissions(route) -> None:
+        if route.request.method == "PATCH":
+            payload = route.request.post_data_json
+            saved_reviews.append(payload)
+            route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=json.dumps(
+                    {
+                        "submission": {
+                            "id": "s1",
+                            "kind": "feature",
+                            "nickname": "小林",
+                            "email": "lin@example.com",
+                            "title": "自动切换歌词布局",
+                            "body": "希望窗口变窄时自动切成单行。",
+                            "attachments": [],
+                            "like_count": 0,
+                            "created_at": "2026-07-14T05:00:00Z",
+                            "updated_at": "2026-07-18T10:00:00Z",
+                            **payload,
+                        }
+                    },
+                    ensure_ascii=False,
+                ),
+            )
+            return
+        route.fulfill(
             status=200,
             content_type="application/json",
             body=(
                 '{"submissions":['
                 '{"id":"s1","kind":"feature","nickname":"小林","email":"lin@example.com",'
                 '"title":"自动切换歌词布局","body":"希望窗口变窄时自动切成单行。","attachments":[],"like_count":0,'
-                '"status":"pending","reward_status":"not_eligible","reviewer_note":null,'
+                '"status":"pending","reward_status":"not_eligible","developer_reply":null,"is_flagged":false,"is_public":false,'
                 '"created_at":"2026-07-14T05:00:00Z","updated_at":"2026-07-14T05:00:00Z"},'
                 '{"id":"s2","kind":"bug","nickname":"Sea","email":"sea@example.com",'
                 '"title":"切换播放器后歌词停住","body":"从 Spotify 切到酷狗时偶尔出现。","attachments":[],"like_count":0,'
-                '"status":"reviewing","reward_status":"pending","reviewer_note":"等待复现",'
+                '"status":"reviewing","reward_status":"pending","developer_reply":"等待复现","is_flagged":false,"is_public":false,'
                 '"created_at":"2026-07-14T04:00:00Z","updated_at":"2026-07-14T04:00:00Z"}'
-                ']}'
+                ']} '
             ),
-        ),
+        )
+
+    page.route(
+        "**/api/incentives/admin/submissions",
+        handle_submissions,
     )
     page.route(
         "**/api/incentives/admin/previews",
@@ -630,6 +662,20 @@ def test_admin_dashboard(page: Page) -> None:
     assert response is not None and response.ok
     expect(page.get_by_role("heading", name="审阅队列")).to_be_visible()
     expect(page.locator(".reviewCard")).to_have_count(2)
+    feature_card = page.locator(".reviewCard").filter(has_text="自动切换歌词布局")
+    expect(feature_card).to_have_count(1)
+    expect(feature_card.get_by_role("button", name="采纳后可展示", exact=True)).to_be_disabled()
+    feature_card.get_by_role("button", name="已采纳", exact=True).click()
+    feature_card.get_by_role("button", name="在前台展示", exact=True).click()
+    feature_card.get_by_label("开发者回复").fill("下个版本会加入。")
+    feature_card.get_by_role("button", name="保存审阅", exact=True).click()
+    expect(feature_card.get_by_role("status")).to_have_text("✓ 已保存，公开页面刷新后会显示最新内容")
+    assert len(saved_reviews) == 1
+    assert saved_reviews[0]["status"] == "accepted"
+    assert saved_reviews[0]["is_public"] is True
+    assert saved_reviews[0]["developer_reply"] == "下个版本会加入。"
+    feature_card.get_by_role("button", name="🚩 红旗标注", exact=True).click()
+    expect(feature_card.get_by_role("status")).to_have_text("修改后请点击保存审阅")
     page.get_by_role("button", name="版本预告").click()
     expect(page.get_by_role("heading", name="发布版本预告")).to_be_visible()
     expect(page.locator(".previewEditor")).to_be_visible()

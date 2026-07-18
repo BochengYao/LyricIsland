@@ -42,7 +42,7 @@ export async function PATCH(request: Request) {
       ...(reward ? { reward_status: reward } : {}),
       ...(reply !== undefined ? { developer_reply: reply || null } : {}),
       ...(isFlagged !== undefined ? { is_flagged: isFlagged } : {}),
-      ...(isPublic !== undefined ? { is_public: isPublic } : {})
+      ...(isPublic !== undefined ? { is_public: status && status !== "accepted" ? false : isPublic } : {})
     });
     return Response.json({ submission });
   } catch {

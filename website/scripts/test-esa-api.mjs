@@ -29,6 +29,34 @@ if (!globalThis.File) globalThis.File = NodeFile;
 
 const originalFetch = globalThis.fetch;
 const calls = [];
+let reviewerNote = '[[lyric-island-review:v1]]{"reply":"Planned for the next version.","flagged":false,"public":true}';
+let submissionStatus = "accepted";
+let rewardStatus = "not_eligible";
+
+function storedSubmission() {
+  return {
+    id: "11111111-1111-4111-8111-111111111111",
+    kind: "feature",
+    nickname: "Tester",
+    email: "tester@example.com",
+    title: "A useful suggestion",
+    body: "This is a sufficiently detailed public suggestion.",
+    attachments: [
+      {
+        path: "11111111-1111-4111-8111-111111111111/image.png",
+        name: "image.png",
+        type: "image/png",
+        size: 1
+      }
+    ],
+    like_count: 1,
+    status: submissionStatus,
+    reward_status: rewardStatus,
+    reviewer_note: reviewerNote,
+    created_at: "2026-07-18T00:00:00.000Z",
+    updated_at: "2026-07-18T00:00:00.000Z"
+  };
+}
 
 function response(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -43,7 +71,7 @@ globalThis.fetch = async (input, init = {}) => {
   if (url.includes("/rest/v1/incentive_likes?")) {
     return response([{ submission_id: "11111111-1111-4111-8111-111111111111" }]);
   }
-  if (url.includes("incentive_submissions?select=id,kind,nickname,title,body,created_at,like_count,attachments,reviewer_note")) {
+  if (url.includes("incentive_submissions?select=id,kind,nickname,title,body,created_at,like_count,attachments,reviewer_note,status")) {
     return response([
       {
         id: "11111111-1111-4111-8111-111111111111",
@@ -53,7 +81,8 @@ globalThis.fetch = async (input, init = {}) => {
         body: "This is a sufficiently detailed public suggestion.",
         created_at: "2026-07-18T00:00:00.000Z",
         like_count: 1,
-        reviewer_note: '[[lyric-island-review:v1]]{"reply":"Planned for the next version.","flagged":false,"public":true}',
+        reviewer_note: reviewerNote,
+        status: submissionStatus,
         attachments: [
           {
             path: "11111111-1111-4111-8111-111111111111/image.png",
@@ -78,30 +107,17 @@ globalThis.fetch = async (input, init = {}) => {
     );
   }
   if (url.includes("incentive_submissions?select=*&order=created_at.desc")) {
-    return response([
-      {
-        id: "11111111-1111-4111-8111-111111111111",
-        kind: "feature",
-        nickname: "Tester",
-        email: "tester@example.com",
-        title: "A useful suggestion",
-        body: "This is a sufficiently detailed public suggestion.",
-        attachments: [
-          {
-            path: "11111111-1111-4111-8111-111111111111/image.png",
-            name: "image.png",
-            type: "image/png",
-            size: 1
-          }
-        ],
-        like_count: 1,
-        status: "accepted",
-        reward_status: "not_eligible",
-        reviewer_note: null,
-        created_at: "2026-07-18T00:00:00.000Z",
-        updated_at: "2026-07-18T00:00:00.000Z"
-      }
-    ]);
+    return response([storedSubmission()]);
+  }
+  if (url.includes("incentive_submissions?select=*&id=eq.")) {
+    return response([storedSubmission()]);
+  }
+  if (url.includes("/rest/v1/incentive_submissions?id=eq.") && init.method === "PATCH") {
+    const body = JSON.parse(init.body);
+    reviewerNote = body.reviewer_note;
+    submissionStatus = body.status ?? submissionStatus;
+    rewardStatus = body.reward_status ?? rewardStatus;
+    return response([{ ...storedSubmission(), ...body }]);
   }
   if (url.endsWith("/storage/v1/object/lyric-island-submissions/placeholder")) {
     return response({});
@@ -174,6 +190,67 @@ try {
   const adminData = await adminResponse.json();
   assert.match(adminData.submissions[0].attachments[0].signedUrl, /token=test$/);
   assert.equal(calls.length, 2, "admin queue must batch attachment signing");
+
+  calls.length = 0;
+  const saveResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/submissions", {
+      method: "PATCH",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({
+        id: "11111111-1111-4111-8111-111111111111",
+        status: "accepted",
+        reward_status: "pending",
+        developer_reply: "Confirmed for the next release.",
+        is_flagged: true,
+        is_public: true
+      })
+    })
+  );
+  assert.equal(saveResponse.status, 200);
+  const saveData = await saveResponse.json();
+  assert.equal(saveData.submission.status, "accepted");
+  assert.equal(saveData.submission.reward_status, "pending");
+  assert.equal(saveData.submission.developer_reply, "Confirmed for the next release.");
+  assert.equal(saveData.submission.is_flagged, true);
+  assert.equal(saveData.submission.is_public, true);
+  assert.equal(calls.length, 2, "saving a review must read current metadata then update the row");
+
+  const refreshedPublicResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/public")
+  );
+  assert.equal(refreshedPublicResponse.status, 200);
+  const refreshedPublicData = await refreshedPublicResponse.json();
+  assert.equal(refreshedPublicData.suggestions[0].developer_reply, "Confirmed for the next release.");
+
+  const declineResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/submissions", {
+      method: "PATCH",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({
+        id: "11111111-1111-4111-8111-111111111111",
+        status: "declined",
+        is_public: true
+      })
+    })
+  );
+  assert.equal(declineResponse.status, 200);
+  const declineData = await declineResponse.json();
+  assert.equal(declineData.submission.status, "declined");
+  assert.equal(declineData.submission.is_public, false, "non-accepted reviews must not remain public");
+
+  const hiddenPublicResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/public")
+  );
+  const hiddenPublicData = await hiddenPublicResponse.json();
+  assert.equal(hiddenPublicData.suggestions.length, 0);
 
   calls.length = 0;
   const previewResponse = await api.fetch(

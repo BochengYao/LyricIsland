@@ -276,7 +276,7 @@ async function createSignedUrls(paths) {
 
 async function getPublicIncentives(voterHash) {
   const suggestionRequest = supabase(
-    "/rest/v1/incentive_submissions?select=id,kind,nickname,title,body,created_at,like_count,attachments,reviewer_note&order=updated_at.desc&limit=100"
+    "/rest/v1/incentive_submissions?select=id,kind,nickname,title,body,created_at,like_count,attachments,reviewer_note,status&order=updated_at.desc&limit=100"
   );
   const likesRequest = voterHash
     ? supabase(
@@ -292,12 +292,12 @@ async function getPublicIncentives(voterHash) {
     previewRequest
   ]);
   const likedIds = new Set(likedRows.map((row) => row.submission_id));
-  const publicRows = rows.filter((row) => decodeReviewMeta(row.reviewer_note).is_public).slice(0, 24);
+  const publicRows = rows.filter((row) => row.status === "accepted" && decodeReviewMeta(row.reviewer_note).is_public).slice(0, 24);
   const firstAttachments = publicRows
     .map((row) => row.attachments && row.attachments[0])
     .filter(Boolean);
   const signedUrls = await createSignedUrls(firstAttachments.map((item) => item.path));
-  const suggestions = publicRows.map(({ attachments, reviewer_note, ...suggestion }) => {
+  const suggestions = publicRows.map(({ attachments, reviewer_note, status: _status, ...suggestion }) => {
     const first = attachments && attachments[0];
     const url = first ? signedUrls.get(first.path) : undefined;
     return {
@@ -314,10 +314,10 @@ async function getPublicIncentives(voterHash) {
 
 async function toggleSuggestionLike(submissionId, voterTokenHash) {
   const submissions = await supabase(
-    `/rest/v1/incentive_submissions?select=id,like_count,reviewer_note&id=eq.${encodeURIComponent(submissionId)}&limit=1`
+    `/rest/v1/incentive_submissions?select=id,like_count,reviewer_note,status&id=eq.${encodeURIComponent(submissionId)}&limit=1`
   );
   const submission = submissions[0];
-  if (!submission || !decodeReviewMeta(submission.reviewer_note).is_public) {
+  if (!submission || submission.status !== "accepted" || !decodeReviewMeta(submission.reviewer_note).is_public) {
     throw new Error("Suggestion is not available for likes");
   }
   const existing = await supabase(
@@ -612,7 +612,7 @@ async function handleAdminSubmissions(request) {
       ...(reward ? { reward_status: reward } : {}),
       ...(reply !== undefined ? { developer_reply: reply || null } : {}),
       ...(isFlagged !== undefined ? { is_flagged: isFlagged } : {}),
-      ...(isPublic !== undefined ? { is_public: isPublic } : {})
+      ...(isPublic !== undefined ? { is_public: status && status !== "accepted" ? false : isPublic } : {})
     });
     return json({ submission });
   } catch {

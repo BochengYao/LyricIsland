@@ -12,6 +12,7 @@ import type {
 } from "@/data/incentives-types";
 
 type AuthState = "checking" | "login" | "ready";
+type SaveFeedback = { tone: "pending" | "success" | "error"; message: string };
 
 const statusLabels: Record<SubmissionStatus, string> = {
   pending: "待审阅",
@@ -36,7 +37,7 @@ export function AdminIncentives() {
   const [statusFilter, setStatusFilter] = useState<"all" | SubmissionStatus>("all");
   const [panel, setPanel] = useState<"submissions" | "previews">("submissions");
   const [savingId, setSavingId] = useState("");
-  const [savedId, setSavedId] = useState("");
+  const [saveFeedback, setSaveFeedback] = useState<Record<string, SaveFeedback>>({});
   const [previewDateTbd, setPreviewDateTbd] = useState(false);
 
   async function loadData() {
@@ -85,35 +86,71 @@ export function AdminIncentives() {
     setAuth("login");
   }
 
-  function editSubmission(id: string, patch: Partial<IncentiveSubmission>) {
+  function editSubmission(id: string, patch: Partial<IncentiveSubmission>, markDirty = true) {
     setSubmissions((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item));
+    if (markDirty) {
+      setSaveFeedback((items) => {
+        if (!items[id]) return items;
+        const next = { ...items };
+        delete next[id];
+        return next;
+      });
+    }
   }
 
   async function saveSubmission(item: IncentiveSubmission) {
     setSavingId(item.id);
-    setSavedId("");
     setError("");
-    const response = await fetch("/api/incentives/admin/submissions", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: item.id,
-        status: item.status,
-        reward_status: item.reward_status,
-        developer_reply: item.developer_reply ?? "",
-        is_flagged: item.is_flagged,
-        is_public: item.is_public
-      })
-    });
-    const result = (await response.json()) as { error?: string; submission?: IncentiveSubmission };
-    setSavingId("");
-    if (!response.ok || !result.submission) {
-      setError(result.error ?? "保存失败");
-      return;
+    setSaveFeedback((items) => ({
+      ...items,
+      [item.id]: { tone: "pending", message: "正在提交更改…" }
+    }));
+    try {
+      const response = await fetch("/api/incentives/admin/submissions", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: item.id,
+          status: item.status,
+          reward_status: item.reward_status,
+          developer_reply: item.developer_reply ?? "",
+          is_flagged: item.is_flagged,
+          is_public: item.is_public
+        })
+      });
+      const result = await response.json().catch(() => ({})) as {
+        error?: string;
+        submission?: IncentiveSubmission;
+      };
+      if (response.status === 401) {
+        setError("登录已过期，请重新登录后再保存");
+        setAuth("login");
+        return;
+      }
+      if (!response.ok || !result.submission) {
+        throw new Error(result.error ?? `保存失败（HTTP ${response.status}）`);
+      }
+      editSubmission(item.id, result.submission, false);
+      setSaveFeedback((items) => ({
+        ...items,
+        [item.id]: {
+          tone: "success",
+          message: result.submission!.is_public
+            ? "✓ 已保存，公开页面刷新后会显示最新内容"
+            : "✓ 已保存，当前未在公开页面展示"
+        }
+      }));
+    } catch (saveError) {
+      setSaveFeedback((items) => ({
+        ...items,
+        [item.id]: {
+          tone: "error",
+          message: `✕ 未保存：${saveError instanceof Error ? saveError.message : "网络异常，请重试"}`
+        }
+      }));
+    } finally {
+      setSavingId((current) => current === item.id ? "" : current);
     }
-    editSubmission(item.id, result.submission);
-    setSavedId(item.id);
-    window.setTimeout(() => setSavedId((current) => current === item.id ? "" : current), 2400);
   }
 
   const visibleSubmissions = useMemo(() => submissions.filter((item) =>
@@ -229,11 +266,14 @@ export function AdminIncentives() {
                   <div className="reviewIdentity"><span>@{item.nickname}</span><a href={`mailto:${item.email}`}>{item.email}</a></div>
                   {item.attachments.length > 0 && <div className="reviewAttachments">{item.attachments.map((attachment) => attachment.signedUrl ? <a href={attachment.signedUrl} target="_blank" rel="noreferrer" key={attachment.path}>{attachment.type.startsWith("video/") ? "视频" : "图片"} · {attachment.name} <ExternalArrow /></a> : <span key={attachment.path}>{attachment.name}</span>)}</div>}
                   <div className="reviewControls">
-                    <div className="reviewOption"><span>审阅状态</span><div className="reviewButtonGroup">{Object.entries(statusLabels).map(([value, label]) => <button type="button" className={item.status === value ? "isActive" : ""} aria-pressed={item.status === value} onClick={() => editSubmission(item.id, { status: value as SubmissionStatus })} key={value}>{label}</button>)}</div></div>
+                    <div className="reviewOption"><span>审阅状态</span><div className="reviewButtonGroup">{Object.entries(statusLabels).map(([value, label]) => <button type="button" className={item.status === value ? "isActive" : ""} aria-pressed={item.status === value} onClick={() => editSubmission(item.id, { status: value as SubmissionStatus, ...(value === "accepted" ? {} : { is_public: false }) })} key={value}>{label}</button>)}</div></div>
                     <div className="reviewOption"><span>奖励</span><div className="reviewButtonGroup">{Object.entries(rewardLabels).map(([value, label]) => <button type="button" className={item.reward_status === value ? "isActive" : ""} aria-pressed={item.reward_status === value} onClick={() => editSubmission(item.id, { reward_status: value as RewardStatus })} key={value}>{label}</button>)}</div></div>
-                    <div className="reviewOption"><span>管理</span><div className="reviewButtonGroup"><button type="button" className={item.is_flagged ? "isFlagged" : ""} aria-pressed={item.is_flagged} onClick={() => editSubmission(item.id, { is_flagged: !item.is_flagged })}>🚩 {item.is_flagged ? "已红旗标注" : "红旗标注"}</button><button type="button" className={item.is_public ? "isPublic" : ""} aria-pressed={item.is_public} onClick={() => editSubmission(item.id, { is_public: !item.is_public })}>{item.is_public ? "✓ 正在前台展示" : "在前台展示"}</button></div></div>
+                    <div className="reviewOption"><span>管理</span><div className="reviewButtonGroup"><button type="button" className={item.is_flagged ? "isFlagged" : ""} aria-pressed={item.is_flagged} onClick={() => editSubmission(item.id, { is_flagged: !item.is_flagged })}>🚩 {item.is_flagged ? "已红旗标注" : "红旗标注"}</button><button type="button" className={item.is_public ? "isPublic" : ""} aria-pressed={item.is_public} disabled={item.status !== "accepted"} onClick={() => editSubmission(item.id, { is_public: !item.is_public })}>{item.status !== "accepted" ? "采纳后可展示" : item.is_public ? "✓ 正在前台展示" : "在前台展示"}</button></div><small>只有“已采纳”且开启“前台展示”的内容会出现在公开页面；奖励和红旗仅用于后台管理。</small></div>
                     <label className="reviewNote"><span>开发者回复</span><textarea value={item.developer_reply ?? ""} onChange={(event) => editSubmission(item.id, { developer_reply: event.target.value })} rows={2} placeholder="回复后会随公开卡片展示；不回复则前台不显示此区域" /></label>
-                    <div className="reviewSaveRow"><span className={savedId === item.id ? "reviewSaved isVisible" : "reviewSaved"} role="status">✓ 已保存</span><button className="button buttonPrimary" onClick={() => saveSubmission(item)} disabled={savingId === item.id}>{savingId === item.id ? "保存中…" : "保存审阅"}</button></div>
+                    <div className="reviewSaveRow">
+                      <button className="button buttonPrimary" type="button" onClick={() => saveSubmission(item)} disabled={savingId === item.id}>{savingId === item.id ? "保存中…" : "保存审阅"}</button>
+                      <span className={`reviewSaveFeedback ${saveFeedback[item.id]?.tone ?? ""}`} role="status" aria-live="polite">{saveFeedback[item.id]?.message ?? "修改后请点击保存审阅"}</span>
+                    </div>
                   </div>
                 </article>
               ))}

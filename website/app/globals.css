@@ -3363,6 +3363,14 @@ p {
   font-weight: 700;
 }
 
+.reviewOption small {
+  max-width: 620px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.55;
+}
+
 .reviewButtonGroup {
   display: flex;
   flex-wrap: wrap;
@@ -3382,6 +3390,11 @@ p {
 
 .reviewButtonGroup button:hover {
   border-color: var(--ink);
+}
+
+.reviewButtonGroup button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
 }
 
 .reviewButtonGroup button.isActive {
@@ -3412,7 +3425,8 @@ p {
 .reviewSaveRow {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
@@ -3421,16 +3435,18 @@ p {
   padding: 0 18px;
 }
 
-.reviewSaved {
-  color: #176b45;
+.reviewSaveFeedback {
+  color: var(--muted);
   font-size: 13px;
   font-weight: 700;
-  opacity: 0;
-  transition: opacity 160ms ease;
 }
 
-.reviewSaved.isVisible {
-  opacity: 1;
+.reviewSaveFeedback.success {
+  color: #176b45;
+}
+
+.reviewSaveFeedback.error {
+  color: #a82620;
 }
 
 .previewEditor {
