@@ -10,6 +10,7 @@
     "build:next": "next build",
     "start": "vinext start",
     "typecheck": "tsc --noEmit",
+    "test:esa-api": "node scripts/test-esa-api.mjs",
     "check:support-security": "node scripts/check-support-security.mjs"
   },
   "dependencies": {

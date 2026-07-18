@@ -1,4 +1,5 @@
 .next/
+esa-dist/entry.js
 node_modules/
 out/
 dist/
