@@ -5,23 +5,19 @@ import {
   updateReleasePreview
 } from "@/lib/incentive-store";
 
-function lines(value: unknown) {
-  if (Array.isArray(value)) {
-    return value.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter(Boolean).slice(0, 12);
-  }
-  return [];
-}
-
 function previewPayload(body: Record<string, unknown>) {
   const status = body.status === "published" ? "published" : "draft";
+  const version = typeof body.version === "string" ? body.version.trim().slice(0, 40) : "";
+  const content = typeof body.content === "string" ? body.content.trim().slice(0, 2400) : "";
   return {
-    version: typeof body.version === "string" ? body.version.trim().slice(0, 40) : "",
-    title_zh: typeof body.title_zh === "string" ? body.title_zh.trim().slice(0, 160) : "",
-    title_en: typeof body.title_en === "string" ? body.title_en.trim().slice(0, 160) : "",
-    body_zh: typeof body.body_zh === "string" ? body.body_zh.trim().slice(0, 2400) : "",
-    body_en: typeof body.body_en === "string" ? body.body_en.trim().slice(0, 2400) : "",
-    highlights_zh: lines(body.highlights_zh),
-    highlights_en: lines(body.highlights_en),
+    version,
+    // Keep the existing database columns compatible while exposing one content field in the admin UI.
+    title_zh: version,
+    title_en: "",
+    body_zh: content,
+    body_en: "",
+    highlights_zh: [] as string[],
+    highlights_en: [] as string[],
     target_date: typeof body.target_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.target_date)
       ? body.target_date
       : null,
@@ -47,8 +43,8 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as Record<string, unknown>;
     const payload = previewPayload(body);
-    if (!payload.version || !payload.title_zh || !payload.body_zh) {
-      return Response.json({ error: "版本号、中文标题和中文说明为必填项" }, { status: 400 });
+    if (!payload.version || !payload.body_zh) {
+      return Response.json({ error: "版本号和预告内容为必填项" }, { status: 400 });
     }
     return Response.json({ preview: await createReleasePreview(payload) }, { status: 201 });
   } catch {

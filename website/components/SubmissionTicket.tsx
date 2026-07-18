@@ -79,12 +79,20 @@ export function SubmissionTicket({
   const date = formatDate(receipt.submittedAt, locale);
 
   useEffect(() => {
-    doneRef.current?.focus();
+    doneRef.current?.focus({ preventScroll: true });
+    const previousDocumentOverflow = document.documentElement.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
     const closeWithEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
     addEventListener("keydown", closeWithEscape);
-    return () => removeEventListener("keydown", closeWithEscape);
+    return () => {
+      removeEventListener("keydown", closeWithEscape);
+      document.documentElement.style.overflow = previousDocumentOverflow;
+      document.body.style.overflow = previousBodyOverflow;
+    };
   }, [onClose]);
 
   async function downloadPng() {
@@ -97,9 +105,14 @@ export function SubmissionTicket({
       if (!context) throw new Error("Canvas unavailable");
 
       context.clearRect(0, 0, canvas.width, canvas.height);
+      context.save();
+      context.shadowColor = "rgba(20, 20, 19, 0.16)";
+      context.shadowBlur = 34;
+      context.shadowOffsetY = 16;
       context.fillStyle = "#FCFBFA";
       roundedRect(context, 40, 40, 1320, 640, 54);
       context.fill();
+      context.restore();
 
       context.save();
       roundedRect(context, 40, 40, 1320, 640, 54);
@@ -141,8 +154,6 @@ export function SubmissionTicket({
       context.fillText(isZh ? "提交存根" : "SUBMISSION", 92, 210);
       context.font = `500 24px ${fontFamily}`;
       context.fillText(receipt.kind === "feature" ? (isZh ? "新功能提议" : "FEATURE IDEA") : (isZh ? "BUG 提交" : "BUG REPORT"), 92, 270);
-      context.font = `500 22px ${fontFamily}`;
-      context.fillText(`#${receipt.id.slice(0, 8).toUpperCase()}`, 92, 604);
 
       const left = 430;
       context.fillStyle = "#6A6763";
@@ -190,8 +201,14 @@ export function SubmissionTicket({
         <div className="ticketThanks">
           <div>
             <p className="eyebrow">{isZh ? "提交成功" : "Submission received"}</p>
-            <h2 id="ticket-title">{isZh ? "谢谢你的提交，如果被采纳我们将通过邮件联系你❤️" : "Thank you. If it is accepted, we will contact you by email ❤️"}</h2>
-            <p>{isZh ? "这张存根只在你的浏览器中生成，可以下载为 PNG 留作纪念。" : "This keepsake is generated only in your browser and can be saved as a PNG."}</p>
+            <h2 id="ticket-title">
+              {isZh ? (
+                <>谢谢你的提交<br />如果被采纳我们将通过邮件联系你❤️</>
+              ) : (
+                <>Thank you.<br />If it is accepted, we will contact you by email ❤️</>
+              )}
+            </h2>
+            <p>{isZh ? "这张存根可以下载为 PNG 留作纪念。" : "This keepsake can be saved as a PNG."}</p>
           </div>
         </div>
 
@@ -202,7 +219,6 @@ export function SubmissionTicket({
             <span>LYRIC ISLAND</span>
             <strong>{isZh ? "提交存根" : "SUBMISSION"}</strong>
             <small>{receipt.kind === "feature" ? (isZh ? "新功能提议" : "FEATURE IDEA") : (isZh ? "BUG 提交" : "BUG REPORT")}</small>
-            <code>#{receipt.id.slice(0, 8).toUpperCase()}</code>
           </div>
           <dl className="ticketDetails">
             <div><dt>{isZh ? "姓名" : "Name"}</dt><dd>{receipt.nickname}</dd></div>

@@ -469,8 +469,8 @@ export function IncentivePage({ locale }: { locale: Locale }) {
                 <article className="previewCard" key={preview.id}>
                   <span>{String(index + 1).padStart(2, "0")}</span>
                   <div>
-                    <small>{preview.version}{preview.target_date ? ` · ${copy.preview.target} ${preview.target_date}` : ""}</small>
-                    <h3>{title}</h3>
+                    <small>{preview.version} · {copy.preview.target} {preview.target_date ?? (locale === "zh" ? "待定" : "TBD")}</small>
+                    {title !== preview.version && <h3>{title}</h3>}
                     <p>{body}</p>
                     {highlights.length > 0 && <ul>{highlights.map((item) => <li key={item}>{item}</li>)}</ul>}
                   </div>

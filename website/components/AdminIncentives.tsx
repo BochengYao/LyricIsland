@@ -36,6 +36,8 @@ export function AdminIncentives() {
   const [statusFilter, setStatusFilter] = useState<"all" | SubmissionStatus>("all");
   const [panel, setPanel] = useState<"submissions" | "previews">("submissions");
   const [savingId, setSavingId] = useState("");
+  const [savedId, setSavedId] = useState("");
+  const [previewDateTbd, setPreviewDateTbd] = useState(false);
 
   async function loadData() {
     const [submissionResponse, previewResponse] = await Promise.all([
@@ -89,6 +91,7 @@ export function AdminIncentives() {
 
   async function saveSubmission(item: IncentiveSubmission) {
     setSavingId(item.id);
+    setSavedId("");
     setError("");
     const response = await fetch("/api/incentives/admin/submissions", {
       method: "PATCH",
@@ -107,6 +110,8 @@ export function AdminIncentives() {
       return;
     }
     editSubmission(item.id, result.submission);
+    setSavedId(item.id);
+    window.setTimeout(() => setSavedId((current) => current === item.id ? "" : current), 2400);
   }
 
   const visibleSubmissions = useMemo(() => submissions.filter((item) =>
@@ -120,14 +125,9 @@ export function AdminIncentives() {
     const form = new FormData(event.currentTarget);
     const payload = {
       version: form.get("version"),
-      title_zh: form.get("title_zh"),
-      title_en: form.get("title_en"),
-      body_zh: form.get("body_zh"),
-      body_en: form.get("body_en"),
-      target_date: form.get("target_date"),
-      highlights_zh: String(form.get("highlights_zh") ?? "").split("\n"),
-      highlights_en: String(form.get("highlights_en") ?? "").split("\n"),
-      status: form.get("status")
+      content: form.get("content"),
+      target_date: previewDateTbd ? "" : form.get("target_date"),
+      status: form.get("intent")
     };
     const response = await fetch("/api/incentives/admin/previews", {
       method: "POST",
@@ -141,6 +141,7 @@ export function AdminIncentives() {
     }
     setPreviews((items) => [result.preview!, ...items]);
     event.currentTarget.reset();
+    setPreviewDateTbd(false);
   }
 
   async function togglePreview(preview: ReleasePreview) {
@@ -225,10 +226,10 @@ export function AdminIncentives() {
                   <div className="reviewIdentity"><span>@{item.nickname}</span><a href={`mailto:${item.email}`}>{item.email}</a></div>
                   {item.attachments.length > 0 && <div className="reviewAttachments">{item.attachments.map((attachment) => attachment.signedUrl ? <a href={attachment.signedUrl} target="_blank" rel="noreferrer" key={attachment.path}>{attachment.type.startsWith("video/") ? "视频" : "图片"} · {attachment.name} <ExternalArrow /></a> : <span key={attachment.path}>{attachment.name}</span>)}</div>}
                   <div className="reviewControls">
-                    <label><span>审阅状态</span><select value={item.status} onChange={(event) => editSubmission(item.id, { status: event.target.value as SubmissionStatus })}>{Object.entries(statusLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
-                    <label><span>奖励</span><select value={item.reward_status} onChange={(event) => editSubmission(item.id, { reward_status: event.target.value as RewardStatus })}>{Object.entries(rewardLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
-                    <label className="reviewNote"><span>内部备注</span><textarea value={item.reviewer_note ?? ""} onChange={(event) => editSubmission(item.id, { reviewer_note: event.target.value })} rows={3} /></label>
-                    <button className="button buttonPrimary" onClick={() => saveSubmission(item)} disabled={savingId === item.id}>{savingId === item.id ? "保存中…" : "保存审阅"}</button>
+                    <div className="reviewOption"><span>审阅状态</span><div className="reviewButtonGroup">{Object.entries(statusLabels).map(([value, label]) => <button type="button" className={item.status === value ? "isActive" : ""} aria-pressed={item.status === value} onClick={() => editSubmission(item.id, { status: value as SubmissionStatus })} key={value}>{label}</button>)}</div></div>
+                    <div className="reviewOption"><span>奖励</span><div className="reviewButtonGroup">{Object.entries(rewardLabels).map(([value, label]) => <button type="button" className={item.reward_status === value ? "isActive" : ""} aria-pressed={item.reward_status === value} onClick={() => editSubmission(item.id, { reward_status: value as RewardStatus })} key={value}>{label}</button>)}</div></div>
+                    <label className="reviewNote"><span>内部备注</span><textarea value={item.reviewer_note ?? ""} onChange={(event) => editSubmission(item.id, { reviewer_note: event.target.value })} rows={2} placeholder="可选" /></label>
+                    <div className="reviewSaveRow"><span className={savedId === item.id ? "reviewSaved isVisible" : "reviewSaved"} role="status">✓ 已保存</span><button className="button buttonPrimary" onClick={() => saveSubmission(item)} disabled={savingId === item.id}>{savingId === item.id ? "保存中…" : "保存审阅"}</button></div>
                   </div>
                 </article>
               ))}
@@ -239,15 +240,19 @@ export function AdminIncentives() {
           <>
             <header className="adminPageHeader"><div><p>RELEASE PREVIEW</p><h2>发布版本预告</h2></div></header>
             <form className="previewEditor" onSubmit={createPreview}>
-              <div className="previewEditorMeta"><label><span>版本号</span><input name="version" placeholder="v2.1 Beta" required /></label><label><span>预计日期</span><input name="target_date" type="date" /></label><label><span>发布状态</span><select name="status"><option value="draft">先存草稿</option><option value="published">立即发布</option></select></label></div>
-              <div className="previewEditorLanguages">
-                <fieldset><legend>中文内容</legend><label><span>标题</span><input name="title_zh" required /></label><label><span>说明</span><textarea name="body_zh" rows={5} required /></label><label><span>亮点（每行一条）</span><textarea name="highlights_zh" rows={5} /></label></fieldset>
-                <fieldset><legend>English</legend><label><span>Title</span><input name="title_en" /></label><label><span>Description</span><textarea name="body_en" rows={5} /></label><label><span>Highlights (one per line)</span><textarea name="highlights_en" rows={5} /></label></fieldset>
+              <div className="previewEditorMeta">
+                <label><span>版本号</span><input name="version" placeholder="例如：v2.1 Beta" required /></label>
+                <label><span>预计上线时间</span><input name="target_date" type="date" disabled={previewDateTbd} /></label>
+                <label className="previewDateTbd"><input type="checkbox" checked={previewDateTbd} onChange={(event) => setPreviewDateTbd(event.target.checked)} /><span>上线时间待定</span></label>
               </div>
-              <button className="button buttonPrimary" type="submit">保存版本预告</button>
+              <label><span>预告内容</span><textarea name="content" rows={8} placeholder="写下这个版本准备带来的变化……" required /></label>
+              <div className="previewEditorActions">
+                <button className="button buttonSecondary" type="submit" name="intent" value="draft">保存草稿</button>
+                <button className="button buttonPrimary" type="submit" name="intent" value="published">发布预告</button>
+              </div>
             </form>
             <div className="previewAdminList">
-              {previews.map((preview) => <article key={preview.id}><div><span className={preview.status}>{preview.status === "published" ? "已发布" : "草稿"}</span><small>{preview.version}</small><h3>{preview.title_zh}</h3><p>{preview.body_zh}</p></div><button className="button buttonSecondary" onClick={() => togglePreview(preview)}>{preview.status === "published" ? "撤回为草稿" : "发布到前台"}</button></article>)}
+              {previews.map((preview) => <article key={preview.id}><div><span className={preview.status}>{preview.status === "published" ? "已发布" : "草稿"}</span><small>{preview.version} · 预计上线：{preview.target_date ?? "待定"}</small><p>{preview.body_zh}</p></div><button className="button buttonSecondary" onClick={() => togglePreview(preview)}>{preview.status === "published" ? "撤回为草稿" : "发布到前台"}</button></article>)}
               {!previews.length && <p className="adminEmpty">还没有版本预告。</p>}
             </div>
           </>
