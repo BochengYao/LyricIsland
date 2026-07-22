@@ -22,6 +22,13 @@ const LOCAL_LIKES_KEY = "lyric_island_preview_likes";
 
 type Identity = { nickname: string; email: string };
 
+function splitPreviewItems(value: string): string[] {
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.trim().replace(/^(?:[-–—•·*]+|\d+[.)、])\s*/, "").trim())
+    .filter(Boolean);
+}
+
 function readIdentity(): Identity {
   if (typeof document === "undefined") return { nickname: "", email: "" };
   const raw = document.cookie
@@ -467,18 +474,26 @@ export function IncentivePage({ locale }: { locale: Locale }) {
             <p>{copy.preview.body}</p>
           </div>
           <div className="previewList">
-            {previews.length ? previews.map((preview, index) => {
+            {previews.length ? previews.map((preview) => {
               const title = locale === "zh" ? preview.title_zh : preview.title_en || preview.title_zh;
               const body = locale === "zh" ? preview.body_zh : preview.body_en || preview.body_zh;
               const highlights = locale === "zh" ? preview.highlights_zh : preview.highlights_en.length ? preview.highlights_en : preview.highlights_zh;
+              const items = [...splitPreviewItems(body), ...highlights.map((item) => item.trim()).filter(Boolean)];
               return (
                 <article className="previewCard" key={preview.id}>
-                  <span>{String(index + 1).padStart(2, "0")}</span>
-                  <div>
+                  <div className="previewCardMeta">
                     <small>{preview.version} · {copy.preview.target} {preview.target_date ?? (locale === "zh" ? "待定" : "TBD")}</small>
+                  </div>
+                  <div className="previewCardContent">
                     {title !== preview.version && <h3>{title}</h3>}
-                    <p>{body}</p>
-                    {highlights.length > 0 && <ul>{highlights.map((item) => <li key={item}>{item}</li>)}</ul>}
+                    <ol className="previewItems">
+                      {items.map((item, itemIndex) => (
+                        <li key={`${itemIndex}-${item}`}>
+                          <span className="previewItemNumber" aria-hidden="true">{String(itemIndex + 1).padStart(2, "0")}</span>
+                          <p>{item}</p>
+                        </li>
+                      ))}
+                    </ol>
                   </div>
                 </article>
               );

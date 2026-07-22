@@ -55,3 +55,22 @@ export type ReleasePreview = {
   updated_at: string;
   published_at: string | null;
 };
+
+export type AccessSeverity = "normal" | "warning" | "critical";
+
+export type AccessLogEntry = {
+  id: number;
+  scope: "public" | "admin";
+  event_type: string;
+  path: string;
+  method: string;
+  status_code: number | null;
+  visitor_hash: string;
+  country: string | null;
+  user_agent: string | null;
+  referrer: string | null;
+  severity: AccessSeverity;
+  details: Record<string, unknown>;
+  created_at: string;
+  acknowledged_at: string | null;
+};

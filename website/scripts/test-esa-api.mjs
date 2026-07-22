@@ -32,6 +32,7 @@ const calls = [];
 let reviewerNote = '[[lyric-island-review:v1]]{"reply":"Planned for the next version.","flagged":false,"public":true}';
 let submissionStatus = "accepted";
 let rewardStatus = "not_eligible";
+let accessLogs = [];
 
 function storedSubmission() {
   return {
@@ -68,6 +69,26 @@ function response(data, status = 200) {
 globalThis.fetch = async (input, init = {}) => {
   const url = String(input);
   calls.push({ url, init });
+  if (url.endsWith("/rest/v1/access_logs") && init.method === "POST") {
+    const body = JSON.parse(init.body);
+    accessLogs.unshift({
+      id: accessLogs.length + 1,
+      ...body,
+      created_at: "2026-07-22T00:00:00.000Z",
+      acknowledged_at: null
+    });
+    return response([]);
+  }
+  if (url.includes("/rest/v1/access_logs?select=*")) {
+    return response(accessLogs);
+  }
+  if (url.includes("/rest/v1/access_logs?severity=in.") && init.method === "PATCH") {
+    accessLogs = accessLogs.map((item) => item.severity === "normal" ? item : {
+      ...item,
+      acknowledged_at: "2026-07-22T00:01:00.000Z"
+    });
+    return response([]);
+  }
   if (url.includes("/rest/v1/incentive_likes?")) {
     return response([{ submission_id: "11111111-1111-4111-8111-111111111111" }]);
   }
@@ -118,6 +139,9 @@ globalThis.fetch = async (input, init = {}) => {
     submissionStatus = body.status ?? submissionStatus;
     rewardStatus = body.reward_status ?? rewardStatus;
     return response([{ ...storedSubmission(), ...body }]);
+  }
+  if (url.includes("/rest/v1/incentive_submissions?id=eq.") && init.method === "DELETE") {
+    return response([storedSubmission()]);
   }
   if (url.endsWith("/storage/v1/object/lyric-island-submissions/placeholder")) {
     return response({});
@@ -217,7 +241,48 @@ try {
   assert.equal(saveData.submission.developer_reply, "Confirmed for the next release.");
   assert.equal(saveData.submission.is_flagged, true);
   assert.equal(saveData.submission.is_public, true);
-  assert.equal(calls.length, 2, "saving a review must read current metadata then update the row");
+  assert.equal(calls.length, 3, "saving a review must read, update and append an audit record");
+
+  const pageAccessResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/access", {
+      method: "POST",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        "x-forwarded-for": "203.0.113.10"
+      },
+      body: JSON.stringify({ path: "/incentives", referrer: "https://example.com/" })
+    })
+  );
+  assert.equal(pageAccessResponse.status, 204);
+  assert.equal(accessLogs[0].event_type, "page_view");
+  assert.equal(accessLogs[0].scope, "public");
+  assert.equal(accessLogs[0].visitor_hash.length, 64);
+
+  const failedLoginResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/login", {
+      method: "POST",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        "x-forwarded-for": "198.51.100.20"
+      },
+      body: JSON.stringify({ password: "wrong password" })
+    })
+  );
+  assert.equal(failedLoginResponse.status, 401);
+  assert.equal(accessLogs[0].event_type, "login_failed");
+  assert.equal(accessLogs[0].severity, "warning");
+
+  const accessLogResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/access-logs", {
+      headers: { cookie: adminCookie.split(";")[0] }
+    })
+  );
+  assert.equal(accessLogResponse.status, 200);
+  const accessLogData = await accessLogResponse.json();
+  assert.ok(accessLogData.logs.length >= 2);
+  assert.equal(accessLogData.unreadAlerts, 1);
 
   const refreshedPublicResponse = await api.fetch(
     new Request("https://lyric-island.top/api/incentives/public")

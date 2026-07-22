@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "@fontsource-variable/sofia-sans/wght.css";
 import "../../globals.css";
 import DevSourceLocator from "@/components/DevSourceLocator";
+import { AccessLogger } from "@/components/AccessLogger";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://lyric-island-windows.kyc869bdc4.chatgpt.site"),
@@ -48,6 +49,7 @@ export default function EnglishRootLayout({
   return (
     <html lang="en">
       <body>
+        <AccessLogger />
         {children}
         {process.env.NODE_ENV === "development" ? <DevSourceLocator /> : null}
       </body>
