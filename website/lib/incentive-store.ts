@@ -254,6 +254,11 @@ export async function listSubmissions() {
 export async function updateSubmission(
   id: string,
   changes: {
+    kind?: SubmissionKind;
+    nickname?: string;
+    email?: string;
+    title?: string;
+    body?: string;
     status?: SubmissionStatus;
     reward_status?: RewardStatus;
     developer_reply?: string | null;
@@ -268,6 +273,7 @@ export async function updateSubmission(
   if (!current) throw new Error("Submission not found");
   const currentMeta = decodeReviewMeta(current.reviewer_note);
   const { developer_reply, is_flagged, is_public, ...storedChanges } = changes;
+  const effectiveStatus = changes.status ?? current.status;
   const rows = await supabase<StoredSubmission[]>(
     `/rest/v1/incentive_submissions?id=eq.${encodeURIComponent(id)}`,
     {
@@ -278,13 +284,45 @@ export async function updateSubmission(
         reviewer_note: encodeReviewMeta({
           developer_reply: developer_reply !== undefined ? developer_reply : currentMeta.developer_reply,
           is_flagged: is_flagged !== undefined ? is_flagged : currentMeta.is_flagged,
-          is_public: is_public !== undefined ? is_public : currentMeta.is_public
+          is_public: effectiveStatus === "accepted"
+            ? (is_public !== undefined ? is_public : currentMeta.is_public)
+            : false
         }),
         updated_at: new Date().toISOString()
       })
     }
   );
   return toSubmission(rows[0]);
+}
+
+export async function deleteSubmission(id: string) {
+  const currentRows = await supabase<StoredSubmission[]>(
+    `/rest/v1/incentive_submissions?select=*&id=eq.${encodeURIComponent(id)}&limit=1`
+  );
+  const current = currentRows[0];
+  if (!current) throw new Error("Submission not found");
+
+  const { url, key, bucket } = getConfig();
+  await Promise.allSettled(
+    (current.attachments ?? []).map((attachment) =>
+      fetch(
+        `${url}/storage/v1/object/${encodeURIComponent(bucket)}/${attachment.path}`,
+        {
+          method: "DELETE",
+          headers: {
+            apikey: key,
+            ...(key.startsWith("sb_") ? {} : { Authorization: `Bearer ${key}` })
+          },
+          cache: "no-store"
+        }
+      )
+    )
+  );
+
+  await supabase<StoredSubmission[]>(
+    `/rest/v1/incentive_submissions?id=eq.${encodeURIComponent(id)}`,
+    { method: "DELETE", headers: headers("return=representation") }
+  );
 }
 
 export async function listReleasePreviews() {

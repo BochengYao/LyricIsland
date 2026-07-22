@@ -109,7 +109,8 @@ async function supabase(path, init = {}) {
     throw new Error(`Supabase request failed (${response.status}): ${detail.slice(0, 200)}`);
   }
   if (response.status === 204) return undefined;
-  return response.json();
+  const body = await response.text();
+  return body ? JSON.parse(body) : undefined;
 }
 
 function readCookie(request, name) {
@@ -141,6 +142,73 @@ async function sha256(value) {
   return bytesToHex(
     await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value))
   );
+}
+
+function clientAddress(request) {
+  return (
+    request.headers.get("cf-connecting-ip") ||
+    request.headers.get("x-real-ip") ||
+    (request.headers.get("x-forwarded-for") || "").split(",")[0].trim() ||
+    "unknown"
+  ).slice(0, 128);
+}
+
+async function accessVisitorHash(request) {
+  if (!CONFIG.adminSessionSecret) throw new Error("ADMIN_SESSION_SECRET is not configured");
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(CONFIG.adminSessionSecret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  return bytesToHex(
+    await crypto.subtle.sign(
+      "HMAC",
+      key,
+      encoder.encode(`access-log:${clientAddress(request)}`)
+    )
+  );
+}
+
+function cleanAccessPath(value, request) {
+  const fallback = new URL(request.url).pathname;
+  if (typeof value !== "string" || !value.startsWith("/")) return fallback.slice(0, 500);
+  try {
+    return new URL(value, request.url).pathname.slice(0, 500);
+  } catch {
+    return fallback.slice(0, 500);
+  }
+}
+
+async function recordAccessEvent(request, input) {
+  const country = request.headers.get("x-vercel-ip-country") || request.headers.get("cf-ipcountry");
+  await supabase("/rest/v1/access_logs", {
+    method: "POST",
+    headers: supabaseHeaders("return=minimal"),
+    body: JSON.stringify({
+      scope: input.scope,
+      event_type: input.eventType.slice(0, 80),
+      path: cleanAccessPath(input.path, request),
+      method: (input.method || request.method).slice(0, 12),
+      status_code: input.statusCode == null ? null : input.statusCode,
+      visitor_hash: await accessVisitorHash(request),
+      country: country ? country.slice(0, 8) : null,
+      user_agent: (request.headers.get("user-agent") || "").slice(0, 500) || null,
+      referrer: (input.referrer || request.headers.get("referer") || "").slice(0, 800) || null,
+      severity: input.severity || "normal",
+      details: input.details || {}
+    })
+  });
+}
+
+async function safeRecordAccessEvent(request, input) {
+  try {
+    await recordAccessEvent(request, input);
+  } catch {
+    // Access logging must not break the request being audited.
+  }
 }
 
 async function signAdminSession(value) {
@@ -372,6 +440,7 @@ async function updateSubmission(id, changes) {
   if (!current) throw new Error("Submission not found");
   const currentMeta = decodeReviewMeta(current.reviewer_note);
   const { developer_reply, is_flagged, is_public, ...storedChanges } = changes;
+  const effectiveStatus = changes.status || current.status;
   const rows = await supabase(
     `/rest/v1/incentive_submissions?id=eq.${encodeURIComponent(id)}`,
     {
@@ -382,13 +451,60 @@ async function updateSubmission(id, changes) {
         reviewer_note: encodeReviewMeta({
           developer_reply: developer_reply !== undefined ? developer_reply : currentMeta.developer_reply,
           is_flagged: is_flagged !== undefined ? is_flagged : currentMeta.is_flagged,
-          is_public: is_public !== undefined ? is_public : currentMeta.is_public
+          is_public: effectiveStatus === "accepted"
+            ? (is_public !== undefined ? is_public : currentMeta.is_public)
+            : false
         }),
         updated_at: new Date().toISOString()
       })
     }
   );
   return toSubmission(rows[0]);
+}
+
+async function deleteSubmission(id) {
+  const currentRows = await supabase(
+    `/rest/v1/incentive_submissions?select=*&id=eq.${encodeURIComponent(id)}&limit=1`
+  );
+  const current = currentRows[0];
+  if (!current) throw new Error("Submission not found");
+  await Promise.allSettled((current.attachments || []).map((attachment) =>
+    fetch(
+      `${normalizedSupabaseUrl()}/storage/v1/object/${encodeURIComponent(CONFIG.storageBucket)}/${attachment.path}`,
+      {
+        method: "DELETE",
+        headers: {
+          apikey: CONFIG.supabaseKey,
+          ...(CONFIG.supabaseKey.startsWith("sb_") ? {} : { Authorization: `Bearer ${CONFIG.supabaseKey}` })
+        }
+      }
+    )
+  ));
+  await supabase(`/rest/v1/incentive_submissions?id=eq.${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: supabaseHeaders("return=representation")
+  });
+}
+
+async function listAccessLogs() {
+  const logs = await supabase(
+    "/rest/v1/access_logs?select=*&order=created_at.desc&limit=300"
+  );
+  return {
+    logs,
+    unreadAlerts: logs.filter((item) => item.severity !== "normal" && !item.acknowledged_at).length
+  };
+}
+
+async function acknowledgeAccessAlerts() {
+  await supabase(
+    "/rest/v1/access_logs?severity=in.(warning,critical)&acknowledged_at=is.null",
+    {
+      method: "PATCH",
+      headers: supabaseHeaders("return=minimal"),
+      body: JSON.stringify({ acknowledged_at: new Date().toISOString() })
+    }
+  );
 }
 
 async function listReleasePreviews() {
@@ -557,13 +673,18 @@ async function handleLike(request) {
 }
 
 async function handleLogin(request) {
-  if (!isSameOrigin(request)) return jsonError("Invalid origin", 403);
+  if (!isSameOrigin(request)) {
+    await safeRecordAccessEvent(request, { scope: "admin", eventType: "cross_origin_login_attempt", severity: "critical", statusCode: 403 });
+    return jsonError("Invalid origin", 403);
+  }
   try {
     const body = await request.json();
     const password = typeof body.password === "string" ? body.password : "";
     if (!(await verifyAdminPassword(password))) {
+      await safeRecordAccessEvent(request, { scope: "admin", eventType: "login_failed", severity: "warning", statusCode: 401 });
       return jsonError("密码不正确", 401);
     }
+    await safeRecordAccessEvent(request, { scope: "admin", eventType: "login_succeeded", statusCode: 200 });
     return json(
       { ok: true },
       200,
@@ -581,12 +702,38 @@ function handleLogout(request) {
 }
 
 async function handleAdminSubmissions(request) {
-  if (!(await isAdminRequest(request))) return jsonError("Unauthorized", 401);
+  if (!(await isAdminRequest(request))) {
+    if (request.method !== "GET") {
+      await safeRecordAccessEvent(request, {
+        scope: "admin",
+        eventType: request.method === "DELETE" ? "unauthorized_submission_delete" : "unauthorized_submission_update",
+        severity: isSameOrigin(request) ? "warning" : "critical",
+        statusCode: 401
+      });
+    }
+    return jsonError("Unauthorized", 401);
+  }
   if (request.method === "GET") {
     try {
       return json({ submissions: await listSubmissions() });
     } catch {
       return jsonError("无法读取提交记录", 500);
+    }
+  }
+  if (request.method === "DELETE") {
+    if (!isSameOrigin(request)) {
+      await safeRecordAccessEvent(request, { scope: "admin", eventType: "unauthorized_submission_delete", severity: "critical", statusCode: 401 });
+      return jsonError("Unauthorized", 401);
+    }
+    try {
+      const body = await request.json();
+      const id = typeof body.id === "string" ? body.id : "";
+      if (!id) return jsonError("Invalid deletion");
+      await deleteSubmission(id);
+      await safeRecordAccessEvent(request, { scope: "admin", eventType: "submission_deleted", statusCode: 200, details: { submissionId: id } });
+      return json({ ok: true });
+    } catch {
+      return jsonError("删除失败", 500);
     }
   }
   if (request.method !== "PATCH") return jsonError("Method not allowed", 405);
@@ -596,6 +743,11 @@ async function handleAdminSubmissions(request) {
     const statuses = ["pending", "reviewing", "accepted", "declined"];
     const rewards = ["not_eligible", "pending", "issued"];
     const id = typeof body.id === "string" ? body.id : "";
+    const kind = body.kind === "feature" || body.kind === "bug" ? body.kind : undefined;
+    const nickname = typeof body.nickname === "string" ? body.nickname.trim().slice(0, 48) : undefined;
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase().slice(0, 180) : undefined;
+    const title = typeof body.title === "string" ? body.title.trim().slice(0, 120) : undefined;
+    const content = typeof body.body === "string" ? body.body.trim().slice(0, 4000) : undefined;
     const status = statuses.includes(body.status) ? body.status : undefined;
     const reward = rewards.includes(body.reward_status) ? body.reward_status : undefined;
     const reply =
@@ -604,20 +756,70 @@ async function handleAdminSubmissions(request) {
         : undefined;
     const isFlagged = typeof body.is_flagged === "boolean" ? body.is_flagged : undefined;
     const isPublic = typeof body.is_public === "boolean" ? body.is_public : undefined;
-    if (!id || (!status && !reward && reply === undefined && isFlagged === undefined && isPublic === undefined)) {
+    if (!id || (nickname !== undefined && !nickname) || (title !== undefined && title.length < 4) ||
+      (content !== undefined && content.length < 12) || (email !== undefined && !validEmail(email)) ||
+      (!kind && nickname === undefined && email === undefined && title === undefined && content === undefined && !status && !reward && reply === undefined && isFlagged === undefined && isPublic === undefined)) {
       return jsonError("Invalid update");
     }
     const submission = await updateSubmission(id, {
+      ...(kind ? { kind } : {}),
+      ...(nickname !== undefined ? { nickname } : {}),
+      ...(email !== undefined ? { email } : {}),
+      ...(title !== undefined ? { title } : {}),
+      ...(content !== undefined ? { body: content } : {}),
       ...(status ? { status } : {}),
       ...(reward ? { reward_status: reward } : {}),
       ...(reply !== undefined ? { developer_reply: reply || null } : {}),
       ...(isFlagged !== undefined ? { is_flagged: isFlagged } : {}),
       ...(isPublic !== undefined ? { is_public: status && status !== "accepted" ? false : isPublic } : {})
     });
+    await safeRecordAccessEvent(request, { scope: "admin", eventType: "submission_updated", statusCode: 200, details: { submissionId: id } });
     return json({ submission });
   } catch {
     return jsonError("更新失败", 500);
   }
+}
+
+async function handleAccess(request) {
+  if (!isSameOrigin(request)) return new Response(null, { status: 403 });
+  try {
+    const body = await request.json();
+    const path = typeof body.path === "string" ? body.path : "/";
+    const scope = path === "/admin" || path.startsWith("/admin/") ? "admin" : "public";
+    await safeRecordAccessEvent(request, {
+      scope,
+      eventType: "page_view",
+      path,
+      statusCode: 200,
+      referrer: typeof body.referrer === "string" ? body.referrer : undefined,
+      details: scope === "admin" ? { authenticated: await isAdminRequest(request) } : undefined
+    });
+  } catch {
+    // A failed audit write is intentionally invisible to the page visitor.
+  }
+  return new Response(null, { status: 204 });
+}
+
+async function handleAdminAccessLogs(request) {
+  if (!(await isAdminRequest(request))) return jsonError("Unauthorized", 401);
+  if (request.method === "GET") {
+    try {
+      return json(await listAccessLogs());
+    } catch {
+      return jsonError("无法读取访问日志", 500);
+    }
+  }
+  if (request.method === "PATCH" && isSameOrigin(request)) {
+    try {
+      await acknowledgeAccessAlerts();
+      await safeRecordAccessEvent(request, { scope: "admin", eventType: "security_alerts_acknowledged", statusCode: 200 });
+      return json({ ok: true });
+    } catch {
+      return jsonError("操作失败", 500);
+    }
+  }
+  await safeRecordAccessEvent(request, { scope: "admin", eventType: "unauthorized_alert_acknowledge", severity: "warning", statusCode: 401 });
+  return jsonError("Unauthorized", 401);
 }
 
 async function handleAdminPreviews(request) {
@@ -660,6 +862,9 @@ async function handleAdminPreviews(request) {
 
 async function handleRequest(request) {
   const path = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
+  if (path === "/api/access" && request.method === "POST") {
+    return handleAccess(request);
+  }
   if (path === "/api/incentives/public" && request.method === "GET") {
     return handlePublic(request);
   }
@@ -680,6 +885,9 @@ async function handleRequest(request) {
   }
   if (path === "/api/incentives/admin/previews") {
     return handleAdminPreviews(request);
+  }
+  if (path === "/api/incentives/admin/access-logs") {
+    return handleAdminAccessLogs(request);
   }
   return jsonError("Not found", 404);
 }
