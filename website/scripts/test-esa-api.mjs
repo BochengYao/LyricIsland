@@ -204,6 +204,20 @@ try {
   const adminCookie = loginResponse.headers.get("set-cookie");
   assert.match(adminCookie, /HttpOnly; Secure; SameSite=Strict/);
 
+  const proxiedLoginResponse = await api.fetch(
+    new Request("https://internal-worker.local/api/incentives/admin/login", {
+      method: "POST",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        "x-forwarded-host": "lyric-island.top",
+        "x-forwarded-proto": "https"
+      },
+      body: JSON.stringify({ password: values.__ESA_ADMIN_PASSWORD__ })
+    })
+  );
+  assert.equal(proxiedLoginResponse.status, 200, "proxied same-origin logins must use the public host");
+
   calls.length = 0;
   const adminResponse = await api.fetch(
     new Request("https://lyric-island.top/api/incentives/admin/submissions", {

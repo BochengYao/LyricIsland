@@ -3140,7 +3140,7 @@ p {
 
 .adminShell {
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-columns: 240px minmax(0, 1fr);
   min-height: 100vh;
   background: var(--surface);
 }
@@ -3151,7 +3151,7 @@ p {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  padding: 32px 28px;
+  padding: 32px 20px;
   background: var(--ink);
   color: var(--white);
 }
@@ -3173,7 +3173,13 @@ p {
 .adminSidebar nav {
   display: grid;
   gap: 8px;
+  justify-items: start;
   margin-top: 40px;
+}
+
+.adminSidebar nav button {
+  width: auto;
+  gap: 12px;
 }
 
 .adminSidebar nav button,

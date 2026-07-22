@@ -82,8 +82,27 @@ export function clearAdminSessionCookie() {
   return `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${secure}`;
 }
 
+function firstForwardedValue(value: string | null) {
+  return value?.split(",", 1)[0]?.trim() || null;
+}
+
 export function isSameOrigin(request: Request) {
   const origin = request.headers.get("origin");
   if (!origin) return true;
-  return origin === new URL(request.url).origin;
+
+  try {
+    const requestUrl = new URL(request.url);
+    const host = firstForwardedValue(request.headers.get("x-forwarded-host"))
+      ?? request.headers.get("host")
+      ?? requestUrl.host;
+    const forwardedProtocol = firstForwardedValue(request.headers.get("x-forwarded-proto"));
+    const protocol = forwardedProtocol
+      ? `${forwardedProtocol.replace(/:$/, "")}:`
+      : requestUrl.protocol;
+    const publicOrigin = new URL(`${protocol}//${host}`).origin;
+
+    return new URL(origin).origin === publicOrigin;
+  } catch {
+    return false;
+  }
 }

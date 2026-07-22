@@ -201,6 +201,11 @@ export function AdminIncentives() {
     (statusFilter === "all" || item.status === statusFilter)
   ).sort((left, right) => Number(right.is_flagged) - Number(left.is_flagged)), [submissions, kindFilter, statusFilter]);
 
+  const pendingSubmissionCount = useMemo(
+    () => submissions.filter((item) => item.status === "pending").length,
+    [submissions]
+  );
+
   const visibleLogs = useMemo(() => accessLogs.filter((item) =>
     (scopeFilter === "all" || item.scope === scopeFilter) &&
     (severityFilter === "all" || item.severity === severityFilter)
@@ -285,7 +290,7 @@ export function AdminIncentives() {
         <p className="eyebrow"><span aria-hidden="true">•</span>维护者后台</p>
         <h1>用户反馈</h1>
         <nav aria-label="后台导航">
-          <button className={panel === "submissions" ? "isActive" : ""} onClick={() => setPanel("submissions")}>反馈管理 <span>{submissions.filter((item) => item.status === "pending").length}</span></button>
+          <button className={panel === "submissions" ? "isActive" : ""} onClick={() => setPanel("submissions")}>反馈管理 {pendingSubmissionCount > 0 && <span>{pendingSubmissionCount}</span>}</button>
           <button className={panel === "previews" ? "isActive" : ""} onClick={() => setPanel("previews")}>版本预告</button>
           <button className={panel === "access" ? "isActive" : ""} onClick={() => setPanel("access")}>访问日志 {unreadAlerts > 0 && <span className="alertCount">{unreadAlerts}</span>}</button>
         </nav>

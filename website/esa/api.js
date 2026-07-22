@@ -267,9 +267,29 @@ function voterCookie(value) {
   return `${VOTER_COOKIE}=${value}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${VOTER_SECONDS}`;
 }
 
+function firstForwardedValue(value) {
+  return value?.split(",", 1)[0]?.trim() || null;
+}
+
 function isSameOrigin(request) {
   const origin = request.headers.get("origin");
-  return !origin || origin === new URL(request.url).origin;
+  if (!origin) return true;
+
+  try {
+    const requestUrl = new URL(request.url);
+    const host = firstForwardedValue(request.headers.get("x-forwarded-host"))
+      ?? request.headers.get("host")
+      ?? requestUrl.host;
+    const forwardedProtocol = firstForwardedValue(request.headers.get("x-forwarded-proto"));
+    const protocol = forwardedProtocol
+      ? `${forwardedProtocol.replace(/:$/, "")}:`
+      : requestUrl.protocol;
+    const publicOrigin = new URL(`${protocol}//${host}`).origin;
+
+    return new URL(origin).origin === publicOrigin;
+  } catch {
+    return false;
+  }
 }
 
 function cleanFileName(name) {
