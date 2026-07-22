@@ -17,7 +17,6 @@ export type IncentivesCopy = {
     title: string;
     body: string;
     reward: string;
-    acceptedEyebrow: string;
     acceptedTitle: string;
     acceptedSubtitle: string;
     acceptedEmpty: string;
@@ -76,8 +75,7 @@ export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
       title: "如果它让歌词岛更好，我们请你收下 3 元红包。",
       body: "说清楚使用场景、目前的不便，以及你希望歌词岛如何回应。越具体的建议，越容易进入评估。",
       reward: "建议被正式采纳后，发送 3 元红包",
-      acceptedEyebrow: "已经被听见",
-      acceptedTitle: "被听到的建议/Bug",
+      acceptedTitle: "已经被听见...",
       acceptedSubtitle: "给你认为可行的方案点赞，开发者会优先处理哦",
       acceptedEmpty: "第一批被采纳的建议将在这里滚动出现。"
     },
@@ -133,8 +131,7 @@ export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
       title: "If it makes Lyric Island better, we will send a small ¥3 red-packet reward.",
       body: "Describe the situation, what feels difficult today, and how you would like Lyric Island to respond. Specific ideas are easier to evaluate.",
       reward: "Accepted ideas receive a ¥3 red-packet reward",
-      acceptedEyebrow: "Already heard",
-      acceptedTitle: "Ideas and bugs we heard",
+      acceptedTitle: "Already heard...",
       acceptedSubtitle: "Like the ideas you believe in, and the developer will prioritize them.",
       acceptedEmpty: "The first accepted ideas will start orbiting here."
     },

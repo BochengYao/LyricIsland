@@ -242,10 +242,64 @@ function AcceptedRail({
   onLike: (id: string) => void;
   poppingId: string | null;
 }) {
+  const viewportRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    let animationFrame = 0;
+    let currentRate = 1;
+
+    const applyRate = (rate: number) => {
+      viewport.querySelectorAll<HTMLElement>(".acceptedWaterfallTrack").forEach((track) => {
+        track.getAnimations().forEach((animation) => {
+          animation.playbackRate = rate;
+        });
+      });
+    };
+
+    const transitionTo = (targetRate: number, duration: number) => {
+      cancelAnimationFrame(animationFrame);
+      const initialRate = currentRate;
+      const startedAt = performance.now();
+
+      const tick = (now: number) => {
+        const progress = Math.min(1, (now - startedAt) / duration);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        currentRate = initialRate + (targetRate - initialRate) * eased;
+        applyRate(currentRate);
+        if (progress < 1) animationFrame = requestAnimationFrame(tick);
+      };
+
+      animationFrame = requestAnimationFrame(tick);
+    };
+
+    const slowDown = () => transitionTo(0.24, 900);
+    const resumeIfIdle = () => {
+      if (!viewport.matches(":hover") && !viewport.matches(":focus-within")) {
+        transitionTo(1, 1100);
+      }
+    };
+
+    viewport.addEventListener("pointerenter", slowDown);
+    viewport.addEventListener("pointerleave", resumeIfIdle);
+    viewport.addEventListener("focusin", slowDown);
+    viewport.addEventListener("focusout", resumeIfIdle);
+
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      viewport.removeEventListener("pointerenter", slowDown);
+      viewport.removeEventListener("pointerleave", resumeIfIdle);
+      viewport.removeEventListener("focusin", slowDown);
+      viewport.removeEventListener("focusout", resumeIfIdle);
+    };
+  }, []);
+
   if (!suggestions.length) return <p className="acceptedEmpty">{emptyText}</p>;
 
   return (
-    <div className="acceptedWaterfallViewport">
+    <div className="acceptedWaterfallViewport" ref={viewportRef}>
       <div className="acceptedWaterfall">
         {Array.from({ length: 4 }, (_, columnIndex) => {
           const cycleLength = Math.max(4, suggestions.length);
@@ -461,7 +515,6 @@ export function IncentivePage({ locale }: { locale: Locale }) {
 
         <section className="acceptedSection">
           <div className="sectionContainer acceptedHeading">
-            <Eyebrow reveal>{copy.feature.acceptedEyebrow}</Eyebrow>
             <div><h2 data-text-reveal="title">{copy.feature.acceptedTitle}</h2><p>{copy.feature.acceptedSubtitle}</p></div>
           </div>
           <AcceptedRail suggestions={suggestions} emptyText={copy.feature.acceptedEmpty} locale={locale} onLike={toggleLike} poppingId={poppingId} />

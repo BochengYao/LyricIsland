@@ -2544,14 +2544,17 @@ p {
 }
 
 .acceptedHeading {
-  display: grid;
-  grid-template-columns: 0.55fr 1.45fr;
-  gap: 64px;
-  align-items: start;
+  text-align: center;
+}
+
+.acceptedHeading > div {
+  width: min(100%, 900px);
+  margin-inline: auto;
 }
 
 .acceptedHeading h2 {
   max-width: 760px;
+  margin-inline: auto;
 }
 
 .acceptedHeading > div > p {
@@ -2562,8 +2565,8 @@ p {
 
 .acceptedWaterfallViewport {
   position: relative;
-  height: 780px;
-  margin-top: 40px;
+  height: 520px;
+  margin-top: 24px;
   overflow: hidden;
   -webkit-mask-image: linear-gradient(
     to bottom,
@@ -2595,7 +2598,7 @@ p {
   width: min(1120px, calc(100vw - 160px));
   height: 1180px;
   overflow: visible;
-  transform: translate(-50%, -50%) rotate(45deg);
+  transform: translate(-50%, -50%) rotate(45deg) scale(0.667);
   transform-origin: center;
 }
 
@@ -2633,11 +2636,6 @@ p {
 .acceptedWaterfallColumn:nth-child(4) .acceptedWaterfallTrack {
   animation-duration: 45s;
   animation-delay: -9s;
-}
-
-.acceptedWaterfallViewport:hover .acceptedWaterfallTrack,
-.acceptedWaterfallViewport:focus-within .acceptedWaterfallTrack {
-  animation-play-state: paused;
 }
 
 .acceptedCardFrame {
@@ -3886,12 +3884,11 @@ button.danger,
   }
 
   .acceptedHeading {
-    grid-template-columns: 1fr;
-    gap: 24px;
+    text-align: center;
   }
 
   .acceptedWaterfallViewport {
-    height: 700px;
+    height: 560px;
   }
 
   .acceptedWaterfall {
@@ -3899,6 +3896,7 @@ button.danger,
     gap: 16px;
     width: min(780px, calc(100vw - 112px));
     height: 1080px;
+    transform: translate(-50%, -50%) rotate(45deg) scale(0.8);
   }
 
   .acceptedWaterfallColumn:nth-child(4) {
@@ -4008,7 +4006,7 @@ button.danger,
   }
 
   .acceptedWaterfallViewport {
-    height: 580px;
+    height: 500px;
     margin-top: 24px;
   }
 
@@ -4017,6 +4015,7 @@ button.danger,
     gap: 12px;
     width: min(350px, calc(100vw - 40px));
     height: 850px;
+    transform: translate(-50%, -50%) rotate(45deg) scale(0.92);
   }
 
   .acceptedWaterfallColumn:nth-child(3),
