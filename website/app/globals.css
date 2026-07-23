@@ -55,6 +55,24 @@ html[data-snap-scroll="enabled"] body {
     min-block-size: 100svh;
   }
 
+  .hero,
+  .demoSection,
+  .sourcesSection {
+    block-size: 100svh;
+    max-block-size: 100svh;
+    overflow: hidden;
+  }
+
+  .faqSection,
+  .closingSection {
+    display: grid;
+    align-content: center;
+    block-size: 100svh;
+    max-block-size: 100svh;
+    padding-block: clamp(88px, 10svh, 120px);
+    overflow: hidden;
+  }
+
   .siteFooter[data-snap-section] {
     min-block-size: auto;
   }

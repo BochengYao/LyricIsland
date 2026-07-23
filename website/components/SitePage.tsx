@@ -193,7 +193,7 @@ export function SitePage({ locale }: Props) {
 
           <div className="heroMedia">
             <Image
-              src="/images/product-hero.png"
+              src="/images/product-hero-v2.png"
               alt={copy.heroImageAlt}
               fill
               priority
