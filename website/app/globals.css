@@ -63,16 +63,6 @@ html[data-snap-scroll="enabled"] body {
     overflow: hidden;
   }
 
-  .faqSection,
-  .closingSection {
-    display: grid;
-    align-content: center;
-    block-size: 100svh;
-    max-block-size: 100svh;
-    padding-block: clamp(88px, 10svh, 120px);
-    overflow: hidden;
-  }
-
   .siteFooter[data-snap-section] {
     min-block-size: auto;
   }
@@ -1459,6 +1449,18 @@ p {
   margin-bottom: 32px;
   color: var(--muted);
   font-size: 18px;
+}
+
+@media (min-width: 1024px) {
+  .faqSection,
+  .closingSection {
+    display: grid;
+    align-content: center;
+    block-size: 100svh;
+    max-block-size: 100svh;
+    padding-block: clamp(88px, 10svh, 120px);
+    overflow: hidden;
+  }
 }
 
 .siteFooter {

@@ -84,7 +84,7 @@ export type SiteCopy = {
     title: string;
     body: string;
     button: string;
-    communityButton: string;
+    storeButton: string;
   };
   footer: {
     title: string;
@@ -245,11 +245,11 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       ]
     },
     closing: {
-      eyebrow: "v2.0 Beta 1",
+      eyebrow: "v2.0",
       title: "让音乐在边缘陪伴，而不是占据注意力。",
       body: "在 GitHub 查看 v1.0 与源码；软件下载请前往 Microsoft Store。",
       button: "查看 v1.0 与源码",
-      communityButton: "参加用户激励计划"
+      storeButton: "Mircosoft Store"
     },
     footer: {
       title: "歌词一直在，桌面依然属于你。",
@@ -406,11 +406,11 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       ]
     },
     closing: {
-      eyebrow: "v2.0 Beta 1",
+      eyebrow: "v2.0",
       title: "Let music stay at the edge, not at the center of your attention.",
       body: "View v1.0 and the source code on GitHub. Download the app from Microsoft Store.",
       button: "View v1.0 & source",
-      communityButton: "Join community rewards"
+      storeButton: "Mircosoft Store"
     },
     footer: {
       title: "The lyrics stay. Your desktop remains yours.",

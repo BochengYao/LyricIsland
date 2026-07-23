@@ -375,13 +375,15 @@ export function SitePage({ locale }: Props) {
             <h2 data-text-reveal="title">{copy.closing.title}</h2>
             <p>{copy.closing.body}</p>
             <div className="buttonRow">
-              <Link
+              <a
                 className="button buttonPrimary"
-                href={locale === "zh" ? "/incentives" : "/en/incentives"}
+                href={microsoftStoreUrl}
+                target="_blank"
+                rel="noreferrer"
               >
-                {copy.closing.communityButton}
-                <span aria-hidden="true">→</span>
-              </Link>
+                {copy.closing.storeButton}
+                <ExternalArrow />
+              </a>
               <a
                 className="button buttonSecondary"
                 href={githubUrl}
