@@ -115,7 +115,7 @@ namespace LyricsIsland.Core
                         var translated = translation.GetString() ?? string.Empty;
                         if (!string.IsNullOrWhiteSpace(translated))
                         {
-                            return original + Environment.NewLine + LyricsPackageParser.TranslationSeparator + Environment.NewLine + translated;
+                            return LyricsPackageParser.CreatePackage(original, translated);
                         }
                     }
 

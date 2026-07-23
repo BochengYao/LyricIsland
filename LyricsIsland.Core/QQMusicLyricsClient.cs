@@ -142,7 +142,7 @@ namespace LyricsIsland.Core
                     var translated = WebUtility.HtmlDecode(trans.GetString() ?? string.Empty);
                     if (!string.IsNullOrWhiteSpace(translated))
                     {
-                        return original + Environment.NewLine + LyricsPackageParser.TranslationSeparator + Environment.NewLine + translated;
+                        return LyricsPackageParser.CreatePackage(original, translated);
                     }
                 }
 
@@ -172,7 +172,7 @@ namespace LyricsIsland.Core
                 var translated = DecodeMaybeBase64(ReadString(data, "trans"));
                 if (!string.IsNullOrWhiteSpace(translated))
                 {
-                    return original + Environment.NewLine + LyricsPackageParser.TranslationSeparator + Environment.NewLine + translated;
+                    return LyricsPackageParser.CreatePackage(original, translated);
                 }
 
                 return original;

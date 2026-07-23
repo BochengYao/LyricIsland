@@ -28,6 +28,7 @@ namespace LyricsIsland.Tests
             suite.Run("does not reuse stale translation for next lyric", DoesNotReuseStaleTranslationForNextLyric);
             suite.Run("parses lyrics package without translation", ParsesLyricsPackageWithoutTranslation);
             suite.Run("detects whether lyrics package has translation", DetectsWhetherLyricsPackageHasTranslation);
+            suite.Run("rejects timestamp only translation packages", RejectsTimestampOnlyTranslationPackages);
             suite.Run("gets current lyric line duration", GetsCurrentLyricLineDuration);
             suite.Run("tracks lyric text changes for animation", TracksLyricTextChangesForAnimation);
             suite.Run("positions lyric text before transition", PositionsLyricTextBeforeTransition);
@@ -45,10 +46,14 @@ namespace LyricsIsland.Tests
             suite.Run("fetches translated lyrics from netease response", FetchesTranslatedLyricsFromNetEaseResponse);
             suite.Run("fetches synced lyrics from qq music response", FetchesSyncedLyricsFromQqMusicResponse);
             suite.Run("fetches translated lyrics from qq music response", FetchesTranslatedLyricsFromQqMusicResponse);
+            suite.Run("ignores timestamp only translation from qq music", IgnoresTimestampOnlyTranslationFromQqMusicResponse);
             suite.Run("fetches synced lyrics from kugou response", FetchesSyncedLyricsFromKuGouResponse);
             suite.Run("scores lyric candidates by title artist and duration", ScoresLyricCandidatesByTitleArtistAndDuration);
             suite.Run("uses fallback lyrics source when primary source is empty", UsesFallbackLyricsSourceWhenPrimarySourceIsEmpty);
             suite.Run("prefers translated fallback lyrics source", PrefersTranslatedFallbackLyricsSource);
+            suite.Run("falls back from timestamp only translation", FallsBackFromTimestampOnlyTranslation);
+            suite.Run("reuses matching base version translations for a remix", ReusesMatchingBaseVersionTranslationsForRemix);
+            suite.Run("does not reuse base version translations with too few matches", DoesNotReuseBaseVersionTranslationsWithTooFewMatches);
             suite.Run("uses fallback lyrics source when primary source throws", UsesFallbackLyricsSourceWhenPrimarySourceThrows);
             suite.Run("cleans combined now playing titles", CleansCombinedNowPlayingTitles);
             suite.Run("removes featured artist credit from now playing titles", RemovesFeaturedArtistCreditFromNowPlayingTitles);
@@ -349,6 +354,18 @@ namespace LyricsIsland.Tests
         {
             Assert.False(LyricsPackageParser.HasTranslation("[00:01.00]hello"));
             Assert.True(LyricsPackageParser.HasTranslation("[00:01.00]hello\n" + LyricsPackageParser.TranslationSeparator + "\n[00:01.00]你好"));
+        }
+
+        static void RejectsTimestampOnlyTranslationPackages()
+        {
+            var timestampOnly = "[00:01.00]hello\n" +
+                LyricsPackageParser.TranslationSeparator +
+                "\n[00:01.00]\n[00:02.00]\n[00:03.00]//";
+
+            Assert.False(LyricsPackageParser.HasTranslation(timestampOnly));
+            Assert.Equal(
+                "[00:01.00]hello",
+                LyricsPackageParser.CreatePackage("[00:01.00]hello", "[00:01.00]\n[00:02.00]//"));
         }
 
         static void GetsCurrentLyricLineDuration()
@@ -659,6 +676,100 @@ namespace LyricsIsland.Tests
             Assert.Equal(translated, lrc);
         }
 
+        static void FallsBackFromTimestampOnlyTranslation()
+        {
+            var invalid = "[00:01.00]hello" +
+                Environment.NewLine +
+                LyricsPackageParser.TranslationSeparator +
+                Environment.NewLine +
+                "[00:01.00]" +
+                Environment.NewLine +
+                "[00:02.00]//";
+            var translated = "[00:01.00]hello" +
+                Environment.NewLine +
+                LyricsPackageParser.TranslationSeparator +
+                Environment.NewLine +
+                "[00:01.00]你好";
+            var client = new CompositeLyricsClient(new ILyricsClient[]
+            {
+                new FakeLyricsClient(invalid),
+                new FakeLyricsClient(translated)
+            });
+
+            var lrc = client.GetSyncedLyricsAsync(new TrackIdentity("Song", "Artist", TimeSpan.FromSeconds(180)))
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.Equal(translated, lrc);
+        }
+
+        static void ReusesMatchingBaseVersionTranslationsForRemix()
+        {
+            var remix = "[00:01.00]shared phrase one\n" +
+                "[00:04.00]remix only verse\n" +
+                "[00:07.00]shared phrase two\n" +
+                "[00:10.00]shared phrase three\n" +
+                "[00:13.00]shared phrase four";
+            var baseVersion = "[00:20.00]shared phrase one\n" +
+                "[00:23.00]shared phrase two\n" +
+                "[00:26.00]shared phrase three\n" +
+                "[00:29.00]shared phrase four\n" +
+                LyricsPackageParser.TranslationSeparator + "\n" +
+                "[00:20.00]共享译文一\n" +
+                "[00:23.00]共享译文二\n" +
+                "[00:26.00]共享译文三\n" +
+                "[00:29.00]共享译文四";
+            var client = new CompositeLyricsClient(new ILyricsClient[]
+            {
+                new FakeLyricsClient(track =>
+                    track.Title.EndsWith("(Remix)", StringComparison.OrdinalIgnoreCase)
+                        ? remix
+                        : baseVersion)
+            });
+
+            var result = client.GetSyncedLyricsAsync(
+                    new TrackIdentity("Song (Remix)", "Artist", TimeSpan.FromSeconds(180)))
+                .GetAwaiter()
+                .GetResult();
+            var parsed = LyricsPackageParser.Parse(result);
+
+            Assert.True(LyricsPackageParser.HasTranslation(result));
+            Assert.Equal(4, parsed.TranslationLines.Count);
+            Assert.Equal(TimeSpan.FromSeconds(7), parsed.TranslationLines[1].Timestamp);
+            Assert.Equal("共享译文二", parsed.TranslationLines[1].Text);
+        }
+
+        static void DoesNotReuseBaseVersionTranslationsWithTooFewMatches()
+        {
+            var remix = "[00:01.00]shared phrase one\n" +
+                "[00:04.00]exclusive remix alpha\n" +
+                "[00:07.00]exclusive remix beta\n" +
+                "[00:10.00]exclusive remix gamma\n" +
+                "[00:13.00]exclusive remix delta";
+            var baseVersion = "[00:20.00]shared phrase one\n" +
+                "[00:23.00]different base phrase two\n" +
+                "[00:26.00]different base phrase three\n" +
+                LyricsPackageParser.TranslationSeparator + "\n" +
+                "[00:20.00]共享译文一\n" +
+                "[00:23.00]普通版译文二\n" +
+                "[00:26.00]普通版译文三";
+            var client = new CompositeLyricsClient(new ILyricsClient[]
+            {
+                new FakeLyricsClient(track =>
+                    track.Title.EndsWith("(Remix)", StringComparison.OrdinalIgnoreCase)
+                        ? remix
+                        : baseVersion)
+            });
+
+            var result = client.GetSyncedLyricsAsync(
+                    new TrackIdentity("Song (Remix)", "Artist", TimeSpan.FromSeconds(180)))
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.Equal(remix, result);
+            Assert.False(LyricsPackageParser.HasTranslation(result));
+        }
+
         static void FetchesSyncedLyricsFromKuGouResponse()
         {
             var requests = new List<Uri>();
@@ -741,6 +852,30 @@ namespace LyricsIsland.Tests
 
             Assert.True(lrc.Contains(LyricsPackageParser.TranslationSeparator));
             Assert.True(lrc.Contains("[00:00.00]糟糕的浪漫"));
+        }
+
+        static void IgnoresTimestampOnlyTranslationFromQqMusicResponse()
+        {
+            var originalText = "[00:00.00]Bad Romance\n[00:01.00]Rah rah";
+            var lyrics = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(originalText));
+            var translation = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(
+                "[00:00.19]\n[00:00.57]\n[00:01.32]//"));
+            var client = new QQMusicLyricsClient(uri =>
+            {
+                if (uri.AbsolutePath.EndsWith("/client_search_cp", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "{\"data\":{\"song\":{\"list\":[{\"id\":103168363,\"mid\":\"002L922J1xDquy\",\"title\":\"Bad Romance\",\"singer\":[{\"name\":\"Lady Gaga\"}],\"interval\":295}]}}}";
+                }
+
+                return "{\"code\":0,\"req_0\":{\"code\":0,\"data\":{\"lyric\":\"" + lyrics + "\",\"trans\":\"" + translation + "\"}}}";
+            });
+
+            var lrc = client.GetSyncedLyricsAsync(new TrackIdentity("Bad Romance", "Lady Gaga", TimeSpan.FromSeconds(295)))
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.Equal(originalText, lrc);
+            Assert.False(LyricsPackageParser.HasTranslation(lrc));
         }
 
         static void UsesFallbackLyricsSourceWhenPrimarySourceThrows()
@@ -2962,16 +3097,21 @@ namespace LyricsIsland.Tests
 
     sealed class FakeLyricsClient : ILyricsClient
     {
-        private readonly string lyrics;
+        private readonly Func<TrackIdentity, string> getLyrics;
 
         public FakeLyricsClient(string lyrics)
         {
-            this.lyrics = lyrics;
+            getLyrics = track => lyrics;
+        }
+
+        public FakeLyricsClient(Func<TrackIdentity, string> getLyrics)
+        {
+            this.getLyrics = getLyrics ?? throw new ArgumentNullException(nameof(getLyrics));
         }
 
         public System.Threading.Tasks.Task<string> GetSyncedLyricsAsync(TrackIdentity track)
         {
-            return System.Threading.Tasks.Task.FromResult(lyrics);
+            return System.Threading.Tasks.Task.FromResult(getLyrics(track));
         }
     }
 
