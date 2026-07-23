@@ -2595,10 +2595,10 @@ p {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 18px;
-  width: min(1120px, calc(100vw - 160px));
-  height: 1180px;
+  width: min(1120px, calc(100vw - 64px));
+  height: max(1180px, calc(141.5vw - 1120px));
   overflow: visible;
-  transform: translate(-50%, -50%) rotate(45deg) scale(0.667);
+  transform: translate(-50%, -50%) rotate(45deg);
   transform-origin: center;
 }
 
@@ -3888,7 +3888,7 @@ button.danger,
   }
 
   .acceptedWaterfallViewport {
-    height: 560px;
+    height: 464px;
   }
 
   .acceptedWaterfall {
@@ -3896,7 +3896,7 @@ button.danger,
     gap: 16px;
     width: min(780px, calc(100vw - 112px));
     height: 1080px;
-    transform: translate(-50%, -50%) rotate(45deg) scale(0.8);
+    transform: translate(-50%, -50%) rotate(45deg);
   }
 
   .acceptedWaterfallColumn:nth-child(4) {
@@ -4006,7 +4006,7 @@ button.danger,
   }
 
   .acceptedWaterfallViewport {
-    height: 500px;
+    height: 384px;
     margin-top: 24px;
   }
 
@@ -4015,7 +4015,7 @@ button.danger,
     gap: 12px;
     width: min(350px, calc(100vw - 40px));
     height: 850px;
-    transform: translate(-50%, -50%) rotate(45deg) scale(0.92);
+    transform: translate(-50%, -50%) rotate(45deg);
   }
 
   .acceptedWaterfallColumn:nth-child(3),
