@@ -106,7 +106,7 @@ dotnet restore
 
 ```powershell
 dotnet publish `
-  .\AppleMusicDesktopLyrics.App\AppleMusicDesktopLyrics.App.csproj `
+  .\LyricsIsland.App\LyricsIsland.App.csproj `
   -c Release `
   -r win-x64 `
   --self-contained false `
@@ -116,7 +116,7 @@ dotnet publish `
 发布入口为：
 
 ```text
-publish\current\LyricIsland.App.exe
+publish\current\LyricsIsland.App.exe
 ```
 
 ## 操作与快捷键
@@ -145,23 +145,23 @@ publish\current\LyricIsland.App.exe
 歌词岛在本地保存设置和歌词缓存：
 
 ```text
-%LOCALAPPDATA%\AppleMusicDesktopLyrics\settings.json
-%LOCALAPPDATA%\AppleMusicDesktopLyrics\lyrics\
+%LOCALAPPDATA%\LyricsIsland\settings.json
+%LOCALAPPDATA%\LyricsIsland\lyrics\
 ```
 
-当前仍保留旧目录名，以兼容已安装版本的数据。桌面端不会要求登录歌词岛账号。歌词搜索会向已启用的第三方歌词源发送必要的歌曲标题、歌手等匹配信息；请同时遵守相应服务的条款。
+首次使用新目录时，程序会自动迁移旧版设置和歌词缓存。桌面端不会要求登录歌词岛账号。歌词搜索会向已启用的第三方歌词源发送必要的歌曲标题、歌手等匹配信息；请同时遵守相应服务的条款。
 
 ## 项目结构
 
 ```text
-AppleMusicDesktopLyrics.App/    WPF 桌面应用、歌词岛窗口、设置与媒体会话
-AppleMusicDesktopLyrics.Core/   歌词匹配、解析、缓存、布局和通用业务逻辑
-AppleMusicDesktopLyrics.Tests/  无额外测试框架的自动化回归入口
+LyricsIsland.App/    WPF 桌面应用、歌词岛窗口、设置与媒体会话
+LyricsIsland.Core/   歌词匹配、解析、缓存、布局和通用业务逻辑
+LyricsIsland.Tests/  无额外测试框架的自动化回归入口
 docs/                           设计、计划、兼容性矩阵与项目资料
 website/                        Lyric Island 官方网站与 API（v2 开发分支）
 ```
 
-内部文件夹仍保留历史名称，是为了减少迁移风险；面向用户的产品名、程序集和发布文件统一使用 **Lyric Island / 歌词岛**。
+解决方案、项目目录、命名空间、程序集和发布文件统一使用 `LyricsIsland`；面向用户的产品名为 **Lyric Island / 歌词岛**。
 
 ## 验证
 
@@ -169,8 +169,8 @@ website/                        Lyric Island 官方网站与 API（v2 开发分�
 $env:TargetPlatformSdkPath='C:\Program Files (x86)\Windows Kits\10\'
 $env:TargetPlatformDisplayName='Windows'
 
-dotnet run --no-restore --configuration Release --project AppleMusicDesktopLyrics.Tests
-dotnet build AppleMusicDesktopLyrics.sln -c Release --no-restore
+dotnet run --no-restore --configuration Release --project LyricsIsland.Tests
+dotnet build LyricsIsland.sln -c Release --no-restore
 git diff --check
 ```
 

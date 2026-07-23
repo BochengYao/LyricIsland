@@ -106,7 +106,7 @@ Start playback in any Windows SMTC-compatible player. The first launch presents 
 
 ```powershell
 dotnet publish `
-  .\AppleMusicDesktopLyrics.App\AppleMusicDesktopLyrics.App.csproj `
+  .\LyricsIsland.App\LyricsIsland.App.csproj `
   -c Release `
   -r win-x64 `
   --self-contained false `
@@ -116,7 +116,7 @@ dotnet publish `
 The published entry point is:
 
 ```text
-publish\current\LyricIsland.App.exe
+publish\current\LyricsIsland.App.exe
 ```
 
 ## Controls and shortcuts
@@ -145,23 +145,23 @@ Shortcuts can be changed in settings. Rebind them if another application already
 Lyric Island stores settings and cached lyrics locally:
 
 ```text
-%LOCALAPPDATA%\AppleMusicDesktopLyrics\settings.json
-%LOCALAPPDATA%\AppleMusicDesktopLyrics\lyrics\
+%LOCALAPPDATA%\LyricsIsland\settings.json
+%LOCALAPPDATA%\LyricsIsland\lyrics\
 ```
 
-The legacy directory name remains for compatibility with existing installations. The desktop application does not require a Lyric Island account. Lyric lookup sends the minimum matching metadata, such as track title and artist, to the enabled third-party lyric providers. Their respective terms still apply.
+On first use of the new directory, the application automatically migrates legacy settings and cached lyrics. The desktop application does not require a Lyric Island account. Lyric lookup sends the minimum matching metadata, such as track title and artist, to the enabled third-party lyric providers. Their respective terms still apply.
 
 ## Repository layout
 
 ```text
-AppleMusicDesktopLyrics.App/    WPF desktop app, island UI, settings, and media sessions
-AppleMusicDesktopLyrics.Core/   Lyric matching, parsing, caching, layouts, and shared logic
-AppleMusicDesktopLyrics.Tests/  Lightweight automated regression entry point
+LyricsIsland.App/    WPF desktop app, island UI, settings, and media sessions
+LyricsIsland.Core/   Lyric matching, parsing, caching, layouts, and shared logic
+LyricsIsland.Tests/  Lightweight automated regression entry point
 docs/                           Design notes, plans, validation matrices, and project material
 website/                        Lyric Island website and APIs on the v2 development branch
 ```
 
-Some internal folders retain historical names to reduce migration risk. User-facing product names, assemblies, and published files use **Lyric Island / 歌词岛**.
+The solution, project directories, namespaces, assemblies, and published files consistently use `LyricsIsland`. The user-facing product name is **Lyric Island / 歌词岛**.
 
 ## Validation
 
@@ -169,8 +169,8 @@ Some internal folders retain historical names to reduce migration risk. User-fac
 $env:TargetPlatformSdkPath='C:\Program Files (x86)\Windows Kits\10\'
 $env:TargetPlatformDisplayName='Windows'
 
-dotnet run --no-restore --configuration Release --project AppleMusicDesktopLyrics.Tests
-dotnet build AppleMusicDesktopLyrics.sln -c Release --no-restore
+dotnet run --no-restore --configuration Release --project LyricsIsland.Tests
+dotnet build LyricsIsland.sln -c Release --no-restore
 git diff --check
 ```
 

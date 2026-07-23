@@ -27,7 +27,7 @@ Use:
 ```powershell
 $env:TargetPlatformSdkPath='C:\Program Files (x86)\Windows Kits\10\'
 $env:TargetPlatformDisplayName='Windows'
-dotnet run --no-restore --project AppleMusicDesktopLyrics.Tests
-dotnet build AppleMusicDesktopLyrics.sln -c Release --no-restore
+dotnet run --no-restore --project LyricsIsland.Tests
+dotnet build LyricsIsland.sln -c Release --no-restore
 git diff --check
 ```

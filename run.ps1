@@ -1,2 +1,2 @@
 Set-Location $PSScriptRoot
-dotnet run --project .\AppleMusicDesktopLyrics.App\AppleMusicDesktopLyrics.App.csproj
+dotnet run --project .\LyricsIsland.App\LyricsIsland.App.csproj
