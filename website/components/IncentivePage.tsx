@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Eyebrow, LogoLockup } from "@/components/SitePage";
+import { Eyebrow, LogoLockup, PrimaryNavigation } from "@/components/SitePage";
 import { SelectiveTextReveal } from "@/components/SelectiveTextReveal";
 import {
   SubmissionTicket,
@@ -421,7 +421,6 @@ export function IncentivePage({ locale }: { locale: Locale }) {
   function selectTab(next: SubmissionKind) {
     setTab(next);
     history.replaceState(null, "", next === "bug" ? "#bugs" : "#features");
-    document.getElementById("submission-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   async function toggleLike(id: string) {
@@ -474,26 +473,21 @@ export function IncentivePage({ locale }: { locale: Locale }) {
         {locale === "zh" ? "跳到用户激励计划" : "Skip to community rewards"}
       </a>
       <SelectiveTextReveal />
-      <header className="siteHeader">
-        <nav className="floatingNav incentivesNav" aria-label={copy.navLabel}>
-          <Link href={home} className="brandLink"><LogoLockup /></Link>
-          <div className="incentiveTabs" role="tablist" aria-label={copy.navLabel}>
-            <button role="tab" aria-selected={tab === "feature"} onClick={() => selectTab("feature")}>{copy.tabs.feature}</button>
-            <button role="tab" aria-selected={tab === "bug"} onClick={() => selectTab("bug")}>{copy.tabs.bug}</button>
-          </div>
-          <div className="navActions">
-            <Link className="languageLink" href={copy.languageHref}>{copy.languageName}</Link>
-          </div>
-        </nav>
-      </header>
+      <PrimaryNavigation locale={locale} homeHref={home} languageHref={copy.languageHref} />
 
       <main id="incentives-main" className="incentivesMain">
         <section className="incentivesHero sectionContainer">
           <Eyebrow reveal>{copy.eyebrow}</Eyebrow>
           <div className="incentivesHeroGrid">
-            <h1 data-text-reveal="title" style={{ whiteSpace: "pre-line" }}>
-              {copy.title}
-            </h1>
+            <div className="incentivesHeroTitle">
+              <h1 data-text-reveal="title" style={{ whiteSpace: "pre-line" }}>
+                {copy.title}
+              </h1>
+              <div className={`incentiveTabs ${tab === "bug" ? "isBug" : ""}`} role="tablist" aria-label={copy.navLabel}>
+                <button role="tab" aria-selected={tab === "feature"} onClick={() => selectTab("feature")}>{copy.tabs.feature}</button>
+                <button role="tab" aria-selected={tab === "bug"} onClick={() => selectTab("bug")}>{copy.tabs.bug}</button>
+              </div>
+            </div>
             <div>
               <p>{copy.intro}</p>
               <small>{copy.privacyNote}</small>
