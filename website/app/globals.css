@@ -416,6 +416,8 @@ p {
 }
 
 .navActions {
+  grid-column: 3;
+  justify-self: end;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -2251,15 +2253,39 @@ p {
 }
 
 .incentiveTabs {
-  display: inline-flex;
-  justify-self: center;
+  position: relative;
+  isolation: isolate;
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: min(100%, 340px);
   padding: 4px;
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
   background: var(--canvas);
 }
 
+.incentiveTabs::before {
+  position: absolute;
+  z-index: -1;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  border-radius: var(--radius-pill);
+  background: var(--ink);
+  content: "";
+  transform: translate3d(0, 0, 0);
+  transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.incentiveTabs.isBug::before {
+  transform: translate3d(100%, 0, 0);
+}
+
 .incentiveTabs button {
+  position: relative;
+  z-index: 1;
   min-height: 40px;
   padding: 0 20px;
   border: 0;
@@ -2270,10 +2296,10 @@ p {
   font: inherit;
   font-size: 14px;
   font-weight: 500;
+  transition: color 260ms ease;
 }
 
 .incentiveTabs button[aria-selected="true"] {
-  background: var(--ink);
   color: var(--canvas);
 }
 
@@ -2296,6 +2322,10 @@ p {
 
 .incentivesHeroGrid h1 {
   max-width: 850px;
+}
+
+.incentivesHeroTitle .incentiveTabs {
+  margin-top: 40px;
 }
 
 .incentivesHeroGrid p {
@@ -3972,7 +4002,7 @@ button.danger,
   }
 
   .incentiveTabs {
-    justify-self: end;
+    width: min(100%, 320px);
   }
 
   .incentiveTabs button {
@@ -4311,6 +4341,11 @@ button.danger,
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .incentiveTabs::before,
+  .incentiveTabs button {
+    transition: none;
+  }
+
   .acceptedWaterfallViewport {
     height: auto;
     min-height: 560px;

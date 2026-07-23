@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ExternalArrow } from "@/components/ExternalArrow";
-import { Eyebrow, LogoLockup } from "@/components/SitePage";
+import { Eyebrow, LogoLockup, PrimaryNavigation } from "@/components/SitePage";
 import { SelectiveTextReveal } from "@/components/SelectiveTextReveal";
 import {
   copyByLocale,
@@ -24,30 +24,7 @@ export function UpdatesPage({ locale }: Props) {
         {locale === "zh" ? "跳到更新内容" : "Skip to updates"}
       </a>
       <SelectiveTextReveal />
-      <header className="siteHeader">
-        <nav className="floatingNav updatesNav" aria-label={copy.menuLabel}>
-          <Link href={home} className="brandLink">
-            <LogoLockup />
-          </Link>
-          <Link className="updatesBackLink" href={home}>
-            <span aria-hidden="true">←</span>
-            {copy.backLabel}
-          </Link>
-          <div className="navActions">
-            <a
-              className="storeNavLink"
-              href={microsoftStoreUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Microsoft Store
-            </a>
-            <Link className="languageLink" href={copy.languageHref}>
-              {copy.languageName}
-            </Link>
-          </div>
-        </nav>
-      </header>
+      <PrimaryNavigation locale={locale} homeHref={home} languageHref={copy.languageHref} />
 
       <main id="updates-main" className="updatesMain">
         <section className="updatesHero sectionContainer">

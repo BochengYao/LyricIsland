@@ -61,6 +61,99 @@ export function LogoLockup() {
   );
 }
 
+export function PrimaryNavigation({
+  locale,
+  homeHref = locale === "zh" ? "/" : "/en",
+  languageHref
+}: {
+  locale: Locale;
+  homeHref?: string;
+  languageHref?: string;
+}) {
+  const copy = copyByLocale[locale];
+  const localizedLanguageHref = languageHref ?? copy.languageHref;
+  const navigation = copy.nav.map((item) => item.href === "#main" ? { ...item, href: homeHref } : item);
+
+  const renderLabel = (item: (typeof navigation)[number]) => (
+    <>
+      {item.kind === "feature" ? (
+        <span className="navFeatureText" aria-label={item.label}>
+          {Array.from(item.label).map((character, index) => (
+            <span aria-hidden="true" key={`${character}-${index}`}>{character}</span>
+          ))}
+        </span>
+      ) : item.label}
+      {item.kind === "store" && (
+        <ExternalArrow className="navExternalArrow" variant="nav" />
+      )}
+    </>
+  );
+
+  return (
+    <header className="siteHeader">
+      <nav className="floatingNav" aria-label={copy.navLabel}>
+        <Link href={locale === "zh" ? "/" : "/en"} className="brandLink">
+          <LogoLockup />
+        </Link>
+
+        <div className="desktopNavLinks">
+          {navigation.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className={
+                item.kind === "feature"
+                  ? "navFeatureLink"
+                  : item.kind === "store"
+                    ? "navStoreLink"
+                    : undefined
+              }
+              target={item.external ? "_blank" : undefined}
+              rel={item.external ? "noreferrer" : undefined}
+            >
+              {renderLabel(item)}
+            </a>
+          ))}
+        </div>
+
+        <div className="navActions">
+          <Link className="languageLink" href={localizedLanguageHref} hrefLang={locale === "zh" ? "en" : "zh-CN"}>
+            {copy.languageName}
+          </Link>
+          <details className="mobileMenu">
+            <summary aria-label={copy.menuLabel}>
+              <span />
+              <span />
+            </summary>
+            <div className="mobileMenuPanel">
+              {navigation.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className={
+                    item.kind === "feature"
+                      ? "navFeatureLink"
+                      : item.kind === "store"
+                        ? "navStoreLink"
+                        : undefined
+                  }
+                  target={item.external ? "_blank" : undefined}
+                  rel={item.external ? "noreferrer" : undefined}
+                >
+                  {renderLabel(item)}
+                </a>
+              ))}
+              <Link href={localizedLanguageHref} hrefLang={locale === "zh" ? "en" : "zh-CN"}>
+                {copy.languageName}
+              </Link>
+            </div>
+          </details>
+        </div>
+      </nav>
+    </header>
+  );
+}
+
 export function SitePage({ locale }: Props) {
   const copy = copyByLocale[locale];
 
@@ -73,85 +166,7 @@ export function SitePage({ locale }: Props) {
       <SmoothSectionScroll />
       <SelectiveTextReveal />
 
-      <header className="siteHeader">
-        <nav className="floatingNav" aria-label={copy.navLabel}>
-          <Link href={locale === "zh" ? "/" : "/en"} className="brandLink">
-            <LogoLockup />
-          </Link>
-
-          <div className="desktopNavLinks">
-            {copy.nav.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                className={
-                  item.kind === "feature"
-                    ? "navFeatureLink"
-                    : item.kind === "store"
-                      ? "navStoreLink"
-                      : undefined
-                }
-                target={item.external ? "_blank" : undefined}
-                rel={item.external ? "noreferrer" : undefined}
-              >
-                {item.kind === "feature" ? (
-                  <span className="navFeatureText" aria-label={item.label}>
-                    {Array.from(item.label).map((character, index) => (
-                      <span aria-hidden="true" key={`${character}-${index}`}>{character}</span>
-                    ))}
-                  </span>
-                ) : item.label}
-                {item.kind === "store" && (
-                  <ExternalArrow className="navExternalArrow" variant="nav" />
-                )}
-              </a>
-            ))}
-          </div>
-
-          <div className="navActions">
-            <Link className="languageLink" href={copy.languageHref} hrefLang={locale === "zh" ? "en" : "zh-CN"}>
-              {copy.languageName}
-            </Link>
-            <details className="mobileMenu">
-              <summary aria-label={copy.menuLabel}>
-                <span />
-                <span />
-              </summary>
-              <div className="mobileMenuPanel">
-                {copy.nav.map((item) => (
-                  <a
-                    key={item.href}
-                    href={item.href}
-                    className={
-                      item.kind === "feature"
-                        ? "navFeatureLink"
-                        : item.kind === "store"
-                          ? "navStoreLink"
-                          : undefined
-                    }
-                    target={item.external ? "_blank" : undefined}
-                    rel={item.external ? "noreferrer" : undefined}
-                  >
-                    {item.kind === "feature" ? (
-                      <span className="navFeatureText" aria-label={item.label}>
-                        {Array.from(item.label).map((character, index) => (
-                          <span aria-hidden="true" key={`${character}-${index}`}>{character}</span>
-                        ))}
-                      </span>
-                    ) : item.label}
-                    {item.kind === "store" && (
-                      <ExternalArrow className="navExternalArrow" variant="nav" />
-                    )}
-                  </a>
-                ))}
-                <Link href={copy.languageHref} hrefLang={locale === "zh" ? "en" : "zh-CN"}>
-                  {copy.languageName}
-                </Link>
-              </div>
-            </details>
-          </div>
-        </nav>
-      </header>
+      <PrimaryNavigation locale={locale} homeHref="#main" />
 
       <main id="main">
         <section className="hero sectionContainer" data-snap-section>
