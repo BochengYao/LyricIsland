@@ -357,8 +357,9 @@ function AcceptedRail({
                           <button
                             className={`acceptedLikeButton ${item.liked ? "isLiked" : ""} ${poppingId === item.id ? "isPopping" : ""}`}
                             type="button"
-                            aria-label={`${locale === "zh" ? "点赞" : "Like"}：${item.title}`}
+                            aria-label={`${item.liked ? (locale === "zh" ? "本设备已点赞" : "Liked on this device") : (locale === "zh" ? "点赞" : "Like")}：${item.title}`}
                             aria-pressed={item.liked}
+                            disabled={item.liked}
                             tabIndex={accessible ? 0 : -1}
                             onClick={() => onLike(item.id)}
                           >
@@ -392,8 +393,9 @@ export function IncentivePage({ locale }: { locale: Locale }) {
 
   useEffect(() => {
     setIdentity(readIdentity());
+    let localLikes = new Set<string>();
     try {
-      const localLikes = new Set(JSON.parse(localStorage.getItem(LOCAL_LIKES_KEY) ?? "[]") as string[]);
+      localLikes = new Set(JSON.parse(localStorage.getItem(LOCAL_LIKES_KEY) ?? "[]") as string[]);
       setSuggestions((items) => items.map((item) => localLikes.has(item.id) ? {
         ...item,
         liked: true,
@@ -409,9 +411,14 @@ export function IncentivePage({ locale }: { locale: Locale }) {
       .then((response) => response.json())
       .then((data: { suggestions?: PublicSuggestion[]; previews?: ReleasePreview[]; configured?: boolean }) => {
         const configured = Boolean(data.configured);
+        const withLocalLikes = (data.suggestions ?? []).map((item) => localLikes.has(item.id) ? {
+          ...item,
+          liked: true,
+          like_count: Math.max(1, item.like_count)
+        } : item);
         setStorageConfigured(configured);
-        if (configured) setSuggestions(data.suggestions ?? []);
-        else if (data.suggestions?.length) setSuggestions(data.suggestions);
+        if (configured) setSuggestions(withLocalLikes);
+        else if (withLocalLikes.length) setSuggestions(withLocalLikes);
         setPreviews(data.previews ?? []);
       })
       .catch(() => undefined);
@@ -425,27 +432,23 @@ export function IncentivePage({ locale }: { locale: Locale }) {
 
   async function toggleLike(id: string) {
     const current = suggestions.find((suggestion) => suggestion.id === id);
-    if (!current) return;
-    const optimisticLiked = !current.liked;
+    if (!current || current.liked) return;
     setSuggestions((items) => items.map((item) => item.id === id ? {
       ...item,
-      liked: optimisticLiked,
-      like_count: Math.max(0, item.like_count + (optimisticLiked ? 1 : -1))
+      liked: true,
+      like_count: item.like_count + 1
     } : item));
     setPoppingId(id);
     setTimeout(() => setPoppingId((value) => value === id ? null : value), 560);
 
-    if (!storageConfigured) {
-      try {
-        const localLikes = new Set(JSON.parse(localStorage.getItem(LOCAL_LIKES_KEY) ?? "[]") as string[]);
-        if (optimisticLiked) localLikes.add(id);
-        else localLikes.delete(id);
-        localStorage.setItem(LOCAL_LIKES_KEY, JSON.stringify([...localLikes]));
-      } catch {
-        // The visual state still works when browser storage is unavailable.
-      }
-      return;
+    try {
+      const localLikes = new Set(JSON.parse(localStorage.getItem(LOCAL_LIKES_KEY) ?? "[]") as string[]);
+      localLikes.add(id);
+      localStorage.setItem(LOCAL_LIKES_KEY, JSON.stringify([...localLikes]));
+    } catch {
+      // The server cookie remains authoritative when browser storage is unavailable.
     }
+    if (!storageConfigured) return;
 
     try {
       const response = await fetch("/api/incentives/likes", {
@@ -463,6 +466,13 @@ export function IncentivePage({ locale }: { locale: Locale }) {
         like_count: result.like_count!
       } : item));
     } catch {
+      try {
+        const localLikes = new Set(JSON.parse(localStorage.getItem(LOCAL_LIKES_KEY) ?? "[]") as string[]);
+        localLikes.delete(id);
+        localStorage.setItem(LOCAL_LIKES_KEY, JSON.stringify([...localLikes]));
+      } catch {
+        // Ignore storage rollback failures.
+      }
       setSuggestions((items) => items.map((item) => item.id === id ? current : item));
     }
   }

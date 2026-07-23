@@ -191,25 +191,20 @@ export async function toggleSuggestionLike(
   const existing = await supabase<Array<{ submission_id: string }>>(
     `/rest/v1/incentive_likes?select=submission_id&submission_id=eq.${encodeURIComponent(submissionId)}&voter_token_hash=eq.${encodeURIComponent(voterTokenHash)}&limit=1`
   );
-  const liked = existing.length === 0;
-  if (liked) {
-    await supabase<Array<{ submission_id: string }>>("/rest/v1/incentive_likes", {
-      method: "POST",
-      headers: headers("return=representation"),
-      body: JSON.stringify({ submission_id: submissionId, voter_token_hash: voterTokenHash })
-    });
-  } else {
-    await supabase<Array<{ submission_id: string }>>(
-      `/rest/v1/incentive_likes?submission_id=eq.${encodeURIComponent(submissionId)}&voter_token_hash=eq.${encodeURIComponent(voterTokenHash)}`,
-      { method: "DELETE", headers: headers("return=representation") }
-    );
+  if (existing.length > 0) {
+    return { liked: true, like_count: submission.like_count, already_liked: true };
   }
-  const likeCount = Math.max(0, submission.like_count + (liked ? 1 : -1));
+  await supabase<Array<{ submission_id: string }>>("/rest/v1/incentive_likes", {
+    method: "POST",
+    headers: headers("return=representation"),
+    body: JSON.stringify({ submission_id: submissionId, voter_token_hash: voterTokenHash })
+  });
+  const likeCount = submission.like_count + 1;
   await supabase<StoredSubmission[]>(
     `/rest/v1/incentive_submissions?id=eq.${encodeURIComponent(submissionId)}`,
     { method: "PATCH", headers: headers("return=representation"), body: JSON.stringify({ like_count: likeCount }) }
   );
-  return { liked, like_count: likeCount };
+  return { liked: true, like_count: likeCount, already_liked: false };
 }
 
 async function createSignedUrl(path: string) {
