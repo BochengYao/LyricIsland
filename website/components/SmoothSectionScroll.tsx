@@ -6,6 +6,7 @@ const SECTION_SELECTOR = "[data-snap-section]";
 const INTENT_THRESHOLD = 12;
 const INPUT_RESET_MS = 180;
 const SETTLE_LOCK_MS = 280;
+const NATIVE_SCROLL_SETTLE_MS = 180;
 const EDGE_TOLERANCE = 2;
 
 function clamp(value: number, minimum: number, maximum: number) {
@@ -42,6 +43,8 @@ export function SmoothSectionScroll() {
     let accumulatedIntent = 0;
     let lastInputAt = 0;
     let lockedUntil = 0;
+    let scrollSettleTimer = 0;
+    let pointerActive = false;
 
     const isEnabled = () => desktopPointer.matches && !reducedMotion.matches;
 
@@ -49,7 +52,11 @@ export function SmoothSectionScroll() {
       if (animationFrame) {
         window.cancelAnimationFrame(animationFrame);
       }
+      if (scrollSettleTimer) {
+        window.clearTimeout(scrollSettleTimer);
+      }
       animationFrame = 0;
+      scrollSettleTimer = 0;
       animating = false;
       lockedUntil = 0;
       accumulatedIntent = 0;
@@ -141,6 +148,42 @@ export function SmoothSectionScroll() {
       };
 
       animationFrame = window.requestAnimationFrame(frame);
+    };
+
+    const settleNativeScroll = () => {
+      if (!isEnabled() || animating || pointerActive) {
+        return;
+      }
+
+      if (scrollSettleTimer) {
+        window.clearTimeout(scrollSettleTimer);
+      }
+
+      scrollSettleTimer = window.setTimeout(() => {
+        scrollSettleTimer = 0;
+        if (!isEnabled() || animating || pointerActive) {
+          return;
+        }
+
+        const sections = sectionMetrics();
+        const current = currentSection(sections);
+        if (
+          !current ||
+          current.height > window.innerHeight + EDGE_TOLERANCE
+        ) {
+          return;
+        }
+
+        const offsetWithinSection = window.scrollY - current.top;
+        if (Math.abs(offsetWithinSection) <= EDGE_TOLERANCE) {
+          return;
+        }
+
+        const next = sections[current.index + 1];
+        const target =
+          next && offsetWithinSection > current.height / 2 ? next : current;
+        animateTo(target.top);
+      }, NATIVE_SCROLL_SETTLE_MS);
     };
 
     const onWheel = (event: WheelEvent) => {
@@ -255,13 +298,26 @@ export function SmoothSectionScroll() {
       }
     };
 
+    const onPointerDown = () => {
+      pointerActive = true;
+      cancelAnimation();
+    };
+
+    const onPointerUp = () => {
+      pointerActive = false;
+      settleNativeScroll();
+    };
+
     syncMode();
     desktopPointer.addEventListener("change", syncMode);
     reducedMotion.addEventListener("change", syncMode);
     window.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("scroll", settleNativeScroll, { passive: true });
     document.addEventListener("click", onAnchorClick);
     window.addEventListener("keydown", onKeyboardIntent);
-    window.addEventListener("pointerdown", cancelAnimation);
+    window.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
     window.addEventListener("touchstart", cancelAnimation, { passive: true });
 
     return () => {
@@ -270,9 +326,12 @@ export function SmoothSectionScroll() {
       desktopPointer.removeEventListener("change", syncMode);
       reducedMotion.removeEventListener("change", syncMode);
       window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("scroll", settleNativeScroll);
       document.removeEventListener("click", onAnchorClick);
       window.removeEventListener("keydown", onKeyboardIntent);
-      window.removeEventListener("pointerdown", cancelAnimation);
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
       window.removeEventListener("touchstart", cancelAnimation);
     };
   }, []);
