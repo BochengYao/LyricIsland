@@ -495,6 +495,14 @@ p {
   align-items: end;
 }
 
+.heroGrid h1 {
+  white-space: pre-line;
+}
+
+.sectionTitleGrid h2 {
+  white-space: pre-line;
+}
+
 .eyebrow {
   display: flex;
   align-items: center;
@@ -1290,6 +1298,7 @@ p {
 
 .sourcesPanel h2 {
   color: var(--white);
+  white-space: pre-line;
 }
 
 .sourcesPanel p {
@@ -1344,6 +1353,10 @@ p {
   display: grid;
   grid-template-columns: 0.75fr 1.25fr;
   gap: 96px;
+}
+
+.faqGrid h2 {
+  white-space: pre-line;
 }
 
 .faqItem {
@@ -1422,6 +1435,7 @@ p {
   padding-right: 72px;
   margin: 0 0 32px;
   color: var(--muted);
+  white-space: pre-line;
 }
 
 .closingSection {
@@ -1490,6 +1504,7 @@ p {
   margin-top: 32px;
   color: var(--white);
   font-size: clamp(2.5rem, 5vw, 4.5rem);
+  white-space: pre-line;
 }
 
 .footerColumn {

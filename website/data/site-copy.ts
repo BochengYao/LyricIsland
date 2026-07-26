@@ -100,7 +100,7 @@ export type SiteCopy = {
 const sharedPlayers = [
   "Apple Music",
   "QQ Music",
-  "NetEase Cloud Music",
+  "NetEase Cloud Music*",
   "KuGou",
   "Spotify",
   "KuWo",
@@ -128,42 +128,42 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       }
     ],
     eyebrow: "Windows 桌面歌词伴侣",
-    heroTitle: "歌词，停在工作上方。",
+    heroTitle: "一首歌，\n不该只停在耳机里。",
     heroBody:
-      "播放时从屏幕顶端轻轻滑入，空闲时完整收起。歌词岛把同步歌词留在视线边缘，让音乐陪伴工作，却不打断工作。",
-    storeLabel: "Microsoft Store 稳定版",
+      "音乐响起，歌词从屏幕顶端自然浮现；播放结束，便完整收起。始终停在视线边缘，不打断眼前的工作。",
+    storeLabel: "去 Microsoft Store 下载",
     exploreLabel: "看看它如何工作",
     heroImageAlt: "歌词岛显示在 Windows 桌面顶部",
-    heroBadge: "v2.0 Beta 1",
+    heroBadge: "v2.0 Beta 3",
     heroIslandTitle: "City lights above the screen",
     heroIslandSub: "城市光停在屏幕边缘",
     experience: {
       eyebrow: "出现得刚刚好",
-      title: "像一座岛，知道什么时候靠岸。",
+      title: "像一座岛, 随音乐浮现,\n 也随安静隐去。",
       body:
-        "歌词岛不占据任务栏，也不制造新的窗口负担。它跟随播放状态行动，并在鼠标靠近时主动让出屏幕内容。",
-      watermark: "QUIETLY ABOVE",
+        "不占任务栏，也不带来多余窗口。音乐响起，它自然浮现；播放暂停，它悄然收起。鼠标靠近时，又会轻轻淡开，把屏幕还给眼前的内容。",
+      watermark: "LYRIC ISLAND",
       items: [
         {
           tag: "播放",
-          title: "开始播放，歌词自然滑入",
-          body: "读取 Windows 当前媒体会话，让歌词从顶部边缘进入视线。",
+          title: "一开场,就在场",
+          body: "音乐响起，歌词随即从屏幕顶部自然浮现。",
           image: "/images/product-hero.png",
           imageAlt: "歌词岛在播放时显示于屏幕顶部",
           imagePosition: "72% 8%"
         },
         {
           tag: "空闲",
-          title: "暂停之后，完整收回屏幕外",
-          body: "没有正在播放的内容时，桌面恢复安静，不留下悬浮占位。",
+          title: "不播放，不打扰",
+          body: "没有内容正在播放时，歌词自动收回屏幕之外，让桌面恢复原本的安静。",
           image: "/images/product-focus.png",
           imageAlt: "工作界面中的顶部歌词岛",
           imagePosition: "50% 5%"
         },
         {
           tag: "避让",
-          title: "鼠标靠近，只让附近变轻",
-          body: "按光晕范围降低局部背景和文字不透明度，下面的内容仍然可读、可点。",
+          title: "鼠标靠近，内容仍是主角",
+          body: "鼠标经过的地方，歌词会自然变淡，让下方内容保持可读、可操作。",
           image: "/images/product-modules.png",
           imageAlt: "歌词岛与 Windows 桌面共存",
           imagePosition: "12% 52%"
@@ -171,17 +171,17 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       ]
     },
     demo: {
-      eyebrow: "亲手感受",
-      title: "让歌词岛跟着你的状态变化。",
+      eyebrow: "亲手体验",
+      title: "动一动鼠标，\n看这座岛如何回应。",
       body:
-        "切换播放、空闲、鼠标靠近和布局模式。这里的示例完全在浏览器中运行，不会连接你的播放器。",
+        "切换不同状态与布局，体验歌词岛的浮现、收起与主动避让。所有操作均为浏览器演示，不会连接你的播放器。",
       playbackLabel: "播放状态",
       layoutLabel: "布局模式",
       playing: "播放",
       idle: "空闲",
       near: "鼠标靠近",
-      layoutA: "A 横向积木",
-      layoutC: "C 双态展开",
+      layoutA: "水平积木",
+      layoutC: "自动折叠",
       nowPlaying: "正在播放",
       track: "Quiet Orbit",
       artist: "Lyric Island",
@@ -191,69 +191,69 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       statusIdle: "歌词岛已收起",
       statusNear: "鼠标避让已开启",
       statusA: "当前为 A 横向积木布局",
-      statusC: "当前为 C 双态展开布局"
+      statusC: "当前为 C 自动折叠布局"
     },
     modules: {
       eyebrow: "由你组合",
-      title: "不只是歌词\n而是你的音乐 HUD",
+      title: "想怎么展开，\n就怎么呈现。",
       body:
-        "v2 把歌词岛拆成可组合模块。新增水平积木与自动折叠两种布局，适配你的各种需求。",
+        "水平排列，简洁舒展；自动折叠，节省空间。歌词岛会随你的布局自然变化。",
       names: ["专辑封面", "同步歌词", "播放控制", "歌曲信息", "播放进度", "分割线"]
     },
     compatibility: {
-      title: "一个歌词岛，适配多种播放器",
+      title: "换个播放器，\n歌词照常在场。",
       body:
-        "通过 Windows SMTC 读取当前媒体会话。可以跟随最近活跃的播放器，也允许在设置里锁定指定播放器。",
-      note: "*网易云音乐由于接口限制无法实时同步歌曲进度（播放器内拖动进度条无法同步）。",
-      players: ["Apple Music", "QQ 音乐", "网易云音乐", "酷狗音乐", "Spotify", "酷我音乐", "通用 SMTC"]
+        "歌词岛会自动识别当前正在使用的播放器，并随播放状态切换。你也可以在设置中锁定常用播放器，让每次播放都保持一致。",
+      note: "*受接口限制，网易云音乐暂不支持进度条同步与拖动进度条后的实时歌词同步。",
+      players: ["Apple Music", "QQ 音乐", "网易云音乐*", "酷狗音乐", "Spotify", "酷我音乐", "通用 SMTC"]
     },
     sources: {
       eyebrow: "歌词来自哪里",
-      title: "多来源匹配，歌词与翻译保持原样。",
+      title: "多个来源，\n一次匹配。",
       body:
-        "支持 LRCLIB、QQ 音乐、酷狗和网易云等来源。优先使用歌词库已有的同步歌词和中文翻译，不自行生成机器翻译。",
+        "支持 LRCLIB、腾讯音乐和网易云音乐等歌词来源，自动为正在播放的歌曲寻找同步歌词与翻译。",
       facts: [
-        { value: "4+", label: "歌词来源", detail: "首选源不匹配时自动尝试其他来源" },
-        { value: "LRU", label: "本地缓存", detail: "按歌曲维度维护缓存容量" },
-        { value: "1", label: "运行实例", detail: "重复启动会回到现有实例" }
+        { value: "4+", label: "歌词来源", detail: "多个来源自动匹配，减少歌词缺失。" },
+        { value: "LOCAL", label: "本地缓存", detail: "歌词留在本机，再次播放更快出现。" },
+        { value: "A/中", label: "原文翻译", detail: "翻译可用时，与原文一同呈现。" }
       ]
     },
     faq: {
       eyebrow: "常见问题",
-      title: "开始之前，你可能想知道。",
+      title: "开始之前\n你可能想知道",
       items: [
         {
-          question: "歌词岛支持哪些播放器？",
+          question: "歌词岛支持哪些音乐播放器？",
           answer:
-            "v2.0 Beta 1 通过 Windows SMTC 支持 Apple Music、QQ 音乐、网易云音乐、酷狗、Spotify、酷我以及通用兼容播放器。"
+            "歌词岛支持 Apple Music、网易云音乐、QQ 音乐、酷狗音乐、酷我音乐等常见播放器。只要播放器接入了 Windows SMTC 媒体控制协议，歌词岛通常都能自动识别正在播放的歌曲。\n需要注意的是，网易云音乐对 Windows SMTC 的支持并不完整。在播放器中手动拖动播放进度时，歌词进度可能无法立即同步。"
         },
         {
-          question: "歌词和翻译会上传到云端吗？",
+          question: "歌词岛免费吗？需要登录或订阅吗？",
           answer:
-            "应用会从已支持的歌词服务检索内容，并在本机按歌曲维度缓存。歌词岛本身不提供账号或云端布局同步。"
+            "歌词岛的主体功能永久免费，无需登录歌词岛账号，也不要求订阅。\n你可以自愿加入 Pro 支持计划，支持软件继续开发，并抢先体验部分新功能。参与用户激励计划、提交有效问题或 Bug，也有机会获得 Pro 支持计划礼品码。\n Pro 权益与下载歌词岛时使用的 Microsoft Store 账户绑定。"
         },
         {
-          question: "它会自己翻译歌词吗？",
+          question: "安装后如何开始使用？需要手动连接播放器吗？",
           answer:
-            "不会。歌词岛只显示歌词来源已经提供的同步歌词和翻译，不自行生成机器翻译。"
+            "不需要手动连接。\n首次打开歌词岛时，教学模式会引导你完成基本设置。之后只需打开歌词岛并播放音乐，它便会自动识别当前播放器并开始匹配歌词。"
         },
         {
-          question: "如何打开设置？",
+          question: "播放音乐后没有显示歌词，或歌词匹配错误怎么办？",
           answer:
-            "右键单击歌词岛即可打开偏好设置，调整显示、屏幕位置、播放器锁定、模块布局和鼠标避让效果。"
+            "歌词岛会从多个歌词来源中自动查找并匹配歌词，以尽可能减少歌词缺失或匹配错误的情况。后续版本也会继续接入更多歌词来源，进一步提升匹配范围和准确性。"
         }
       ]
     },
     closing: {
-      eyebrow: "v2.0",
-      title: "让音乐在边缘陪伴，而不是占据注意力。",
-      body: "在 GitHub 查看 v1.0 与源码；软件下载请前往 Microsoft Store。",
+      eyebrow: "歌词岛 V2.0",
+      title: "每一句,  都刚好在场｡",
+      body: "在 GitHub 查看 v1.0 与源码；软件下载请前往 Microsoft Store｡",
       button: "查看 v1.0 与源码",
       storeButton: "Mircosoft Store"
     },
     footer: {
-      title: "歌词一直在，桌面依然属于你。",
-      product: "产品",
+      title: "音乐响起\n歌词自然浮现",
+      product: "回看",
       productLinks: [
         { label: "核心体验", href: "#experience" },
         { label: "模块化布局", href: "#modules" },
@@ -265,7 +265,7 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
         { label: "GitHub：v1.0 与源码", href: "https://github.com/BochengYao/AppleMusicDesktopLyrics" },
         { label: "更新内容", href: "/updates" },
         { label: "用户激励计划", href: "/incentives" },
-        { label: "English", href: "/en" }
+        //{ label: "English", href: "/en" }
       ],
       note: "播放器与音乐服务名称及商标归各自权利人所有。",
       copyright: "© 2026 Lyric Island"
@@ -288,42 +288,42 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       }
     ],
     eyebrow: "Windows desktop lyrics companion",
-    heroTitle: "Lyrics, quietly above your work.",
+    heroTitle: "A song should live\nbeyond your headphones.",
     heroBody:
-      "It glides in from the top edge when music plays and fully retreats when the room goes quiet. Lyric Island keeps synced lyrics within sight, without pulling focus away from your work.",
-    storeLabel: "Microsoft Store stable",
+      "When music starts, lyrics naturally surface from the top of your screen. When playback ends, they fully retreat—always at the edge of your vision, never in the way of your work.",
+    storeLabel: "Get it from Microsoft Store",
     exploreLabel: "See how it works",
     heroImageAlt: "Lyric Island shown at the top of a Windows desktop",
-    heroBadge: "v2.0 Beta 1",
+    heroBadge: "v2.0 Beta 3",
     heroIslandTitle: "City lights above the screen",
     heroIslandSub: "城市光停在屏幕边缘",
     experience: {
       eyebrow: "There when it matters",
-      title: "An island that knows when to surface.",
+      title: "An island that rises with music,\nthen slips away with silence.",
       body:
-        "Lyric Island does not claim the taskbar or add another window to manage. It follows playback and softly yields nearby content when your pointer approaches.",
-      watermark: "QUIETLY ABOVE",
+        "No taskbar space. No extra window. It surfaces when music starts, retreats when playback pauses, and gently fades as your pointer approaches—giving the screen back to what matters.",
+      watermark: "LYRIC ISLAND",
       items: [
         {
           tag: "Playback",
-          title: "Music starts. Lyrics glide into view.",
-          body: "It reads the current Windows media session and enters from the top edge.",
+          title: "From the first note, it's in view",
+          body: "As the music begins, lyrics naturally surface from the top of the screen.",
           image: "/images/product-hero.png",
           imageAlt: "Lyric Island visible while music is playing",
           imagePosition: "72% 8%"
         },
         {
           tag: "Idle",
-          title: "Playback stops. The island leaves no trace.",
-          body: "With nothing playing, the desktop returns to its quiet, uninterrupted state.",
+          title: "No playback. No interruption.",
+          body: "When nothing is playing, the lyrics retreat beyond the screen and your desktop returns to quiet.",
           image: "/images/product-focus.png",
           imageAlt: "Lyric Island above a focused workspace",
           imagePosition: "50% 5%"
         },
         {
           tag: "Awareness",
-          title: "Move closer. Only the nearby area softens.",
-          body: "Local background and text opacity fall around the pointer, keeping content underneath readable and clickable.",
+          title: "Move closer. Your content stays center stage.",
+          body: "Wherever your pointer passes, the lyrics gently fade so the content beneath stays readable and clickable.",
           image: "/images/product-modules.png",
           imageAlt: "Lyric Island coexisting with a Windows desktop",
           imagePosition: "12% 52%"
@@ -331,17 +331,17 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       ]
     },
     demo: {
-      eyebrow: "Try the behavior",
-      title: "Let the island respond to your state.",
+      eyebrow: "Try it yourself",
+      title: "Move your mouse.\nSee how the island moves with you.",
       body:
-        "Switch playback, idle, pointer proximity, and layout modes. This browser-only demo never connects to your player.",
+        "Switch between states and layouts to experience how Lyric Island surfaces, retreats, and moves out of your way. Everything here runs as a browser demo and never connects to your player.",
       playbackLabel: "Playback state",
       layoutLabel: "Layout mode",
       playing: "Playing",
       idle: "Idle",
       near: "Pointer nearby",
-      layoutA: "A horizontal blocks",
-      layoutC: "C dual-state",
+      layoutA: "Horizontal blocks",
+      layoutC: "Auto-collapse",
       nowPlaying: "Now playing",
       track: "Quiet Orbit",
       artist: "Lyric Island",
@@ -351,70 +351,70 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       statusIdle: "The island has retracted",
       statusNear: "Mouse-aware transparency is on",
       statusA: "Layout A horizontal blocks is active",
-      statusC: "Layout C dual-state is active"
+      statusC: "Layout C auto-collapse is active"
     },
     modules: {
       eyebrow: "Compose your own",
-      title: "More than lyrics\nYour music HUD, built around you",
+      title: "Make it unfold\nthe way you want.",
       body:
-        "v2 turns Lyric Island into reusable modules. New horizontal blocks and auto-collapse layouts adapt to whatever you need.",
+        "Horizontal when you want room to breathe. Auto-collapsed when space matters. Lyric Island naturally adapts to the layout you choose.",
       names: ["Album art", "Synced lyrics", "Playback controls", "Track info", "Progress", "Divider"]
     },
     compatibility: {
-      title: "One island, made for many players",
+      title: "Switch the player.\nThe lyrics stay in play.",
       body:
-        "Lyric Island reads the current media session through Windows SMTC. It can follow the most recently active player and also lets you lock a specific player in Settings.",
+        "Lyric Island automatically recognizes the player in use and follows its playback state. You can also lock in a favorite player from Settings for a consistent experience every time.",
       note:
-        "*NetEase Cloud Music cannot synchronize song progress in real time due to API limitations (seeking in the player will not synchronize).",
+        "*Due to interface limitations, NetEase Cloud Music does not currently support progress-bar sync or real-time lyric resync after seeking.",
       players: sharedPlayers
     },
     sources: {
       eyebrow: "Where lyrics come from",
-      title: "Multiple providers, with lyrics and translations left intact.",
+      title: "Many sources.\nOne match.",
       body:
-        "Supports LRCLIB, QQ Music, KuGou, NetEase, and fallback matching. It prefers source-provided synced lyrics and translations and does not generate machine translations.",
+        "Lyric Island searches providers including LRCLIB, Tencent Music, and NetEase Cloud Music to find synced lyrics and available translations for the song playing now.",
       facts: [
-        { value: "4+", label: "lyric providers", detail: "Fallback matching when a preferred source does not fit" },
-        { value: "LRU", label: "local cache", detail: "A configurable song-level cache" },
-        { value: "1", label: "running instance", detail: "Repeat launches return to the existing app" }
+        { value: "4+", label: "lyric sources", detail: "Multiple sources match automatically, so fewer songs go without lyrics." },
+        { value: "LOCAL", label: "local cache", detail: "Lyrics stay on your device and appear faster the next time." },
+        { value: "A/B", label: "original + translation", detail: "When a translation is available, it appears alongside the original." }
       ]
     },
     faq: {
       eyebrow: "Frequently asked",
-      title: "A few things to know before you begin.",
+      title: "Before you begin,\nhere's what you may want to know.",
       items: [
         {
-          question: "Which players does Lyric Island support?",
+          question: "Which music players does Lyric Island support?",
           answer:
-            "v2.0 Beta 1 uses Windows SMTC with Apple Music, QQ Music, NetEase, KuGou, Spotify, KuWo, and generic compatible players."
+            "Lyric Island supports popular players including Apple Music, NetEase Cloud Music, QQ Music, KuGou, and KuWo. If a player connects to the Windows SMTC media-control protocol, Lyric Island can usually recognize the song automatically.\nPlease note that NetEase Cloud Music has incomplete Windows SMTC support. If you seek manually within the player, lyric progress may not update immediately."
         },
         {
-          question: "Are lyrics and translations uploaded to the cloud?",
+          question: "Is Lyric Island free? Do I need an account or subscription?",
           answer:
-            "The app retrieves content from supported lyric services and keeps a song-level cache on your device. Lyric Island does not provide accounts or cloud layout sync."
+            "Lyric Island's core features are free forever. No Lyric Island account or subscription is required.\nYou can optionally join the Pro Support Plan to help fund continued development and get early access to selected new features. You may also earn a Pro Support Plan gift code by joining the Community Rewards Program and submitting a valid issue or bug report.\nPro benefits are linked to the Microsoft Store account used to download Lyric Island."
         },
         {
-          question: "Does it translate lyrics on its own?",
+          question: "How do I get started after installing? Do I need to connect a player?",
           answer:
-            "No. Lyric Island displays synced lyrics and translations already provided by a source. It does not generate machine translations."
+            "No manual connection is needed.\nThe first time you open Lyric Island, a guided tutorial walks you through the essentials. After that, simply keep Lyric Island open and play some music—it will recognize the current player and start matching lyrics automatically."
         },
         {
-          question: "How do I open Settings?",
+          question: "What if lyrics do not appear, or the wrong lyrics are matched?",
           answer:
-            "Right-click the island to adjust display, monitor placement, player lock, module layout, and mouse-aware transparency."
+            "Lyric Island searches and matches across multiple lyric sources to reduce missing or incorrect results. Future releases will continue adding sources to improve both coverage and accuracy."
         }
       ]
     },
     closing: {
-      eyebrow: "v2.0",
-      title: "Let music stay at the edge, not at the center of your attention.",
+      eyebrow: "Lyric Island V2.0",
+      title: "Every line. Right on time.",
       body: "View v1.0 and the source code on GitHub. Download the app from Microsoft Store.",
       button: "View v1.0 & source",
       storeButton: "Mircosoft Store"
     },
     footer: {
-      title: "The lyrics stay. Your desktop remains yours.",
-      product: "Product",
+      title: "Music starts.\nLyrics surface.",
+      product: "Look back",
       productLinks: [
         { label: "Experience", href: "#experience" },
         { label: "Modular layouts", href: "#modules" },
