@@ -139,7 +139,7 @@ def test_interactions(page: Page, locale: str) -> None:
 
 def test_continuous_section_scroll(page: Page) -> None:
     page.goto(BASE_URL + "/", wait_until="networkidle")
-    expect(page.locator("html")).not_to_have_attribute("data-snap-scroll", "enabled")
+    expect(page.locator("html")).to_have_attribute("data-snap-scroll", "enabled")
     assert page.locator("[data-snap-section]").count() >= 8, (
         "Major sections should retain their anchor markers"
     )
@@ -179,9 +179,9 @@ def test_continuous_section_scroll(page: Page) -> None:
     )
 
     page.mouse.wheel(0, 360)
-    page.wait_for_timeout(120)
-    assert 0 < page.evaluate("window.scrollY") < zoomed_out_metrics["experienceTop"], (
-        "Wheel input should scroll continuously instead of snapping a full section"
+    page.wait_for_timeout(1250)
+    assert abs(page.evaluate("window.scrollY") - zoomed_out_metrics["experienceTop"]) <= 4, (
+        "Wheel input should lock onto the next anchor without hiding adjacent content"
     )
 
 
