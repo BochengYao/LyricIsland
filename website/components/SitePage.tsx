@@ -241,9 +241,6 @@ export function SitePage({ locale }: Props) {
                       className="portraitImage"
                       style={{ objectPosition: item.imagePosition }}
                     />
-                    <a className="satelliteButton" href="#demo" aria-label={item.title}>
-                      <span aria-hidden="true">↘</span>
-                    </a>
                   </div>
                   <Eyebrow>{item.tag}</Eyebrow>
                   <h3>{item.title}</h3>
