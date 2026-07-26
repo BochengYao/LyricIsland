@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <Content Include="Assets\app.ico" CopyToOutputDirectory="Always" />
+    <Content Include="Assets\Xiaolai-OFL.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
@@ -30,6 +31,7 @@
     <Resource Include="Assets\pro-support-badge.svg" />
     <Resource Include="Assets\pro-support-badge-dark.png" />
     <Resource Include="Assets\pro-support-badge-dark.svg" />
+    <Resource Include="Assets\Xiaolai-Regular.ttf" />
   </ItemGroup>
 
 </Project>

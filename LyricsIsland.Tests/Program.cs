@@ -1343,7 +1343,8 @@ namespace LyricsIsland.Tests
             Assert.False(aboutPanel.Contains("x:Name=\"AboutFeedbackRow\""));
             Assert.True(xaml.Contains("x:Name=\"AboutTutorialRow\""));
             Assert.False(aboutPanel.Contains("Style=\"{StaticResource AboutActionRowButtonStyle}\""));
-            Assert.Equal(2, CountOccurrences(aboutPanel, "Style=\"{StaticResource TextLinkButtonStyle}\""));
+            Assert.Equal(3, CountOccurrences(aboutPanel, "Style=\"{StaticResource TextLinkButtonStyle}\""));
+            Assert.Equal(1, CountOccurrences(aboutPanel, "Click=\"OpenWebsiteAboutRow_Click\""));
             Assert.True(xaml.Contains("Property=\"IsKeyboardFocused\" Value=\"True\""));
             Assert.Equal(1, CountOccurrences(aboutPanel, "Click=\"OpenGitHubAboutRow_Click\""));
             Assert.Equal(1, CountOccurrences(aboutPanel, "Click=\"RestartTutorialAboutRow_Click\""));
@@ -1352,12 +1353,15 @@ namespace LyricsIsland.Tests
             Assert.False(xaml.Contains("x:Name=\"AboutInfoGrid\""));
             Assert.False(xaml.Contains("x:Name=\"AboutActionFlow\""));
             Assert.False(xaml.Contains("x:Name=\"AboutUpdateCard\""));
-            Assert.Equal(2, CountOccurrences(xaml, "Text=\"即将上线\""));
+            Assert.Equal(0, CountOccurrences(xaml, "Text=\"即将上线\""));
             Assert.False(xaml.Contains("Text=\"功能规划中\""));
             Assert.True(xaml.Contains("Text=\"软件著作权\" Visibility=\"Collapsed\""));
             Assert.False(xaml.Contains("Text=\"运行环境\""));
             Assert.False(xaml.Contains("Text=\"数据说明\""));
+            Assert.True(xaml.Contains("Text=\"打开官网\""));
             Assert.True(xaml.Contains("Text=\"打开 GitHub\""));
+            Assert.True(source.Contains("https://lyric-island.top/"));
+            Assert.True(source.Contains("OpenWebsiteAboutRow_Click"));
             Assert.True(xaml.Contains("x:Name=\"OpenGitHubLinkArrow\""));
             Assert.True(xaml.Contains("Data=\"M1,11 L11,1 M4,1 H11 V8\""));
             Assert.False(xaml.Contains("↗"));
@@ -1452,14 +1456,17 @@ namespace LyricsIsland.Tests
             Assert.True(supportPanel.Contains("x:Name=\"SupportFeedbackTextGrid\""));
             Assert.False(supportPanel.Contains("Margin=\"6,0,0,0\""));
             Assert.False(supportPanel.Contains("x:Key=\"SupportActionButtonStyle\""));
-            Assert.Equal(3, CountOccurrences(supportPanel, "Style=\"{StaticResource TextLinkButtonStyle}\""));
+            Assert.Equal(4, CountOccurrences(supportPanel, "Style=\"{StaticResource TextLinkButtonStyle}\""));
             Assert.True(xaml.Contains("<Setter Property=\"Foreground\" Value=\"#FF2F91FF\" />"));
             Assert.False(xaml.Contains("<Setter Property=\"Opacity\" Value=\"0.78\" />"));
-            Assert.Equal(3, CountOccurrences(supportPanel, "Foreground=\"{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}\""));
+            Assert.Equal(4, CountOccurrences(supportPanel, "Foreground=\"{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}\""));
             Assert.Equal(1, CountOccurrences(supportPanel, "Click=\"SupportStoreReviewButton_Click\""));
             Assert.Equal(1, CountOccurrences(supportPanel, "Click=\"SupportShareButton_Click\""));
             Assert.Equal(1, CountOccurrences(supportPanel, "Click=\"OpenGitHubAboutRow_Click\""));
-            Assert.False(source.Contains("SupportFeedbackButton_Click"));
+            Assert.Equal(1, CountOccurrences(supportPanel, "Click=\"SupportFeedbackButton_Click\""));
+            Assert.True(supportPanel.Contains("Text=\"去反馈  &gt;\""));
+            Assert.True(source.Contains("https://lyric-island.top/incentives/"));
+            Assert.True(source.Contains("SupportFeedbackButton_Click"));
             Assert.True(supportPanel.Contains("Pro 支持计划"));
             Assert.True(supportPanel.Contains("Margin=\"0,8,0,0\""));
             Assert.True(supportPanel.Contains("LineHeight=\"22\""));
@@ -1950,6 +1957,7 @@ namespace LyricsIsland.Tests
             Assert.True(settingsXaml.Contains("PreviewKeyDown=\"HotkeyTextBox_PreviewKeyDown\""));
             Assert.True(settingsXaml.Contains("IsReadOnly=\"True\""));
             Assert.True(settingsXaml.Contains("LinearGradientBrush StartPoint=\"0,0\" EndPoint=\"1,1\""));
+            Assert.True(settingsXaml.Contains("Text=\"单击后，按下新的快捷键组合\""));
             Assert.True(settingsWindowSource.Contains("FormatHotkeyKey"));
             Assert.True(settingsWindowSource.Contains("Keyboard.ClearFocus()"));
             Assert.False(settingsXaml.Contains("组合键使用 + 分隔"));
@@ -2799,12 +2807,18 @@ namespace LyricsIsland.Tests
             var root = GetSolutionRoot();
             var code = File.ReadAllText(Path.Combine(root, "LyricsIsland.App", "Modules", "LyricsModuleView.xaml.cs"));
             var xaml = File.ReadAllText(Path.Combine(root, "LyricsIsland.App", "Modules", "LyricsModuleView.xaml"));
+            var project = File.ReadAllText(Path.Combine(root, "LyricsIsland.App", "LyricsIsland.App.csproj"));
+            var fontLicense = File.ReadAllText(Path.Combine(root, "LyricsIsland.App", "Assets", "Xiaolai-OFL.txt"));
             var stopStart = code.IndexOf("private void StopMarquee()", StringComparison.Ordinal);
             var stopBody = code.Substring(stopStart);
 
             Assert.False(stopBody.Contains("Canvas.SetLeft(PrimaryLyricLinePanel, 0)"));
             Assert.False(stopBody.Contains("Canvas.SetLeft(SecondaryLyricText, 0)"));
-            Assert.True(xaml.Contains("FontFamily=\"FZShuTi, Microsoft YaHei UI\""));
+            Assert.Equal(2, CountOccurrences(xaml, "FontFamily=\"/LyricsIsland.App;component/Assets/#Xiaolai\""));
+            Assert.True(project.Contains("<Resource Include=\"Assets\\Xiaolai-Regular.ttf\" />"));
+            Assert.True(project.Contains("<Content Include=\"Assets\\Xiaolai-OFL.txt\" CopyToOutputDirectory=\"PreserveNewest\" />"));
+            Assert.True(fontLicense.Contains("SIL OPEN FONT LICENSE Version 1.1"));
+            Assert.True(File.Exists(Path.Combine(root, "LyricsIsland.App", "Assets", "Xiaolai-Regular.ttf")));
         }
 
         static void TutorialHoverWaitsBeforeEnablingAvoidance()
