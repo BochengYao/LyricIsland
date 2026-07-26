@@ -143,25 +143,25 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
           tag: "播放",
           title: "一开场,就在场",
           body: "音乐响起，歌词随即从屏幕顶部自然浮现。",
-          image: "/images/product-hero.png",
-          imageAlt: "歌词岛在播放时显示于屏幕顶部",
-          imagePosition: "72% 8%"
+          image: "/images/experience-playback.jpg",
+          imageAlt: "音乐播放时浮现在屏幕顶部的歌词岛",
+          imagePosition: "50% 50%"
         },
         {
           tag: "空闲",
           title: "不播放，不打扰",
           body: "没有内容正在播放时，歌词自动收回屏幕之外，让桌面恢复原本的安静。",
-          image: "/images/product-focus.png",
-          imageAlt: "工作界面中的顶部歌词岛",
-          imagePosition: "50% 5%"
+          image: "/images/experience-idle.png",
+          imageAlt: "没有播放内容时收回屏幕外的歌词岛",
+          imagePosition: "50% 50%"
         },
         {
           tag: "避让",
           title: "鼠标靠近，内容仍是主角",
           body: "鼠标经过的地方，歌词会自然变淡，让下方内容保持可读、可操作。",
-          image: "/images/product-modules.png",
-          imageAlt: "歌词岛与 Windows 桌面共存",
-          imagePosition: "12% 52%"
+          image: "/images/experience-pointer.png",
+          imageAlt: "鼠标靠近时淡化避让的歌词岛",
+          imagePosition: "50% 50%"
         }
       ]
     },
@@ -301,25 +301,25 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
           tag: "Playback",
           title: "Music plays. Lyrics stay.",
           body: "As the music begins, lyrics naturally surface from the top of the screen.",
-          image: "/images/product-hero.png",
-          imageAlt: "Lyric Island visible while music is playing",
-          imagePosition: "72% 8%"
+          image: "/images/experience-playback.jpg",
+          imageAlt: "Lyric Island visible at the top while music is playing",
+          imagePosition: "50% 50%"
         },
         {
           tag: "Idle",
           title: "No sound. Not around.",
           body: "When nothing is playing, the lyrics retreat beyond the screen and your desktop returns to quiet.",
-          image: "/images/product-focus.png",
-          imageAlt: "Lyric Island above a focused workspace",
-          imagePosition: "50% 5%"
+          image: "/images/experience-idle.png",
+          imageAlt: "Lyric Island retracted while nothing is playing",
+          imagePosition: "50% 50%"
         },
         {
           tag: "Awareness",
           title: "Move near. Work stays clear.",
           body: "Wherever your pointer passes, the lyrics gently fade so the content beneath stays readable and clickable.",
-          image: "/images/product-modules.png",
-          imageAlt: "Lyric Island coexisting with a Windows desktop",
-          imagePosition: "12% 52%"
+          image: "/images/experience-pointer.png",
+          imageAlt: "Lyric Island fading as the pointer approaches",
+          imagePosition: "50% 50%"
         }
       ]
     },
