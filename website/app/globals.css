@@ -38,6 +38,10 @@ html {
   background: var(--canvas);
 }
 
+html[data-snap-animating="enabled"] {
+  scroll-behavior: auto;
+}
+
 main section[id] {
   scroll-margin-top: 120px;
 }

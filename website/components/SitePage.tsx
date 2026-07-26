@@ -207,7 +207,9 @@ export function SitePage({ locale }: Props) {
 
         <section className="experienceSection" id="experience" data-snap-section>
           <div className="sectionContainer experienceIntro">
-            <Eyebrow reveal>{copy.experience.eyebrow}</Eyebrow>
+            {copy.experience.eyebrow && (
+              <Eyebrow reveal>{copy.experience.eyebrow}</Eyebrow>
+            )}
             <div className="sectionTitleGrid">
               <h2 data-text-reveal="title">{copy.experience.title}</h2>
               <p>{copy.experience.body}</p>

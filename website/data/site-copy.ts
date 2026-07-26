@@ -132,7 +132,7 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
     heroImageAlt: "歌词岛显示在 Windows 桌面顶部",
     heroBadge: "v2.0 Beta 3",
     experience: {
-      eyebrow: "出现得刚刚好",
+      eyebrow: "",
       title: "像一座岛, 随音乐浮现,\n 也随安静隐去。",
       body:
         "不占任务栏，也不带来多余窗口。音乐响起，它自然浮现；播放暂停，它悄然收起。鼠标靠近时，又会轻轻淡开，把屏幕还给眼前的内容。",
