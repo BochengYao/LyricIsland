@@ -5,6 +5,7 @@ import { ExternalArrow } from "@/components/ExternalArrow";
 import { IslandDemo } from "@/components/IslandDemo";
 import { PlayerOrbit } from "@/components/PlayerOrbit";
 import { SelectiveTextReveal } from "@/components/SelectiveTextReveal";
+import { SmoothSectionScroll } from "@/components/SmoothSectionScroll";
 import {
   copyByLocale,
   microsoftStoreUrl,
@@ -162,6 +163,7 @@ export function SitePage({ locale }: Props) {
         {locale === "zh" ? "跳到主要内容" : "Skip to main content"}
       </a>
 
+      <SmoothSectionScroll />
       <SelectiveTextReveal />
 
       <PrimaryNavigation locale={locale} homeHref="#main" />
