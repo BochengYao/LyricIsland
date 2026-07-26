@@ -407,6 +407,30 @@ def test_navigation_and_orbit(page: Page) -> None:
             "objectFit": "cover",
         },
     ]
+    experience_frame_metrics = page.locator(
+        "#experience .portraitWrap"
+    ).evaluate_all(
+        """(frames) => frames.map((frame) => {
+          const rect = frame.getBoundingClientRect();
+          const image = frame.querySelector(".portraitImage");
+          return {
+            width: rect.width,
+            height: rect.height,
+            borderRadius: getComputedStyle(frame).borderRadius,
+            overflow: getComputedStyle(frame).overflow,
+            imageShadow: getComputedStyle(image).boxShadow,
+            backdrop: getComputedStyle(frame, "::before").content
+          };
+        })"""
+    )
+    assert all(
+        abs(frame["width"] / frame["height"] - 1) <= 0.01
+        and frame["borderRadius"] == "40px"
+        and frame["overflow"] == "hidden"
+        and frame["imageShadow"] == "none"
+        and frame["backdrop"] == "none"
+        for frame in experience_frame_metrics
+    )
     first_experience_image = experience_images.first
     initial_experience_transform = first_experience_image.evaluate(
         "(image) => getComputedStyle(image).transform"
