@@ -137,86 +137,50 @@ def test_interactions(page: Page, locale: str) -> None:
     assert focus_data["outline"] != "none", "Keyboard focus must be visible"
 
 
-def test_smooth_section_snap(page: Page) -> None:
+def test_continuous_section_scroll(page: Page) -> None:
     page.goto(BASE_URL + "/", wait_until="networkidle")
-    expect(page.locator("html")).to_have_attribute("data-snap-scroll", "enabled")
+    expect(page.locator("html")).not_to_have_attribute("data-snap-scroll", "enabled")
+    expect(page.locator("[data-snap-section]")).to_have_count(0)
+    expect(page.locator(".heroIsland")).to_have_count(0)
+    expect(page.locator(".hero .eyebrow")).to_have_count(0)
+    expect(page.locator("h1")).to_have_text("这一句，\n值得被看见。")
 
-    sections = page.locator("[data-snap-section]")
-    assert sections.count() >= 8, "The home page should expose major scroll anchors"
-    first_metrics = sections.nth(0).evaluate(
-        "(section) => ({ top: section.offsetTop, height: section.offsetHeight })"
+    hero_image = page.locator(".heroMediaImage")
+    image_metrics = hero_image.evaluate(
+        """(image) => ({
+          naturalWidth: image.naturalWidth,
+          naturalHeight: image.naturalHeight,
+          width: image.getBoundingClientRect().width,
+          height: image.getBoundingClientRect().height
+        })"""
     )
-    next_top = sections.nth(1).evaluate("(section) => section.offsetTop")
-    viewport_height = page.evaluate("window.innerHeight")
-
-    if first_metrics["height"] > viewport_height + 24:
-        page.mouse.wheel(0, 240)
-        page.wait_for_timeout(180)
-        in_section_scroll = page.evaluate("window.scrollY")
-        assert 0 < in_section_scroll < next_top, (
-            "Long sections must keep ordinary scrolling before their bottom edge"
-        )
-        page.evaluate(
-            "({ top, height }) => window.scrollTo(0, top + height - window.innerHeight)",
-            first_metrics,
-        )
-        page.wait_for_timeout(80)
-
-    page.mouse.wheel(0, 240)
-    page.wait_for_timeout(420)
-    early_scroll_top = page.evaluate("window.scrollY")
-    start_top = max(0, first_metrics["top"] + first_metrics["height"] - viewport_height)
-    progress = (early_scroll_top - start_top) / max(1, next_top - start_top)
-    assert 0 < progress < 0.22, (
-        "The longer easing should begin more slowly than a linear transition"
+    assert image_metrics["naturalWidth"] == 2000
+    assert image_metrics["naturalHeight"] == 667
+    natural_ratio = image_metrics["naturalWidth"] / image_metrics["naturalHeight"]
+    rendered_ratio = image_metrics["width"] / image_metrics["height"]
+    assert abs(natural_ratio - rendered_ratio) < 0.02, (
+        "The hero image must retain its original aspect ratio"
     )
 
-    page.wait_for_timeout(1600)
-    scroll_top = page.evaluate("window.scrollY")
-    assert abs(scroll_top - next_top) <= 3, (
-        f"Smooth scrolling should settle on the next section; "
-        f"expected {next_top}, got {scroll_top}"
+    page.set_viewport_size({"width": 2560, "height": 1800})
+    page.reload(wait_until="networkidle")
+    zoomed_out_metrics = page.evaluate(
+        """() => ({
+          viewportHeight: window.innerHeight,
+          documentHeight: document.documentElement.scrollHeight,
+          experienceTop: document.querySelector("#experience").getBoundingClientRect().top
+        })"""
+    )
+    assert zoomed_out_metrics["documentHeight"] > zoomed_out_metrics["viewportHeight"]
+    assert zoomed_out_metrics["experienceTop"] < zoomed_out_metrics["viewportHeight"], (
+        "A zoomed-out viewport should reveal content beyond the hero"
     )
 
-    page.get_by_role("link", name="主页", exact=True).click()
-    page.wait_for_timeout(420)
-    nav_progress_top = page.evaluate("window.scrollY")
-    assert 0 < nav_progress_top < scroll_top, (
-        "Navigation clicks should use the nonlinear page animation"
+    page.mouse.wheel(0, 360)
+    page.wait_for_timeout(120)
+    assert 0 < page.evaluate("window.scrollY") < zoomed_out_metrics["experienceTop"], (
+        "Wheel input should scroll continuously instead of snapping a full section"
     )
-    page.wait_for_timeout(1800)
-    assert abs(page.evaluate("window.scrollY")) <= 3
-
-    for selector, next_selector in [
-        ("#faq", ".closingSection"),
-        (".closingSection", ".siteFooter"),
-        (".siteFooter", None),
-    ]:
-        alignment = page.locator(selector).evaluate(
-            """(section, nextSelector) => {
-              const top = section.getBoundingClientRect().top + window.scrollY;
-              window.scrollTo(0, top);
-              const next = nextSelector ? document.querySelector(nextSelector) : null;
-              return {
-                top,
-                height: section.offsetHeight,
-                nextTop: next
-                  ? next.getBoundingClientRect().top + window.scrollY
-                  : null
-              };
-            }""",
-            next_selector,
-        )
-        page.wait_for_timeout(60)
-        settled_top = page.evaluate("window.scrollY")
-        assert abs(settled_top - alignment["top"]) <= 3
-        assert alignment["height"] >= viewport_height - 1, (
-            f"{selector} should occupy at least one desktop viewport"
-        )
-        if alignment["nextTop"] is not None:
-            assert alignment["nextTop"] - settled_top >= viewport_height - 1, (
-                f"The next page should not peek into {selector}"
-            )
 
 
 def test_navigation_and_orbit(page: Page) -> None:
@@ -724,7 +688,7 @@ def main() -> None:
             if name in {"desktop", "mobile"}:
                 test_interactions(page, "zh")
             if name == "desktop":
-                test_smooth_section_snap(page)
+                test_continuous_section_scroll(page)
                 test_navigation_and_orbit(page)
                 test_selective_text_reveal(page)
             if name == "mobile":

@@ -11,15 +11,12 @@ export type SiteCopy = {
     external?: boolean;
     kind?: "feature" | "store";
   }>;
-  eyebrow: string;
   heroTitle: string;
   heroBody: string;
   storeLabel: string;
   exploreLabel: string;
   heroImageAlt: string;
   heroBadge: string;
-  heroIslandTitle: string;
-  heroIslandSub: string;
   experience: {
     eyebrow: string;
     title: string;
@@ -127,16 +124,13 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
         kind: "store"
       }
     ],
-    eyebrow: "Windows 桌面歌词伴侣",
-    heroTitle: "一首歌，\n不该只停在耳机里。",
+    heroTitle: "这一句，\n值得被看见。",
     heroBody:
       "音乐响起，歌词从屏幕顶端自然浮现；播放结束，便完整收起。始终停在视线边缘，不打断眼前的工作。",
     storeLabel: "去 Microsoft Store 下载",
     exploreLabel: "看看它如何工作",
     heroImageAlt: "歌词岛显示在 Windows 桌面顶部",
     heroBadge: "v2.0 Beta 3",
-    heroIslandTitle: "City lights above the screen",
-    heroIslandSub: "城市光停在屏幕边缘",
     experience: {
       eyebrow: "出现得刚刚好",
       title: "像一座岛, 随音乐浮现,\n 也随安静隐去。",
@@ -287,16 +281,13 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
         kind: "store"
       }
     ],
-    eyebrow: "Windows desktop lyrics companion",
-    heroTitle: "Music beyond your ears.\nLyrics before your eyes.",
+    heroTitle: "This line\ndeserves to be seen.",
     heroBody:
       "When music starts, lyrics naturally surface from the top of your screen. When playback ends, they fully retreat—always at the edge of your vision, never in the way of your work.",
     storeLabel: "Get it from Microsoft Store",
     exploreLabel: "See how it works",
     heroImageAlt: "Lyric Island shown at the top of a Windows desktop",
     heroBadge: "v2.0 Beta 3",
-    heroIslandTitle: "City lights above the screen",
-    heroIslandSub: "城市光停在屏幕边缘",
     experience: {
       eyebrow: "Right when it feels right",
       title: "With music, it appears.\nWith silence, it disappears.",

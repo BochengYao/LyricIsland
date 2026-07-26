@@ -38,44 +38,8 @@ html {
   background: var(--canvas);
 }
 
-html[data-snap-scroll="enabled"] {
-  scroll-behavior: auto;
-}
-
-html[data-snap-scroll="enabled"] body {
-  overscroll-behavior-y: none;
-}
-
-[data-snap-section] {
-  scroll-margin-top: 0;
-}
-
-@media (min-width: 1024px) {
-  [data-snap-section] {
-    min-block-size: 100svh;
-  }
-
-  .hero,
-  .demoSection,
-  .sourcesSection {
-    block-size: 100svh;
-    max-block-size: 100svh;
-    overflow: hidden;
-  }
-
-  .faqSection,
-  .closingSection {
-    display: grid;
-    align-content: center;
-    block-size: 100svh;
-    max-block-size: 100svh;
-    padding-block: clamp(88px, 10svh, 120px);
-    overflow: hidden;
-  }
-
-  .siteFooter[data-snap-section] {
-    min-block-size: auto;
-  }
+main section[id] {
+  scroll-margin-top: 120px;
 }
 
 body {
@@ -593,7 +557,6 @@ p {
 
 .heroMedia {
   position: relative;
-  min-height: 680px;
   margin-top: 80px;
   overflow: hidden;
   border-radius: var(--radius-large);
@@ -610,7 +573,9 @@ p {
 }
 
 .heroMediaImage {
-  object-fit: cover;
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 .heroBadge {
@@ -628,43 +593,6 @@ p {
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.04em;
-}
-
-.heroIsland {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  z-index: 2;
-  display: grid;
-  justify-items: center;
-  width: min(46%, 520px);
-  padding: 18px 40px 20px;
-  border-radius: 0 0 40px 40px;
-  background: var(--ink);
-  color: var(--white);
-  transform: translateX(-50%);
-  animation: islandEnter 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.heroIsland strong {
-  font-size: clamp(14px, 1.4vw, 20px);
-  font-weight: 500;
-  letter-spacing: -0.02em;
-}
-
-.heroIsland small {
-  margin-top: 4px;
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 11px;
-}
-
-@keyframes islandEnter {
-  from {
-    transform: translate(-50%, -100%);
-  }
-  to {
-    transform: translate(-50%, 0);
-  }
 }
 
 .experienceSection {
@@ -1801,10 +1729,6 @@ p {
     font-size: 48px;
   }
 
-  .heroMedia {
-    min-height: 520px;
-  }
-
   .orbitCanvas {
     min-height: 1080px;
   }
@@ -1959,23 +1883,8 @@ p {
   }
 
   .heroMedia {
-    min-height: 440px;
     margin-top: 48px;
     border-radius: 40px;
-  }
-
-  .heroMediaImage {
-    object-position: 60% center;
-  }
-
-  .heroIsland {
-    width: 78%;
-    padding: 14px 20px 16px;
-    border-radius: 0 0 32px 32px;
-  }
-
-  .heroIsland strong {
-    font-size: 12px;
   }
 
   .experienceSection {
