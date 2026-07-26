@@ -67,10 +67,7 @@ html[data-snap-scroll="enabled"] body {
   .closingSection {
     display: grid;
     align-content: center;
-    block-size: 100svh;
-    max-block-size: 100svh;
     padding-block: clamp(88px, 10svh, 120px);
-    overflow: hidden;
   }
 
   .siteFooter[data-snap-section] {
@@ -1130,9 +1127,15 @@ p {
 }
 
 .compatibilitySection {
+  --compatibility-padding-top: 128px;
   padding: 128px 0;
   overflow: hidden;
   background: var(--surface);
+}
+
+.compatibilityInner {
+  display: flex;
+  flex-direction: column;
 }
 
 .finePrint {
@@ -1143,6 +1146,7 @@ p {
 
 .playerOrbit {
   position: relative;
+  flex: 1 1 340px;
   height: 340px;
   min-height: 340px;
   margin-top: clamp(48px, 7svh, 72px);
@@ -1227,9 +1231,15 @@ p {
 
 @media (min-width: 1024px) {
   .compatibilitySection {
+    --compatibility-padding-top: clamp(104px, 14svh, 128px);
     block-size: 100svh;
+    max-block-size: 100svh;
     min-block-size: 100svh;
-    padding: clamp(104px, 14svh, 128px) 0 0;
+    padding: var(--compatibility-padding-top) 0 0;
+  }
+
+  .compatibilityInner {
+    block-size: calc(100svh - var(--compatibility-padding-top));
   }
 
   @media (prefers-reduced-motion: no-preference) {
@@ -1249,6 +1259,18 @@ p {
     .playerPillDuplicate {
       display: inline-flex;
     }
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 699px) {
+  .compatibilitySection {
+    block-size: auto;
+    max-block-size: none;
+  }
+
+  .compatibilityInner {
+    block-size: auto;
+    min-block-size: calc(100svh - var(--compatibility-padding-top));
   }
 }
 
@@ -1298,7 +1320,7 @@ p {
   border-bottom: 1px solid var(--line-dark);
 }
 
-.factList article:last-child {
+.factList article:last-of-type {
   border-bottom: 0;
 }
 
@@ -1317,6 +1339,13 @@ p {
 .factList p {
   margin: 0;
   font-size: 13px;
+}
+
+.factList .sourcesNote {
+  margin-top: 20px;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 .faqSection {

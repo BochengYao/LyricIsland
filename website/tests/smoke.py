@@ -157,13 +157,39 @@ def test_smooth_section_snap(page: Page) -> None:
           height: image.getBoundingClientRect().height
         })"""
     )
-    assert image_metrics["naturalWidth"] == 2000
-    assert image_metrics["naturalHeight"] == 667
+    assert image_metrics["naturalWidth"] == 4000
+    assert image_metrics["naturalHeight"] == 1334
     natural_ratio = image_metrics["naturalWidth"] / image_metrics["naturalHeight"]
     rendered_ratio = image_metrics["width"] / image_metrics["height"]
     assert abs(natural_ratio - rendered_ratio) < 0.02, (
         "The hero image must retain its original aspect ratio"
     )
+
+    page.set_viewport_size({"width": 2048, "height": 1089})
+    page.reload(wait_until="networkidle")
+    page.locator("#players").evaluate(
+        "(section) => window.scrollTo(0, section.offsetTop)"
+    )
+    page.wait_for_timeout(120)
+    orbit_alignment = page.locator("#players").evaluate(
+        """(section) => {
+          const orbit = section.querySelector(".playerOrbit");
+          return {
+            sectionTop: section.getBoundingClientRect().top,
+            sectionHeight: section.offsetHeight,
+            orbitBottom: orbit.getBoundingClientRect().bottom,
+            viewportHeight: window.innerHeight
+          };
+        }"""
+    )
+    assert abs(orbit_alignment["sectionTop"]) <= 2
+    assert orbit_alignment["sectionHeight"] >= orbit_alignment["viewportHeight"]
+    assert abs(orbit_alignment["orbitBottom"] - orbit_alignment["viewportHeight"]) <= 2, (
+        "The player orbit should stay attached to the viewport bottom when zoomed out"
+    )
+
+    page.set_viewport_size({"width": 1440, "height": 900})
+    page.reload(wait_until="networkidle")
 
     first_metrics = sections.nth(0).evaluate(
         "(section) => ({ top: section.offsetTop, height: section.offsetHeight })"
@@ -209,6 +235,31 @@ def test_smooth_section_snap(page: Page) -> None:
     page.wait_for_timeout(1800)
     assert abs(page.evaluate("window.scrollY")) <= 3
 
+    faq = page.locator("#faq")
+    faq.evaluate("(section) => window.scrollTo(0, section.offsetTop)")
+    faq.locator(".faqQuestion button").evaluate_all(
+        "(buttons) => buttons.forEach((button) => button.click())"
+    )
+    page.wait_for_timeout(700)
+    expanded_faq = faq.evaluate(
+        """(section) => ({
+          top: section.offsetTop,
+          height: section.offsetHeight,
+          closingTop: document.querySelector(".closingSection").offsetTop,
+          viewportHeight: window.innerHeight
+        })"""
+    )
+    assert expanded_faq["height"] > expanded_faq["viewportHeight"], (
+        "An expanded FAQ should grow beyond one viewport"
+    )
+    faq.evaluate("(section) => window.scrollTo(0, section.offsetTop)")
+    page.mouse.wheel(0, 240)
+    page.wait_for_timeout(180)
+    faq_inner_scroll = page.evaluate("window.scrollY")
+    assert expanded_faq["top"] < faq_inner_scroll < expanded_faq["closingTop"], (
+        "Expanded FAQ content must scroll inside its own anchor before advancing"
+    )
+
     for selector, next_selector in [
         ("#faq", ".closingSection"),
         (".closingSection", ".siteFooter"),
@@ -243,6 +294,13 @@ def test_smooth_section_snap(page: Page) -> None:
 
 def test_navigation_and_orbit(page: Page) -> None:
     page.goto(BASE_URL + "/", wait_until="networkidle")
+    expect(page.locator(".factList article strong")).to_have_text(["4+", "6+", "0"])
+    expect(page.locator(".factList article h3")).to_have_text(
+        ["歌词来源", "主流播放器", "广告打扰"]
+    )
+    expect(page.locator(".sourcesNote")).to_have_text(
+        "*受接口限制，网易云音乐暂不支持进度条同步与拖动进度条后的实时歌词同步。"
+    )
     expect(page.locator(".heroSupport .buttonRow .button")).to_have_count(1)
     expect(page.locator(".heroSupport a[href*='apps.microsoft.com']")).to_have_count(1)
     expect(page.locator(".heroSupport a[href*='github.com']")).to_have_count(0)
@@ -265,6 +323,15 @@ def test_navigation_and_orbit(page: Page) -> None:
     assert store_arrow_stroke == "rgb(20, 20, 19)"
 
     page.goto(BASE_URL + "/en", wait_until="networkidle")
+    expect(page.locator(".factList article strong")).to_have_text(["4+", "6+", "0"])
+    expect(page.locator(".factList article h3")).to_have_text(
+        ["lyric sources", "popular players", "ad interruptions"]
+    )
+    expect(page.locator(".sourcesNote")).to_have_text(
+        "*Due to API limitations, NetEase Cloud Music currently does not support "
+        "progress-bar synchronization or real-time lyric synchronization after you "
+        "drag the progress bar."
+    )
     assert page.locator(".desktopNavLinks a").all_text_contents() == [
         "Home",
         "What's new",
