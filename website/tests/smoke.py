@@ -140,7 +140,9 @@ def test_interactions(page: Page, locale: str) -> None:
 def test_continuous_section_scroll(page: Page) -> None:
     page.goto(BASE_URL + "/", wait_until="networkidle")
     expect(page.locator("html")).not_to_have_attribute("data-snap-scroll", "enabled")
-    expect(page.locator("[data-snap-section]")).to_have_count(0)
+    assert page.locator("[data-snap-section]").count() >= 8, (
+        "Major sections should retain their anchor markers"
+    )
     expect(page.locator(".heroIsland")).to_have_count(0)
     expect(page.locator(".hero .eyebrow")).to_have_count(0)
     expect(page.locator("h1")).to_have_text("这一句，\n值得被看见。")
