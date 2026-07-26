@@ -206,6 +206,13 @@ def test_smooth_section_snap(page: Page) -> None:
     )
     assert abs(sources_center - page.evaluate("window.innerHeight / 2")) <= 3
 
+    page.evaluate("(top) => window.scrollTo(0, top + 48)", sources_top)
+    page.wait_for_timeout(1800)
+    assert abs(page.evaluate("window.scrollY") - sources_top) <= 3, (
+        "A one-screen section must settle back onto its nearest anchor "
+        "after native scrolling stops"
+    )
+
     closing = page.locator(".closingSection")
     closing_top = closing.evaluate("(section) => section.offsetTop")
     closing.evaluate("(section) => window.scrollTo(0, section.offsetTop)")
