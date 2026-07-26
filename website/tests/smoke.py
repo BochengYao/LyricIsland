@@ -378,6 +378,7 @@ def test_navigation_and_orbit(page: Page) -> None:
     page.goto(BASE_URL + "/", wait_until="networkidle")
     experience_images = page.locator("#experience .portraitImage")
     expect(experience_images).to_have_count(3)
+    expect(page.locator("#experience .satelliteButton")).to_have_count(0)
     experience_image_metrics = experience_images.evaluate_all(
         """(images) => images.map((image) => ({
           file: new URL(image.currentSrc).pathname.split("/").pop(),
@@ -406,6 +407,17 @@ def test_navigation_and_orbit(page: Page) -> None:
             "objectFit": "cover",
         },
     ]
+    first_experience_image = experience_images.first
+    initial_experience_transform = first_experience_image.evaluate(
+        "(image) => getComputedStyle(image).transform"
+    )
+    first_experience_image.hover()
+    page.wait_for_timeout(240)
+    hovered_experience_transform = first_experience_image.evaluate(
+        "(image) => getComputedStyle(image).transform"
+    )
+    assert initial_experience_transform != hovered_experience_transform
+    assert hovered_experience_transform.startswith("matrix(1.06")
     expect(page.locator(".factList article strong")).to_have_text(["4+", "6+", "0"])
     expect(page.locator(".factList article h3")).to_have_text(
         ["歌词来源", "主流播放器", "广告打扰"]
@@ -931,6 +943,20 @@ def main() -> None:
             if name == "mobile":
                 assert page.locator("html").get_attribute("data-snap-scroll") is None, (
                     "Reduced-motion mobile contexts must keep native scrolling"
+                )
+                mobile_experience_image = page.locator(
+                    "#experience .portraitImage"
+                ).first
+                mobile_transform_before_hover = mobile_experience_image.evaluate(
+                    "(image) => getComputedStyle(image).transform"
+                )
+                mobile_experience_image.hover()
+                page.wait_for_timeout(240)
+                mobile_transform_after_hover = mobile_experience_image.evaluate(
+                    "(image) => getComputedStyle(image).transform"
+                )
+                assert mobile_transform_after_hover == mobile_transform_before_hover, (
+                    "Mobile experience images must not gain a hover zoom"
                 )
                 test_selective_text_reveal(page, reduced_motion=True)
             page.goto(BASE_URL + "/", wait_until="networkidle")
