@@ -5,7 +5,6 @@ import { ExternalArrow } from "@/components/ExternalArrow";
 import { IslandDemo } from "@/components/IslandDemo";
 import { PlayerOrbit } from "@/components/PlayerOrbit";
 import { SelectiveTextReveal } from "@/components/SelectiveTextReveal";
-import { SmoothSectionScroll } from "@/components/SmoothSectionScroll";
 import {
   copyByLocale,
   microsoftStoreUrl,
@@ -163,16 +162,14 @@ export function SitePage({ locale }: Props) {
         {locale === "zh" ? "跳到主要内容" : "Skip to main content"}
       </a>
 
-      <SmoothSectionScroll />
       <SelectiveTextReveal />
 
       <PrimaryNavigation locale={locale} homeHref="#main" />
 
       <main id="main">
-        <section className="hero sectionContainer" data-snap-section>
+        <section className="hero sectionContainer">
           <div className="heroGrid">
             <div>
-              <Eyebrow reveal>{copy.eyebrow}</Eyebrow>
               <h1 data-text-reveal="title">{copy.heroTitle}</h1>
             </div>
             <div className="heroSupport">
@@ -195,20 +192,18 @@ export function SitePage({ locale }: Props) {
             <Image
               src="/images/product-hero-v2.png"
               alt={copy.heroImageAlt}
-              fill
+              width={2000}
+              height={667}
+              unoptimized
               priority
               sizes="(min-width: 1440px) 1280px, calc(100vw - 48px)"
               className="heroMediaImage"
             />
             <span className="heroBadge">{copy.heroBadge}</span>
-            <div className="heroIsland" aria-hidden="true">
-              <strong>{copy.heroIslandTitle}</strong>
-              <small>{copy.heroIslandSub}</small>
-            </div>
           </div>
         </section>
 
-        <section className="experienceSection" id="experience" data-snap-section>
+        <section className="experienceSection" id="experience">
           <div className="sectionContainer experienceIntro">
             <Eyebrow reveal>{copy.experience.eyebrow}</Eyebrow>
             <div className="sectionTitleGrid">
@@ -255,7 +250,7 @@ export function SitePage({ locale }: Props) {
           </div>
         </section>
 
-        <section className="demoSection" id="demo" data-snap-section>
+        <section className="demoSection" id="demo">
           <div className="sectionContainer sectionTitleGrid">
             <div>
               <Eyebrow reveal>{copy.demo.eyebrow}</Eyebrow>
@@ -268,7 +263,7 @@ export function SitePage({ locale }: Props) {
           </div>
         </section>
 
-        <section className="modulesSection" id="modules" data-snap-section>
+        <section className="modulesSection" id="modules">
           <div className="sectionContainer modulesGrid">
             <div className="modulesCopy">
               <Eyebrow reveal>{copy.modules.eyebrow}</Eyebrow>
@@ -319,7 +314,7 @@ export function SitePage({ locale }: Props) {
           </div>
         </section>
 
-        <section className="compatibilitySection" id="players" data-snap-section>
+        <section className="compatibilitySection" id="players">
           <div className="sectionContainer">
             <div className="sectionTitleGrid">
               <h2 data-text-reveal="title">{copy.compatibility.title}</h2>
@@ -332,7 +327,7 @@ export function SitePage({ locale }: Props) {
           </div>
         </section>
 
-        <section className="sourcesSection" data-snap-section>
+        <section className="sourcesSection">
           <div className="sectionContainer sourcesPanel">
             <div className="sourcesIntro">
               <Eyebrow reveal>{copy.sources.eyebrow}</Eyebrow>
@@ -351,7 +346,7 @@ export function SitePage({ locale }: Props) {
           </div>
         </section>
 
-        <section className="faqSection" id="faq" data-snap-section>
+        <section className="faqSection" id="faq">
           <div className="sectionContainer faqGrid">
             <div>
               <Eyebrow reveal>{copy.faq.eyebrow}</Eyebrow>
@@ -369,7 +364,7 @@ export function SitePage({ locale }: Props) {
           </div>
         </section>
 
-        <section className="closingSection" data-snap-section>
+        <section className="closingSection">
           <div className="sectionContainer closingPanel">
             <Eyebrow reveal>{copy.closing.eyebrow}</Eyebrow>
             <h2 data-text-reveal="title">{copy.closing.title}</h2>
@@ -398,7 +393,7 @@ export function SitePage({ locale }: Props) {
         </section>
       </main>
 
-      <footer className="siteFooter" data-snap-section>
+      <footer className="siteFooter">
         <div className="sectionContainer">
           <div className="footerTop">
             <div>
