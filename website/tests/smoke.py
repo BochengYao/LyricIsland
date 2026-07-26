@@ -391,7 +391,7 @@ def test_navigation_and_orbit(page: Page) -> None:
         {
             "file": "experience-playback.jpg",
             "naturalWidth": 1442,
-            "naturalHeight": 1442,
+            "naturalHeight": 1418,
             "objectFit": "cover",
         },
         {
