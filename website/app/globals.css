@@ -733,37 +733,16 @@ p {
   width: 100%;
   aspect-ratio: 1;
   margin-bottom: 36px;
+  overflow: hidden;
+  border-radius: 40px;
 }
 
 .portraitImage {
   --portrait-scale: 1;
   --portrait-hover-scale: 1.06;
-  border-radius: 50%;
+  border-radius: inherit;
   object-fit: cover;
-  box-shadow: var(--shadow-soft);
   transform: scale(var(--portrait-scale));
-}
-
-.orbitCard2 .portraitWrap::before,
-.orbitCard3 .portraitWrap::before {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  content: "";
-}
-
-.orbitCard2 .portraitWrap::before {
-  background: #0b1b20;
-}
-
-.orbitCard3 .portraitWrap::before {
-  background: #f4f6fb;
-}
-
-.orbitCard2 .portraitImage,
-.orbitCard3 .portraitImage {
-  --portrait-scale: 0.9;
-  --portrait-hover-scale: 0.954;
 }
 
 @media (min-width: 768px) and (hover: hover) and (pointer: fine) {
