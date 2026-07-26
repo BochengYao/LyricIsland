@@ -376,6 +376,36 @@ def test_smooth_section_snap(page: Page) -> None:
 
 def test_navigation_and_orbit(page: Page) -> None:
     page.goto(BASE_URL + "/", wait_until="networkidle")
+    experience_images = page.locator("#experience .portraitImage")
+    expect(experience_images).to_have_count(3)
+    experience_image_metrics = experience_images.evaluate_all(
+        """(images) => images.map((image) => ({
+          file: new URL(image.currentSrc).pathname.split("/").pop(),
+          naturalWidth: image.naturalWidth,
+          naturalHeight: image.naturalHeight,
+          objectFit: getComputedStyle(image).objectFit
+        }))"""
+    )
+    assert experience_image_metrics == [
+        {
+            "file": "experience-playback.jpg",
+            "naturalWidth": 1442,
+            "naturalHeight": 1442,
+            "objectFit": "cover",
+        },
+        {
+            "file": "experience-idle.png",
+            "naturalWidth": 2560,
+            "naturalHeight": 1437,
+            "objectFit": "cover",
+        },
+        {
+            "file": "experience-pointer.png",
+            "naturalWidth": 1998,
+            "naturalHeight": 1125,
+            "objectFit": "cover",
+        },
+    ]
     expect(page.locator(".factList article strong")).to_have_text(["4+", "6+", "0"])
     expect(page.locator(".factList article h3")).to_have_text(
         ["歌词来源", "主流播放器", "广告打扰"]

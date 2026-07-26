@@ -741,6 +741,27 @@ p {
   box-shadow: var(--shadow-soft);
 }
 
+.orbitCard2 .portraitWrap::before,
+.orbitCard3 .portraitWrap::before {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  content: "";
+}
+
+.orbitCard2 .portraitWrap::before {
+  background: #0b1b20;
+}
+
+.orbitCard3 .portraitWrap::before {
+  background: #f4f6fb;
+}
+
+.orbitCard2 .portraitImage,
+.orbitCard3 .portraitImage {
+  transform: scale(0.9);
+}
+
 .satelliteButton {
   position: absolute;
   right: 0;
