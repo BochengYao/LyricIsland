@@ -288,7 +288,7 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       }
     ],
     eyebrow: "Windows desktop lyrics companion",
-    heroTitle: "A song should live\nbeyond your headphones.",
+    heroTitle: "Music beyond your ears.\nLyrics before your eyes.",
     heroBody:
       "When music starts, lyrics naturally surface from the top of your screen. When playback ends, they fully retreat—always at the edge of your vision, never in the way of your work.",
     storeLabel: "Get it from Microsoft Store",
@@ -298,15 +298,15 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
     heroIslandTitle: "City lights above the screen",
     heroIslandSub: "城市光停在屏幕边缘",
     experience: {
-      eyebrow: "There when it matters",
-      title: "An island that rises with music,\nthen slips away with silence.",
+      eyebrow: "Right when it feels right",
+      title: "With music, it appears.\nWith silence, it disappears.",
       body:
         "No taskbar space. No extra window. It surfaces when music starts, retreats when playback pauses, and gently fades as your pointer approaches—giving the screen back to what matters.",
       watermark: "LYRIC ISLAND",
       items: [
         {
           tag: "Playback",
-          title: "From the first note, it's in view",
+          title: "Music plays. Lyrics stay.",
           body: "As the music begins, lyrics naturally surface from the top of the screen.",
           image: "/images/product-hero.png",
           imageAlt: "Lyric Island visible while music is playing",
@@ -314,7 +314,7 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
         },
         {
           tag: "Idle",
-          title: "No playback. No interruption.",
+          title: "No sound. Not around.",
           body: "When nothing is playing, the lyrics retreat beyond the screen and your desktop returns to quiet.",
           image: "/images/product-focus.png",
           imageAlt: "Lyric Island above a focused workspace",
@@ -322,7 +322,7 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
         },
         {
           tag: "Awareness",
-          title: "Move closer. Your content stays center stage.",
+          title: "Move near. Work stays clear.",
           body: "Wherever your pointer passes, the lyrics gently fade so the content beneath stays readable and clickable.",
           image: "/images/product-modules.png",
           imageAlt: "Lyric Island coexisting with a Windows desktop",
@@ -332,7 +332,7 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
     },
     demo: {
       eyebrow: "Try it yourself",
-      title: "Move your mouse.\nSee how the island moves with you.",
+      title: "Move. Switch. Play.\nWatch the island sway.",
       body:
         "Switch between states and layouts to experience how Lyric Island surfaces, retreats, and moves out of your way. Everything here runs as a browser demo and never connects to your player.",
       playbackLabel: "Playback state",
@@ -355,13 +355,13 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
     },
     modules: {
       eyebrow: "Compose your own",
-      title: "Make it unfold\nthe way you want.",
+      title: "How it unfolds\nis yours to mold.",
       body:
         "Horizontal when you want room to breathe. Auto-collapsed when space matters. Lyric Island naturally adapts to the layout you choose.",
       names: ["Album art", "Synced lyrics", "Playback controls", "Track info", "Progress", "Divider"]
     },
     compatibility: {
-      title: "Switch the player.\nThe lyrics stay in play.",
+      title: "Players may change.\nLyrics stay the same.",
       body:
         "Lyric Island automatically recognizes the player in use and follows its playback state. You can also lock in a favorite player from Settings for a consistent experience every time.",
       note:
@@ -370,7 +370,7 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
     },
     sources: {
       eyebrow: "Where lyrics come from",
-      title: "Many sources.\nOne match.",
+      title: "Many sources.\nOne perfect match.",
       body:
         "Lyric Island searches providers including LRCLIB, Tencent Music, and NetEase Cloud Music to find synced lyrics and available translations for the song playing now.",
       facts: [
@@ -407,13 +407,13 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
     },
     closing: {
       eyebrow: "Lyric Island V2.0",
-      title: "Every line. Right on time.",
+      title: "Every line.\nRight on time.",
       body: "View v1.0 and the source code on GitHub. Download the app from Microsoft Store.",
       button: "View v1.0 & source",
       storeButton: "Mircosoft Store"
     },
     footer: {
-      title: "Music starts.\nLyrics surface.",
+      title: "Music plays.\nLyrics stay.",
       product: "Look back",
       productLinks: [
         { label: "Experience", href: "#experience" },
@@ -426,7 +426,7 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
         { label: "GitHub: v1.0 & source", href: "https://github.com/BochengYao/AppleMusicDesktopLyrics" },
         { label: "Updates", href: "/en/updates" },
         { label: "Community rewards", href: "/en/incentives" },
-        { label: "中文", href: "/" }
+        // { label: "中文", href: "/" }
       ],
       note: "Player and music-service names and trademarks belong to their respective owners.",
       copyright: "© 2026 Lyric Island"
