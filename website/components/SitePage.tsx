@@ -192,10 +192,10 @@ export function SitePage({ locale }: Props) {
 
           <div className="heroMedia">
             <Image
-              src="/images/product-hero-v2.png"
+              src="/images/product-hero-v2-2x.png"
               alt={copy.heroImageAlt}
-              width={2000}
-              height={667}
+              width={4000}
+              height={1334}
               unoptimized
               priority
               sizes="(min-width: 1440px) 1280px, calc(100vw - 48px)"
@@ -319,7 +319,7 @@ export function SitePage({ locale }: Props) {
         </section>
 
         <section className="compatibilitySection" id="players" data-snap-section>
-          <div className="sectionContainer">
+          <div className="sectionContainer compatibilityInner">
             <div className="sectionTitleGrid">
               <h2 data-text-reveal="title">{copy.compatibility.title}</h2>
               <div>
@@ -339,14 +339,15 @@ export function SitePage({ locale }: Props) {
               <p>{copy.sources.body}</p>
             </div>
             <div className="factList">
-              {copy.sources.facts.map((fact) => (
-                <article key={fact.label}>
-                  <strong>{fact.value}</strong>
-                  <h3>{fact.label}</h3>
-                  <p>{fact.detail}</p>
-                </article>
-              ))}
-            </div>
+                {copy.sources.facts.map((fact) => (
+                  <article key={fact.label}>
+                    <strong>{fact.value}</strong>
+                    <h3>{fact.label}</h3>
+                    <p>{fact.detail}</p>
+                  </article>
+                ))}
+                <p className="sourcesNote">{copy.sources.note}</p>
+              </div>
           </div>
         </section>
 

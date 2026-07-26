@@ -65,11 +65,12 @@ export type SiteCopy = {
     note: string;
     players: string[];
   };
-  sources: {
-    eyebrow: string;
-    title: string;
-    body: string;
-    facts: Array<{ value: string; label: string; detail: string }>;
+    sources: {
+      eyebrow: string;
+      title: string;
+      body: string;
+      facts: Array<{ value: string; label: string; detail: string }>;
+      note: string;
   };
   faq: {
     eyebrow: string;
@@ -206,11 +207,12 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       title: "多个来源，\n一次匹配。",
       body:
         "支持 LRCLIB、腾讯音乐和网易云音乐等歌词来源，自动为正在播放的歌曲寻找同步歌词与翻译。",
-      facts: [
-        { value: "4+", label: "歌词来源", detail: "多个来源自动匹配，减少歌词缺失。" },
-        { value: "LOCAL", label: "本地缓存", detail: "歌词留在本机，再次播放更快出现。" },
-        { value: "A/中", label: "原文翻译", detail: "翻译可用时，与原文一同呈现。" }
-      ]
+        facts: [
+          { value: "4+", label: "歌词来源", detail: "多个来源自动匹配，减少歌词缺失。" },
+          { value: "6+", label: "主流播放器", detail: "兼容 Apple Music、QQ 音乐、网易云音乐*等。" },
+          { value: "0", label: "广告打扰", detail: "无广告，使用更纯粹" }
+        ],
+        note: "*受接口限制，网易云音乐暂不支持进度条同步与拖动进度条后的实时歌词同步。"
     },
     faq: {
       eyebrow: "常见问题",
@@ -364,11 +366,13 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       title: "Many sources.\nOne perfect match.",
       body:
         "Lyric Island searches providers including LRCLIB, Tencent Music, and NetEase Cloud Music to find synced lyrics and available translations for the song playing now.",
-      facts: [
-        { value: "4+", label: "lyric sources", detail: "Multiple sources match automatically, so fewer songs go without lyrics." },
-        { value: "LOCAL", label: "local cache", detail: "Lyrics stay on your device and appear faster the next time." },
-        { value: "A/B", label: "original + translation", detail: "When a translation is available, it appears alongside the original." }
-      ]
+        facts: [
+          { value: "4+", label: "lyric sources", detail: "Multiple sources match automatically, so fewer songs go without lyrics." },
+          { value: "6+", label: "popular players", detail: "Works with Apple Music, QQ Music, NetEase Cloud Music*, and more." },
+          { value: "0", label: "ad interruptions", detail: "No ads. Nothing between you and the lyrics." }
+        ],
+        note:
+          "*Due to API limitations, NetEase Cloud Music currently does not support progress-bar synchronization or real-time lyric synchronization after you drag the progress bar."
     },
     faq: {
       eyebrow: "Frequently asked",
