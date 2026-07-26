@@ -141,7 +141,7 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       items: [
         {
           tag: "播放",
-          title: "一开场,就在场",
+          title: "一开场，就在场",
           body: "音乐响起，歌词随即从屏幕顶部自然浮现。",
           image: "/images/experience-playback.jpg",
           imageAlt: "音乐播放时浮现在屏幕顶部的歌词岛",
