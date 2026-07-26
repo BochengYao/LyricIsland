@@ -204,7 +204,13 @@ def test_smooth_section_snap(page: Page) -> None:
     sources_center = page.locator(".sourcesPanel").evaluate(
         "(panel) => (panel.getBoundingClientRect().top + panel.getBoundingClientRect().bottom) / 2"
     )
-    assert abs(sources_center - page.evaluate("window.innerHeight / 2")) <= 3
+    available_center = page.evaluate(
+        """() => (
+          document.querySelector(".floatingNav").getBoundingClientRect().bottom
+          + window.innerHeight
+        ) / 2"""
+    )
+    assert abs(sources_center - available_center) <= 3
 
     page.evaluate("(top) => window.scrollTo(0, top + 48)", sources_top)
     page.wait_for_timeout(1800)
@@ -221,9 +227,16 @@ def test_smooth_section_snap(page: Page) -> None:
     closing_center = page.locator(".closingPanel").evaluate(
         "(panel) => (panel.getBoundingClientRect().top + panel.getBoundingClientRect().bottom) / 2"
     )
-    assert abs(closing_center - page.evaluate("window.innerHeight / 2")) <= 3
+    assert abs(closing_center - available_center) <= 3
     closing_buttons = closing.locator(".buttonRow .button")
     expect(closing_buttons).to_have_text(["GitHub", "Microsoft Store"])
+    closing_button_sizes = closing_buttons.evaluate_all(
+        """(buttons) => buttons.map((button) => ({
+          width: button.getBoundingClientRect().width,
+          height: button.getBoundingClientRect().height
+        }))"""
+    )
+    assert closing_button_sizes[0] == closing_button_sizes[1]
     expect(closing_buttons.nth(0)).to_have_class(re.compile(r"\bbuttonPrimary\b"))
     expect(closing_buttons.nth(0)).to_have_attribute("href", re.compile(r"github\.com"))
     expect(closing_buttons.nth(1)).to_have_class(re.compile(r"\bbuttonSecondary\b"))
@@ -232,7 +245,20 @@ def test_smooth_section_snap(page: Page) -> None:
     )
 
     footer = page.locator(".siteFooter")
-    assert footer.evaluate("(node) => node.offsetHeight") >= page.evaluate("window.innerHeight")
+    footer_height = footer.evaluate("(node) => node.offsetHeight")
+    assert footer_height >= page.evaluate("window.innerHeight")
+    footer.evaluate("(node) => window.scrollTo(0, node.offsetTop)")
+    page.wait_for_timeout(120)
+    footer_panel_rect = footer.locator(":scope > .sectionContainer").evaluate(
+        """(node) => {
+          const rect = node.getBoundingClientRect();
+          return { top: rect.top, bottom: rect.bottom };
+        }"""
+    )
+    assert footer_panel_rect["top"] > 0, (
+        "The final viewport should keep a white strip above the black footer panel"
+    )
+    assert footer_panel_rect["bottom"] >= page.evaluate("window.innerHeight - 1")
 
     page.goto(BASE_URL + "/updates", wait_until="networkidle")
     page.evaluate("window.scrollTo(0, document.documentElement.scrollHeight)")
