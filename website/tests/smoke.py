@@ -145,6 +145,7 @@ def test_continuous_section_scroll(page: Page) -> None:
     )
     expect(page.locator(".heroIsland")).to_have_count(0)
     expect(page.locator(".hero .eyebrow")).to_have_count(0)
+    expect(page.locator("#experience > .experienceIntro > .eyebrow")).to_have_count(0)
     expect(page.locator("h1")).to_have_text("这一句，\n值得被看见。")
 
     hero_image = page.locator(".heroMediaImage")
@@ -179,7 +180,7 @@ def test_continuous_section_scroll(page: Page) -> None:
     )
 
     page.mouse.wheel(0, 360)
-    page.wait_for_timeout(1250)
+    page.wait_for_timeout(2150)
     assert abs(page.evaluate("window.scrollY") - zoomed_out_metrics["experienceTop"]) <= 4, (
         "Wheel input should lock onto the next anchor without hiding adjacent content"
     )

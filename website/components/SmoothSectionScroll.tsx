@@ -5,8 +5,18 @@ import { useEffect } from "react";
 const SECTION_SELECTOR = "[data-snap-section]";
 const INTENT_THRESHOLD = 36;
 const INPUT_RESET_MS = 180;
-const RELEASE_LOCK_MS = 1100;
+const EXTRA_DURATION_MS = 300;
 const EDGE_TOLERANCE = 4;
+
+function clamp(value: number, minimum: number, maximum: number) {
+  return Math.min(maximum, Math.max(minimum, value));
+}
+
+function easeInOutQuint(progress: number) {
+  return progress < 0.5
+    ? 16 * progress ** 5
+    : 1 - (-2 * progress + 2) ** 5 / 2;
+}
 
 function wheelDistance(event: WheelEvent) {
   if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) {
@@ -28,6 +38,7 @@ export function SmoothSectionScroll() {
     let accumulatedIntent = 0;
     let lastInputAt = 0;
     let locked = false;
+    let animationFrame = 0;
     let releaseTimer = 0;
 
     const isEnabled = () => desktopViewport.matches && !reducedMotion.matches;
@@ -37,6 +48,15 @@ export function SmoothSectionScroll() {
       releaseTimer = 0;
       locked = false;
       accumulatedIntent = 0;
+      delete document.documentElement.dataset.snapAnimating;
+    };
+
+    const cancelAnimation = () => {
+      if (animationFrame) {
+        window.cancelAnimationFrame(animationFrame);
+      }
+      animationFrame = 0;
+      releaseLock();
     };
 
     const syncMode = () => {
@@ -44,7 +64,7 @@ export function SmoothSectionScroll() {
         document.documentElement.dataset.snapScroll = "enabled";
       } else {
         delete document.documentElement.dataset.snapScroll;
-        releaseLock();
+        cancelAnimation();
       }
     };
 
@@ -65,6 +85,44 @@ export function SmoothSectionScroll() {
         .slice()
         .reverse()
         .find((top) => top < currentTop - EDGE_TOLERANCE);
+    };
+
+    const animateTo = (requestedTop: number) => {
+      const maximumTop = Math.max(
+        0,
+        document.documentElement.scrollHeight - window.innerHeight
+      );
+      const startTop = window.scrollY;
+      const targetTop = clamp(requestedTop, 0, maximumTop);
+      const distance = Math.abs(targetTop - startTop);
+      const baseDuration = clamp(
+        760 + Math.sqrt(distance) * 15,
+        900,
+        1500
+      );
+      const duration = baseDuration + EXTRA_DURATION_MS;
+      const startedAt = performance.now();
+
+      locked = true;
+      document.documentElement.dataset.snapAnimating = "enabled";
+
+      const frame = (now: number) => {
+        const progress = clamp((now - startedAt) / duration, 0, 1);
+        const eased = easeInOutQuint(progress);
+        window.scrollTo(0, startTop + (targetTop - startTop) * eased);
+
+        if (progress < 1) {
+          animationFrame = window.requestAnimationFrame(frame);
+          return;
+        }
+
+        window.scrollTo(0, targetTop);
+        animationFrame = 0;
+        releaseLock();
+      };
+
+      animationFrame = window.requestAnimationFrame(frame);
+      releaseTimer = window.setTimeout(releaseLock, duration + 200);
     };
 
     const onWheel = (event: WheelEvent) => {
@@ -107,29 +165,25 @@ export function SmoothSectionScroll() {
         return;
       }
 
-      locked = true;
       accumulatedIntent = 0;
-      window.scrollTo({ top: targetTop, behavior: "smooth" });
-      releaseTimer = window.setTimeout(releaseLock, RELEASE_LOCK_MS);
+      animateTo(targetTop);
     };
 
     syncMode();
     desktopViewport.addEventListener("change", syncMode);
     reducedMotion.addEventListener("change", syncMode);
     window.addEventListener("wheel", onWheel, { passive: false });
-    window.addEventListener("scrollend", releaseLock);
-    window.addEventListener("pointerdown", releaseLock);
-    window.addEventListener("keydown", releaseLock);
+    window.addEventListener("pointerdown", cancelAnimation);
+    window.addEventListener("keydown", cancelAnimation);
 
     return () => {
-      releaseLock();
+      cancelAnimation();
       delete document.documentElement.dataset.snapScroll;
       desktopViewport.removeEventListener("change", syncMode);
       reducedMotion.removeEventListener("change", syncMode);
       window.removeEventListener("wheel", onWheel);
-      window.removeEventListener("scrollend", releaseLock);
-      window.removeEventListener("pointerdown", releaseLock);
-      window.removeEventListener("keydown", releaseLock);
+      window.removeEventListener("pointerdown", cancelAnimation);
+      window.removeEventListener("keydown", cancelAnimation);
     };
   }, []);
 
