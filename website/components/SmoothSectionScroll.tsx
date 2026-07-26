@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 const SECTION_SELECTOR = "[data-snap-section]";
-const INTENT_THRESHOLD = 36;
+const INTENT_THRESHOLD = 12;
 const INPUT_RESET_MS = 180;
 const SETTLE_LOCK_MS = 280;
 const EDGE_TOLERANCE = 2;

@@ -191,6 +191,55 @@ def test_smooth_section_snap(page: Page) -> None:
     page.set_viewport_size({"width": 1440, "height": 900})
     page.reload(wait_until="networkidle")
 
+    page.locator("#players").evaluate(
+        "(section) => window.scrollTo(0, section.offsetTop)"
+    )
+    sources = page.locator(".sourcesSection")
+    sources_top = sources.evaluate("(section) => section.offsetTop")
+    page.mouse.wheel(0, 18)
+    page.wait_for_timeout(1800)
+    assert abs(page.evaluate("window.scrollY") - sources_top) <= 3, (
+        "One ordinary mouse-wheel step should advance to the next anchor"
+    )
+    sources_center = page.locator(".sourcesPanel").evaluate(
+        "(panel) => (panel.getBoundingClientRect().top + panel.getBoundingClientRect().bottom) / 2"
+    )
+    assert abs(sources_center - page.evaluate("window.innerHeight / 2")) <= 3
+
+    closing = page.locator(".closingSection")
+    closing_top = closing.evaluate("(section) => section.offsetTop")
+    closing.evaluate("(section) => window.scrollTo(0, section.offsetTop)")
+    page.wait_for_timeout(120)
+    assert abs(page.evaluate("window.scrollY") - closing_top) <= 3
+    closing_center = page.locator(".closingPanel").evaluate(
+        "(panel) => (panel.getBoundingClientRect().top + panel.getBoundingClientRect().bottom) / 2"
+    )
+    assert abs(closing_center - page.evaluate("window.innerHeight / 2")) <= 3
+    closing_buttons = closing.locator(".buttonRow .button")
+    expect(closing_buttons).to_have_text(["GitHub", "Microsoft Store"])
+    expect(closing_buttons.nth(0)).to_have_class(re.compile(r"\bbuttonPrimary\b"))
+    expect(closing_buttons.nth(0)).to_have_attribute("href", re.compile(r"github\.com"))
+    expect(closing_buttons.nth(1)).to_have_class(re.compile(r"\bbuttonSecondary\b"))
+    expect(closing_buttons.nth(1)).to_have_attribute(
+        "href", re.compile(r"apps\.microsoft\.com")
+    )
+
+    footer = page.locator(".siteFooter")
+    assert footer.evaluate("(node) => node.offsetHeight") >= page.evaluate("window.innerHeight")
+
+    page.goto(BASE_URL + "/updates", wait_until="networkidle")
+    page.evaluate("window.scrollTo(0, document.documentElement.scrollHeight)")
+    page.wait_for_timeout(100)
+    updates_footer_bottom = page.locator(".updatesFooter").evaluate(
+        "(footer) => footer.getBoundingClientRect().bottom"
+    )
+    assert updates_footer_bottom >= page.evaluate("window.innerHeight - 1")
+    updates_footer_shadow = page.locator(".updatesFooter").evaluate(
+        "(footer) => getComputedStyle(footer).boxShadow"
+    )
+    assert "64px" in updates_footer_shadow and "rgb(20, 20, 19)" in updates_footer_shadow
+
+    page.goto(BASE_URL + "/", wait_until="networkidle")
     first_metrics = sections.nth(0).evaluate(
         "(section) => ({ top: section.offsetTop, height: section.offsetHeight })"
     )
