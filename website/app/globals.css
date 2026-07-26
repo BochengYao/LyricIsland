@@ -2307,6 +2307,7 @@ p {
 
 .incentivesMain {
   overflow: hidden;
+  background: var(--canvas);
 }
 
 .incentivesHero {
@@ -2590,7 +2591,7 @@ p {
 }
 
 .acceptedSection {
-  padding: 144px 0 112px;
+  padding: 56px 0;
 }
 
 .acceptedHeading {
@@ -3072,7 +3073,7 @@ p {
   display: grid;
   grid-template-columns: 0.65fr 1.35fr;
   gap: 96px;
-  padding-top: 112px;
+  padding-top: 56px;
   padding-bottom: 144px;
 }
 
@@ -3150,6 +3151,11 @@ p {
 
 .incentivesFooter p {
   max-width: 680px;
+}
+
+html:has(.incentivesFooter),
+body:has(.incentivesFooter) {
+  background: var(--ink);
 }
 
 .adminLoading,
@@ -4057,7 +4063,7 @@ button.danger,
   }
 
   .acceptedSection {
-    padding: 96px 0 56px;
+    padding: 48px 0 32px;
   }
 
   .acceptedWaterfallViewport {
@@ -4214,7 +4220,7 @@ button.danger,
   .ticketActions .buttonPrimary { flex: 1; }
 
   .previewSection {
-    padding-top: 72px;
+    padding-top: 32px;
     padding-bottom: 96px;
   }
 
