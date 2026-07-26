@@ -244,8 +244,8 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       eyebrow: "歌词岛 V2.0",
       title: "每一句,  都刚好在场｡",
       body: "在 GitHub 查看 v1.0 与源码；软件下载请前往 Microsoft Store｡",
-      button: "查看 v1.0 与源码",
-      storeButton: "Mircosoft Store"
+      button: "GitHub",
+      storeButton: "Microsoft Store"
     },
     footer: {
       title: "音乐响起\n歌词自然浮现",
@@ -404,8 +404,8 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       eyebrow: "Lyric Island V2.0",
       title: "Every line.\nRight on time.",
       body: "View v1.0 and the source code on GitHub. Download the app from Microsoft Store.",
-      button: "View v1.0 & source",
-      storeButton: "Mircosoft Store"
+      button: "GitHub",
+      storeButton: "Microsoft Store"
     },
     footer: {
       title: "Music plays.\nLyrics stay.",

@@ -377,20 +377,20 @@ export function SitePage({ locale }: Props) {
             <div className="buttonRow">
               <a
                 className="button buttonPrimary"
-                href={microsoftStoreUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {copy.closing.storeButton}
-                <ExternalArrow />
-              </a>
-              <a
-                className="button buttonSecondary"
                 href={githubUrl}
                 target="_blank"
                 rel="noreferrer"
               >
                 {copy.closing.button}
+                <ExternalArrow />
+              </a>
+              <a
+                className="button buttonSecondary"
+                href={microsoftStoreUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {copy.closing.storeButton}
                 <ExternalArrow />
               </a>
             </div>
