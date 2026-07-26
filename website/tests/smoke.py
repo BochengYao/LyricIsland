@@ -402,8 +402,8 @@ def test_navigation_and_orbit(page: Page) -> None:
         },
         {
             "file": "experience-pointer.png",
-            "naturalWidth": 1998,
-            "naturalHeight": 1125,
+            "naturalWidth": 1638,
+            "naturalHeight": 1638,
             "objectFit": "cover",
         },
     ]
