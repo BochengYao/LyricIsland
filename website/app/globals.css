@@ -38,12 +38,44 @@ html {
   background: var(--canvas);
 }
 
-html[data-snap-animating="enabled"] {
+html[data-snap-scroll="enabled"] {
   scroll-behavior: auto;
 }
 
-main section[id] {
-  scroll-margin-top: 120px;
+html[data-snap-scroll="enabled"] body {
+  overscroll-behavior-y: none;
+}
+
+[data-snap-section] {
+  scroll-margin-top: 0;
+}
+
+@media (min-width: 1024px) {
+  [data-snap-section] {
+    min-block-size: 100svh;
+  }
+
+  .hero,
+  .demoSection,
+  .sourcesSection {
+    block-size: 100svh;
+    max-block-size: 100svh;
+    overflow: hidden;
+  }
+
+  .faqSection,
+  .closingSection {
+    display: grid;
+    align-content: center;
+    block-size: 100svh;
+    max-block-size: 100svh;
+    padding-block: clamp(88px, 10svh, 120px);
+    overflow: hidden;
+  }
+
+  .siteFooter[data-snap-section] {
+    min-block-size: auto;
+  }
 }
 
 body {

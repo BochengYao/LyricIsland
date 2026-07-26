@@ -5,8 +5,8 @@ import { useEffect } from "react";
 const SECTION_SELECTOR = "[data-snap-section]";
 const INTENT_THRESHOLD = 36;
 const INPUT_RESET_MS = 180;
-const EXTRA_DURATION_MS = 300;
-const EDGE_TOLERANCE = 4;
+const SETTLE_LOCK_MS = 280;
+const EDGE_TOLERANCE = 2;
 
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(maximum, Math.max(minimum, value));
@@ -32,31 +32,27 @@ function wheelDistance(event: WheelEvent) {
 
 export function SmoothSectionScroll() {
   useEffect(() => {
-    const desktopViewport = window.matchMedia("(min-width: 1024px)");
+    const desktopPointer = window.matchMedia(
+      "(min-width: 1024px) and (pointer: fine)"
+    );
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
+    let animationFrame = 0;
+    let animating = false;
     let accumulatedIntent = 0;
     let lastInputAt = 0;
-    let locked = false;
-    let animationFrame = 0;
-    let releaseTimer = 0;
+    let lockedUntil = 0;
 
-    const isEnabled = () => desktopViewport.matches && !reducedMotion.matches;
-
-    const releaseLock = () => {
-      window.clearTimeout(releaseTimer);
-      releaseTimer = 0;
-      locked = false;
-      accumulatedIntent = 0;
-      delete document.documentElement.dataset.snapAnimating;
-    };
+    const isEnabled = () => desktopPointer.matches && !reducedMotion.matches;
 
     const cancelAnimation = () => {
       if (animationFrame) {
         window.cancelAnimationFrame(animationFrame);
       }
       animationFrame = 0;
-      releaseLock();
+      animating = false;
+      lockedUntil = 0;
+      accumulatedIntent = 0;
     };
 
     const syncMode = () => {
@@ -68,26 +64,50 @@ export function SmoothSectionScroll() {
       }
     };
 
-    const sectionTops = () =>
+    const sectionMetrics = () =>
       Array.from(document.querySelectorAll<HTMLElement>(SECTION_SELECTOR)).map(
-        (section) => section.getBoundingClientRect().top + window.scrollY
+        (section, index) => ({
+          section,
+          index,
+          top: section.getBoundingClientRect().top + window.scrollY,
+          height: section.offsetHeight,
+          bottom:
+            section.getBoundingClientRect().top +
+            window.scrollY +
+            section.offsetHeight
+        })
       );
 
-    const targetTopFor = (direction: 1 | -1) => {
-      const currentTop = window.scrollY;
-      const tops = sectionTops();
+    const geometryTopFor = (target: HTMLElement) => {
+      const snapSection = target.matches(SECTION_SELECTOR)
+        ? target
+        : target.closest<HTMLElement>(SECTION_SELECTOR) ??
+          target.querySelector<HTMLElement>(SECTION_SELECTOR);
 
-      if (direction > 0) {
-        return tops.find((top) => top > currentTop + EDGE_TOLERANCE);
-      }
-
-      return tops
-        .slice()
-        .reverse()
-        .find((top) => top < currentTop - EDGE_TOLERANCE);
+      const geometryTarget = snapSection ?? target;
+      return geometryTarget.getBoundingClientRect().top + window.scrollY;
     };
 
-    const animateTo = (requestedTop: number) => {
+    const currentSection = (
+      sections: ReturnType<typeof sectionMetrics>
+    ) => {
+      const marker = window.scrollY + EDGE_TOLERANCE;
+      let current = sections[0];
+
+      for (const section of sections) {
+        if (section.top > marker) {
+          break;
+        }
+        current = section;
+      }
+
+      return current;
+    };
+
+    const animateTo = (
+      requestedTop: number,
+      source: "wheel" | "navigation" = "wheel"
+    ) => {
       const maximumTop = Math.max(
         0,
         document.documentElement.scrollHeight - window.innerHeight
@@ -95,16 +115,14 @@ export function SmoothSectionScroll() {
       const startTop = window.scrollY;
       const targetTop = clamp(requestedTop, 0, maximumTop);
       const distance = Math.abs(targetTop - startTop);
-      const baseDuration = clamp(
-        760 + Math.sqrt(distance) * 15,
-        900,
-        1500
-      );
-      const duration = baseDuration + EXTRA_DURATION_MS;
+      const duration =
+        source === "navigation"
+          ? clamp(880 + Math.sqrt(distance) * 15, 1100, 1700)
+          : clamp(760 + Math.sqrt(distance) * 15, 900, 1500);
       const startedAt = performance.now();
 
-      locked = true;
-      document.documentElement.dataset.snapAnimating = "enabled";
+      animating = true;
+      accumulatedIntent = 0;
 
       const frame = (now: number) => {
         const progress = clamp((now - startedAt) / duration, 0, 1);
@@ -118,11 +136,11 @@ export function SmoothSectionScroll() {
 
         window.scrollTo(0, targetTop);
         animationFrame = 0;
-        releaseLock();
+        animating = false;
+        lockedUntil = performance.now() + SETTLE_LOCK_MS;
       };
 
       animationFrame = window.requestAnimationFrame(frame);
-      releaseTimer = window.setTimeout(releaseLock, duration + 200);
     };
 
     const onWheel = (event: WheelEvent) => {
@@ -142,14 +160,36 @@ export function SmoothSectionScroll() {
         return;
       }
 
-      if (locked) {
+      if (animating || performance.now() < lockedUntil) {
         event.preventDefault();
         return;
       }
 
       const direction: 1 | -1 = delta > 0 ? 1 : -1;
-      const targetTop = targetTopFor(direction);
-      if (targetTop === undefined) {
+      const sections = sectionMetrics();
+      const current = currentSection(sections);
+      if (!current) {
+        return;
+      }
+
+      const isLongSection = current.height > window.innerHeight + EDGE_TOLERANCE;
+      const distanceToEdge =
+        direction > 0
+          ? current.bottom - (window.scrollY + window.innerHeight)
+          : window.scrollY - current.top;
+
+      if (isLongSection && distanceToEdge > EDGE_TOLERANCE) {
+        event.preventDefault();
+        accumulatedIntent = 0;
+        window.scrollBy(
+          0,
+          direction * Math.min(Math.abs(delta), Math.max(0, distanceToEdge))
+        );
+        return;
+      }
+
+      const target = sections[current.index + direction];
+      if (!target) {
         return;
       }
 
@@ -165,25 +205,75 @@ export function SmoothSectionScroll() {
         return;
       }
 
-      accumulatedIntent = 0;
-      animateTo(targetTop);
+      animateTo(target.top);
+    };
+
+    const onAnchorClick = (event: MouseEvent) => {
+      if (!isEnabled() || event.defaultPrevented || event.button !== 0) {
+        return;
+      }
+
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+        return;
+      }
+
+      const clicked = event.target;
+      if (!(clicked instanceof Element)) {
+        return;
+      }
+
+      const anchor = clicked.closest<HTMLAnchorElement>("a[href^='#']");
+      const hash = anchor?.getAttribute("href");
+      if (!hash || hash === "#") {
+        return;
+      }
+
+      const target = document.querySelector<HTMLElement>(hash);
+      if (!target) {
+        return;
+      }
+
+      event.preventDefault();
+      cancelAnimation();
+      window.history.pushState(null, "", hash);
+      animateTo(geometryTopFor(target), "navigation");
+    };
+
+    const onKeyboardIntent = (event: KeyboardEvent) => {
+      if (
+        [
+          "ArrowDown",
+          "ArrowUp",
+          "PageDown",
+          "PageUp",
+          "Home",
+          "End",
+          " "
+        ].includes(event.key)
+      ) {
+        cancelAnimation();
+      }
     };
 
     syncMode();
-    desktopViewport.addEventListener("change", syncMode);
+    desktopPointer.addEventListener("change", syncMode);
     reducedMotion.addEventListener("change", syncMode);
     window.addEventListener("wheel", onWheel, { passive: false });
+    document.addEventListener("click", onAnchorClick);
+    window.addEventListener("keydown", onKeyboardIntent);
     window.addEventListener("pointerdown", cancelAnimation);
-    window.addEventListener("keydown", cancelAnimation);
+    window.addEventListener("touchstart", cancelAnimation, { passive: true });
 
     return () => {
       cancelAnimation();
       delete document.documentElement.dataset.snapScroll;
-      desktopViewport.removeEventListener("change", syncMode);
+      desktopPointer.removeEventListener("change", syncMode);
       reducedMotion.removeEventListener("change", syncMode);
       window.removeEventListener("wheel", onWheel);
+      document.removeEventListener("click", onAnchorClick);
+      window.removeEventListener("keydown", onKeyboardIntent);
       window.removeEventListener("pointerdown", cancelAnimation);
-      window.removeEventListener("keydown", cancelAnimation);
+      window.removeEventListener("touchstart", cancelAnimation);
     };
   }, []);
 

@@ -289,7 +289,7 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
     heroImageAlt: "Lyric Island shown at the top of a Windows desktop",
     heroBadge: "v2.0 Beta 3",
     experience: {
-      eyebrow: "Right when it feels right",
+      eyebrow: "",
       title: "With music, it appears.\nWith silence, it disappears.",
       body:
         "No taskbar space. No extra window. It surfaces when music starts, retreats when playback pauses, and gently fades as your pointer approaches—giving the screen back to what matters.",
