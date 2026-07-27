@@ -75,27 +75,154 @@ def assert_page_health(page: Page, path: str, expected_lang: str) -> None:
 def test_interactions(page: Page, locale: str) -> None:
     labels = (
         {
+            "playing": "播放",
             "idle": "空闲",
             "near": "鼠标靠近",
-            "layout_c": "C 双态展开",
         }
         if locale == "zh"
         else {
+            "playing": "Playing",
             "idle": "Idle",
             "near": "Pointer nearby",
-            "layout_c": "C dual-state",
         }
     )
 
+    demo_controls = page.locator(".demoControls")
+    expect(demo_controls.get_by_role("button")).to_have_count(2)
+    expect(
+        demo_controls.get_by_role("button", name=labels["near"], exact=True)
+    ).to_have_count(0)
+    control_metrics = demo_controls.evaluate(
+        """(controls) => {
+          const buttons = [...controls.querySelectorAll("button")];
+          const rects = buttons.map((button) => button.getBoundingClientRect());
+          return {
+            height: controls.getBoundingClientRect().height,
+            buttonTops: rects.map((rect) => Math.round(rect.top)),
+            buttonHeights: rects.map((rect) => rect.height)
+          };
+        }"""
+    )
+    assert control_metrics["height"] <= 64, "Demo controls should use a low single row"
+    assert len(set(control_metrics["buttonTops"])) == 1, (
+        "Playback controls should remain on one line"
+    )
+    assert all(height <= 36 for height in control_metrics["buttonHeights"])
+
     island = page.get_by_test_id("demo-island")
+    island_path = island.locator(".demoIslandShape path")
+    expect(island_path).to_have_attribute(
+        "d",
+        "M 0,0 L 560,0 C 532,0 522,5 516,15 C 512,22 512,34 512,40 "
+        "C 512,49 504,55 491,55 L 69,55 C 56,55 48,49 48,40 "
+        "C 48,34 48,22 44,15 C 38,5 28,0 0,0 Z",
+    )
+
     page.get_by_role("button", name=labels["idle"], exact=True).click()
     expect(island).to_have_class(re.compile(r"\bisIdle\b"))
+    page.wait_for_timeout(560)
+    idle_metrics = island.evaluate(
+        """(node) => {
+          const desktop = node.closest(".demoDesktop").getBoundingClientRect();
+          const rect = node.getBoundingClientRect();
+          return {
+            islandBottom: rect.bottom,
+            desktopTop: desktop.top
+          };
+        }"""
+    )
+    assert idle_metrics["islandBottom"] <= idle_metrics["desktopTop"] + 1, (
+        "Idle state should retract the whole island beyond the desktop edge"
+    )
 
-    page.get_by_role("button", name=labels["layout_c"], exact=True).click()
-    expect(island).to_have_class(re.compile(r"\bisLayoutC\b"))
-
-    page.get_by_role("button", name=labels["near"], exact=True).click()
+    page.get_by_role("button", name=labels["playing"], exact=True).click()
+    expect(island).to_have_class(re.compile(r"\bisPlaying\b"))
+    page.wait_for_timeout(560)
+    island_box = island.bounding_box()
+    assert island_box is not None
+    page.mouse.move(
+        island_box["x"] + island_box["width"] * 0.55,
+        island_box["y"] + island_box["height"] + 22,
+    )
     expect(island).to_have_class(re.compile(r"\bisNear\b"))
+    page.wait_for_timeout(240)
+    avoidance_metrics = island.evaluate(
+        """(node) => ({
+          mask: getComputedStyle(node.querySelector(".demoIslandSurface")).maskImage,
+          webkitMask: getComputedStyle(
+            node.querySelector(".demoIslandSurface")
+          ).webkitMaskImage,
+          glowOpacity: Number(
+            getComputedStyle(node.querySelector(".demoAvoidanceGlow")).opacity
+          )
+        })"""
+    )
+    assert (
+        avoidance_metrics["mask"] != "none"
+        or avoidance_metrics["webkitMask"] != "none"
+    ), "Pointer proximity should create a radial avoidance mask"
+    assert avoidance_metrics["glowOpacity"] > 0.5, (
+        "Pointer proximity should render the avoidance glow automatically"
+    )
+
+    modules_section = page.locator("#modules")
+    module_image = modules_section.locator(".moduleComposerImage")
+    module_content = modules_section.locator(".moduleComposerContent")
+    page.evaluate(
+        "(section) => window.scrollTo(0, section.offsetTop)",
+        modules_section.element_handle(),
+    )
+    page.wait_for_timeout(120)
+    module_intro_metrics = modules_section.evaluate(
+        """(section) => {
+          const image = section.querySelector(".moduleComposerImage img");
+          return {
+            sectionHeight: section.offsetHeight,
+            viewportHeight: window.innerHeight,
+            imageFile: new URL(image.currentSrc).pathname.split("/").pop(),
+            naturalWidth: image.naturalWidth,
+            naturalHeight: image.naturalHeight,
+            imageOpacity: Number(
+              getComputedStyle(section.querySelector(".moduleComposerImage")).opacity
+            ),
+            contentOpacity: Number(
+              getComputedStyle(section.querySelector(".moduleComposerContent")).opacity
+            )
+          };
+        }"""
+    )
+    assert module_intro_metrics["sectionHeight"] > (
+        module_intro_metrics["viewportHeight"] * 1.35
+    ), "The modules anchor should provide in-section scroll distance"
+    assert module_intro_metrics["imageFile"] == "module-layout-intro.png"
+    assert module_intro_metrics["naturalWidth"] == 2560
+    assert module_intro_metrics["naturalHeight"] == 1442
+    assert module_intro_metrics["imageOpacity"] > 0.95
+    assert module_intro_metrics["contentOpacity"] < 0.05
+
+    page.evaluate(
+        """(section) => {
+          const range = section.offsetHeight - window.innerHeight;
+          window.scrollTo(0, section.offsetTop + range * 0.72);
+        }""",
+        modules_section.element_handle(),
+    )
+    page.wait_for_timeout(180)
+    module_reveal_metrics = modules_section.evaluate(
+        """(section) => ({
+          imageOpacity: Number(
+            getComputedStyle(section.querySelector(".moduleComposerImage")).opacity
+          ),
+          contentOpacity: Number(
+            getComputedStyle(section.querySelector(".moduleComposerContent")).opacity
+          ),
+          contentVisible:
+            section.querySelector(".moduleComposer").dataset.contentVisible
+        })"""
+    )
+    assert module_reveal_metrics["imageOpacity"] < 0.1
+    assert module_reveal_metrics["contentOpacity"] > 0.9
+    assert module_reveal_metrics["contentVisible"] == "true"
 
     faq = page.locator(".faqItem").first
     faq_button = faq.get_by_role("button")
@@ -431,6 +558,51 @@ def test_navigation_and_orbit(page: Page) -> None:
         and frame["backdrop"] == "none"
         for frame in experience_frame_metrics
     )
+    if page.evaluate("window.innerWidth") >= 1024:
+        experience_layout = page.locator("#experience").evaluate(
+            """(section) => {
+              const cards = [...section.querySelectorAll(".orbitCard")];
+              const rect = (node) => {
+                const box = node.getBoundingClientRect();
+                return {
+                  top: box.top,
+                  right: box.right,
+                  bottom: box.bottom,
+                  left: box.left
+                };
+              };
+              const canvas = section.querySelector(".orbitCanvas");
+              const canvasRect = canvas.getBoundingClientRect();
+              return {
+                canvas: {
+                  top: canvasRect.top,
+                  bottom: canvasRect.bottom,
+                  height: canvasRect.height,
+                  overflow: getComputedStyle(canvas).overflow
+                },
+                images: cards.map((card) => rect(card.querySelector(".portraitWrap"))),
+                copies: cards.map((card) => rect(card.querySelector(".orbitCopy"))),
+                cardBottoms: cards.map(
+                  (card) => card.getBoundingClientRect().bottom
+                )
+              };
+            }"""
+        )
+        assert experience_layout["copies"][0]["left"] >= (
+            experience_layout["images"][0]["right"] + 24
+        ), "Playback copy should sit to the right of the first image"
+        assert experience_layout["copies"][1]["right"] <= (
+            experience_layout["images"][1]["left"] - 24
+        ), "Idle copy should sit to the left of the second image"
+        assert experience_layout["copies"][2]["top"] >= (
+            experience_layout["images"][2]["bottom"] + 24
+        ), "Avoidance copy should remain below the third image"
+        assert experience_layout["canvas"]["height"] <= 861
+        assert experience_layout["canvas"]["overflow"] == "hidden"
+        assert max(experience_layout["cardBottoms"]) <= (
+            experience_layout["canvas"]["bottom"] + 1
+        ), "The cropped experience canvas should still contain every card"
+
     first_experience_image = experience_images.first
     initial_experience_transform = first_experience_image.evaluate(
         "(image) => getComputedStyle(image).transform"

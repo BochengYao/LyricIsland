@@ -1,6 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent
+} from "react";
 import type { SiteCopy } from "@/data/site-copy";
 
 type Props = {
@@ -8,103 +13,136 @@ type Props = {
 };
 
 type PlaybackState = "playing" | "idle";
-type LayoutMode = "a" | "c";
 
 export function IslandDemo({ copy }: Props) {
   const [playback, setPlayback] = useState<PlaybackState>("playing");
   const [near, setNear] = useState(false);
-  const [layout, setLayout] = useState<LayoutMode>("a");
+  const islandRef = useRef<HTMLDivElement>(null);
 
   const status = useMemo(() => {
     const values = [
       playback === "playing" ? copy.statusPlaying : copy.statusIdle,
-      near ? copy.statusNear : "",
-      layout === "a" ? copy.statusA : copy.statusC
+      near ? copy.statusNear : ""
     ];
 
     return values.filter(Boolean).join(" · ");
-  }, [copy, layout, near, playback]);
+  }, [copy, near, playback]);
 
   const islandClass = [
     "demoIsland",
     playback === "idle" ? "isIdle" : "isPlaying",
-    near ? "isNear" : "",
-    layout === "c" ? "isLayoutC" : "isLayoutA"
+    near ? "isNear" : ""
   ]
     .filter(Boolean)
     .join(" ");
 
+  const setPlaybackState = (next: PlaybackState) => {
+    setPlayback(next);
+    setNear(false);
+  };
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const island = islandRef.current;
+    if (!island || playback === "idle" || event.pointerType === "touch") {
+      setNear(false);
+      return;
+    }
+
+    const rect = island.getBoundingClientRect();
+    const proximityX = Math.min(150, rect.width * 0.18);
+    const proximityY = Math.min(120, rect.width * 0.14);
+    const isNearby =
+      event.clientX >= rect.left - proximityX &&
+      event.clientX <= rect.right + proximityX &&
+      event.clientY >= rect.top - 24 &&
+      event.clientY <= rect.bottom + proximityY;
+
+    setNear((current) => (current === isNearby ? current : isNearby));
+    if (!isNearby) {
+      return;
+    }
+
+    island.style.setProperty("--avoid-x", `${event.clientX - rect.left}px`);
+    island.style.setProperty("--avoid-y", `${event.clientY - rect.top}px`);
+  };
+
   return (
     <div className="demoShell">
       <div className="demoControls">
-        <fieldset>
-          <legend>{copy.playbackLabel}</legend>
+        <div
+          className="demoControlGroup"
+          role="group"
+          aria-label={copy.playbackLabel}
+        >
+          <span className="demoControlLabel">{copy.playbackLabel}</span>
           <div className="segmentedControl">
             <button
               type="button"
               aria-pressed={playback === "playing"}
-              onClick={() => setPlayback("playing")}
+              onClick={() => setPlaybackState("playing")}
             >
               {copy.playing}
             </button>
             <button
               type="button"
               aria-pressed={playback === "idle"}
-              onClick={() => setPlayback("idle")}
+              onClick={() => setPlaybackState("idle")}
             >
               {copy.idle}
             </button>
-            <button
-              type="button"
-              aria-pressed={near}
-              onClick={() => setNear((value) => !value)}
-            >
-              {copy.near}
-            </button>
           </div>
-        </fieldset>
-        <fieldset>
-          <legend>{copy.layoutLabel}</legend>
-          <div className="segmentedControl">
-            <button
-              type="button"
-              aria-pressed={layout === "a"}
-              onClick={() => setLayout("a")}
-            >
-              {copy.layoutA}
-            </button>
-            <button
-              type="button"
-              aria-pressed={layout === "c"}
-              onClick={() => setLayout("c")}
-            >
-              {copy.layoutC}
-            </button>
-          </div>
-        </fieldset>
+        </div>
       </div>
 
-      <div className="demoDesktop" aria-label={copy.title}>
+      <div
+        className="demoDesktop"
+        aria-label={copy.title}
+        onPointerMove={handlePointerMove}
+        onPointerLeave={() => setNear(false)}
+      >
         <span className="demoDesktopLabel">Windows desktop</span>
-        <div className={islandClass} data-testid="demo-island">
-          <div className="albumModule" aria-hidden="true">
-            <span>LI</span>
+        <div
+          ref={islandRef}
+          className={islandClass}
+          data-testid="demo-island"
+        >
+          <div className="demoIslandSurface">
+            <svg
+              className="demoIslandShape"
+              viewBox="0 0 560 60"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
+              <path d="M 0,0 L 560,0 C 532,0 522,5 516,15 C 512,22 512,34 512,40 C 512,49 504,55 491,55 L 69,55 C 56,55 48,49 48,40 C 48,34 48,22 44,15 C 38,5 28,0 0,0 Z" />
+            </svg>
+            <div className="demoIslandContent">
+              <div className="albumModule" aria-hidden="true">
+                <span>MS</span>
+              </div>
+              <div className="trackModule">
+                <span className="islandEyebrow">{copy.nowPlaying}</span>
+                <strong>{copy.track}</strong>
+                <small>{copy.artist}</small>
+              </div>
+              <span className="islandDivider" aria-hidden="true" />
+              <div className="lyricModule">
+                <strong>{copy.lyric}</strong>
+                <small>{copy.translation}</small>
+              </div>
+              <div className="progressModule" aria-hidden="true">
+                <span className="progressTrack">
+                  <span />
+                </span>
+                <small>0:53 / 3:43</small>
+              </div>
+              <div className="controlModule" aria-hidden="true">
+                <span>◀</span>
+                <span className="pauseControl">Ⅱ</span>
+                <span>▶</span>
+              </div>
+            </div>
           </div>
-          <div className="trackModule">
-            <span className="islandEyebrow">{copy.nowPlaying}</span>
-            <strong>{copy.track}</strong>
-            <small>{copy.artist}</small>
-          </div>
-          <span className="islandDivider" aria-hidden="true" />
-          <div className="lyricModule">
-            <strong>{copy.lyric}</strong>
-            <small>{copy.translation}</small>
-          </div>
-          <div className="controlModule" aria-hidden="true">
-            <span>‹</span>
-            <span className="playDisc">Ⅱ</span>
-            <span>›</span>
-          </div>
+          <span className="demoAvoidanceGlow" aria-hidden="true" />
         </div>
         <div className="demoWindow" aria-hidden="true">
           <span />

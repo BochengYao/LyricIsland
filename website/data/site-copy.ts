@@ -58,6 +58,7 @@ export type SiteCopy = {
     title: string;
     body: string;
     names: string[];
+    imageAlt: string;
   };
   compatibility: {
     title: string;
@@ -193,7 +194,8 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       title: "想怎么展开，\n就怎么呈现。",
       body:
         "水平排列，简洁舒展；自动折叠，节省空间。歌词岛会随你的布局自然变化。",
-      names: ["专辑封面", "同步歌词", "播放控制", "歌曲信息", "播放进度", "分割线"]
+      names: ["专辑封面", "同步歌词", "播放控制", "歌曲信息", "播放进度", "分割线"],
+      imageAlt: "歌词岛在三种桌面场景中的布局效果"
     },
     compatibility: {
       title: "换个播放器，\n歌词照常在场。",
@@ -351,7 +353,8 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       title: "How it unfolds\nis yours to mold.",
       body:
         "Horizontal when you want room to breathe. Auto-collapsed when space matters. Lyric Island naturally adapts to the layout you choose.",
-      names: ["Album art", "Synced lyrics", "Playback controls", "Track info", "Progress", "Divider"]
+      names: ["Album art", "Synced lyrics", "Playback controls", "Track info", "Progress", "Divider"],
+      imageAlt: "Lyric Island layouts shown across three desktop scenes"
     },
     compatibility: {
       title: "Players may change.\nLyrics stay the same.",

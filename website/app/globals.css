@@ -669,6 +669,7 @@ p {
   position: relative;
   min-height: 1120px;
   margin-top: 24px;
+  overflow: hidden;
 }
 
 .watermark {
@@ -728,6 +729,56 @@ p {
   right: 1%;
 }
 
+@media (min-width: 1024px) {
+  .orbitCanvas {
+    height: 860px;
+    min-height: 0;
+  }
+
+  .orbitCards {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .orbitCard1,
+  .orbitCard2 {
+    display: grid;
+    grid-template-columns: minmax(0, 320px) minmax(220px, 1fr);
+    gap: clamp(40px, 4vw, 72px);
+    align-items: center;
+    width: min(720px, 56vw);
+  }
+
+  .orbitCard1 {
+    top: 92px;
+    left: 2%;
+  }
+
+  .orbitCard2 {
+    top: 468px;
+    left: 24%;
+  }
+
+  .orbitCard1 .portraitWrap,
+  .orbitCard2 .portraitWrap {
+    margin-bottom: 0;
+  }
+
+  .orbitCard2 .portraitWrap {
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  .orbitCard2 .orbitCopy {
+    grid-row: 1;
+    grid-column: 1;
+  }
+
+  .orbitCard3 {
+    top: 128px;
+  }
+}
+
 .portraitWrap {
   position: relative;
   width: 100%;
@@ -763,7 +814,7 @@ p {
   margin-bottom: 12px;
 }
 
-.orbitCard > p:last-child {
+.orbitCopy > p:last-child {
   margin-bottom: 0;
   color: var(--muted);
 }
@@ -786,49 +837,48 @@ p {
 
 .demoControls {
   display: flex;
-  flex-wrap: wrap;
-  gap: 24px;
-  align-items: end;
-  justify-content: space-between;
-  padding: 24px 32px;
+  align-items: center;
+  min-height: 58px;
+  padding: 9px 20px;
   border-bottom: 1px solid var(--line);
 }
 
-.demoControls fieldset {
+.demoControlGroup {
+  display: flex;
+  align-items: center;
+  gap: 14px;
   min-width: 0;
-  padding: 0;
-  margin: 0;
-  border: 0;
+  white-space: nowrap;
 }
 
-.demoControls legend {
-  margin-bottom: 10px;
+.demoControlLabel {
   color: var(--muted);
   font-size: 12px;
   font-weight: 700;
+  line-height: 1;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .segmentedControl {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 4px;
+  gap: 3px;
+  padding: 3px;
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
   background: var(--white);
 }
 
 .segmentedControl button {
-  min-height: 44px;
-  padding: 0 18px;
+  min-height: 32px;
+  padding: 0 16px;
   border: 0;
   border-radius: var(--radius-pill);
   background: transparent;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
+  line-height: 1;
 }
 
 .segmentedControl button[aria-pressed="true"] {
@@ -881,62 +931,115 @@ p {
 }
 
 .demoIsland {
+  --avoid-x: 50%;
+  --avoid-y: 52%;
   position: absolute;
   top: 0;
   left: 50%;
   z-index: 4;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  width: min(900px, calc(100% - 96px));
-  min-height: 108px;
-  padding: 16px 24px;
-  border-radius: 0 0 36px 36px;
-  background: rgba(20, 20, 19, 0.98);
+  width: min(960px, calc(100% - 96px));
+  aspect-ratio: 560 / 60;
   color: var(--white);
   transform: translateX(-50%);
   transition:
     transform 500ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 220ms ease,
-    width 380ms ease,
-    min-height 380ms ease;
+    opacity 220ms ease;
+  will-change: transform;
 }
 
 .demoIsland.isIdle {
-  transform: translate(-50%, -87%);
+  transform: translate(-50%, calc(-100% - 2px));
 }
 
-.demoIsland.isNear {
-  opacity: 0.42;
+.demoIslandSurface {
+  position: absolute;
+  inset: 0;
+  transition: opacity 180ms ease;
 }
 
-.demoIsland.isLayoutC {
-  width: min(580px, calc(100% - 96px));
+.demoIslandShape {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.18));
+  fill: #050505;
 }
 
-.demoIsland.isLayoutC:not(.isNear) .trackModule,
-.demoIsland.isLayoutC:not(.isNear) .islandDivider,
-.demoIsland.isLayoutC:not(.isNear) .controlModule {
-  display: none;
+.demoIslandContent {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12.5% 7px;
+  transform: translateY(-2px);
 }
 
-.demoIsland.isLayoutC.isNear {
-  width: min(900px, calc(100% - 96px));
-  opacity: 0.68;
+.demoIsland.isNear .demoIslandSurface {
+  -webkit-mask-image: radial-gradient(
+    ellipse 152px 98px at var(--avoid-x) var(--avoid-y),
+    rgba(0, 0, 0, 0.04) 0%,
+    rgba(0, 0, 0, 0.18) 24%,
+    rgba(0, 0, 0, 0.7) 58%,
+    #000 100%
+  );
+  mask-image: radial-gradient(
+    ellipse 152px 98px at var(--avoid-x) var(--avoid-y),
+    rgba(0, 0, 0, 0.04) 0%,
+    rgba(0, 0, 0, 0.18) 24%,
+    rgba(0, 0, 0, 0.7) 58%,
+    #000 100%
+  );
+}
+
+.demoAvoidanceGlow {
+  position: absolute;
+  top: var(--avoid-y);
+  left: var(--avoid-x);
+  z-index: 2;
+  width: 230px;
+  height: 150px;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse,
+    rgba(245, 249, 255, 0.72) 0%,
+    rgba(220, 233, 255, 0.34) 34%,
+    rgba(210, 228, 255, 0) 72%
+  );
+  filter: blur(16px);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0.86);
+  transition:
+    opacity 180ms ease,
+    transform 220ms ease;
+}
+
+.demoIsland.isNear .demoAvoidanceGlow {
+  opacity: 0.88;
+  transform: translate(-50%, -50%) scale(1);
 }
 
 .albumModule {
+  position: relative;
   display: grid;
   flex: 0 0 auto;
   place-items: center;
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: #f02f63;
-  color: var(--white);
-  font-size: 18px;
+  width: 46px;
+  height: 46px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  background:
+    radial-gradient(circle at 70% 36%, rgba(44, 116, 219, 0.86), transparent 25%),
+    linear-gradient(145deg, #071424, #122b45 54%, #05090e);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: -0.04em;
+  letter-spacing: 0.08em;
 }
 
 .trackModule,
@@ -946,18 +1049,18 @@ p {
 }
 
 .trackModule {
-  flex: 0 0 140px;
+  flex: 0 0 124px;
 }
 
 .lyricModule {
-  flex: 1 1 auto;
+  flex: 1 1 210px;
   text-align: center;
 }
 
 .trackModule strong,
 .lyricModule strong {
   overflow: hidden;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -965,18 +1068,18 @@ p {
 
 .trackModule small,
 .lyricModule small {
-  margin-top: 3px;
+  margin-top: 2px;
   overflow: hidden;
   color: rgba(255, 255, 255, 0.58);
-  font-size: 11px;
+  font-size: 9px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .islandEyebrow {
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   color: rgba(255, 255, 255, 0.48);
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -984,26 +1087,51 @@ p {
 
 .islandDivider {
   flex: 0 0 1px;
-  height: 44px;
+  height: 38px;
   background: rgba(255, 255, 255, 0.18);
+}
+
+.progressModule {
+  display: grid;
+  flex: 0 0 92px;
+  gap: 4px;
+}
+
+.progressModule small {
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 8px;
+  text-align: center;
+}
+
+.progressTrack {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.progressTrack span {
+  display: block;
+  width: 28%;
+  height: 100%;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.86);
 }
 
 .controlModule {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 10px;
-  font-size: 18px;
+  gap: 9px;
+  font-size: 12px;
 }
 
-.playDisc {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 50%;
-  font-size: 10px;
+.pauseControl {
+  font-size: 13px;
+  letter-spacing: -0.1em;
 }
 
 .demoWindow {
@@ -1038,14 +1166,19 @@ p {
 }
 
 .modulesSection {
-  padding: 128px 0;
+  min-height: 145svh;
+  padding: 0;
 }
 
 .modulesGrid {
+  position: sticky;
+  top: 0;
   display: grid;
   grid-template-columns: 0.72fr 1.28fr;
   gap: 80px;
   align-items: center;
+  min-height: 100svh;
+  padding-block: 128px;
 }
 
 .modulesCopy > p {
@@ -1068,11 +1201,44 @@ p {
 }
 
 .moduleComposer {
-  padding: 48px 40px 32px;
+  --module-reveal: 0;
+  --module-image-scale: 1;
+  position: relative;
+  isolation: isolate;
+  aspect-ratio: 2560 / 1442;
   overflow: hidden;
   border-radius: var(--radius-large);
   background: var(--ink);
   color: var(--white);
+}
+
+.moduleComposerImage,
+.moduleComposerContent {
+  position: absolute;
+  inset: 0;
+}
+
+.moduleComposerImage {
+  z-index: 1;
+  overflow: hidden;
+  opacity: calc(1 - var(--module-reveal));
+  will-change: opacity;
+}
+
+.moduleComposerImage img {
+  object-fit: cover;
+  transform: scale(var(--module-image-scale));
+  transition: transform 80ms linear;
+}
+
+.moduleComposerContent {
+  z-index: 2;
+  display: grid;
+  align-content: center;
+  padding: 48px 40px 32px;
+  background: var(--ink);
+  opacity: var(--module-reveal);
+  will-change: opacity;
 }
 
 .moduleIsland {
@@ -1861,10 +2027,6 @@ p {
     width: calc(100% - 64px);
   }
 
-  .demoIsland.isLayoutC {
-    width: min(560px, calc(100% - 64px));
-  }
-
   .modulesGrid {
     grid-template-columns: 1fr;
   }
@@ -2035,8 +2197,17 @@ p {
   }
 
   .demoControls {
-    display: grid;
-    padding: 20px;
+    min-height: 52px;
+    padding: 8px 12px;
+  }
+
+  .demoControlGroup {
+    width: 100%;
+    gap: 10px;
+  }
+
+  .demoControlLabel {
+    font-size: 11px;
   }
 
   .segmentedControl {
@@ -2064,29 +2235,41 @@ p {
     left: 18px;
   }
 
-  .demoIsland,
-  .demoIsland.isLayoutC,
-  .demoIsland.isLayoutC.isNear {
-    gap: 10px;
+  .demoIsland {
     width: calc(100% - 24px);
-    min-height: 92px;
-    padding: 12px 14px;
-    border-radius: 0 0 28px 28px;
+  }
+
+  .demoIslandContent {
+    gap: 7px;
+    padding: 0 12.5% 4px;
   }
 
   .albumModule {
-    width: 52px;
-    height: 52px;
+    width: 36px;
+    height: 36px;
   }
 
   .trackModule,
   .islandDivider,
-  .controlModule {
+  .progressModule {
     display: none;
   }
 
   .lyricModule strong {
-    font-size: 13px;
+    font-size: 10px;
+  }
+
+  .lyricModule small {
+    font-size: 7px;
+  }
+
+  .controlModule {
+    gap: 5px;
+    font-size: 8px;
+  }
+
+  .pauseControl {
+    font-size: 9px;
   }
 
   .demoWindow {
@@ -2097,17 +2280,27 @@ p {
     height: 230px;
   }
 
+  .modulesSection {
+    padding: 0;
+  }
+
   .modulesGrid {
     gap: 48px;
+    min-height: 100svh;
+    padding-block: 72px;
   }
 
   .moduleComposer {
-    padding: 32px 20px 24px;
+    aspect-ratio: 6 / 5;
+  }
+
+  .moduleComposerContent {
+    padding: 16px 14px 14px;
   }
 
   .moduleIsland {
-    min-height: 88px;
-    padding: 10px;
+    min-height: 70px;
+    padding: 8px;
   }
 
   .moduleBlock {
@@ -2123,6 +2316,19 @@ p {
 
   .moduleTray {
     grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    margin-top: 14px;
+  }
+
+  .moduleTray > span {
+    min-height: 42px;
+    padding: 6px 8px;
+  }
+
+  .moduleTrayIcon {
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
   }
 
   .playerOrbit {
