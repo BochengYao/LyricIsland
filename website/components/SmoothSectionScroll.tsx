@@ -19,10 +19,6 @@ function easeInOutQuint(progress: number) {
     : 1 - (-2 * progress + 2) ** 5 / 2;
 }
 
-function easeOutCubic(progress: number) {
-  return 1 - (1 - progress) ** 3;
-}
-
 function wheelDistance(event: WheelEvent) {
   if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) {
     return event.deltaY * 16;
@@ -117,7 +113,7 @@ export function SmoothSectionScroll() {
 
     const animateTo = (
       requestedTop: number,
-      source: "wheel" | "navigation" | "direct" = "wheel"
+      source: "wheel" | "navigation" = "wheel"
     ) => {
       const maximumTop = Math.max(
         0,
@@ -129,8 +125,6 @@ export function SmoothSectionScroll() {
       const duration =
         source === "navigation"
           ? clamp(880 + Math.sqrt(distance) * 15, 1100, 1700)
-          : source === "direct"
-            ? clamp(480 + Math.sqrt(distance) * 8, 650, 820)
           : clamp(760 + Math.sqrt(distance) * 15, 900, 1500);
       const startedAt = performance.now();
 
@@ -139,8 +133,7 @@ export function SmoothSectionScroll() {
 
       const frame = (now: number) => {
         const progress = clamp((now - startedAt) / duration, 0, 1);
-        const eased =
-          source === "direct" ? easeOutCubic(progress) : easeInOutQuint(progress);
+        const eased = easeInOutQuint(progress);
         window.scrollTo(0, startTop + (targetTop - startTop) * eased);
 
         if (progress < 1) {
@@ -273,7 +266,7 @@ export function SmoothSectionScroll() {
         return;
       }
 
-      animateTo(target.top, directSnap ? "direct" : "wheel");
+      animateTo(target.top);
     };
 
     const onAnchorClick = (event: MouseEvent) => {
