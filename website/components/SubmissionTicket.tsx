@@ -212,22 +212,23 @@ export function SubmissionTicket({
           </div>
         </div>
 
-        <article className="submissionTicket" aria-label={isZh ? "提交存根" : "Submission ticket"}>
-          <span className="ticketEdge ticketEdgeLeft" aria-hidden="true" />
-          <span className="ticketEdge ticketEdgeRight" aria-hidden="true" />
-          <div className="ticketStub">
-            <span>LYRIC ISLAND</span>
-            <strong>{isZh ? "提交存根" : "SUBMISSION"}</strong>
-            <small>{receipt.kind === "feature" ? (isZh ? "新功能提议" : "FEATURE IDEA") : (isZh ? "BUG 提交" : "BUG REPORT")}</small>
-          </div>
-          <dl className="ticketDetails">
-            <div><dt>{isZh ? "姓名" : "Name"}</dt><dd>{receipt.nickname}</dd></div>
-            <div><dt>{isZh ? "提交时间" : "Submitted"}</dt><dd><time dateTime={receipt.submittedAt}>{date}</time></dd></div>
-            <div className="ticketWide"><dt>{isZh ? "邮箱" : "Email"}</dt><dd>{receipt.email}</dd></div>
-            <div className="ticketWide"><dt>{isZh ? "标题" : "Title"}</dt><dd>{receipt.title}</dd></div>
-            <div className="ticketWide"><dt>{isZh ? "提交内容" : "Details"}</dt><dd>{receipt.body}</dd></div>
-          </dl>
-        </article>
+        <div className="ticketIssueStage">
+          <div className="ticketDispenser" aria-hidden="true" />
+          <article className="submissionTicket" aria-label={isZh ? "提交存根" : "Submission ticket"}>
+            <div className="ticketStub">
+              <span>LYRIC ISLAND</span>
+              <strong>{isZh ? "提交存根" : "SUBMISSION"}</strong>
+              <small>{receipt.kind === "feature" ? (isZh ? "新功能提议" : "FEATURE IDEA") : (isZh ? "BUG 提交" : "BUG REPORT")}</small>
+            </div>
+            <dl className="ticketDetails">
+              <div><dt>{isZh ? "姓名" : "Name"}</dt><dd>{receipt.nickname}</dd></div>
+              <div><dt>{isZh ? "提交时间" : "Submitted"}</dt><dd><time dateTime={receipt.submittedAt}>{date}</time></dd></div>
+              <div className="ticketWide"><dt>{isZh ? "邮箱" : "Email"}</dt><dd>{receipt.email}</dd></div>
+              <div className="ticketWide"><dt>{isZh ? "标题" : "Title"}</dt><dd>{receipt.title}</dd></div>
+              <div className="ticketWide"><dt>{isZh ? "提交内容" : "Details"}</dt><dd>{receipt.body}</dd></div>
+            </dl>
+          </article>
+        </div>
 
         <div className="ticketActions">
           <button className="button buttonPrimary" type="button" onClick={downloadPng} disabled={downloading}>
