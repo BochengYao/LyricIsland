@@ -86,10 +86,11 @@ namespace LyricsIsland.Tests
             suite.Run("keeps island expanded while editing", KeepsIslandExpandedWhileEditing);
             suite.Run("settings layout mode labels are product facing", SettingsLayoutModeLabelsAreProductFacing);
             suite.Run("layout cards directly select the edited mode", LayoutCardsDirectlySelectEditedMode);
-            suite.Run("about page exposes v2 Beta product information", AboutPageExposesV2BetaProductInformation);
+            suite.Run("about page hides prerelease wording", AboutPageHidesPrereleaseWording);
             suite.Run("support developer page exposes Pro and free support actions", SupportDeveloperPageExposesProAndFreeSupportActions);
             suite.Run("formats the public Beta version", FormatsThePublicBetaVersion);
             suite.Run("release version has one source and auto increments", ReleaseVersionHasOneSourceAndAutoIncrements);
+            suite.Run("store package reuses the reserved product identity", StorePackageReusesReservedProductIdentity);
             suite.Run("tutorial waits for required user actions", TutorialWaitsForRequiredUserActions);
             suite.Run("tutorial rejects control click without temporary interaction", TutorialRejectsControlClickWithoutTemporaryInteraction);
             suite.Run("first launch tutorial is persisted and can be replayed", FirstLaunchTutorialIsPersistedAndCanBeReplayed);
@@ -1293,7 +1294,7 @@ namespace LyricsIsland.Tests
             Assert.False(xaml.Contains("M0,18 L6,10"));
         }
 
-        static void AboutPageExposesV2BetaProductInformation()
+        static void AboutPageHidesPrereleaseWording()
         {
             var root = GetSolutionRoot();
             var xaml = File.ReadAllText(Path.Combine(root, "LyricsIsland.App", "PlacementSettingsWindow.xaml"));
@@ -1327,8 +1328,7 @@ namespace LyricsIsland.Tests
             Assert.False(xaml.Contains("调整歌词岛位置、缓存和鼠标避让效果"));
             Assert.True(xaml.Contains("Text=\"大丞子\""));
             Assert.True(xaml.Contains("ProductVersion.DisplayVersionNumber"));
-            Assert.True(xaml.Contains("ProductVersion.DisplayVersionChannel"));
-            Assert.True(aboutPanel.Contains("Foreground=\"{DynamicResource {x:Static SystemColors.HighlightBrushKey}}\""));
+            Assert.False(aboutPanel.Contains("ProductVersion.DisplayVersionChannel"));
             Assert.True(xaml.Contains("x:Name=\"AboutSettingsList\""));
             Assert.True(aboutPanel.Contains("<Grid x:Name=\"AboutPageBody\""));
             Assert.False(aboutPanel.Contains("MinHeight=\"20\""));
@@ -1377,7 +1377,9 @@ namespace LyricsIsland.Tests
             var hotkeySource = source.Substring(hotkeySourceStart, hotkeySourceEnd - hotkeySourceStart);
             Assert.True(hotkeySource.Contains("GetVisualOrLogicalParent(source)"));
             Assert.False(hotkeySource.Contains("VisualTreeHelper.GetParent(source)"));
-            Assert.True(xaml.Contains("v2.0 Beta 更新内容"));
+            Assert.True(aboutPanel.Contains("v2.0 更新内容"));
+            Assert.True(aboutPanel.Contains("感谢参与 v2.0 测试"));
+            Assert.False(aboutPanel.Contains("Beta"));
             Assert.True(source.Contains("https://github.com/BochengYao/LyricIsland"));
             Assert.True(source.Contains("AboutSettingsPanel.Visibility = section == \"About\""));
         }
@@ -1588,6 +1590,29 @@ namespace LyricsIsland.Tests
             Assert.True(publishScript.Contains("dotnet publish"));
             Assert.True(publishScript.Contains("WaitForExit"));
             Assert.True(publishScript.Contains("Move-DirectoryWithRetry"));
+        }
+
+        static void StorePackageReusesReservedProductIdentity()
+        {
+            var root = GetSolutionRoot();
+            var manifest = File.ReadAllText(Path.Combine(root, "store", "msix", "AppxManifest.template.xml"));
+            var buildScript = File.ReadAllText(Path.Combine(root, "store", "msix", "build-msix.ps1"));
+            var publishScript = File.ReadAllText(Path.Combine(root, "tools", "publish-next-version.ps1"));
+            var gitIgnore = File.ReadAllText(Path.Combine(root, ".gitignore"));
+
+            Assert.True(manifest.Contains("Name=\"70643607.LyricIsland\""));
+            Assert.True(manifest.Contains("Publisher=\"CN=D0EA2A8A-59FF-4BC5-AB6E-5ABC356AF3E3\""));
+            Assert.True(manifest.Contains("<PublisherDisplayName>大丞子</PublisherDisplayName>"));
+            Assert.True(manifest.Contains("Version=\"__PACKAGE_VERSION__\""));
+            Assert.True(manifest.Contains("Executable=\"LyricsIsland.App.exe\""));
+            Assert.True(manifest.Contains("uap10:RuntimeBehavior=\"packagedClassicApp\""));
+            Assert.True(manifest.Contains("<rescap:Capability Name=\"runFullTrust\""));
+            Assert.True(buildScript.Contains("VersionPrefix"));
+            Assert.True(buildScript.Contains("publish"));
+            Assert.True(buildScript.Contains("current"));
+            Assert.True(buildScript.Contains("MakeAppx.exe"));
+            Assert.True(publishScript.Contains("--self-contained true"));
+            Assert.True(gitIgnore.Contains("store/package/msix/"));
         }
 
         static void ModuleToolboxCapturesMouseDownForDrag()

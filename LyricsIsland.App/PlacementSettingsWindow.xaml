@@ -2333,12 +2333,8 @@
                                                            Text="版本号：" />
                                                 <TextBlock Margin="2,0,0,0"
                                                            FontSize="12"
-                                                           FontWeight="SemiBold">
-                                                    <Run Text="{x:Static core:ProductVersion.DisplayVersionNumber}" />
-                                                    <Run Text=" " />
-                                                    <Run Foreground="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"
-                                                         Text="{x:Static core:ProductVersion.DisplayVersionChannel}" />
-                                                </TextBlock>
+                                                           FontWeight="SemiBold"
+                                                           Text="{x:Static core:ProductVersion.DisplayVersionNumber}" />
                                             </WrapPanel>
                                         </StackPanel>
                                     </Grid>
@@ -2510,7 +2506,7 @@
                                                 HorizontalAlignment="Left">
                                         <TextBlock FontSize="18"
                                                    FontWeight="SemiBold"
-                                                   Text="v2.0 Beta 更新内容" />
+                                                   Text="v2.0 更新内容" />
                                         <StackPanel Margin="0,8,0,0">
                                             <Grid Margin="0,0,0,4">
                                                 <Grid.ColumnDefinitions>
@@ -2555,7 +2551,7 @@
                                                Margin="0,10,0,4"
                                                Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
                                                FontSize="12"
-                                               Text="© 2026 大丞子 · 感谢参与 v2.0 Beta 测试" />
+                                               Text="© 2026 大丞子 · 感谢参与 v2.0 测试" />
                                     <TextBlock Grid.Row="6" Text="软件著作权" Visibility="Collapsed" />
                                     <TextBlock Grid.Row="6" Text="申请中" Visibility="Collapsed" />
                             </Grid>

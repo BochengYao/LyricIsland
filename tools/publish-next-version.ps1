@@ -80,7 +80,7 @@ try {
         dotnet build --no-restore --configuration Release --runtime win-x64 LyricsIsland.App\LyricsIsland.App.csproj
         if ($LASTEXITCODE -ne 0) { throw 'Release 构建失败。' }
 
-        dotnet publish --no-restore --configuration Release --runtime win-x64 --self-contained false --output $stagingPath LyricsIsland.App\LyricsIsland.App.csproj
+        dotnet publish --no-restore --configuration Release --runtime win-x64 --self-contained true --output $stagingPath LyricsIsland.App\LyricsIsland.App.csproj
         if ($LASTEXITCODE -ne 0) { throw '发布失败。' }
     }
     finally {
