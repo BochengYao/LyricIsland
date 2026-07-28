@@ -106,8 +106,8 @@ export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
     },
     preview: {
       eyebrow: "版本预告",
-      title: "接下来，歌词岛准备往哪里走",
-      body: "这里只展示已经由维护者发布的开发预告；内容仍可能根据测试结果调整。",
+      title: "下一版，\n先见一面。",
+      body: "正在开发中的新功能，会在这里提前亮相。正式发布前，设计与功能仍可能随测试继续调整。",
       empty: "新的版本预告正在准备中。",
       target: "预计"
     },
@@ -162,8 +162,8 @@ export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
     },
     preview: {
       eyebrow: "Release preview",
-      title: "Where Lyric Island is heading next",
-      body: "Only previews published by the maintainer appear here. Details may still change after testing.",
+      title: "Next up.\nFirst look.",
+      body: "Features now in development make an early appearance here. Before release, the design and functionality may continue to evolve through testing.",
       empty: "The next release preview is being prepared.",
       target: "Target"
     },

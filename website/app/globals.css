@@ -3360,6 +3360,10 @@ p {
   align-self: start;
 }
 
+.previewIntro h2 {
+  white-space: pre-line;
+}
+
 .previewIntro p {
   color: var(--muted);
 }
