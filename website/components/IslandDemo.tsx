@@ -14,6 +14,14 @@ type Props = {
 
 type PlaybackState = "playing" | "idle";
 
+const avoidanceSettings = {
+  auraSize: 86,
+  detectionRange: 60,
+  aspectRatio: 1.27,
+  centerTransparency: 0.98,
+  transitionTransparency: 0.97
+} as const;
+
 export function IslandDemo({ copy }: Props) {
   const [playback, setPlayback] = useState<PlaybackState>("playing");
   const [near, setNear] = useState(false);
@@ -49,16 +57,30 @@ export function IslandDemo({ copy }: Props) {
     }
 
     const rect = island.getBoundingClientRect();
-    const proximityX = Math.min(150, rect.width * 0.18);
-    const proximityY = Math.min(120, rect.width * 0.14);
-    const isNearby =
-      event.clientX >= rect.left - proximityX &&
-      event.clientX <= rect.right + proximityX &&
-      event.clientY >= rect.top - 24 &&
-      event.clientY <= rect.bottom + proximityY;
+    const distanceX = Math.max(
+      rect.left - event.clientX,
+      0,
+      event.clientX - rect.right
+    );
+    const distanceY = Math.max(
+      rect.top - event.clientY,
+      0,
+      event.clientY - rect.bottom
+    );
+    const distance = Math.hypot(distanceX, distanceY);
+    const normalizedDistance = Math.min(
+      1,
+      distance / avoidanceSettings.detectionRange
+    );
+    const avoidanceStrength = 1 - normalizedDistance * normalizedDistance;
+    const isNearby = avoidanceStrength > 0.001;
 
     setNear((current) => (current === isNearby ? current : isNearby));
     if (!isNearby) {
+      island.style.setProperty("--avoid-radius-x", "0px");
+      island.style.setProperty("--avoid-radius-y", "0px");
+      island.style.setProperty("--avoid-center-opacity", "1");
+      island.style.setProperty("--avoid-transition-opacity", "1");
       return;
     }
 
@@ -72,6 +94,23 @@ export function IslandDemo({ copy }: Props) {
     );
     island.style.setProperty("--avoid-x", `${avoidX}px`);
     island.style.setProperty("--avoid-y", `${avoidY}px`);
+    const shapeScale = Math.sqrt(avoidanceSettings.aspectRatio);
+    island.style.setProperty(
+      "--avoid-radius-x",
+      `${avoidanceSettings.auraSize * shapeScale * avoidanceStrength}px`
+    );
+    island.style.setProperty(
+      "--avoid-radius-y",
+      `${(avoidanceSettings.auraSize / shapeScale) * avoidanceStrength}px`
+    );
+    island.style.setProperty(
+      "--avoid-center-opacity",
+      `${1 - avoidanceSettings.centerTransparency * avoidanceStrength}`
+    );
+    island.style.setProperty(
+      "--avoid-transition-opacity",
+      `${1 - avoidanceSettings.transitionTransparency * avoidanceStrength}`
+    );
   };
 
   return (

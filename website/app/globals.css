@@ -921,6 +921,10 @@ p {
 .demoIsland {
   --avoid-x: 50%;
   --avoid-y: 52%;
+  --avoid-radius-x: 96.92px;
+  --avoid-radius-y: 76.31px;
+  --avoid-center-opacity: 0.02;
+  --avoid-transition-opacity: 0.03;
   position: absolute;
   top: 0;
   left: 50%;
@@ -968,19 +972,19 @@ p {
 
 .demoIsland.isNear .demoIslandSurface {
   -webkit-mask-image: radial-gradient(
-    ellipse 148px 88px at var(--avoid-x) var(--avoid-y),
-    transparent 0%,
-    transparent 24%,
-    rgba(0, 0, 0, 0.12) 38%,
-    rgba(0, 0, 0, 0.58) 66%,
+    ellipse var(--avoid-radius-x) var(--avoid-radius-y) at var(--avoid-x)
+      var(--avoid-y),
+    rgba(0, 0, 0, var(--avoid-center-opacity)) 0%,
+    rgba(0, 0, 0, var(--avoid-transition-opacity)) 50.4%,
+    #000 90%,
     #000 100%
   );
   mask-image: radial-gradient(
-    ellipse 148px 88px at var(--avoid-x) var(--avoid-y),
-    transparent 0%,
-    transparent 24%,
-    rgba(0, 0, 0, 0.12) 38%,
-    rgba(0, 0, 0, 0.58) 66%,
+    ellipse var(--avoid-radius-x) var(--avoid-radius-y) at var(--avoid-x)
+      var(--avoid-y),
+    rgba(0, 0, 0, var(--avoid-center-opacity)) 0%,
+    rgba(0, 0, 0, var(--avoid-transition-opacity)) 50.4%,
+    #000 90%,
     #000 100%
   );
 }

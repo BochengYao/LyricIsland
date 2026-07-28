@@ -142,7 +142,7 @@ def test_interactions(page: Page, locale: str) -> None:
     assert island_box is not None
     page.mouse.move(
         island_box["x"] + island_box["width"] * 0.55,
-        island_box["y"] + island_box["height"] + 22,
+        island_box["y"] + island_box["height"] * 0.5,
     )
     expect(island).to_have_class(re.compile(r"\bisNear\b"))
     page.wait_for_timeout(240)
@@ -162,6 +162,63 @@ def test_interactions(page: Page, locale: str) -> None:
     assert avoidance_metrics["glowCount"] == 0, (
         "Pointer avoidance must reveal the desktop through the island, "
         "not paint a separate glow above the pointer"
+    )
+    near_radius = island.evaluate(
+        "(node) => parseFloat(node.style.getPropertyValue('--avoid-radius-x'))"
+    )
+    near_radius_y = island.evaluate(
+        "(node) => parseFloat(node.style.getPropertyValue('--avoid-radius-y'))"
+    )
+    near_opacity = island.evaluate(
+        "(node) => parseFloat(node.style.getPropertyValue('--avoid-center-opacity'))"
+    )
+    near_transition_opacity = island.evaluate(
+        "(node) => parseFloat(node.style.getPropertyValue('--avoid-transition-opacity'))"
+    )
+    assert abs(near_radius - 86 * (1.27 ** 0.5)) <= 0.1, (
+        "Pointer avoidance should use the configured 86px aura size and "
+        f"1.27:1 aspect ratio, got radiusX={near_radius}"
+    )
+    assert abs(near_radius / near_radius_y - 1.27) <= 0.01
+    assert abs(near_opacity - 0.02) <= 0.001, (
+        "Pointer avoidance should use 98% center transparency"
+    )
+    assert abs(near_transition_opacity - 0.03) <= 0.001, (
+        "Pointer avoidance should use 97% transition transparency"
+    )
+    active_mask = avoidance_metrics["mask"] or avoidance_metrics["webkitMask"]
+    assert "50.4%" in active_mask and "90%" in active_mask, (
+        "The 56% transition and 0% edge transparency should match the "
+        "desktop app's 0.9 radial-gradient mapping"
+    )
+    page.mouse.move(
+        island_box["x"] + island_box["width"] * 0.55,
+        island_box["y"] + island_box["height"] + 40,
+    )
+    expect(island).to_have_class(re.compile(r"\bisNear\b"))
+    far_radius = island.evaluate(
+        "(node) => parseFloat(node.style.getPropertyValue('--avoid-radius-x'))"
+    )
+    far_opacity = island.evaluate(
+        "(node) => parseFloat(node.style.getPropertyValue('--avoid-center-opacity'))"
+    )
+    assert 0 < far_radius < near_radius, (
+        "Pointer avoidance should shrink continuously as the pointer moves "
+        f"away from the island, got near={near_radius}, far={far_radius}"
+    )
+    assert near_opacity < far_opacity < 1, (
+        "Pointer avoidance should become less transparent with distance"
+    )
+    page.mouse.move(
+        island_box["x"] + island_box["width"] * 0.55,
+        island_box["y"] + island_box["height"] + 65,
+    )
+    expect(island).not_to_have_class(re.compile(r"\bisNear\b"))
+    ended_radius = island.evaluate(
+        "(node) => parseFloat(node.style.getPropertyValue('--avoid-radius-x'))"
+    )
+    assert ended_radius == 0, (
+        "Pointer avoidance should reach zero before its mask is removed"
     )
 
     modules_section = page.locator("#modules")
