@@ -170,6 +170,28 @@ p {
   color: var(--charcoal);
 }
 
+html[lang="en"] :where(
+  .heroSupport > p,
+  .sectionTitleGrid > p,
+  .sectionTitleGrid > div > p:not(.finePrint),
+  .orbitCopy > p,
+  .modulesCopy > p,
+  .sourcesIntro > p,
+  .factList article > p,
+  .faqAnswer p,
+  .updatesLead,
+  .releaseSection p,
+  .incentivesHeroGrid p,
+  .submissionPitch > p,
+  .acceptedCard > p,
+  .acceptedDeveloperReply p,
+  .previewIntro > p,
+  .previewItems p
+) {
+  text-align: justify;
+  text-justify: inter-word;
+}
+
 ::selection {
   background: var(--ink);
   color: var(--canvas);
@@ -3332,8 +3354,8 @@ p {
 
 .previewSection {
   display: grid;
-  grid-template-columns: 0.65fr 1.35fr;
-  gap: 96px;
+  grid-template-columns: 0.72fr 1.28fr;
+  gap: 80px;
   padding-top: 56px;
   padding-bottom: 144px;
 }
@@ -4200,6 +4222,10 @@ button.danger,
     gap: 56px;
   }
 
+  .previewSection.sectionContainer {
+    width: min(calc(100% - 48px), var(--content));
+  }
+
   .submissionGrid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -4492,6 +4518,10 @@ button.danger,
   .previewSection {
     padding-top: 32px;
     padding-bottom: 96px;
+  }
+
+  .previewSection.sectionContainer {
+    width: min(calc(100% - 16px), var(--content));
   }
 
   .previewCard {
