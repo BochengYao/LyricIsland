@@ -290,7 +290,12 @@ export function SitePage({ locale }: Props) {
           </div>
         </section>
 
-        <section className="compatibilitySection" id="players" data-snap-section>
+        <section
+          className="compatibilitySection"
+          id="players"
+          data-snap-section
+          data-wheel-snap="direct"
+        >
           <div className="sectionContainer compatibilityInner">
             <div className="sectionTitleGrid">
               <h2 data-text-reveal="title">{copy.compatibility.title}</h2>

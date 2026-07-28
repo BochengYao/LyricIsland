@@ -19,6 +19,10 @@ function easeInOutQuint(progress: number) {
     : 1 - (-2 * progress + 2) ** 5 / 2;
 }
 
+function easeOutCubic(progress: number) {
+  return 1 - (1 - progress) ** 3;
+}
+
 function wheelDistance(event: WheelEvent) {
   if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) {
     return event.deltaY * 16;
@@ -113,7 +117,7 @@ export function SmoothSectionScroll() {
 
     const animateTo = (
       requestedTop: number,
-      source: "wheel" | "navigation" = "wheel"
+      source: "wheel" | "navigation" | "direct" = "wheel"
     ) => {
       const maximumTop = Math.max(
         0,
@@ -125,6 +129,8 @@ export function SmoothSectionScroll() {
       const duration =
         source === "navigation"
           ? clamp(880 + Math.sqrt(distance) * 15, 1100, 1700)
+          : source === "direct"
+            ? clamp(480 + Math.sqrt(distance) * 8, 650, 820)
           : clamp(760 + Math.sqrt(distance) * 15, 900, 1500);
       const startedAt = performance.now();
 
@@ -133,7 +139,8 @@ export function SmoothSectionScroll() {
 
       const frame = (now: number) => {
         const progress = clamp((now - startedAt) / duration, 0, 1);
-        const eased = easeInOutQuint(progress);
+        const eased =
+          source === "direct" ? easeOutCubic(progress) : easeInOutQuint(progress);
         window.scrollTo(0, startTop + (targetTop - startTop) * eased);
 
         if (progress < 1) {
@@ -167,9 +174,10 @@ export function SmoothSectionScroll() {
 
         const sections = sectionMetrics();
         const current = currentSection(sections);
+        const directSnap = current?.section.dataset.wheelSnap === "direct";
         if (
           !current ||
-          current.height > window.innerHeight + EDGE_TOLERANCE
+          (current.height > window.innerHeight + EDGE_TOLERANCE && !directSnap)
         ) {
           return;
         }
@@ -215,7 +223,9 @@ export function SmoothSectionScroll() {
         return;
       }
 
-      const isLongSection = current.height > window.innerHeight + EDGE_TOLERANCE;
+      const directSnap = current.section.dataset.wheelSnap === "direct";
+      const isLongSection =
+        current.height > window.innerHeight + EDGE_TOLERANCE && !directSnap;
       const distanceToEdge =
         direction > 0
           ? current.bottom - (window.scrollY + window.innerHeight)
@@ -263,7 +273,7 @@ export function SmoothSectionScroll() {
         return;
       }
 
-      animateTo(target.top);
+      animateTo(target.top, directSnap ? "direct" : "wheel");
     };
 
     const onAnchorClick = (event: MouseEvent) => {

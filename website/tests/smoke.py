@@ -426,10 +426,22 @@ def test_smooth_section_snap(page: Page) -> None:
     page.locator("#players").evaluate(
         "(section) => window.scrollTo(0, section.offsetTop)"
     )
+    expect(page.locator("#players")).to_have_attribute("data-wheel-snap", "direct")
+    players_top = page.locator("#players").evaluate(
+        "(section) => section.offsetTop"
+    )
     sources = page.locator(".sourcesSection")
     sources_top = sources.evaluate("(section) => section.offsetTop")
     page.mouse.wheel(0, 18)
-    page.wait_for_timeout(1800)
+    page.wait_for_timeout(300)
+    direct_snap_progress = (
+        page.evaluate("window.scrollY") - players_top
+    ) / (sources_top - players_top)
+    assert 0.45 < direct_snap_progress <= 1, (
+        "The player section should visibly commit to the next anchor on the "
+        f"first wheel step, got progress={direct_snap_progress}"
+    )
+    page.wait_for_timeout(1500)
     assert abs(page.evaluate("window.scrollY") - sources_top) <= 3, (
         "One ordinary mouse-wheel step should advance to the next anchor"
     )
