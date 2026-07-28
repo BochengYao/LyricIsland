@@ -152,17 +152,16 @@ def test_interactions(page: Page, locale: str) -> None:
           webkitMask: getComputedStyle(
             node.querySelector(".demoIslandSurface")
           ).webkitMaskImage,
-          glowOpacity: Number(
-            getComputedStyle(node.querySelector(".demoAvoidanceGlow")).opacity
-          )
+          glowCount: node.querySelectorAll(".demoAvoidanceGlow").length
         })"""
     )
     assert (
         avoidance_metrics["mask"] != "none"
         or avoidance_metrics["webkitMask"] != "none"
     ), "Pointer proximity should create a radial avoidance mask"
-    assert avoidance_metrics["glowOpacity"] > 0.5, (
-        "Pointer proximity should render the avoidance glow automatically"
+    assert avoidance_metrics["glowCount"] == 0, (
+        "Pointer avoidance must reveal the desktop through the island, "
+        "not paint a separate glow above the pointer"
     )
 
     modules_section = page.locator("#modules")
@@ -199,6 +198,29 @@ def test_interactions(page: Page, locale: str) -> None:
     assert module_intro_metrics["naturalHeight"] == 1442
     assert module_intro_metrics["imageOpacity"] > 0.95
     assert module_intro_metrics["contentOpacity"] < 0.05
+    module_frame_metrics = modules_section.locator(".moduleComposer").evaluate(
+        """(composer) => {
+          const outer = composer.getBoundingClientRect();
+          const inner = composer.querySelector(".moduleComposerImage")
+            .getBoundingClientRect();
+          return {
+            top: inner.top - outer.top,
+            right: outer.right - inner.right,
+            bottom: outer.bottom - inner.bottom,
+            left: inner.left - outer.left,
+            outerRadius: getComputedStyle(composer).borderRadius,
+            innerRadius: getComputedStyle(
+              composer.querySelector(".moduleComposerImage")
+            ).borderRadius
+          };
+        }"""
+    )
+    assert all(
+        abs(module_frame_metrics[edge] - 8) <= 0.5
+        for edge in ["top", "right", "bottom", "left"]
+    ), "The module image should have an even black frame on all four sides"
+    assert module_frame_metrics["outerRadius"] == "32px"
+    assert module_frame_metrics["innerRadius"] == "24px"
 
     page.evaluate(
         """(section) => {
@@ -274,6 +296,8 @@ def test_smooth_section_snap(page: Page) -> None:
     expect(page.locator(".hero .eyebrow")).to_have_count(0)
     expect(page.locator("#experience > .experienceIntro > .eyebrow")).to_have_count(0)
     expect(page.locator("h1")).to_have_text("这一句，\n值得被看见。")
+    expect(page.locator(".heroBadge")).to_have_count(0)
+    assert "v2.0 Beta 3" not in page.locator("body").inner_text()
 
     hero_image = page.locator(".heroMediaImage")
     image_metrics = hero_image.evaluate(
@@ -317,6 +341,30 @@ def test_smooth_section_snap(page: Page) -> None:
 
     page.set_viewport_size({"width": 1440, "height": 900})
     page.reload(wait_until="networkidle")
+
+    modules = page.locator("#modules")
+    module_metrics = modules.evaluate(
+        """(section) => ({
+          top: section.offsetTop,
+          height: section.offsetHeight,
+          viewportHeight: window.innerHeight
+        })"""
+    )
+    modules.evaluate("(section) => window.scrollTo(0, section.offsetTop)")
+    page.wait_for_timeout(120)
+    page.mouse.wheel(0, 18)
+    page.wait_for_timeout(1800)
+    expected_module_stage = (
+        module_metrics["top"]
+        + module_metrics["height"]
+        - module_metrics["viewportHeight"]
+    )
+    assert abs(page.evaluate("window.scrollY") - expected_module_stage) <= 3, (
+        "One wheel step should advance the staged module image completely"
+    )
+    assert modules.locator(".moduleComposerContent").evaluate(
+        "(node) => Number(getComputedStyle(node).opacity)"
+    ) > 0.95
 
     page.locator("#players").evaluate(
         "(section) => window.scrollTo(0, section.offsetTop)"
@@ -573,6 +621,13 @@ def test_navigation_and_orbit(page: Page) -> None:
               };
               const canvas = section.querySelector(".orbitCanvas");
               const canvasRect = canvas.getBoundingClientRect();
+              const cardsRect = section.querySelector(".orbitCards")
+                .getBoundingClientRect();
+              const introTitle = section.querySelector(".experienceIntro h2")
+                .getBoundingClientRect();
+              const introBody = section.querySelector(
+                ".experienceIntro .sectionTitleGrid > p"
+              ).getBoundingClientRect();
               return {
                 canvas: {
                   top: canvasRect.top,
@@ -582,6 +637,28 @@ def test_navigation_and_orbit(page: Page) -> None:
                 },
                 images: cards.map((card) => rect(card.querySelector(".portraitWrap"))),
                 copies: cards.map((card) => rect(card.querySelector(".orbitCopy"))),
+                imageOffsets: cards.map((card) => {
+                  const image = card.querySelector(".portraitWrap")
+                    .getBoundingClientRect();
+                  return {
+                    top: image.top - cardsRect.top,
+                    left: image.left - cardsRect.left,
+                    right: cardsRect.right - image.right
+                  };
+                }),
+                cardsWidth: cardsRect.width,
+                introBottoms: {
+                  title:
+                    section.querySelector(".experienceIntro h2").offsetTop
+                    + section.querySelector(".experienceIntro h2").offsetHeight,
+                  body:
+                    section.querySelector(
+                      ".experienceIntro .sectionTitleGrid > p"
+                    ).offsetTop
+                    + section.querySelector(
+                      ".experienceIntro .sectionTitleGrid > p"
+                    ).offsetHeight
+                },
                 cardBottoms: cards.map(
                   (card) => card.getBoundingClientRect().bottom
                 )
@@ -597,6 +674,29 @@ def test_navigation_and_orbit(page: Page) -> None:
         assert experience_layout["copies"][2]["top"] >= (
             experience_layout["images"][2]["bottom"] + 24
         ), "Avoidance copy should remain below the third image"
+        assert abs(experience_layout["imageOffsets"][0]["top"] - 120) <= 1
+        assert abs(experience_layout["imageOffsets"][1]["top"] - 420) <= 1
+        assert abs(experience_layout["imageOffsets"][2]["top"] - 150) <= 1
+        assert abs(
+            experience_layout["imageOffsets"][0]["left"]
+            - experience_layout["cardsWidth"] * 0.02
+        ) <= 1
+        assert abs(
+            experience_layout["imageOffsets"][1]["left"]
+            - experience_layout["cardsWidth"] * 0.38
+        ) <= 1
+        assert abs(
+            experience_layout["imageOffsets"][2]["right"]
+            - experience_layout["cardsWidth"] * 0.01
+        ) <= 1
+        assert abs(
+            experience_layout["introBottoms"]["title"]
+            - experience_layout["introBottoms"]["body"]
+        ) <= 2, (
+            "The taskbar paragraph should align with the bottom of the main title; "
+            f"titleBottom={experience_layout['introBottoms']['title']}, "
+            f"bodyBottom={experience_layout['introBottoms']['body']}"
+        )
         assert experience_layout["canvas"]["height"] <= 861
         assert experience_layout["canvas"]["overflow"] == "hidden"
         assert max(experience_layout["cardBottoms"]) <= (

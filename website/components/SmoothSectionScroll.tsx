@@ -221,6 +221,21 @@ export function SmoothSectionScroll() {
           ? current.bottom - (window.scrollY + window.innerHeight)
           : window.scrollY - current.top;
 
+      if (
+        isLongSection &&
+        current.section.dataset.stagedScroll === "true" &&
+        distanceToEdge > EDGE_TOLERANCE
+      ) {
+        event.preventDefault();
+        accumulatedIntent = 0;
+        animateTo(
+          direction > 0
+            ? current.bottom - window.innerHeight
+            : current.top
+        );
+        return;
+      }
+
       if (isLongSection && distanceToEdge > EDGE_TOLERANCE) {
         event.preventDefault();
         accumulatedIntent = 0;

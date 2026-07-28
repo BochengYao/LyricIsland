@@ -62,8 +62,16 @@ export function IslandDemo({ copy }: Props) {
       return;
     }
 
-    island.style.setProperty("--avoid-x", `${event.clientX - rect.left}px`);
-    island.style.setProperty("--avoid-y", `${event.clientY - rect.top}px`);
+    const avoidX = Math.min(
+      rect.width,
+      Math.max(0, event.clientX - rect.left)
+    );
+    const avoidY = Math.min(
+      rect.height,
+      Math.max(0, event.clientY - rect.top)
+    );
+    island.style.setProperty("--avoid-x", `${avoidX}px`);
+    island.style.setProperty("--avoid-y", `${avoidY}px`);
   };
 
   return (
@@ -142,7 +150,6 @@ export function IslandDemo({ copy }: Props) {
               </div>
             </div>
           </div>
-          <span className="demoAvoidanceGlow" aria-hidden="true" />
         </div>
         <div className="demoWindow" aria-hidden="true">
           <span />

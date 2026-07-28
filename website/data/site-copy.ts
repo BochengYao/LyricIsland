@@ -16,7 +16,6 @@ export type SiteCopy = {
   storeLabel: string;
   exploreLabel: string;
   heroImageAlt: string;
-  heroBadge: string;
   experience: {
     eyebrow: string;
     title: string;
@@ -132,7 +131,6 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
     storeLabel: "去 Microsoft Store 下载",
     exploreLabel: "看看它如何工作",
     heroImageAlt: "歌词岛显示在 Windows 桌面顶部",
-    heroBadge: "v2.0 Beta 3",
     experience: {
       eyebrow: "",
       title: "像一座岛, 随音乐浮现,\n 也随安静隐去。",
@@ -291,7 +289,6 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
     storeLabel: "Get it from Microsoft Store",
     exploreLabel: "See how it works",
     heroImageAlt: "Lyric Island shown at the top of a Windows desktop",
-    heroBadge: "v2.0 Beta 3",
     experience: {
       eyebrow: "",
       title: "With music, it appears.\nWith silence, it disappears.",

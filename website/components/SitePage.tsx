@@ -193,7 +193,6 @@ export function SitePage({ locale }: Props) {
               sizes="(min-width: 1440px) 1280px, calc(100vw - 48px)"
               className="heroMediaImage"
             />
-            <span className="heroBadge">{copy.heroBadge}</span>
           </div>
         </section>
 
@@ -258,7 +257,12 @@ export function SitePage({ locale }: Props) {
           </div>
         </section>
 
-        <section className="modulesSection" id="modules" data-snap-section>
+        <section
+          className="modulesSection"
+          id="modules"
+          data-snap-section
+          data-staged-scroll="true"
+        >
           <div className="sectionContainer modulesGrid">
             <div className="modulesCopy">
               <Eyebrow reveal>{copy.modules.eyebrow}</Eyebrow>

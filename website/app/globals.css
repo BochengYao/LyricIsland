@@ -629,23 +629,6 @@ p {
   height: auto;
 }
 
-.heroBadge {
-  position: absolute;
-  right: 24px;
-  bottom: 24px;
-  z-index: 2;
-  display: inline-flex;
-  align-items: center;
-  min-height: 40px;
-  padding: 0 18px;
-  border-radius: var(--radius-pill);
-  background: var(--white);
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
 .experienceSection {
   position: relative;
   padding-top: 96px;
@@ -655,6 +638,19 @@ p {
 .experienceIntro {
   position: relative;
   z-index: 2;
+}
+
+.experienceIntro .sectionTitleGrid {
+  align-items: end;
+}
+
+.experienceIntro .sectionTitleGrid > h2,
+.experienceIntro .sectionTitleGrid > p {
+  align-self: end;
+}
+
+.experienceIntro .sectionTitleGrid > h2 {
+  margin-bottom: 0;
 }
 
 .sectionTitleGrid > p,
@@ -740,42 +736,34 @@ p {
     min-height: 0;
   }
 
-  .orbitCard1,
-  .orbitCard2 {
-    display: grid;
-    grid-template-columns: minmax(0, 320px) minmax(220px, 1fr);
-    gap: clamp(40px, 4vw, 72px);
-    align-items: center;
-    width: min(720px, 56vw);
-  }
-
   .orbitCard1 {
-    top: 92px;
+    top: 120px;
     left: 2%;
   }
 
   .orbitCard2 {
-    top: 468px;
-    left: 24%;
+    top: 420px;
+    left: 38%;
   }
 
-  .orbitCard1 .portraitWrap,
-  .orbitCard2 .portraitWrap {
-    margin-bottom: 0;
+  .orbitCard1 .orbitCopy,
+  .orbitCard2 .orbitCopy {
+    position: absolute;
+    top: 50%;
+    width: min(320px, 24vw);
+    transform: translateY(-50%);
   }
 
-  .orbitCard2 .portraitWrap {
-    grid-row: 1;
-    grid-column: 2;
+  .orbitCard1 .orbitCopy {
+    left: calc(100% + clamp(40px, 4vw, 72px));
   }
 
   .orbitCard2 .orbitCopy {
-    grid-row: 1;
-    grid-column: 1;
+    right: calc(100% + clamp(40px, 4vw, 72px));
   }
 
   .orbitCard3 {
-    top: 128px;
+    top: 150px;
   }
 }
 
@@ -980,47 +968,21 @@ p {
 
 .demoIsland.isNear .demoIslandSurface {
   -webkit-mask-image: radial-gradient(
-    ellipse 152px 98px at var(--avoid-x) var(--avoid-y),
-    rgba(0, 0, 0, 0.04) 0%,
-    rgba(0, 0, 0, 0.18) 24%,
-    rgba(0, 0, 0, 0.7) 58%,
+    ellipse 148px 88px at var(--avoid-x) var(--avoid-y),
+    transparent 0%,
+    transparent 24%,
+    rgba(0, 0, 0, 0.12) 38%,
+    rgba(0, 0, 0, 0.58) 66%,
     #000 100%
   );
   mask-image: radial-gradient(
-    ellipse 152px 98px at var(--avoid-x) var(--avoid-y),
-    rgba(0, 0, 0, 0.04) 0%,
-    rgba(0, 0, 0, 0.18) 24%,
-    rgba(0, 0, 0, 0.7) 58%,
+    ellipse 148px 88px at var(--avoid-x) var(--avoid-y),
+    transparent 0%,
+    transparent 24%,
+    rgba(0, 0, 0, 0.12) 38%,
+    rgba(0, 0, 0, 0.58) 66%,
     #000 100%
   );
-}
-
-.demoAvoidanceGlow {
-  position: absolute;
-  top: var(--avoid-y);
-  left: var(--avoid-x);
-  z-index: 2;
-  width: 230px;
-  height: 150px;
-  border-radius: 50%;
-  background: radial-gradient(
-    ellipse,
-    rgba(245, 249, 255, 0.72) 0%,
-    rgba(220, 233, 255, 0.34) 34%,
-    rgba(210, 228, 255, 0) 72%
-  );
-  filter: blur(16px);
-  opacity: 0;
-  pointer-events: none;
-  transform: translate(-50%, -50%) scale(0.86);
-  transition:
-    opacity 180ms ease,
-    transform 220ms ease;
-}
-
-.demoIsland.isNear .demoAvoidanceGlow {
-  opacity: 0.88;
-  transform: translate(-50%, -50%) scale(1);
 }
 
 .albumModule {
@@ -1202,25 +1164,27 @@ p {
 
 .moduleComposer {
   --module-reveal: 0;
-  --module-image-scale: 1;
+  --module-image-scale: 1.031;
+  --module-frame: 8px;
   position: relative;
   isolation: isolate;
   aspect-ratio: 2560 / 1442;
   overflow: hidden;
-  border-radius: var(--radius-large);
-  background: var(--ink);
+  border-radius: 32px;
+  background: #050505;
   color: var(--white);
 }
 
 .moduleComposerImage,
 .moduleComposerContent {
   position: absolute;
-  inset: 0;
+  inset: var(--module-frame);
+  overflow: hidden;
+  border-radius: 24px;
 }
 
 .moduleComposerImage {
   z-index: 1;
-  overflow: hidden;
   opacity: calc(1 - var(--module-reveal));
   will-change: opacity;
 }

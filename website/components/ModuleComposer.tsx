@@ -43,7 +43,7 @@ export function ModuleComposer({ label, names, imageAlt }: Props) {
       composer.style.setProperty("--module-reveal", reveal.toFixed(4));
       composer.style.setProperty(
         "--module-image-scale",
-        (1 + reveal * 0.018).toFixed(4)
+        (1.031 + reveal * 0.018).toFixed(4)
       );
       setContentVisible((current) => {
         const next = reveal >= 0.5;
