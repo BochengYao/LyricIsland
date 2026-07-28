@@ -3155,56 +3155,38 @@ p {
   position: relative;
   isolation: isolate;
   border-radius: 40px;
-  box-shadow: 0 24px 30px rgba(20, 20, 19, 0.14);
+  background: transparent;
+}
+
+.ticketFeedWindow {
+  position: relative;
+  z-index: 2;
+  overflow: hidden;
+  border-radius: 40px;
+  background: transparent;
+  box-shadow: 0 24px 48px rgba(20, 20, 19, 0.1);
 }
 
 .ticketDispenser {
   position: absolute;
-  z-index: 3;
-  top: 50%;
-  left: -38px;
-  width: 88px;
-  height: min(76%, 244px);
-  min-height: 168px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 28px 16px 16px 28px;
-  background: var(--ink);
-  box-shadow: 0 22px 46px rgba(20, 20, 19, 0.2);
-  pointer-events: none;
-  transform: translateY(-50%);
-  animation: ticketDispenserExit 1500ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.ticketDispenser::before {
-  position: absolute;
-  top: 22px;
-  right: 11px;
-  bottom: 22px;
-  width: 13px;
+  z-index: 1;
+  top: -12px;
+  bottom: -12px;
+  left: -26px;
+  width: 52px;
+  border: 6px solid #898783;
   border-radius: 999px;
-  background: #343432;
-  box-shadow:
-    inset 2px 0 4px rgba(0, 0, 0, 0.7),
-    1px 0 rgba(255, 255, 255, 0.08);
-  content: "";
-}
-
-.ticketDispenser::after {
-  position: absolute;
-  top: 18px;
-  left: 18px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--orbit);
-  content: "";
+  background: var(--ink);
+  box-shadow: 0 16px 32px rgba(20, 20, 19, 0.14);
+  pointer-events: none;
+  animation: ticketDispenserExit 4700ms cubic-bezier(0.22, 0.72, 0.2, 1) both;
 }
 
 .submissionTicket {
+  --ticket-stub-width: 240px;
   position: relative;
-  z-index: 2;
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-columns: var(--ticket-stub-width) minmax(0, 1fr);
   min-height: 300px;
   margin-top: 0;
   overflow: hidden;
@@ -3212,8 +3194,8 @@ p {
   border-radius: 40px;
   background: var(--white);
   -webkit-mask-image:
-    radial-gradient(circle 25px at 240px 0, transparent 0 24px, #000 25px),
-    radial-gradient(circle 25px at 240px 100%, transparent 0 24px, #000 25px),
+    radial-gradient(circle 25px at var(--ticket-stub-width) 0, transparent 0 24px, #000 25px),
+    radial-gradient(circle 25px at var(--ticket-stub-width) 100%, transparent 0 24px, #000 25px),
     radial-gradient(circle 7px at 0 11px, transparent 0 6px, #000 6.5px),
     radial-gradient(circle 7px at 100% 11px, transparent 0 6px, #000 6.5px);
   -webkit-mask-position: center, center, left top, right top;
@@ -3221,15 +3203,15 @@ p {
   -webkit-mask-repeat: no-repeat, no-repeat, repeat-y, repeat-y;
   -webkit-mask-composite: source-in, source-in, source-in;
   mask-image:
-    radial-gradient(circle 25px at 240px 0, transparent 0 24px, #000 25px),
-    radial-gradient(circle 25px at 240px 100%, transparent 0 24px, #000 25px),
+    radial-gradient(circle 25px at var(--ticket-stub-width) 0, transparent 0 24px, #000 25px),
+    radial-gradient(circle 25px at var(--ticket-stub-width) 100%, transparent 0 24px, #000 25px),
     radial-gradient(circle 7px at 0 11px, transparent 0 6px, #000 6.5px),
     radial-gradient(circle 7px at 100% 11px, transparent 0 6px, #000 6.5px);
   mask-position: center, center, left top, right top;
   mask-size: 100% 100%, 100% 100%, 100% 22px, 100% 22px;
   mask-repeat: no-repeat, no-repeat, repeat-y, repeat-y;
   mask-composite: intersect, intersect, intersect;
-  animation: ticketEject 1080ms cubic-bezier(0.16, 1, 0.3, 1) 180ms both;
+  animation: ticketEject 3600ms cubic-bezier(0.22, 0.72, 0.2, 1) 260ms both;
   will-change: opacity, transform;
 }
 
@@ -3251,26 +3233,28 @@ p {
 
 @keyframes ticketEject {
   0% {
-    opacity: 0;
-    transform: translate3d(-46%, 0, 0) scaleX(0.985);
+    opacity: 1;
+    transform: translate3d(-100%, 0, 0);
   }
-  16% { opacity: 1; }
-  78% { transform: translate3d(1.2%, 0, 0) scaleX(1); }
+  14% { transform: translate3d(-94%, 0, 0); }
+  72% { transform: translate3d(-20%, 0, 0); }
+  92% { transform: translate3d(-2%, 0, 0); }
+  97% { transform: translate3d(0.5%, 0, 0); }
   100% {
     opacity: 1;
-    transform: translate3d(0, 0, 0) scaleX(1);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 @keyframes ticketDispenserExit {
   0%,
-  66% {
+  82% {
     opacity: 1;
-    transform: translate3d(0, -50%, 0) scale(1);
+    transform: translate3d(0, 0, 0);
   }
   100% {
     opacity: 0;
-    transform: translate3d(-22px, -50%, 0) scale(0.96);
+    transform: translate3d(-14px, 0, 0);
   }
 }
 
@@ -4246,12 +4230,7 @@ button.danger,
   }
 
   .submissionTicket {
-    grid-template-columns: 230px minmax(0, 1fr);
-  }
-
-  .submissionTicket::before,
-  .submissionTicket::after {
-    left: 204px;
+    --ticket-stub-width: 230px;
   }
 
   .ticketDetails {
@@ -4453,13 +4432,15 @@ button.danger,
   }
 
   .ticketDispenser {
-    left: -30px;
-    width: 72px;
-    height: 58%;
-    min-height: 150px;
+    top: -8px;
+    bottom: -8px;
+    left: -16px;
+    width: 32px;
+    border-width: 5px;
   }
 
-  .ticketIssueStage {
+  .ticketIssueStage,
+  .ticketFeedWindow {
     border-radius: 24px;
   }
 
