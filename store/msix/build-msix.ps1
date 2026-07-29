@@ -1,5 +1,5 @@
 param(
-    [switch]$SkipPublish,
+    [switch]$SkipTests,
     [switch]$KeepStaging
 )
 
@@ -7,9 +7,8 @@ $ErrorActionPreference = 'Stop'
 $scriptRoot = $PSScriptRoot
 $root = [System.IO.Path]::GetFullPath((Join-Path $scriptRoot '..\..'))
 $propsPath = Join-Path $root 'Directory.Build.props'
-$publishScript = Join-Path $root 'publish.ps1'
-$currentPath = Join-Path $root 'publish\current'
 $outputRoot = Join-Path $root 'store\package\msix'
+$storePublishPath = Join-Path $outputRoot '.publish'
 $stagingPath = Join-Path $outputRoot '.staging'
 $verifyPath = Join-Path $outputRoot '.verify'
 $manifestTemplatePath = Join-Path $scriptRoot 'AppxManifest.template.xml'
@@ -32,19 +31,6 @@ function Remove-VerifiedDirectory([string]$path) {
     }
 }
 
-if (-not $SkipPublish) {
-    & $publishScript -KeepVersion -NoLaunch
-    if ($LASTEXITCODE -ne 0) {
-        throw 'publish/current 发布失败。'
-    }
-}
-
-$appExe = Join-Path $currentPath 'LyricsIsland.App.exe'
-$appDll = Join-Path $currentPath 'LyricsIsland.App.dll'
-if (-not (Test-Path -LiteralPath $appExe) -or -not (Test-Path -LiteralPath $appDll)) {
-    throw 'publish/current 缺少 LyricsIsland.App，无法生成 MSIX。'
-}
-
 $props = [System.IO.File]::ReadAllText($propsPath)
 $versionMatch = [regex]::Match($props, '<VersionPrefix>(?<version>\d+\.\d+\.\d+)</VersionPrefix>')
 if (-not $versionMatch.Success) {
@@ -53,9 +39,51 @@ if (-not $versionMatch.Success) {
 
 $productVersion = $versionMatch.Groups['version'].Value
 $packageVersion = "$productVersion.0"
+
+if (-not (Test-Path -LiteralPath $outputRoot)) {
+    New-Item -ItemType Directory -Path $outputRoot | Out-Null
+}
+Remove-VerifiedDirectory $storePublishPath
+Remove-VerifiedDirectory $stagingPath
+Remove-VerifiedDirectory $verifyPath
+
+Push-Location $root
+try {
+    dotnet restore LyricsIsland.sln
+    if ($LASTEXITCODE -ne 0) {
+        throw '应用依赖还原失败。'
+    }
+
+    dotnet restore --runtime win-x64 LyricsIsland.App\LyricsIsland.App.csproj
+    if ($LASTEXITCODE -ne 0) {
+        throw 'MSIX win-x64 运行时依赖还原失败。'
+    }
+
+    if (-not $SkipTests) {
+        dotnet run --no-restore --configuration Release --project LyricsIsland.Tests
+        if ($LASTEXITCODE -ne 0) {
+            throw '自动测试失败。'
+        }
+    }
+
+    dotnet publish --no-restore --configuration Release --runtime win-x64 --self-contained true --output $storePublishPath LyricsIsland.App\LyricsIsland.App.csproj
+    if ($LASTEXITCODE -ne 0) {
+        throw 'MSIX 自包含应用发布失败。'
+    }
+}
+finally {
+    Pop-Location
+}
+
+$appExe = Join-Path $storePublishPath 'LyricsIsland.App.exe'
+$appDll = Join-Path $storePublishPath 'LyricsIsland.App.dll'
+if (-not (Test-Path -LiteralPath $appExe) -or -not (Test-Path -LiteralPath $appDll)) {
+    throw 'MSIX 自包含发布目录缺少 LyricsIsland.App。'
+}
+
 $fileVersion = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($appDll).FileVersion
 if (-not $fileVersion.StartsWith("$productVersion.", [StringComparison]::Ordinal)) {
-    throw "publish/current 版本 $fileVersion 与源码版本 $productVersion 不一致。"
+    throw "MSIX 自包含产物版本 $fileVersion 与源码版本 $productVersion 不一致。"
 }
 
 dotnet restore $buildToolsProject --packages $packagesRoot
@@ -75,15 +103,10 @@ if ($null -eq $makeAppx) {
     throw '没有在 Microsoft.Windows.SDK.BuildTools 中找到 MakeAppx.exe。'
 }
 
-if (-not (Test-Path -LiteralPath $outputRoot)) {
-    New-Item -ItemType Directory -Path $outputRoot | Out-Null
-}
-Remove-VerifiedDirectory $stagingPath
-Remove-VerifiedDirectory $verifyPath
 New-Item -ItemType Directory -Path $stagingPath | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $stagingPath 'Assets') | Out-Null
 
-Get-ChildItem -LiteralPath $currentPath -Force | ForEach-Object {
+Get-ChildItem -LiteralPath $storePublishPath -Force | ForEach-Object {
     if ($_.Extension -ne '.pdb') {
         Copy-Item -LiteralPath $_.FullName -Destination $stagingPath -Recurse -Force
     }
@@ -133,6 +156,7 @@ Write-Host "SHA256：$hash"
 Write-Host '签名：未签名（提交 Partner Center 后由 Microsoft Store 签名）'
 
 if (-not $KeepStaging) {
+    Remove-VerifiedDirectory $storePublishPath
     Remove-VerifiedDirectory $stagingPath
     Remove-VerifiedDirectory $verifyPath
 }

@@ -1608,10 +1608,13 @@ namespace LyricsIsland.Tests
             Assert.True(manifest.Contains("uap10:RuntimeBehavior=\"packagedClassicApp\""));
             Assert.True(manifest.Contains("<rescap:Capability Name=\"runFullTrust\""));
             Assert.True(buildScript.Contains("VersionPrefix"));
-            Assert.True(buildScript.Contains("publish"));
-            Assert.True(buildScript.Contains("current"));
+            Assert.True(buildScript.Contains("$storePublishPath"));
+            Assert.True(buildScript.Contains("dotnet publish"));
+            Assert.True(buildScript.Contains("dotnet restore --runtime win-x64"));
+            Assert.True(buildScript.Contains("--self-contained true"));
+            Assert.False(buildScript.Contains("publish\\current"));
             Assert.True(buildScript.Contains("MakeAppx.exe"));
-            Assert.True(publishScript.Contains("--self-contained true"));
+            Assert.True(publishScript.Contains("--self-contained false"));
             Assert.True(gitIgnore.Contains("store/package/msix/"));
         }
 
