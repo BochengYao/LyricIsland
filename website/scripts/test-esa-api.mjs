@@ -14,7 +14,11 @@ const values = {
   "__ESA_SUPABASE_SERVICE_ROLE_KEY__": "sb_secret_test_only",
   "__ESA_SUPABASE_STORAGE_BUCKET__": "lyric-island-submissions",
   "__ESA_ADMIN_PASSWORD__": "correct horse battery staple",
-  "__ESA_ADMIN_SESSION_SECRET__": "test-session-secret-with-at-least-32-characters"
+  "__ESA_ADMIN_SESSION_SECRET__": "test-session-secret-with-at-least-32-characters",
+  "__ESA_FEATURE_CONTENT_JSON__": await readFile(
+    resolve(root, "data", "feature-content-default.json"),
+    "utf8"
+  )
 };
 
 let source = await readFile(resolve(root, "esa", "api.js"), "utf8");
@@ -35,6 +39,7 @@ let rewardStatus = "not_eligible";
 let accessLogs = [];
 let hasLike = true;
 let likeCount = 1;
+let featureRow = null;
 
 function storedSubmission() {
   return {
@@ -127,6 +132,9 @@ globalThis.fetch = async (input, init = {}) => {
   if (url.includes("release_previews?select=*&status=eq.published")) {
     return response([]);
   }
+  if (url.includes(`release_previews?select=*&version=eq.${encodeURIComponent("__FEATURE_CONTENT_V1__")}`)) {
+    return response(featureRow ? [featureRow] : []);
+  }
   if (url.includes("/storage/v1/object/sign/lyric-island-submissions")) {
     const paths = JSON.parse(init.body).paths;
     return response(
@@ -165,12 +173,19 @@ globalThis.fetch = async (input, init = {}) => {
   }
   if (url.endsWith("/rest/v1/release_previews") && init.method === "POST") {
     const body = JSON.parse(init.body);
-    return response([{
+    const row = {
       id: "22222222-2222-4222-8222-222222222222",
       ...body,
       created_at: "2026-07-18T00:00:00.000Z",
       updated_at: "2026-07-18T00:00:00.000Z"
-    }], 201);
+    };
+    if (body.version === "__FEATURE_CONTENT_V1__") featureRow = row;
+    return response([row], 201);
+  }
+  if (url.includes("/rest/v1/release_previews?id=eq.") && init.method === "PATCH") {
+    const body = JSON.parse(init.body);
+    featureRow = { ...featureRow, ...body };
+    return response([featureRow]);
   }
   throw new Error(`Unexpected fetch in ESA API test: ${url}`);
 };
@@ -263,6 +278,16 @@ try {
   assert.equal(repeatedLikeData.already_liked, true);
   assert.equal(calls.length, 2, "the same device cannot increment the same card twice");
 
+  calls.length = 0;
+  const publicFeaturesResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/features")
+  );
+  assert.equal(publicFeaturesResponse.status, 200);
+  const publicFeaturesData = await publicFeaturesResponse.json();
+  assert.equal(publicFeaturesData.content.summary.label_zh, "本次重点");
+  assert.equal(publicFeaturesData.content.sections.length, 6);
+  assert.equal(calls.length, 2, "first feature read must import the bundled content in two requests");
+
   const loginResponse = await api.fetch(
     new Request("https://lyric-island.top/api/incentives/admin/login", {
       method: "POST",
@@ -276,6 +301,25 @@ try {
   assert.equal(loginResponse.status, 200);
   const adminCookie = loginResponse.headers.get("set-cookie");
   assert.match(adminCookie, /HttpOnly; Secure; SameSite=Strict/);
+
+  const managedFeatures = structuredClone(publicFeaturesData.content);
+  managedFeatures.sections[0].title_zh = "后台修改后的标题";
+  managedFeatures.sections.reverse();
+  const featureSaveResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/features", {
+      method: "PUT",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({ content: managedFeatures })
+    })
+  );
+  assert.equal(featureSaveResponse.status, 200);
+  const featureSaveData = await featureSaveResponse.json();
+  assert.equal(featureSaveData.content.sections[5].title_zh, "后台修改后的标题");
+  assert.equal(featureSaveData.content.sections[0].id, "feature-06");
 
   const proxiedLoginResponse = await api.fetch(
     new Request("https://internal-worker.local/api/incentives/admin/login", {

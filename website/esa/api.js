@@ -16,6 +16,8 @@ const MAX_FILES = 3;
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
 const MAX_TOTAL_SIZE = 30 * 1024 * 1024;
 const REVIEW_META_PREFIX = "[[lyric-island-review:v1]]";
+const FEATURE_CONTENT_VERSION = "__FEATURE_CONTENT_V1__";
+const DEFAULT_FEATURE_CONTENT = JSON.parse("__ESA_FEATURE_CONTENT_JSON__");
 const ALLOWED_MIME_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -53,6 +55,51 @@ function encodeReviewMeta(meta) {
 function toSubmission(row) {
   const { reviewer_note, ...submission } = row;
   return { ...submission, ...decodeReviewMeta(reviewer_note) };
+}
+
+function cleanFeatureText(value, max) {
+  return typeof value === "string" ? value.trim().slice(0, max) : "";
+}
+
+function cleanFeatureLines(value, maxItems, maxLength) {
+  return Array.isArray(value)
+    ? value
+        .filter((item) => typeof item === "string")
+        .map((item) => item.trim().slice(0, maxLength))
+        .filter(Boolean)
+        .slice(0, maxItems)
+    : [];
+}
+
+function sanitizeFeatureContent(value) {
+  const source = value && typeof value === "object" ? value : {};
+  const summary = source.summary && typeof source.summary === "object"
+    ? source.summary
+    : {};
+  const sections = (Array.isArray(source.sections) ? source.sections : [])
+    .filter((item) => item && typeof item === "object")
+    .slice(0, 30)
+    .map((item, index) => ({
+      id: cleanFeatureText(item.id, 80) || `feature-${String(index + 1).padStart(2, "0")}`,
+      title_zh: cleanFeatureText(item.title_zh, 160),
+      title_en: cleanFeatureText(item.title_en, 160),
+      body_zh: cleanFeatureText(item.body_zh, 1200),
+      body_en: cleanFeatureText(item.body_en, 1200),
+      items_zh: cleanFeatureLines(item.items_zh, 12, 240),
+      items_en: cleanFeatureLines(item.items_en, 12, 240),
+      visible: item.visible !== false
+    }))
+    .filter((item) => item.title_zh || item.title_en);
+  return {
+    summary: {
+      label_zh: cleanFeatureText(summary.label_zh, 80) || DEFAULT_FEATURE_CONTENT.summary.label_zh,
+      label_en: cleanFeatureText(summary.label_en, 80) || DEFAULT_FEATURE_CONTENT.summary.label_en,
+      items_zh: cleanFeatureLines(summary.items_zh, 12, 200),
+      items_en: cleanFeatureLines(summary.items_en, 12, 200),
+      visible: summary.visible !== false
+    },
+    sections
+  };
 }
 
 function json(data, status = 200, extraHeaders = {}) {
@@ -523,9 +570,10 @@ async function acknowledgeAccessAlerts() {
 }
 
 async function listReleasePreviews() {
-  return supabase(
+  const rows = await supabase(
     "/rest/v1/release_previews?select=*&order=created_at.desc&limit=50"
   );
+  return rows.filter((row) => row.version !== FEATURE_CONTENT_VERSION);
 }
 
 async function createReleasePreview(input) {
@@ -560,6 +608,72 @@ async function updateReleasePreview(id, input) {
     }
   );
   return rows[0];
+}
+
+async function getFeatureContentRow() {
+  const rows = await supabase(
+    `/rest/v1/release_previews?select=*&version=eq.${encodeURIComponent(FEATURE_CONTENT_VERSION)}&order=updated_at.desc&limit=1`
+  );
+  return rows[0];
+}
+
+function featureContentRowPayload(content) {
+  return {
+    version: FEATURE_CONTENT_VERSION,
+    title_zh: "新功能页内容",
+    title_en: "Updates page content",
+    body_zh: "由维护者后台管理的新功能页内容。",
+    body_en: "Updates page content managed in the maintainer console.",
+    highlights_zh: content,
+    highlights_en: [],
+    target_date: null,
+    status: "draft",
+    published_at: null
+  };
+}
+
+async function getFeatureContent() {
+  const existing = await getFeatureContentRow();
+  if (existing) return sanitizeFeatureContent(existing.highlights_zh);
+  const content = sanitizeFeatureContent(DEFAULT_FEATURE_CONTENT);
+  const rows = await supabase("/rest/v1/release_previews", {
+    method: "POST",
+    headers: supabaseHeaders("return=representation"),
+    body: JSON.stringify(featureContentRowPayload(content))
+  });
+  return sanitizeFeatureContent((rows[0] && rows[0].highlights_zh) || content);
+}
+
+async function saveFeatureContent(value) {
+  const content = sanitizeFeatureContent(value);
+  if (!content.sections.length) throw new Error("At least one feature section is required");
+  if (content.sections.some((section) =>
+    section.visible &&
+    (!section.title_zh || !section.title_en || !section.body_zh || !section.body_en)
+  )) {
+    throw new Error("Visible feature sections require bilingual titles and descriptions");
+  }
+  const existing = await getFeatureContentRow();
+  if (!existing) {
+    const rows = await supabase("/rest/v1/release_previews", {
+      method: "POST",
+      headers: supabaseHeaders("return=representation"),
+      body: JSON.stringify(featureContentRowPayload(content))
+    });
+    return sanitizeFeatureContent((rows[0] && rows[0].highlights_zh) || content);
+  }
+  const rows = await supabase(
+    `/rest/v1/release_previews?id=eq.${encodeURIComponent(existing.id)}`,
+    {
+      method: "PATCH",
+      headers: supabaseHeaders("return=representation"),
+      body: JSON.stringify({
+        highlights_zh: content,
+        updated_at: new Date().toISOString()
+      })
+    }
+  );
+  return sanitizeFeatureContent((rows[0] && rows[0].highlights_zh) || content);
 }
 
 function text(form, key, max) {
@@ -609,6 +723,14 @@ async function handlePublic(request) {
       return json({ suggestions: [], previews: [], configured: false });
     }
     return jsonError("Unable to load community updates", 500);
+  }
+}
+
+async function handleFeatures() {
+  try {
+    return json({ content: await getFeatureContent() });
+  } catch {
+    return jsonError("Unable to load feature content", 500);
   }
 }
 
@@ -884,6 +1006,31 @@ async function handleAdminPreviews(request) {
   return jsonError("Method not allowed", 405);
 }
 
+async function handleAdminFeatures(request) {
+  if (!(await isAdminRequest(request))) return jsonError("Unauthorized", 401);
+  if (request.method === "GET") {
+    try {
+      return json({ content: await getFeatureContent() });
+    } catch {
+      return jsonError("无法读取新功能页内容", 500);
+    }
+  }
+  if (request.method === "PUT" && isSameOrigin(request)) {
+    try {
+      const body = await request.json();
+      return json({ content: await saveFeatureContent(body.content) });
+    } catch (error) {
+      const message = error instanceof Error && error.message.includes("At least one")
+        ? "至少保留一条新功能内容"
+        : error instanceof Error && error.message.includes("bilingual")
+          ? "前台显示的条目必须补全中英文标题和描述"
+          : "保存失败";
+      return jsonError(message, 400);
+    }
+  }
+  return jsonError("Unauthorized", 401);
+}
+
 async function handleRequest(request) {
   const path = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
   if (path === "/api/access" && request.method === "POST") {
@@ -891,6 +1038,9 @@ async function handleRequest(request) {
   }
   if (path === "/api/incentives/public" && request.method === "GET") {
     return handlePublic(request);
+  }
+  if (path === "/api/features" && request.method === "GET") {
+    return handleFeatures();
   }
   if (path === "/api/incentives/submissions" && request.method === "POST") {
     return handleSubmission(request);
@@ -909,6 +1059,9 @@ async function handleRequest(request) {
   }
   if (path === "/api/incentives/admin/previews") {
     return handleAdminPreviews(request);
+  }
+  if (path === "/api/incentives/admin/features") {
+    return handleAdminFeatures(request);
   }
   if (path === "/api/incentives/admin/access-logs") {
     return handleAdminAccessLogs(request);

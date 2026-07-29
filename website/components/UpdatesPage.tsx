@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ExternalArrow } from "@/components/ExternalArrow";
+import { ManagedFeatureContent } from "@/components/ManagedFeatureContent";
 import { Eyebrow, LogoLockup, PrimaryNavigation } from "@/components/SitePage";
 import { SelectiveTextReveal } from "@/components/SelectiveTextReveal";
 import { VersionPreviewSection } from "@/components/VersionPreviewSection";
@@ -38,31 +39,7 @@ export function UpdatesPage({ locale }: Props) {
           </div>
         </section>
 
-        <section className="updatesSummary sectionContainer">
-          <span>{copy.summaryLabel}</span>
-          <ul>
-            {copy.summary.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="releaseSections sectionContainer">
-          {copy.sections.map((section) => (
-            <article className="releaseSection" key={section.number}>
-              <span className="releaseNumber">{section.number}</span>
-              <div>
-                <h2>{section.title}</h2>
-                <p>{section.body}</p>
-              </div>
-              <ul>
-                {section.items.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </article>
-          ))}
-        </section>
+        <ManagedFeatureContent locale={locale} />
 
         <VersionPreviewSection locale={locale} />
 
