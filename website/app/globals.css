@@ -2919,21 +2919,18 @@ p {
 .ticketDialog {
   position: relative;
   display: grid;
-  gap: 0;
+  gap: 20px;
   width: min(100%, 1120px);
   max-height: calc(100dvh - 32px);
-  padding: 0;
-  overflow: visible;
+  padding: 24px 32px;
+  overflow: hidden;
   border-radius: 40px;
-  background: transparent;
+  background: var(--canvas);
   animation: ticketDialogFadeIn 520ms cubic-bezier(0.16, 1, 0.3, 1) 40ms both;
 }
 
 .ticketThanks {
   display: block;
-  padding: 24px 32px 20px;
-  border-radius: 40px 40px 0 0;
-  background: var(--canvas);
 }
 
 .ticketThanks .eyebrow {
@@ -2955,7 +2952,6 @@ p {
 .ticketIssueStage {
   position: relative;
   isolation: isolate;
-  margin-inline: 32px;
   border-radius: 40px;
   background: transparent;
 }
@@ -3117,9 +3113,6 @@ p {
   justify-content: flex-end;
   gap: 12px;
   margin-top: 0;
-  padding: 20px 32px 24px;
-  border-radius: 0 0 40px 40px;
-  background: var(--canvas);
 }
 
 .ticketActions svg {
@@ -4189,17 +4182,15 @@ button.danger,
   .ticketModal { padding: 8px; }
 
   .ticketDialog {
-    gap: 0;
+    gap: 12px;
     max-height: calc(100dvh - 16px);
-    padding: 0;
-    overflow: visible;
+    padding: 16px;
+    overflow: hidden;
     border-radius: 24px;
   }
 
   .ticketThanks {
     display: block;
-    padding: 16px 16px 12px;
-    border-radius: 24px 24px 0 0;
   }
 
   .ticketThanks .eyebrow { margin-bottom: 6px; }
@@ -4244,10 +4235,6 @@ button.danger,
     border-radius: 24px;
   }
 
-  .ticketIssueStage {
-    margin-inline: 16px;
-  }
-
   .ticketStub {
     min-height: 112px;
     gap: 6px;
@@ -4281,8 +4268,6 @@ button.danger,
 
   .ticketActions {
     flex-direction: row;
-    padding: 12px 16px 16px;
-    border-radius: 0 0 24px 24px;
   }
 
   .ticketActions .button {
