@@ -3376,17 +3376,17 @@ body:has(.incentivesFooter) {
 }
 
 .adminMain {
-  width: min(100% - 64px, 1200px);
+  width: min(100% - 48px, 1480px);
   margin: 0 auto;
-  padding: 64px 0 96px;
+  padding: 42px 0 72px;
 }
 
 .adminPageHeader {
   display: flex;
   align-items: end;
   justify-content: space-between;
-  gap: 32px;
-  margin-bottom: 40px;
+  gap: 20px;
+  margin-bottom: 24px;
 }
 
 .adminPageHeader p {
@@ -3399,7 +3399,7 @@ body:has(.incentivesFooter) {
 
 .adminPageHeader h2 {
   margin: 0;
-  font-size: 48px;
+  font-size: 38px;
 }
 
 .featureAdminActions {
@@ -3425,13 +3425,128 @@ body:has(.incentivesFooter) {
 
 .adminFilters {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.adminFilterGroup {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--white);
+}
+
+.adminFilterGroup button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: 700 11px/1 inherit;
+}
+
+.adminFilterGroup button.isActive {
+  background: var(--ink);
+  color: var(--white);
 }
 
 .adminToolbar {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.bulkActionBar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 9px 10px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f8f9fa;
+}
+
+.bulkSelectAll {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-right: 9px;
+  border-right: 1px solid var(--line);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.bulkSelectAll input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+}
+
+.bulkSelectAll strong {
+  color: var(--link);
+}
+
+.bulkActionGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding-right: 7px;
+  border-right: 1px solid var(--line);
+}
+
+.bulkActionGroup > span {
+  margin-right: 2px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.bulkActionGroup button,
+.bulkClearButton {
+  min-height: 28px;
+  padding: 0 8px;
+  border: 1px solid #aaa49d;
+  border-radius: 6px;
+  background: var(--white);
+  color: var(--charcoal);
+  cursor: pointer;
+  font: 700 10px/1 inherit;
+}
+
+.bulkActionGroup button:hover:not(:disabled),
+.bulkClearButton:hover:not(:disabled) {
+  border-color: var(--ink);
+  background: #f0f1f2;
+}
+
+.bulkActionGroup button:disabled,
+.bulkClearButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.bulkActionGroup button.danger {
+  border-color: #d9a09c;
+  color: #ad2f27;
+}
+
+.bulkClearButton {
+  border-color: transparent;
+  background: transparent;
+}
+
+.bulkMessage {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .adminViewToggle {
@@ -3499,22 +3614,23 @@ body:has(.incentivesFooter) {
 }
 
 .adminTableWrap {
-  overflow-x: auto;
+  overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 10px;
   background: var(--white);
 }
 
 .adminDataTable {
   width: 100%;
-  min-width: 980px;
+  min-width: 0;
   border-collapse: collapse;
   color: var(--charcoal);
-  font-size: 13px;
+  font-size: 12px;
+  table-layout: fixed;
 }
 
 .adminDataTable th {
-  padding: 12px 14px;
+  padding: 9px 10px;
   border-bottom: 1px solid var(--line);
   background: #f8f9fa;
   color: var(--muted);
@@ -3527,21 +3643,26 @@ body:has(.incentivesFooter) {
 }
 
 .adminDataTable td {
-  padding: 14px;
+  padding: 9px 10px;
   border-bottom: 1px solid var(--line);
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 .adminDataTable tbody tr:last-child td { border-bottom: 0; }
 .adminDataTable tbody tr:hover td { background: #fbfbfa; }
 .adminDataTable tr.isFlagged td:first-child { box-shadow: inset 3px 0 #d9483e; }
 
-.feedbackTable td:first-child { width: 34%; }
+.feedbackTable .feedbackColumn { width: 35%; }
+.feedbackTable .submitterColumn { width: 14%; }
+.feedbackTable .workflowColumn { width: 29%; }
+.feedbackTable .metricsColumn { width: 13%; }
+.feedbackTable .actionsColumn { width: 9%; }
+
 .feedbackTable td > p {
   display: -webkit-box;
   max-width: 430px;
   overflow: hidden;
-  margin: 7px 0 0;
+  margin: 5px 0 0;
   color: var(--muted);
   line-height: 1.45;
   -webkit-box-orient: vertical;
@@ -3570,7 +3691,22 @@ body:has(.incentivesFooter) {
   gap: 9px;
 }
 
-.tableTitle strong { font-size: 14px; }
+.tableTitle strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tableTitle input {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+}
+
 .adminDataTable .kindBadge { min-height: 24px; padding: 0 8px; font-size: 10px; }
 
 .adminDataTable select {
@@ -3587,19 +3723,19 @@ body:has(.incentivesFooter) {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  min-height: 34px;
-  padding: 0 10px;
+  min-height: 27px;
+  padding: 0 8px;
   border: 1px solid #aaa49d;
-  border-radius: 999px;
+  border-radius: 6px;
   background: var(--white);
   color: var(--muted);
   cursor: pointer;
-  font: 700 12px/1 inherit;
+  font: 700 10px/1 inherit;
 }
 
 .displayToggle > span {
-  width: 9px;
-  height: 9px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: #aaa49d;
 }
@@ -3613,22 +3749,101 @@ body:has(.incentivesFooter) {
 .displayToggle.isPublic > span { background: #2d9a61; }
 
 .tableActions {
-  display: flex;
-  gap: 6px;
+  display: grid;
+  gap: 4px;
 }
 
 .tableActions button {
-  min-height: 34px;
-  padding: 0 10px;
+  min-height: 28px;
+  padding: 0 7px;
   border: 1px solid var(--line);
   border-radius: 7px;
   background: var(--white);
   cursor: pointer;
-  font: 700 12px/1 inherit;
+  font: 700 10px/1 inherit;
 }
 
 button.danger,
 .tableActions button.danger { color: #ad2f27; }
+
+.tableSubmitter {
+  min-width: 0;
+}
+
+.tableSubmitter strong,
+.tableSubmitter a {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tableSubmitter a {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.tableWorkflow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tableButtonGroup {
+  display: inline-flex;
+  max-width: 100%;
+  gap: 2px;
+}
+
+.tableButtonGroup button {
+  min-height: 25px;
+  padding: 0 7px;
+  border: 1px solid #c5c1bc;
+  border-radius: 5px;
+  background: var(--white);
+  color: var(--muted);
+  cursor: pointer;
+  font: 700 10px/1 inherit;
+}
+
+.tableButtonGroup button:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+
+.tableButtonGroup button:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+
+.tableButtonGroup.statusButtons button.isActive {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--white);
+}
+
+.tableButtonGroup.rewardButtons button.isActive {
+  border-color: #c69b10;
+  background: #fff2b2;
+  color: #604900;
+}
+
+.tableMetrics {
+  display: grid;
+  gap: 3px;
+}
+
+.tableMetrics strong {
+  font-size: 12px;
+}
+
+.tableMetrics time {
+  color: var(--muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
 
 .accessSummary {
   display: grid;
@@ -4517,6 +4732,25 @@ button.danger,
 
   .adminFilters {
     display: grid;
+  }
+
+  .feedbackTable .submitterColumn,
+  .feedbackTable .metricsColumn,
+  .feedbackTable th:nth-child(2),
+  .feedbackTable td:nth-child(2),
+  .feedbackTable th:nth-child(4),
+  .feedbackTable td:nth-child(4) {
+    display: none;
+  }
+
+  .bulkActionGroup {
+    flex-wrap: wrap;
+    border-right: 0;
+  }
+
+  .bulkMessage {
+    width: 100%;
+    margin-left: 0;
   }
 
   .securityAlert,

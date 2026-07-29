@@ -23,13 +23,13 @@ type AuthState = "checking" | "login" | "ready";
 type Panel = "submissions" | "features" | "previews" | "access";
 type SaveFeedback = { tone: "pending" | "success" | "error"; message: string };
 type BulkAction =
-  | ""
   | `status:${SubmissionStatus}`
   | `reward:${RewardStatus}`
   | "flag:on"
   | "flag:off"
   | "public:on"
-  | "public:off";
+  | "public:off"
+  | "delete";
 
 const statusLabels: Record<SubmissionStatus, string> = {
   pending: "待审阅",
@@ -42,6 +42,19 @@ const rewardLabels: Record<RewardStatus, string> = {
   not_eligible: "暂不发放",
   pending: "待发放",
   issued: "已发放"
+};
+
+const compactStatusLabels: Record<SubmissionStatus, string> = {
+  pending: "待审",
+  reviewing: "审阅",
+  accepted: "采纳",
+  declined: "拒绝"
+};
+
+const compactRewardLabels: Record<RewardStatus, string> = {
+  not_eligible: "不发",
+  pending: "待发",
+  issued: "已发"
 };
 
 const eventLabels: Record<string, string> = {
@@ -65,6 +78,18 @@ function toDateTimeLocal(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+}
+
+function formatCompactDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).format(date).replace("/", "-");
 }
 
 function deviceSummary(userAgent: string | null) {
@@ -93,7 +118,6 @@ export function AdminIncentives() {
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [savingId, setSavingId] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [bulkAction, setBulkAction] = useState<BulkAction>("");
   const [bulkSaving, setBulkSaving] = useState(false);
   const [bulkMessage, setBulkMessage] = useState("");
   const [saveFeedback, setSaveFeedback] = useState<Record<string, SaveFeedback>>({});
@@ -258,40 +282,49 @@ export function AdminIncentives() {
     return {};
   }
 
-  async function applyBulkAction() {
+  async function applyBulkAction(action: BulkAction) {
     const targets = submissions.filter((item) => selectedIds.includes(item.id));
-    if (!bulkAction || !targets.length) return;
-    const patch = bulkPatch(bulkAction);
+    if (!targets.length) return;
+    if (action === "delete" && !window.confirm(`确定永久删除选中的 ${targets.length} 条反馈吗？附件和点赞记录也会一并删除，此操作不可撤销。`)) return;
+    const patch = action === "delete" ? {} : bulkPatch(action);
     setBulkSaving(true);
-    setBulkMessage(`正在处理 ${targets.length} 条…`);
+    setBulkMessage(action === "delete" ? `正在删除 ${targets.length} 条…` : `正在处理 ${targets.length} 条…`);
     const results = await Promise.all(targets.map(async (item) => {
       try {
         const response = await fetch("/api/incentives/admin/submissions", {
-          method: "PATCH",
+          method: action === "delete" ? "DELETE" : "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: item.id, ...patch })
+          body: JSON.stringify({ id: item.id, ...(action === "delete" ? {} : patch) })
         });
         const result = await response.json().catch(() => ({})) as { error?: string; submission?: IncentiveSubmission };
-        if (!response.ok || !result.submission) throw new Error(result.error ?? "更新失败");
-        return { id: item.id, submission: result.submission };
+        if (!response.ok || (action !== "delete" && !result.submission)) throw new Error(result.error ?? (action === "delete" ? "删除失败" : "更新失败"));
+        return { id: item.id, success: true, submission: result.submission };
       } catch {
-        return { id: item.id, submission: null };
+        return { id: item.id, success: false, submission: undefined };
       }
     }));
-    const updated = new Map(results.filter((result) => result.submission).map((result) => [result.id, result.submission!]));
-    setSubmissions((items) => items.map((item) => updated.get(item.id) ?? item));
-    setSaveFeedback((items) => ({
-      ...items,
-      ...Object.fromEntries(results.map((result) => [
-        result.id,
-        result.submission
-          ? { tone: "success", message: "批量更新成功" }
-          : { tone: "error", message: "批量更新失败" }
-      ]))
-    }));
-    const failed = results.length - updated.size;
-    setBulkMessage(failed ? `已更新 ${updated.size} 条，${failed} 条失败` : `已批量更新 ${updated.size} 条`);
-    setSelectedIds(results.filter((result) => !result.submission).map((result) => result.id));
+    const successfulIds = new Set(results.filter((result) => result.success).map((result) => result.id));
+    if (action === "delete") {
+      setSubmissions((items) => items.filter((item) => !successfulIds.has(item.id)));
+      setSaveFeedback((items) => Object.fromEntries(Object.entries(items).filter(([id]) => !successfulIds.has(id))));
+    } else {
+      const updated = new Map(results.filter((result) => result.submission).map((result) => [result.id, result.submission!]));
+      setSubmissions((items) => items.map((item) => updated.get(item.id) ?? item));
+      setSaveFeedback((items) => ({
+        ...items,
+        ...Object.fromEntries(results.map((result) => [
+          result.id,
+          result.success
+            ? { tone: "success", message: "批量更新成功" }
+            : { tone: "error", message: "批量更新失败" }
+        ]))
+      }));
+    }
+    const succeeded = successfulIds.size;
+    const failed = results.length - succeeded;
+    const verb = action === "delete" ? "删除" : "更新";
+    setBulkMessage(failed ? `已${verb} ${succeeded} 条，${failed} 条失败` : `已批量${verb} ${succeeded} 条`);
+    setSelectedIds(results.filter((result) => !result.success).map((result) => result.id));
     setBulkSaving(false);
   }
 
@@ -503,14 +536,14 @@ export function AdminIncentives() {
               <div className="adminToolbar">
                 <div className="adminViewToggle" aria-label="视图切换"><button className={viewMode === "table" ? "isActive" : ""} onClick={() => setViewMode("table")}>表格</button><button className={viewMode === "cards" ? "isActive" : ""} onClick={() => setViewMode("cards")}>卡片</button></div>
                 <div className="adminFilters">
-                  <select value={kindFilter} onChange={(event) => setKindFilter(event.target.value as typeof kindFilter)} aria-label="提交类型"><option value="all">全部类型</option><option value="feature">新功能</option><option value="bug">Bug</option></select>
-                  <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)} aria-label="审阅状态"><option value="all">全部状态</option>{Object.entries(statusLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select>
+                  <div className="adminFilterGroup" aria-label="提交类型">{([["all", "全部"], ["feature", "新功能"], ["bug", "Bug"]] as const).map(([value, label]) => <button type="button" className={kindFilter === value ? "isActive" : ""} aria-pressed={kindFilter === value} onClick={() => setKindFilter(value)} key={value}>{label}</button>)}</div>
+                  <div className="adminFilterGroup" aria-label="审阅状态"><button type="button" className={statusFilter === "all" ? "isActive" : ""} aria-pressed={statusFilter === "all"} onClick={() => setStatusFilter("all")}>全部</button>{Object.entries(compactStatusLabels).map(([value, label]) => <button type="button" className={statusFilter === value ? "isActive" : ""} aria-pressed={statusFilter === value} onClick={() => setStatusFilter(value as SubmissionStatus)} key={value}>{label}</button>)}</div>
                 </div>
               </div>
             </header>
 
-            <section className="adminToolbar" style={{ flexWrap: "wrap", marginBottom: 18 }} aria-label="批量操作">
-              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700 }}>
+            <section className="bulkActionBar" aria-label="批量操作">
+              <label className="bulkSelectAll">
                 <input
                   type="checkbox"
                   checked={allVisibleSelected}
@@ -518,31 +551,26 @@ export function AdminIncentives() {
                     ? ids.filter((id) => !visibleSubmissions.some((item) => item.id === id))
                     : [...new Set([...ids, ...visibleSubmissions.map((item) => item.id)])])}
                 />
-                全选当前 {visibleSubmissions.length} 条
+                <span>已选 <strong>{selectedIds.length}</strong> / 当前 {visibleSubmissions.length}</span>
               </label>
-              <select value={bulkAction} onChange={(event) => setBulkAction(event.target.value as BulkAction)} aria-label="批量操作类型">
-                <option value="">选择批量操作</option>
-                <optgroup label="审阅状态">{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={`status:${value}`}>设为{label}</option>)}</optgroup>
-                <optgroup label="奖励状态">{Object.entries(rewardLabels).map(([value, label]) => <option key={value} value={`reward:${value}`}>奖励：{label}</option>)}</optgroup>
-                <optgroup label="管理"><option value="flag:on">添加红旗</option><option value="flag:off">取消红旗</option><option value="public:on">在前台展出</option><option value="public:off">从前台撤下</option></optgroup>
-              </select>
-              <button className="button buttonPrimary" type="button" disabled={!selectedIds.length || !bulkAction || bulkSaving} onClick={() => void applyBulkAction()}>{bulkSaving ? "处理中…" : `应用到 ${selectedIds.length} 条`}</button>
-              {selectedIds.length > 0 && <button className="button buttonSecondary" type="button" onClick={() => setSelectedIds([])}>取消选择</button>}
-              {bulkMessage && <span role="status" style={{ fontSize: 13, fontWeight: 700 }}>{bulkMessage}</span>}
+              <div className="bulkActionGroup"><span>审阅</span>{Object.entries(compactStatusLabels).map(([value, label]) => <button type="button" disabled={!selectedIds.length || bulkSaving} onClick={() => void applyBulkAction(`status:${value as SubmissionStatus}`)} key={value}>{label}</button>)}</div>
+              <div className="bulkActionGroup"><span>奖励</span>{Object.entries(compactRewardLabels).map(([value, label]) => <button type="button" disabled={!selectedIds.length || bulkSaving} onClick={() => void applyBulkAction(`reward:${value as RewardStatus}`)} key={value}>{label}</button>)}</div>
+              <div className="bulkActionGroup"><span>管理</span><button type="button" disabled={!selectedIds.length || bulkSaving} onClick={() => void applyBulkAction("flag:on")}>加红旗</button><button type="button" disabled={!selectedIds.length || bulkSaving} onClick={() => void applyBulkAction("flag:off")}>去红旗</button><button type="button" disabled={!selectedIds.length || bulkSaving} onClick={() => void applyBulkAction("public:on")}>展出</button><button type="button" disabled={!selectedIds.length || bulkSaving} onClick={() => void applyBulkAction("public:off")}>撤下</button><button className="danger" type="button" disabled={!selectedIds.length || bulkSaving} onClick={() => void applyBulkAction("delete")}>删除</button></div>
+              {selectedIds.length > 0 && <button className="bulkClearButton" type="button" disabled={bulkSaving} onClick={() => setSelectedIds([])}>清空选择</button>}
+              {bulkMessage && <span className="bulkMessage" role="status">{bulkMessage}</span>}
             </section>
 
             {viewMode === "table" ? (
               <div className="adminTableWrap">
                 <table className="adminDataTable feedbackTable">
-                  <thead><tr><th>反馈</th><th>提交者</th><th>状态</th><th>前台展出</th><th>数据</th><th>更新时间</th><th>操作</th></tr></thead>
+                  <colgroup><col className="feedbackColumn" /><col className="submitterColumn" /><col className="workflowColumn" /><col className="metricsColumn" /><col className="actionsColumn" /></colgroup>
+                  <thead><tr><th>反馈</th><th>提交者</th><th>流程</th><th>数据</th><th>操作</th></tr></thead>
                   <tbody>{visibleSubmissions.map((item) => (
                     <tr className={item.is_flagged ? "isFlagged" : ""} key={item.id}>
                       <td><div className="tableTitle"><input type="checkbox" checked={selectedIds.includes(item.id)} onChange={() => toggleSelection(item.id)} aria-label={`选择 ${item.title}`} /><span className={`kindBadge ${item.kind}`}>{item.kind === "feature" ? "新功能" : "Bug"}</span><strong>{item.title}</strong></div><p>{item.body}</p>{saveFeedback[item.id] && <small className={saveFeedback[item.id].tone}>{saveFeedback[item.id].message}</small>}</td>
-                      <td><strong>@{item.nickname}</strong><a href={`mailto:${item.email}`}>{item.email}</a></td>
-                      <td><select value={item.status} disabled={savingId === item.id} onChange={(event) => void quickUpdate(item, { status: event.target.value as SubmissionStatus, ...(event.target.value === "accepted" ? {} : { is_public: false }) })}>{Object.entries(statusLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></td>
-                      <td><button className={`displayToggle ${item.is_public ? "isPublic" : ""}`} disabled={savingId === item.id} onClick={() => void quickUpdate(item, item.is_public ? { is_public: false } : { status: "accepted", is_public: true })} aria-pressed={item.is_public}><span aria-hidden="true" />{item.is_public ? "已展出" : "未展出"}</button></td>
-                      <td><strong>♥ {item.like_count}</strong><time style={{ display: "block", marginTop: 5 }}>{formatDate(item.created_at)}</time></td>
-                      <td><time>{formatDate(item.updated_at)}</time></td>
+                      <td className="tableSubmitter"><strong>@{item.nickname}</strong><a href={`mailto:${item.email}`} title={item.email}>{item.email}</a></td>
+                      <td><div className="tableWorkflow"><div className="tableButtonGroup statusButtons" aria-label="审阅状态">{Object.entries(compactStatusLabels).map(([value, label]) => <button type="button" title={statusLabels[value as SubmissionStatus]} className={item.status === value ? "isActive" : ""} disabled={savingId === item.id} onClick={() => void quickUpdate(item, { status: value as SubmissionStatus, ...(value === "accepted" ? {} : { is_public: false }) })} key={value}>{label}</button>)}</div><div className="tableButtonGroup rewardButtons" aria-label="奖励状态">{Object.entries(compactRewardLabels).map(([value, label]) => <button type="button" title={rewardLabels[value as RewardStatus]} className={item.reward_status === value ? "isActive" : ""} disabled={savingId === item.id} onClick={() => void quickUpdate(item, { reward_status: value as RewardStatus })} key={value}>{label}</button>)}</div><button className={`displayToggle ${item.is_public ? "isPublic" : ""}`} disabled={savingId === item.id} onClick={() => void quickUpdate(item, item.is_public ? { is_public: false } : { status: "accepted", is_public: true })} aria-pressed={item.is_public}><span aria-hidden="true" />{item.is_public ? "前台展出" : "前台隐藏"}</button></div></td>
+                      <td><div className="tableMetrics"><strong>♥ {item.like_count}</strong><time title={formatDate(item.created_at)}>提交 {formatCompactDate(item.created_at)}</time><time title={formatDate(item.updated_at)}>更新 {formatCompactDate(item.updated_at)}</time></div></td>
                       <td><div className="tableActions"><button onClick={() => setEditing({ ...item })}>编辑</button><button className="danger" disabled={savingId === item.id} onClick={() => void removeSubmission(item)}>删除</button></div></td>
                     </tr>
                   ))}</tbody>
