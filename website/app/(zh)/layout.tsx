@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     template: "%s | Lyric Island"
   },
   description:
-    "歌词岛是一款面向 Windows 的顶部桌面歌词伴侣，支持多播放器、同步歌词、模块化布局和鼠标避让。",
+    "在屏幕顶部遇见音乐。歌词岛支持鼠标避让、模块化布局、自动折叠、歌词翻译与多播放器连接。",
   applicationName: "Lyric Island",
   keywords: [
     "歌词岛",
@@ -33,12 +33,12 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     title: "歌词岛 | Lyric Island",
-    description: "让桌面歌词安静停在屏幕顶部。",
+    description: "这一句，值得被看见。在屏幕顶部，遇见音乐。",
     images: [
       {
-        url: "/images/product-hero.png",
-        width: 1600,
-        height: 900,
+        url: "/images/campaign/hero.png",
+        width: 1998,
+        height: 1125,
         alt: "歌词岛停靠在 Windows 桌面顶部"
       }
     ]
@@ -46,8 +46,8 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "歌词岛 | Lyric Island",
-    description: "让桌面歌词安静停在屏幕顶部。",
-    images: ["/images/product-hero.png"]
+    description: "这一句，值得被看见。在屏幕顶部，遇见音乐。",
+    images: ["/images/campaign/hero.png"]
   }
 };
 

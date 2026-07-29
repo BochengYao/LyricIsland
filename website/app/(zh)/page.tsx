@@ -1,5 +1,5 @@
-import { SitePage } from "@/components/SitePage";
+import { CampaignPage } from "@/components/CampaignPage";
 
 export default function HomePage() {
-  return <SitePage locale="zh" />;
+  return <CampaignPage locale="zh" />;
 }

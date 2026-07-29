@@ -6,9 +6,9 @@ import { AccessLogger } from "@/components/AccessLogger";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://lyric-island-windows.kyc869bdc4.chatgpt.site"),
-  title: "Windows desktop lyrics, quietly above your work | Lyric Island",
+  title: "This line deserves to be seen | Lyric Island",
   description:
-    "Lyric Island is a top-edge Windows lyrics companion with multi-player support, synced lyrics, modular layouts, and mouse-aware transparency.",
+    "Meet music at the top of your screen with mouse-aware transparency, modular layouts, auto collapse, translation, and multi-player support.",
   applicationName: "Lyric Island",
   alternates: {
     languages: {
@@ -23,12 +23,12 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     title: "Lyric Island",
-    description: "Windows desktop lyrics, quietly above your work.",
+    description: "This line deserves to be seen. Meet the music at the top of your screen.",
     images: [
       {
-        url: "/images/product-hero.png",
-        width: 1600,
-        height: 900,
+        url: "/images/campaign/hero.png",
+        width: 1998,
+        height: 1125,
         alt: "Lyric Island at the top of a Windows desktop"
       }
     ]
@@ -36,8 +36,8 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Lyric Island",
-    description: "Windows desktop lyrics, quietly above your work.",
-    images: ["/images/product-hero.png"]
+    description: "This line deserves to be seen. Meet the music at the top of your screen.",
+    images: ["/images/campaign/hero.png"]
   }
 };
 

@@ -1,0 +1,895 @@
+.campaignShell {
+  --campaign-canvas: #f3f0ee;
+  --campaign-lifted: #fcfbfa;
+  --campaign-white: #ffffff;
+  --campaign-ink: #141413;
+  --campaign-charcoal: #262627;
+  --campaign-muted: #696969;
+  --campaign-whisper: #e8e2da;
+  --campaign-orbit: #f37338;
+  position: relative;
+  height: 100svh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: var(--campaign-canvas);
+  color: var(--campaign-ink);
+  scroll-behavior: smooth;
+  scroll-snap-type: y mandatory;
+}
+
+.skipLink {
+  position: fixed;
+  top: 8px;
+  left: 24px;
+  z-index: 1000;
+  padding: 12px 20px;
+  border-radius: 20px;
+  background: var(--campaign-ink);
+  color: var(--campaign-canvas);
+  transform: translateY(-160%);
+  transition: transform 160ms ease;
+}
+
+.skipLink:focus {
+  transform: translateY(0);
+}
+
+.siteHeader {
+  position: fixed;
+  top: 24px;
+  right: 0;
+  left: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  padding-inline: 24px;
+  pointer-events: none;
+}
+
+.floatingNav {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  width: min(calc(100vw - 48px), 1280px);
+  min-height: 72px;
+  padding: 10px 12px 10px 20px;
+  border: 1px solid rgba(20, 20, 19, 0.06);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+  pointer-events: auto;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: max-content;
+  border-radius: 999px;
+}
+
+.brand img {
+  border-radius: 50%;
+}
+
+.brand > span {
+  display: grid;
+  gap: 2px;
+  line-height: 1;
+}
+
+.brand strong {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.brand small {
+  color: var(--campaign-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sceneNav {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.sceneNav a {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--campaign-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.sceneNav a:hover,
+.sceneNav a:focus-visible {
+  background: var(--campaign-ink);
+  color: var(--campaign-canvas);
+  transform: translateY(-2px);
+}
+
+.navActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.languageLink,
+.storeButton {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--campaign-ink);
+  border-radius: 20px;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  transition: transform 140ms ease;
+}
+
+.languageLink {
+  min-width: 48px;
+  padding-inline: 14px;
+  background: var(--campaign-white);
+}
+
+.storeButton {
+  gap: 10px;
+  padding-inline: 22px;
+  background: var(--campaign-ink);
+  color: var(--campaign-canvas);
+}
+
+.languageLink:hover,
+.storeButton:hover {
+  transform: translateY(-2px);
+}
+
+.languageLink:active,
+.storeButton:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+.scene {
+  display: grid;
+  min-height: 100svh;
+  place-items: center;
+  overflow: hidden;
+  background: var(--campaign-canvas);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.frame {
+  position: relative;
+  width: min(100vw, calc(100svh * 16 / 9));
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--campaign-canvas);
+}
+
+.frameGrid {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 0.84fr) minmax(0, 1.16fr);
+  gap: clamp(32px, 3.6vw, 72px);
+  align-items: center;
+  height: 100%;
+  padding: clamp(136px, 13vh, 164px) clamp(56px, 6vw, 112px) clamp(80px, 8vh, 104px);
+}
+
+.sceneCopy {
+  position: relative;
+  z-index: 3;
+  max-width: 740px;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: clamp(20px, 2.4vh, 32px);
+  color: var(--campaign-muted);
+  font-size: clamp(12px, 0.9vw, 14px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.eyebrow span {
+  color: var(--campaign-orbit);
+  font-size: 20px;
+  line-height: 0;
+}
+
+.sceneCopy h1 {
+  max-width: 800px;
+  margin: 0;
+  font-size: clamp(54px, 5.35vw, 92px);
+  font-weight: 500;
+  line-height: 0.96;
+  letter-spacing: -0.04em;
+}
+
+.sceneCopy h1 span {
+  display: block;
+}
+
+.subtitle {
+  max-width: 640px;
+  margin: clamp(24px, 3vh, 40px) 0 0;
+  color: var(--campaign-charcoal);
+  font-size: clamp(18px, 1.35vw, 24px);
+  font-weight: 450;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: clamp(28px, 3.4vh, 44px);
+}
+
+.primaryButton,
+.secondaryButton {
+  display: inline-flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding-inline: 24px;
+  border: 1.5px solid var(--campaign-ink);
+  border-radius: 20px;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  transition: transform 140ms ease;
+}
+
+.primaryButton {
+  background: var(--campaign-ink);
+  color: var(--campaign-canvas);
+}
+
+.secondaryButton {
+  background: var(--campaign-white);
+  color: var(--campaign-ink);
+}
+
+.primaryButton:hover,
+.secondaryButton:hover {
+  transform: translateY(-2px);
+}
+
+.visual {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 40px;
+  background: var(--campaign-ink);
+}
+
+.visual::after {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: inherit;
+  content: "";
+  pointer-events: none;
+}
+
+.visualImage {
+  object-fit: cover;
+}
+
+.heroVisual {
+  height: min(64vh, 680px);
+  min-height: 460px;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.08);
+}
+
+.heroVisual .visualImage {
+  object-position: center;
+}
+
+.mouseVisual {
+  height: min(62vh, 660px);
+  min-height: 440px;
+}
+
+.mouseVisual .visualImage {
+  object-position: center;
+}
+
+.modulesVisual {
+  height: min(60vh, 640px);
+  min-height: 430px;
+}
+
+.modulesVisual .visualImage {
+  object-position: center;
+}
+
+.collapseVisual {
+  height: min(62vh, 660px);
+  min-height: 440px;
+}
+
+.collapseVisual .visualImage {
+  object-position: center;
+}
+
+.translationVisual {
+  height: min(43vh, 440px);
+  min-height: 300px;
+  border-radius: 999px;
+}
+
+.translationVisual .visualImage {
+  object-position: center;
+}
+
+.playersVisual {
+  height: min(62vh, 660px);
+  min-height: 440px;
+}
+
+.playersVisual .visualImage {
+  opacity: 0.7;
+}
+
+.pointerBadge,
+.translationBadge {
+  position: absolute;
+  z-index: 3;
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  padding-inline: 18px;
+  border-radius: 999px;
+  background: var(--campaign-white);
+  color: var(--campaign-ink);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.pointerBadge {
+  right: 24px;
+  bottom: 24px;
+}
+
+.translationBadge {
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.playerConstellation {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+}
+
+.playerCore,
+.playerConstellation > span {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--campaign-white);
+  color: var(--campaign-ink);
+  font-weight: 500;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.08);
+}
+
+.playerCore {
+  top: 50%;
+  left: 50%;
+  gap: 12px;
+  min-height: 76px;
+  padding: 12px 24px 12px 12px;
+  transform: translate(-50%, -50%);
+}
+
+.playerCore img {
+  border-radius: 50%;
+}
+
+.playerCore span {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.playerConstellation > span {
+  min-height: 46px;
+  padding-inline: 20px;
+  font-size: 14px;
+}
+
+.player1 {
+  top: 17%;
+  left: 12%;
+}
+
+.player2 {
+  top: 15%;
+  right: 12%;
+}
+
+.player3 {
+  top: 43%;
+  left: 4%;
+}
+
+.player4 {
+  top: 46%;
+  right: 5%;
+}
+
+.player5 {
+  bottom: 14%;
+  left: 18%;
+}
+
+.player6 {
+  right: 18%;
+  bottom: 12%;
+}
+
+.watermark {
+  position: absolute;
+  top: 16%;
+  right: -2%;
+  z-index: 0;
+  color: var(--campaign-whisper);
+  font-size: clamp(76px, 10vw, 168px);
+  font-weight: 600;
+  line-height: 0.8;
+  letter-spacing: -0.05em;
+  white-space: nowrap;
+}
+
+.orbitArc {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.orbitArc path {
+  fill: none;
+  stroke: var(--campaign-orbit);
+  stroke-linecap: round;
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+}
+
+.orbitArc circle {
+  fill: var(--campaign-orbit);
+}
+
+.sceneMeta {
+  position: absolute;
+  bottom: clamp(28px, 3.4vh, 40px);
+  left: clamp(56px, 6vw, 112px);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--campaign-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sceneMeta span:first-child {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid rgba(20, 20, 19, 0.24);
+  border-radius: 50%;
+  color: var(--campaign-ink);
+}
+
+.legal {
+  position: absolute;
+  right: clamp(56px, 6vw, 112px);
+  bottom: clamp(30px, 3.4vh, 42px);
+  z-index: 3;
+  margin: 0;
+  color: var(--campaign-muted);
+  font-size: 11px;
+}
+
+.modules .frame,
+.translation .frame {
+  background: var(--campaign-lifted);
+}
+
+.collapse .frame {
+  background: var(--campaign-ink);
+  color: var(--campaign-white);
+}
+
+.collapse .subtitle {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.collapse .eyebrow,
+.collapse .sceneMeta {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.collapse .watermark {
+  color: rgba(255, 255, 255, 0.055);
+}
+
+.collapse .sceneMeta span:first-child {
+  border-color: rgba(255, 255, 255, 0.28);
+  color: var(--campaign-white);
+}
+
+.modules .frameGrid,
+.translation .frameGrid {
+  grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
+}
+
+.translation .frameGrid {
+  align-items: end;
+}
+
+.translation .sceneCopy {
+  align-self: center;
+}
+
+.players .frameGrid {
+  grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr);
+}
+
+@media (max-width: 1180px) {
+  .sceneNav a {
+    width: 38px;
+    height: 38px;
+  }
+
+  .storeButton {
+    padding-inline: 16px;
+  }
+
+  .frameGrid {
+    gap: 36px;
+    padding-inline: 56px;
+  }
+
+  .sceneCopy h1 {
+    font-size: clamp(48px, 5.2vw, 68px);
+  }
+
+  .heroVisual,
+  .mouseVisual,
+  .modulesVisual,
+  .collapseVisual,
+  .playersVisual {
+    min-height: 380px;
+  }
+}
+
+@media (max-width: 1023px) {
+  .floatingNav {
+    width: min(calc(100vw - 32px), 920px);
+    min-height: 64px;
+    padding: 8px 10px 8px 16px;
+  }
+
+  .sceneNav {
+    gap: 2px;
+  }
+
+  .sceneNav a {
+    width: 36px;
+    height: 36px;
+    font-size: 10px;
+  }
+
+  .storeButton {
+    width: 48px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 0;
+  }
+
+  .storeButton span {
+    font-size: 16px;
+  }
+
+  .frameGrid {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: 32px;
+    padding: 124px 44px 72px;
+  }
+
+  .modules .frameGrid,
+  .translation .frameGrid,
+  .players .frameGrid {
+    grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
+  }
+
+  .sceneCopy h1 {
+    font-size: clamp(40px, 5.5vw, 56px);
+  }
+
+  .subtitle {
+    font-size: 17px;
+  }
+
+  .primaryButton,
+  .secondaryButton {
+    min-height: 46px;
+    padding-inline: 18px;
+    font-size: 14px;
+  }
+
+  .visual {
+    border-radius: 40px;
+  }
+
+  .heroVisual,
+  .mouseVisual,
+  .modulesVisual,
+  .collapseVisual,
+  .playersVisual {
+    min-height: 340px;
+  }
+
+  .translationVisual {
+    min-height: 240px;
+  }
+}
+
+@media (max-width: 767px), (max-aspect-ratio: 4 / 3) {
+  .campaignShell {
+    scroll-snap-type: y proximity;
+  }
+
+  .siteHeader {
+    top: 12px;
+    padding-inline: 12px;
+  }
+
+  .floatingNav {
+    grid-template-columns: auto 1fr auto;
+    width: 100%;
+    min-height: 60px;
+    padding: 7px 8px 7px 12px;
+  }
+
+  .brand {
+    gap: 8px;
+  }
+
+  .brand img {
+    width: 38px;
+    height: 38px;
+  }
+
+  .brand small,
+  .sceneNav,
+  .storeButton {
+    display: none;
+  }
+
+  .brand strong {
+    font-size: 15px;
+  }
+
+  .navActions {
+    grid-column: 3;
+  }
+
+  .languageLink {
+    min-width: 44px;
+    min-height: 44px;
+    padding-inline: 11px;
+    border-radius: 50%;
+    font-size: 12px;
+  }
+
+  .scene {
+    min-height: 100svh;
+    overflow: visible;
+  }
+
+  .frame {
+    width: 100%;
+    min-height: 100svh;
+    aspect-ratio: auto;
+    overflow: hidden;
+  }
+
+  .frameGrid,
+  .modules .frameGrid,
+  .translation .frameGrid,
+  .players .frameGrid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+    align-content: center;
+    padding: 112px 24px 88px;
+  }
+
+  .sceneCopy {
+    max-width: 620px;
+  }
+
+  .eyebrow {
+    margin-bottom: 18px;
+    font-size: 12px;
+  }
+
+  .sceneCopy h1 {
+    font-size: clamp(42px, 12vw, 64px);
+    line-height: 0.98;
+  }
+
+  .subtitle {
+    max-width: 580px;
+    margin-top: 22px;
+    font-size: 17px;
+  }
+
+  .heroActions {
+    margin-top: 26px;
+  }
+
+  .primaryButton {
+    width: 100%;
+  }
+
+  .secondaryButton {
+    display: none;
+  }
+
+  .visual,
+  .heroVisual,
+  .mouseVisual,
+  .modulesVisual,
+  .collapseVisual,
+  .playersVisual {
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    aspect-ratio: 16 / 9;
+    border-radius: 40px;
+  }
+
+  .translationVisual {
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    aspect-ratio: 3 / 1;
+  }
+
+  .translation .frameGrid {
+    align-items: center;
+  }
+
+  .sceneMeta {
+    bottom: 24px;
+    left: 24px;
+  }
+
+  .legal {
+    right: 24px;
+    bottom: 30px;
+    max-width: 54%;
+    text-align: right;
+  }
+
+  .watermark {
+    top: 19%;
+    right: -10%;
+    font-size: 24vw;
+  }
+
+  .playerCore {
+    min-height: 58px;
+    padding: 8px 16px 8px 8px;
+  }
+
+  .playerCore img {
+    width: 42px;
+    height: 42px;
+  }
+
+  .playerCore span {
+    font-size: 14px;
+  }
+
+  .playerConstellation > span {
+    min-height: 36px;
+    padding-inline: 12px;
+    font-size: 11px;
+  }
+
+  .player3,
+  .player4 {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .sceneCopy h1 {
+    font-size: clamp(38px, 11.5vw, 50px);
+  }
+
+  .frameGrid,
+  .modules .frameGrid,
+  .translation .frameGrid,
+  .players .frameGrid {
+    padding-inline: 20px;
+  }
+
+  .playerConstellation > span {
+    font-size: 10px;
+  }
+
+  .player1 {
+    top: 10%;
+    left: 5%;
+  }
+
+  .player2 {
+    top: 10%;
+    right: 5%;
+  }
+
+  .player5 {
+    bottom: 8%;
+    left: 8%;
+  }
+
+  .player6 {
+    right: 8%;
+    bottom: 8%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .campaignShell {
+    scroll-behavior: auto;
+  }
+
+  .sceneNav a,
+  .languageLink,
+  .storeButton,
+  .primaryButton,
+  .secondaryButton,
+  .skipLink {
+    transition: none;
+  }
+}
