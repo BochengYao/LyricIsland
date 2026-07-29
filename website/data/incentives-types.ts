@@ -56,6 +56,28 @@ export type ReleasePreview = {
   published_at: string | null;
 };
 
+export type FeatureContentSection = {
+  id: string;
+  title_zh: string;
+  title_en: string;
+  body_zh: string;
+  body_en: string;
+  items_zh: string[];
+  items_en: string[];
+  visible: boolean;
+};
+
+export type FeatureContent = {
+  summary: {
+    label_zh: string;
+    label_en: string;
+    items_zh: string[];
+    items_en: string[];
+    visible: boolean;
+  };
+  sections: FeatureContentSection[];
+};
+
 export type AccessSeverity = "normal" | "warning" | "critical";
 
 export type AccessLogEntry = {

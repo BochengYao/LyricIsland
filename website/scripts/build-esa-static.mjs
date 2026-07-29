@@ -9,6 +9,7 @@ const stagedApiDirectory = resolve(stagingDirectory, "api");
 const functionBuildDirectory = resolve(root, "esa-dist");
 const functionTemplate = resolve(root, "esa", "api.js");
 const functionEntry = resolve(functionBuildDirectory, "entry.js");
+const featureContentDefaultPath = resolve(root, "data", "feature-content-default.json");
 const nextExecutable = resolve(
   root,
   "node_modules",
@@ -42,7 +43,8 @@ try {
     "__ESA_SUPABASE_SERVICE_ROLE_KEY__": process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
     "__ESA_SUPABASE_STORAGE_BUCKET__": process.env.SUPABASE_STORAGE_BUCKET ?? "lyric-island-submissions",
     "__ESA_ADMIN_PASSWORD__": process.env.ADMIN_PASSWORD ?? "",
-    "__ESA_ADMIN_SESSION_SECRET__": process.env.ADMIN_SESSION_SECRET ?? ""
+    "__ESA_ADMIN_SESSION_SECRET__": process.env.ADMIN_SESSION_SECRET ?? "",
+    "__ESA_FEATURE_CONTENT_JSON__": await readFile(featureContentDefaultPath, "utf8")
   };
   let functionSource = await readFile(functionTemplate, "utf8");
   for (const [marker, value] of Object.entries(replacements)) {

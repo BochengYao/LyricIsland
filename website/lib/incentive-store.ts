@@ -1,4 +1,5 @@
 import type {
+  FeatureContent,
   IncentiveSubmission,
   PublicSuggestion,
   ReleasePreview,
@@ -7,6 +8,10 @@ import type {
   SubmissionStatus,
   RewardStatus
 } from "@/data/incentives-types";
+import {
+  defaultFeatureContent,
+  sanitizeFeatureContent
+} from "@/data/feature-content";
 
 type SupabaseConfig = {
   url: string;
@@ -19,7 +24,13 @@ type StoredSubmission = Omit<
   "developer_reply" | "is_flagged" | "is_public"
 > & { reviewer_note: string | null };
 
+type StoredFeatureRow = Omit<ReleasePreview, "highlights_zh" | "highlights_en"> & {
+  highlights_zh: unknown;
+  highlights_en: unknown;
+};
+
 const REVIEW_META_PREFIX = "[[lyric-island-review:v1]]";
+const FEATURE_CONTENT_VERSION = "__FEATURE_CONTENT_V1__";
 
 function decodeReviewMeta(value: string | null | undefined) {
   if (!value?.startsWith(REVIEW_META_PREFIX)) {
@@ -328,9 +339,10 @@ export async function deleteSubmission(id: string) {
 }
 
 export async function listReleasePreviews() {
-  return supabase<ReleasePreview[]>(
+  const rows = await supabase<ReleasePreview[]>(
     "/rest/v1/release_previews?select=*&order=created_at.desc&limit=50"
   );
+  return rows.filter((row) => row.version !== FEATURE_CONTENT_VERSION);
 }
 
 export async function createReleasePreview(
@@ -369,4 +381,74 @@ export async function updateReleasePreview(
     }
   );
   return rows[0];
+}
+
+async function getFeatureContentRow() {
+  const rows = await supabase<StoredFeatureRow[]>(
+    `/rest/v1/release_previews?select=*&version=eq.${encodeURIComponent(FEATURE_CONTENT_VERSION)}&order=updated_at.desc&limit=1`
+  );
+  return rows[0];
+}
+
+function featureContentRowPayload(content: FeatureContent) {
+  return {
+    version: FEATURE_CONTENT_VERSION,
+    title_zh: "新功能页内容",
+    title_en: "Updates page content",
+    body_zh: "由维护者后台管理的新功能页内容。",
+    body_en: "Updates page content managed in the maintainer console.",
+    highlights_zh: content,
+    highlights_en: [],
+    target_date: null,
+    status: "draft" as const,
+    published_at: null
+  };
+}
+
+export async function getFeatureContent() {
+  const existing = await getFeatureContentRow();
+  if (existing) return sanitizeFeatureContent(existing.highlights_zh);
+
+  const content = sanitizeFeatureContent(defaultFeatureContent);
+  const rows = await supabase<StoredFeatureRow[]>("/rest/v1/release_previews", {
+    method: "POST",
+    headers: headers("return=representation"),
+    body: JSON.stringify(featureContentRowPayload(content))
+  });
+  return sanitizeFeatureContent(rows[0]?.highlights_zh ?? content);
+}
+
+export async function saveFeatureContent(value: unknown) {
+  const content = sanitizeFeatureContent(value);
+  if (!content.sections.length) {
+    throw new Error("At least one feature section is required");
+  }
+  if (content.sections.some((section) =>
+    section.visible &&
+    (!section.title_zh || !section.title_en || !section.body_zh || !section.body_en)
+  )) {
+    throw new Error("Visible feature sections require bilingual titles and descriptions");
+  }
+  const existing = await getFeatureContentRow();
+  if (!existing) {
+    const rows = await supabase<StoredFeatureRow[]>("/rest/v1/release_previews", {
+      method: "POST",
+      headers: headers("return=representation"),
+      body: JSON.stringify(featureContentRowPayload(content))
+    });
+    return sanitizeFeatureContent(rows[0]?.highlights_zh ?? content);
+  }
+
+  const rows = await supabase<StoredFeatureRow[]>(
+    `/rest/v1/release_previews?id=eq.${encodeURIComponent(existing.id)}`,
+    {
+      method: "PATCH",
+      headers: headers("return=representation"),
+      body: JSON.stringify({
+        highlights_zh: content,
+        updated_at: new Date().toISOString()
+      })
+    }
+  );
+  return sanitizeFeatureContent(rows[0]?.highlights_zh ?? content);
 }

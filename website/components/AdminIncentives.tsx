@@ -4,9 +4,15 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ExternalArrow } from "@/components/ExternalArrow";
 import { LogoLockup } from "@/components/SitePage";
+import {
+  defaultFeatureContent,
+  sanitizeFeatureContent
+} from "@/data/feature-content";
 import type {
   AccessLogEntry,
   AccessSeverity,
+  FeatureContent,
+  FeatureContentSection,
   IncentiveSubmission,
   ReleasePreview,
   RewardStatus,
@@ -14,7 +20,7 @@ import type {
 } from "@/data/incentives-types";
 
 type AuthState = "checking" | "login" | "ready";
-type Panel = "submissions" | "previews" | "access";
+type Panel = "submissions" | "features" | "previews" | "access";
 type SaveFeedback = { tone: "pending" | "success" | "error"; message: string };
 type BulkAction =
   | ""
@@ -73,6 +79,9 @@ export function AdminIncentives() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submissions, setSubmissions] = useState<IncentiveSubmission[]>([]);
+  const [featureContent, setFeatureContent] = useState<FeatureContent>(defaultFeatureContent);
+  const [featureSaving, setFeatureSaving] = useState(false);
+  const [featureMessage, setFeatureMessage] = useState("");
   const [previews, setPreviews] = useState<ReleasePreview[]>([]);
   const [accessLogs, setAccessLogs] = useState<AccessLogEntry[]>([]);
   const [unreadAlerts, setUnreadAlerts] = useState(0);
@@ -92,22 +101,25 @@ export function AdminIncentives() {
   const [previewDateTbd, setPreviewDateTbd] = useState(false);
 
   async function loadData() {
-    const [submissionResponse, previewResponse, logResponse] = await Promise.all([
+    const [submissionResponse, featureResponse, previewResponse, logResponse] = await Promise.all([
       fetch("/api/incentives/admin/submissions", { cache: "no-store" }),
+      fetch("/api/incentives/admin/features", { cache: "no-store" }),
       fetch("/api/incentives/admin/previews", { cache: "no-store" }),
       fetch("/api/incentives/admin/access-logs", { cache: "no-store" })
     ]);
-    if ([submissionResponse, previewResponse, logResponse].some((response) => response.status === 401)) {
+    if ([submissionResponse, featureResponse, previewResponse, logResponse].some((response) => response.status === 401)) {
       setAuth("login");
       return;
     }
-    if (!submissionResponse.ok || !previewResponse.ok) throw new Error("后台数据读取失败");
+    if (!submissionResponse.ok || !featureResponse.ok || !previewResponse.ok) throw new Error("后台数据读取失败");
     const submissionData = (await submissionResponse.json()) as { submissions: IncentiveSubmission[] };
+    const featureData = (await featureResponse.json()) as { content: unknown };
     const previewData = (await previewResponse.json()) as { previews: ReleasePreview[] };
     const logData = logResponse.ok
       ? await logResponse.json() as { logs: AccessLogEntry[]; unreadAlerts: number }
       : { logs: [] as AccessLogEntry[], unreadAlerts: 0 };
     setSubmissions(submissionData.submissions);
+    setFeatureContent(sanitizeFeatureContent(featureData.content));
     setPreviews(previewData.previews);
     setAccessLogs(logData.logs);
     setUnreadAlerts(logData.unreadAlerts);
@@ -339,6 +351,102 @@ export function AdminIncentives() {
     setPreviews((items) => items.map((item) => item.id === preview.id ? result.preview! : item));
   }
 
+  function markFeatureDirty() {
+    setFeatureMessage("有未保存的更改");
+  }
+
+  function updateFeatureSummary(patch: Partial<FeatureContent["summary"]>) {
+    setFeatureContent((content) => ({
+      ...content,
+      summary: { ...content.summary, ...patch }
+    }));
+    markFeatureDirty();
+  }
+
+  function updateFeatureSection(id: string, patch: Partial<FeatureContentSection>) {
+    setFeatureContent((content) => ({
+      ...content,
+      sections: content.sections.map((section) => section.id === id ? { ...section, ...patch } : section)
+    }));
+    markFeatureDirty();
+  }
+
+  function moveFeatureSection(id: string, direction: -1 | 1) {
+    setFeatureContent((content) => {
+      const index = content.sections.findIndex((section) => section.id === id);
+      const target = index + direction;
+      if (index < 0 || target < 0 || target >= content.sections.length) return content;
+      const sections = [...content.sections];
+      [sections[index], sections[target]] = [sections[target], sections[index]];
+      return { ...content, sections };
+    });
+    markFeatureDirty();
+  }
+
+  function addFeatureSection() {
+    const id = typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `feature-${Date.now()}`;
+    setFeatureContent((content) => ({
+      ...content,
+      sections: [...content.sections, {
+        id,
+        title_zh: "",
+        title_en: "",
+        body_zh: "",
+        body_en: "",
+        items_zh: [],
+        items_en: [],
+        visible: false
+      }]
+    }));
+    markFeatureDirty();
+  }
+
+  function deleteFeatureSection(section: FeatureContentSection) {
+    if (!window.confirm(`确定删除“${section.title_zh || section.title_en || "未命名条目"}”吗？保存后前台也会删除。`)) return;
+    setFeatureContent((content) => ({
+      ...content,
+      sections: content.sections.filter((item) => item.id !== section.id)
+    }));
+    markFeatureDirty();
+  }
+
+  async function saveManagedFeatures() {
+    const incompleteVisibleSection = featureContent.sections.find((section) =>
+      section.visible &&
+      (!section.title_zh.trim() || !section.title_en.trim() || !section.body_zh.trim() || !section.body_en.trim())
+    );
+    if (incompleteVisibleSection) {
+      setFeatureMessage(`未保存：“${incompleteVisibleSection.title_zh || incompleteVisibleSection.title_en || "未命名条目"}”显示前需补全中英文标题和描述`);
+      return;
+    }
+    setFeatureSaving(true);
+    setFeatureMessage("正在保存并同步前台…");
+    setError("");
+    try {
+      const response = await fetch("/api/incentives/admin/features", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: featureContent })
+      });
+      const result = await response.json().catch(() => ({})) as { error?: string; content?: unknown };
+      if (response.status === 401) {
+        setAuth("login");
+        throw new Error("登录已过期");
+      }
+      if (!response.ok || !result.content) throw new Error(result.error ?? "保存失败");
+      setFeatureContent(sanitizeFeatureContent(result.content));
+      setFeatureMessage("已保存，官网新功能页已同步");
+    } catch (saveError) {
+      const message = saveError instanceof Error ? saveError.message : "网络异常";
+      setFeatureMessage(`未保存：${message}`);
+      setError(message);
+    } finally {
+      setFeatureSaving(false);
+    }
+  }
+
   if (auth === "checking") return <main className="adminLoading">正在确认后台身份…</main>;
 
   if (auth === "login") {
@@ -348,7 +456,7 @@ export function AdminIncentives() {
           <LogoLockup />
           <p className="eyebrow"><span aria-hidden="true">•</span>维护者后台</p>
           <h1>审阅用户提交</h1>
-          <p>登录后可以管理反馈、版本预告与前后台访问日志。</p>
+          <p>登录后可以管理反馈、新功能页、版本预告与访问日志。</p>
           <form onSubmit={login}>
             <label><span>后台密码</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required /></label>
             <button className="button buttonPrimary" type="submit">进入后台</button>
@@ -368,11 +476,13 @@ export function AdminIncentives() {
         <h1>用户反馈</h1>
         <nav aria-label="后台导航">
           <button className={panel === "submissions" ? "isActive" : ""} onClick={() => setPanel("submissions")}>反馈管理 {pendingSubmissionCount > 0 && <span>{pendingSubmissionCount}</span>}</button>
+          <button className={panel === "features" ? "isActive" : ""} onClick={() => setPanel("features")}>新功能内容</button>
           <button className={panel === "previews" ? "isActive" : ""} onClick={() => setPanel("previews")}>版本预告</button>
           <button className={panel === "access" ? "isActive" : ""} onClick={() => setPanel("access")}>访问日志 {unreadAlerts > 0 && <span className="alertCount">{unreadAlerts}</span>}</button>
         </nav>
         <div className="adminSidebarBottom">
           <Link href="/incentives" target="_blank">查看前台 <ExternalArrow /></Link>
+          <Link href="/updates" target="_blank">查看新功能页 <ExternalArrow /></Link>
           <button onClick={logout}>退出登录</button>
         </div>
       </aside>
@@ -459,6 +569,65 @@ export function AdminIncentives() {
                 {!visibleSubmissions.length && <p className="adminEmpty">当前筛选条件下没有提交。</p>}
               </div>
             )}
+          </>
+        )}
+
+        {panel === "features" && (
+          <>
+            <header className="adminPageHeader">
+              <div><p>FEATURE PAGE CONTENT</p><h2>新功能页内容</h2></div>
+              <div className="featureAdminActions">
+                <span role="status">{featureMessage || "现有中英文内容已导入，可直接修改"}</span>
+                <button className="button buttonSecondary" type="button" onClick={addFeatureSection}>新增功能条目</button>
+                <button className="button buttonPrimary" type="button" disabled={featureSaving} onClick={() => void saveManagedFeatures()}>{featureSaving ? "保存中…" : "保存并同步前台"}</button>
+              </div>
+            </header>
+
+            <section className="featureAdminSummary">
+              <header>
+                <div><strong>本次重点</strong><small>管理顶部重点摘要，中文和英文同步保存</small></div>
+                <button className={`displayToggle ${featureContent.summary.visible ? "isPublic" : ""}`} type="button" onClick={() => updateFeatureSummary({ visible: !featureContent.summary.visible })}><span aria-hidden="true" />{featureContent.summary.visible ? "前台显示" : "前台隐藏"}</button>
+              </header>
+              <div className="featureLanguageGrid">
+                <div>
+                  <label><span>中文标题</span><input value={featureContent.summary.label_zh} onChange={(event) => updateFeatureSummary({ label_zh: event.target.value })} /></label>
+                  <label><span>中文分条（每行一条）</span><textarea rows={6} value={featureContent.summary.items_zh.join("\n")} onChange={(event) => updateFeatureSummary({ items_zh: event.target.value.split("\n") })} /></label>
+                </div>
+                <div>
+                  <label><span>English title</span><input value={featureContent.summary.label_en} onChange={(event) => updateFeatureSummary({ label_en: event.target.value })} /></label>
+                  <label><span>English bullets (one per line)</span><textarea rows={6} value={featureContent.summary.items_en.join("\n")} onChange={(event) => updateFeatureSummary({ items_en: event.target.value.split("\n") })} /></label>
+                </div>
+              </div>
+            </section>
+
+            <div className="featureAdminList">
+              {featureContent.sections.map((section, index) => (
+                <article key={section.id}>
+                  <header>
+                    <div><span>{String(index + 1).padStart(2, "0")}</span><strong>{section.title_zh || section.title_en || "未命名功能条目"}</strong></div>
+                    <div className="featureRowActions">
+                      <button type="button" disabled={index === 0} onClick={() => moveFeatureSection(section.id, -1)}>上移</button>
+                      <button type="button" disabled={index === featureContent.sections.length - 1} onClick={() => moveFeatureSection(section.id, 1)}>下移</button>
+                      <button className={section.visible ? "isVisible" : ""} type="button" onClick={() => updateFeatureSection(section.id, { visible: !section.visible })}>{section.visible ? "正在显示" : "已隐藏"}</button>
+                      <button className="danger" type="button" onClick={() => deleteFeatureSection(section)}>删除</button>
+                    </div>
+                  </header>
+                  <div className="featureLanguageGrid">
+                    <div>
+                      <label><span>中文标题</span><input value={section.title_zh} onChange={(event) => updateFeatureSection(section.id, { title_zh: event.target.value })} /></label>
+                      <label><span>中文描述</span><textarea rows={4} value={section.body_zh} onChange={(event) => updateFeatureSection(section.id, { body_zh: event.target.value })} /></label>
+                      <label><span>中文分条（每行一条）</span><textarea rows={7} value={section.items_zh.join("\n")} onChange={(event) => updateFeatureSection(section.id, { items_zh: event.target.value.split("\n") })} /></label>
+                    </div>
+                    <div>
+                      <label><span>English title</span><input value={section.title_en} onChange={(event) => updateFeatureSection(section.id, { title_en: event.target.value })} /></label>
+                      <label><span>English description</span><textarea rows={4} value={section.body_en} onChange={(event) => updateFeatureSection(section.id, { body_en: event.target.value })} /></label>
+                      <label><span>English bullets (one per line)</span><textarea rows={7} value={section.items_en.join("\n")} onChange={(event) => updateFeatureSection(section.id, { items_en: event.target.value.split("\n") })} /></label>
+                    </div>
+                  </div>
+                </article>
+              ))}
+              {!featureContent.sections.length && <p className="adminEmpty">还没有功能条目，请先新增一条再保存。</p>}
+            </div>
           </>
         )}
 
