@@ -116,8 +116,8 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
     menuLabel: "打开导航",
     nav: [
       { label: "主页", href: "#main" },
-      { label: "新功能", href: "/updates", kind: "feature" },
-      { label: "用户激励计划", href: "/incentives" },
+      { label: "新功能", href: "/updates" },
+      { label: "用户激励计划", href: "/incentives", kind: "feature" },
       {
         label: "Microsoft Store",
         href: microsoftStoreUrl,
@@ -274,8 +274,8 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
     menuLabel: "Open navigation",
     nav: [
       { label: "Home", href: "#main" },
-      { label: "What's new", href: "/en/updates", kind: "feature" },
-      { label: "Community rewards", href: "/en/incentives" },
+      { label: "What's new", href: "/en/updates" },
+      { label: "Community rewards", href: "/en/incentives", kind: "feature" },
       {
         label: "Microsoft Store",
         href: microsoftStoreUrl,
