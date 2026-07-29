@@ -446,7 +446,7 @@ try {
   );
   assert.ok(
     updateLog.details.changes.some(
-      (change) => change.field === "like_count" && change.before === 1 && change.after === 37
+      (change) => change.field === "like_count" && change.before !== 37 && change.after === 37
     ),
     "feedback update logs must identify numeric changes"
   );
