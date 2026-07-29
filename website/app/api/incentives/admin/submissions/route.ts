@@ -46,9 +46,16 @@ export async function PATCH(request: Request) {
       : undefined;
     const isFlagged = typeof body.is_flagged === "boolean" ? body.is_flagged : undefined;
     const isPublic = typeof body.is_public === "boolean" ? body.is_public : undefined;
+    const likeCount = typeof body.like_count === "number" && Number.isInteger(body.like_count) && body.like_count >= 0
+      ? body.like_count
+      : undefined;
+    const createdAt = typeof body.created_at === "string" && !Number.isNaN(Date.parse(body.created_at))
+      ? new Date(body.created_at).toISOString()
+      : undefined;
     if (!id || (nickname !== undefined && !nickname) || (title !== undefined && title.length < 4) ||
       (content !== undefined && content.length < 12) || (email !== undefined && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) ||
-      (!kind && nickname === undefined && email === undefined && title === undefined && content === undefined && !status && !reward && reply === undefined && isFlagged === undefined && isPublic === undefined)) {
+      (body.like_count !== undefined && likeCount === undefined) || (body.created_at !== undefined && createdAt === undefined) ||
+      (!kind && nickname === undefined && email === undefined && title === undefined && content === undefined && !status && !reward && reply === undefined && isFlagged === undefined && isPublic === undefined && likeCount === undefined && createdAt === undefined)) {
       return Response.json({ error: "Invalid update" }, { status: 400 });
     }
     const submission = await updateSubmission(id, {
@@ -61,7 +68,9 @@ export async function PATCH(request: Request) {
       ...(reward ? { reward_status: reward } : {}),
       ...(reply !== undefined ? { developer_reply: reply || null } : {}),
       ...(isFlagged !== undefined ? { is_flagged: isFlagged } : {}),
-      ...(isPublic !== undefined ? { is_public: status && status !== "accepted" ? false : isPublic } : {})
+      ...(isPublic !== undefined ? { is_public: status && status !== "accepted" ? false : isPublic } : {}),
+      ...(likeCount !== undefined ? { like_count: likeCount } : {}),
+      ...(createdAt !== undefined ? { created_at: createdAt } : {})
     });
     await safeRecordAccessEvent(request, {
       scope: "admin",
