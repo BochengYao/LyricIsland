@@ -81,7 +81,7 @@ export type FeatureContent = {
 export type AccessSeverity = "normal" | "warning" | "critical";
 
 export type AccessLogEntry = {
-  id: number;
+  id: number | string;
   scope: "public" | "admin";
   event_type: string;
   path: string;
