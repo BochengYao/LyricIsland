@@ -51,7 +51,7 @@ export default function EnglishRootLayout({
       <head>
         <link
           rel="preload"
-          href="/fonts/xiaolai-nav.woff2"
+          href="/fonts/xiaolai-nav-v2.woff2"
           as="font"
           type="font/woff2"
           crossOrigin="anonymous"
