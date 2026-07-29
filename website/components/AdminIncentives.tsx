@@ -16,6 +16,14 @@ import type {
 type AuthState = "checking" | "login" | "ready";
 type Panel = "submissions" | "previews" | "access";
 type SaveFeedback = { tone: "pending" | "success" | "error"; message: string };
+type BulkAction =
+  | ""
+  | `status:${SubmissionStatus}`
+  | `reward:${RewardStatus}`
+  | "flag:on"
+  | "flag:off"
+  | "public:on"
+  | "public:off";
 
 const statusLabels: Record<SubmissionStatus, string> = {
   pending: "待审阅",
@@ -47,6 +55,12 @@ function formatDate(value: string) {
   return new Date(value).toLocaleString("zh-CN", { hour12: false });
 }
 
+function toDateTimeLocal(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+}
+
 function deviceSummary(userAgent: string | null) {
   if (!userAgent) return "未知设备";
   const browser = userAgent.includes("Edg/") ? "Edge" : userAgent.includes("Chrome/") ? "Chrome" : userAgent.includes("Firefox/") ? "Firefox" : userAgent.includes("Safari/") ? "Safari" : "其他浏览器";
@@ -69,6 +83,10 @@ export function AdminIncentives() {
   const [panel, setPanel] = useState<Panel>("submissions");
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [savingId, setSavingId] = useState("");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkAction, setBulkAction] = useState<BulkAction>("");
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState("");
   const [saveFeedback, setSaveFeedback] = useState<Record<string, SaveFeedback>>({});
   const [editing, setEditing] = useState<IncentiveSubmission | null>(null);
   const [previewDateTbd, setPreviewDateTbd] = useState(false);
@@ -151,7 +169,9 @@ export function AdminIncentives() {
           reward_status: next.reward_status,
           developer_reply: next.developer_reply ?? "",
           is_flagged: next.is_flagged,
-          is_public: next.is_public
+          is_public: next.is_public,
+          like_count: next.like_count,
+          created_at: next.created_at
         })
       });
       const result = await response.json().catch(() => ({})) as { error?: string; submission?: IncentiveSubmission };
@@ -205,6 +225,63 @@ export function AdminIncentives() {
     () => submissions.filter((item) => item.status === "pending").length,
     [submissions]
   );
+
+  const allVisibleSelected = visibleSubmissions.length > 0 &&
+    visibleSubmissions.every((item) => selectedIds.includes(item.id));
+
+  function toggleSelection(id: string) {
+    setSelectedIds((ids) => ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id]);
+  }
+
+  function bulkPatch(action: BulkAction): Partial<IncentiveSubmission> {
+    if (action.startsWith("status:")) {
+      const status = action.slice(7) as SubmissionStatus;
+      return { status, ...(status === "accepted" ? {} : { is_public: false }) };
+    }
+    if (action.startsWith("reward:")) return { reward_status: action.slice(7) as RewardStatus };
+    if (action === "flag:on") return { is_flagged: true };
+    if (action === "flag:off") return { is_flagged: false };
+    if (action === "public:on") return { status: "accepted", is_public: true };
+    if (action === "public:off") return { is_public: false };
+    return {};
+  }
+
+  async function applyBulkAction() {
+    const targets = submissions.filter((item) => selectedIds.includes(item.id));
+    if (!bulkAction || !targets.length) return;
+    const patch = bulkPatch(bulkAction);
+    setBulkSaving(true);
+    setBulkMessage(`正在处理 ${targets.length} 条…`);
+    const results = await Promise.all(targets.map(async (item) => {
+      try {
+        const response = await fetch("/api/incentives/admin/submissions", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: item.id, ...patch })
+        });
+        const result = await response.json().catch(() => ({})) as { error?: string; submission?: IncentiveSubmission };
+        if (!response.ok || !result.submission) throw new Error(result.error ?? "更新失败");
+        return { id: item.id, submission: result.submission };
+      } catch {
+        return { id: item.id, submission: null };
+      }
+    }));
+    const updated = new Map(results.filter((result) => result.submission).map((result) => [result.id, result.submission!]));
+    setSubmissions((items) => items.map((item) => updated.get(item.id) ?? item));
+    setSaveFeedback((items) => ({
+      ...items,
+      ...Object.fromEntries(results.map((result) => [
+        result.id,
+        result.submission
+          ? { tone: "success", message: "批量更新成功" }
+          : { tone: "error", message: "批量更新失败" }
+      ]))
+    }));
+    const failed = results.length - updated.size;
+    setBulkMessage(failed ? `已更新 ${updated.size} 条，${failed} 条失败` : `已批量更新 ${updated.size} 条`);
+    setSelectedIds(results.filter((result) => !result.submission).map((result) => result.id));
+    setBulkSaving(false);
+  }
 
   const visibleLogs = useMemo(() => accessLogs.filter((item) =>
     (scopeFilter === "all" || item.scope === scopeFilter) &&
@@ -322,16 +399,39 @@ export function AdminIncentives() {
               </div>
             </header>
 
+            <section className="adminToolbar" style={{ flexWrap: "wrap", marginBottom: 18 }} aria-label="批量操作">
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700 }}>
+                <input
+                  type="checkbox"
+                  checked={allVisibleSelected}
+                  onChange={() => setSelectedIds((ids) => allVisibleSelected
+                    ? ids.filter((id) => !visibleSubmissions.some((item) => item.id === id))
+                    : [...new Set([...ids, ...visibleSubmissions.map((item) => item.id)])])}
+                />
+                全选当前 {visibleSubmissions.length} 条
+              </label>
+              <select value={bulkAction} onChange={(event) => setBulkAction(event.target.value as BulkAction)} aria-label="批量操作类型">
+                <option value="">选择批量操作</option>
+                <optgroup label="审阅状态">{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={`status:${value}`}>设为{label}</option>)}</optgroup>
+                <optgroup label="奖励状态">{Object.entries(rewardLabels).map(([value, label]) => <option key={value} value={`reward:${value}`}>奖励：{label}</option>)}</optgroup>
+                <optgroup label="管理"><option value="flag:on">添加红旗</option><option value="flag:off">取消红旗</option><option value="public:on">在前台展出</option><option value="public:off">从前台撤下</option></optgroup>
+              </select>
+              <button className="button buttonPrimary" type="button" disabled={!selectedIds.length || !bulkAction || bulkSaving} onClick={() => void applyBulkAction()}>{bulkSaving ? "处理中…" : `应用到 ${selectedIds.length} 条`}</button>
+              {selectedIds.length > 0 && <button className="button buttonSecondary" type="button" onClick={() => setSelectedIds([])}>取消选择</button>}
+              {bulkMessage && <span role="status" style={{ fontSize: 13, fontWeight: 700 }}>{bulkMessage}</span>}
+            </section>
+
             {viewMode === "table" ? (
               <div className="adminTableWrap">
                 <table className="adminDataTable feedbackTable">
-                  <thead><tr><th>反馈</th><th>提交者</th><th>状态</th><th>前台展出</th><th>更新时间</th><th>操作</th></tr></thead>
+                  <thead><tr><th>反馈</th><th>提交者</th><th>状态</th><th>前台展出</th><th>数据</th><th>更新时间</th><th>操作</th></tr></thead>
                   <tbody>{visibleSubmissions.map((item) => (
                     <tr className={item.is_flagged ? "isFlagged" : ""} key={item.id}>
-                      <td><div className="tableTitle"><span className={`kindBadge ${item.kind}`}>{item.kind === "feature" ? "新功能" : "Bug"}</span><strong>{item.title}</strong></div><p>{item.body}</p>{saveFeedback[item.id] && <small className={saveFeedback[item.id].tone}>{saveFeedback[item.id].message}</small>}</td>
+                      <td><div className="tableTitle"><input type="checkbox" checked={selectedIds.includes(item.id)} onChange={() => toggleSelection(item.id)} aria-label={`选择 ${item.title}`} /><span className={`kindBadge ${item.kind}`}>{item.kind === "feature" ? "新功能" : "Bug"}</span><strong>{item.title}</strong></div><p>{item.body}</p>{saveFeedback[item.id] && <small className={saveFeedback[item.id].tone}>{saveFeedback[item.id].message}</small>}</td>
                       <td><strong>@{item.nickname}</strong><a href={`mailto:${item.email}`}>{item.email}</a></td>
                       <td><select value={item.status} disabled={savingId === item.id} onChange={(event) => void quickUpdate(item, { status: event.target.value as SubmissionStatus, ...(event.target.value === "accepted" ? {} : { is_public: false }) })}>{Object.entries(statusLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></td>
                       <td><button className={`displayToggle ${item.is_public ? "isPublic" : ""}`} disabled={savingId === item.id} onClick={() => void quickUpdate(item, item.is_public ? { is_public: false } : { status: "accepted", is_public: true })} aria-pressed={item.is_public}><span aria-hidden="true" />{item.is_public ? "已展出" : "未展出"}</button></td>
+                      <td><strong>♥ {item.like_count}</strong><time style={{ display: "block", marginTop: 5 }}>{formatDate(item.created_at)}</time></td>
                       <td><time>{formatDate(item.updated_at)}</time></td>
                       <td><div className="tableActions"><button onClick={() => setEditing({ ...item })}>编辑</button><button className="danger" disabled={savingId === item.id} onClick={() => void removeSubmission(item)}>删除</button></div></td>
                     </tr>
@@ -343,7 +443,7 @@ export function AdminIncentives() {
               <div className="submissionQueue">
                 {visibleSubmissions.map((item) => (
                   <article className={`reviewCard ${item.is_flagged ? "isFlagged" : ""}`} key={item.id}>
-                    <header><div><span className={`kindBadge ${item.kind}`}>{item.kind === "feature" ? "新功能" : "Bug"}</span><time>{formatDate(item.created_at)}</time>{item.kind === "feature" && <span>♥ {item.like_count}</span>}</div><strong>{item.title}</strong></header>
+                    <header><div><input type="checkbox" checked={selectedIds.includes(item.id)} onChange={() => toggleSelection(item.id)} aria-label={`选择 ${item.title}`} /><span className={`kindBadge ${item.kind}`}>{item.kind === "feature" ? "新功能" : "Bug"}</span><time>{formatDate(item.created_at)}</time><span>♥ {item.like_count}</span></div><strong>{item.title}</strong></header>
                     <p className="reviewBody">{item.body}</p>
                     <div className="reviewIdentity"><span>@{item.nickname}</span><a href={`mailto:${item.email}`}>{item.email}</a></div>
                     {item.attachments.length > 0 && <div className="reviewAttachments">{item.attachments.map((attachment) => attachment.signedUrl ? <a href={attachment.signedUrl} target="_blank" rel="noreferrer" key={attachment.path}>{attachment.type.startsWith("video/") ? "视频" : "图片"} · {attachment.name} <ExternalArrow /></a> : <span key={attachment.path}>{attachment.name}</span>)}</div>}
@@ -395,6 +495,8 @@ export function AdminIncentives() {
               <label className="wide"><span>内容</span><textarea rows={7} value={editing.body} onChange={(event) => setEditing({ ...editing, body: event.target.value })} /></label>
               <label><span>审阅状态</span><select value={editing.status} onChange={(event) => setEditing({ ...editing, status: event.target.value as SubmissionStatus, ...(event.target.value === "accepted" ? {} : { is_public: false }) })}>{Object.entries(statusLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
               <label><span>奖励状态</span><select value={editing.reward_status} onChange={(event) => setEditing({ ...editing, reward_status: event.target.value as RewardStatus })}>{Object.entries(rewardLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
+              <label><span>点赞数</span><input type="number" min={0} step={1} value={editing.like_count} onChange={(event) => setEditing({ ...editing, like_count: Math.max(0, Math.trunc(Number(event.target.value) || 0)) })} /></label>
+              <label><span>提交时间</span><input type="datetime-local" value={toDateTimeLocal(editing.created_at)} onChange={(event) => { const date = new Date(event.target.value); if (!Number.isNaN(date.getTime())) setEditing({ ...editing, created_at: date.toISOString() }); }} /></label>
               <label className="wide"><span>开发者回复</span><textarea rows={4} value={editing.developer_reply ?? ""} onChange={(event) => setEditing({ ...editing, developer_reply: event.target.value })} /></label>
               <div className="editChecks wide"><label><input type="checkbox" checked={editing.is_public} onChange={(event) => setEditing({ ...editing, is_public: event.target.checked, ...(event.target.checked ? { status: "accepted" } : {}) })} />在前台展出</label><label><input type="checkbox" checked={editing.is_flagged} onChange={(event) => setEditing({ ...editing, is_flagged: event.target.checked })} />红旗标注</label></div>
             </div>

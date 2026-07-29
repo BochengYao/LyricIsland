@@ -317,7 +317,9 @@ try {
         reward_status: "pending",
         developer_reply: "Confirmed for the next release.",
         is_flagged: true,
-        is_public: true
+        is_public: true,
+        like_count: 37,
+        created_at: "2026-07-20T04:30:00.000Z"
       })
     })
   );
@@ -328,6 +330,8 @@ try {
   assert.equal(saveData.submission.developer_reply, "Confirmed for the next release.");
   assert.equal(saveData.submission.is_flagged, true);
   assert.equal(saveData.submission.is_public, true);
+  assert.equal(saveData.submission.like_count, 37);
+  assert.equal(saveData.submission.created_at, "2026-07-20T04:30:00.000Z");
   assert.equal(calls.length, 3, "saving a review must read, update and append an audit record");
 
   const pageAccessResponse = await api.fetch(

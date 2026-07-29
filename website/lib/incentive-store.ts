@@ -259,6 +259,8 @@ export async function updateSubmission(
     developer_reply?: string | null;
     is_flagged?: boolean;
     is_public?: boolean;
+    like_count?: number;
+    created_at?: string;
   }
 ) {
   const currentRows = await supabase<StoredSubmission[]>(
