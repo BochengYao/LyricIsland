@@ -34,6 +34,7 @@ type StoredSubmissionAudit = {
   kind: "feature" | "bug";
   nickname: string;
   title: string;
+  body: string;
   reviewer_note: string | null;
   created_at: string;
 };
@@ -179,10 +180,24 @@ export async function listAccessLogs() {
       `/rest/v1/release_previews?select=id,title_zh,title_en,body_zh,body_en,highlights_zh,created_at,published_at&version=eq.${encodeURIComponent(AUDIT_VERSION)}&order=created_at.desc&limit=300`
     ),
     query<StoredSubmissionAudit[]>(
-      "/rest/v1/incentive_submissions?select=id,kind,nickname,title,reviewer_note,created_at&order=created_at.desc&limit=300"
+      "/rest/v1/incentive_submissions?select=id,kind,nickname,title,body,reviewer_note,created_at&order=created_at.desc&limit=300"
     )
   ]);
-  const storedLogs = auditRows.map(toAccessLog);
+  const submissionsById = new Map(submissions.map((submission) => [submission.id, submission]));
+  const storedLogs = auditRows.map(toAccessLog).map((log) => {
+    const submissionId = typeof log.details.submissionId === "string" ? log.details.submissionId : "";
+    const submission = submissionsById.get(submissionId);
+    if (!submission || typeof log.details.submissionTitle === "string") return log;
+    return {
+      ...log,
+      details: {
+        ...log.details,
+        submissionTitle: submission.title,
+        submissionKind: submission.kind,
+        legacy: true
+      }
+    };
+  });
   const submissionLogs = submissions.map(toSubmissionLog);
   const logs = [...storedLogs, ...submissionLogs]
     .sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at))
@@ -261,7 +276,8 @@ function toSubmissionLog(row: StoredSubmissionAudit): AccessLogEntry {
       submissionId: row.id,
       kind: row.kind,
       nickname: row.nickname,
-      title: row.title
+      title: row.title,
+      body: row.body
     },
     created_at: row.created_at,
     acknowledged_at: null

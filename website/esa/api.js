@@ -574,6 +574,7 @@ async function updateSubmission(id, changes) {
   );
   const current = currentRows[0];
   if (!current) throw new Error("Submission not found");
+  const previous = toSubmission(current);
   const currentMeta = decodeReviewMeta(current.reviewer_note);
   const { developer_reply, is_flagged, is_public, ...storedChanges } = changes;
   const effectiveStatus = changes.status || current.status;
@@ -596,7 +597,7 @@ async function updateSubmission(id, changes) {
       })
     }
   );
-  return toSubmission(rows[0]);
+  return { submission: toSubmission(rows[0]), previous };
 }
 
 async function deleteSubmission(id) {
@@ -621,6 +622,7 @@ async function deleteSubmission(id) {
     method: "DELETE",
     headers: supabaseHeaders("return=representation")
   });
+  return toSubmission(current);
 }
 
 async function listAccessLogs() {
@@ -629,11 +631,28 @@ async function listAccessLogs() {
       `/rest/v1/release_previews?select=id,title_zh,title_en,body_zh,body_en,highlights_zh,created_at,published_at&version=eq.${encodeURIComponent(AUDIT_VERSION)}&order=created_at.desc&limit=300`
     ),
     supabase(
-      "/rest/v1/incentive_submissions?select=id,kind,nickname,title,reviewer_note,created_at&order=created_at.desc&limit=300"
+      "/rest/v1/incentive_submissions?select=id,kind,nickname,title,body,reviewer_note,created_at&order=created_at.desc&limit=300"
     )
   ]);
+  const submissionsById = new Map(submissions.map((submission) => [submission.id, submission]));
+  const storedLogs = auditRows.map(toAccessLog).map((log) => {
+    const submissionId = typeof log.details.submissionId === "string"
+      ? log.details.submissionId
+      : "";
+    const submission = submissionsById.get(submissionId);
+    if (!submission || typeof log.details.submissionTitle === "string") return log;
+    return {
+      ...log,
+      details: {
+        ...log.details,
+        submissionTitle: submission.title,
+        submissionKind: submission.kind,
+        legacy: true
+      }
+    };
+  });
   const logs = [
-    ...auditRows.map(toAccessLog),
+    ...storedLogs,
     ...submissions.map(toSubmissionLog)
   ]
     .sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at))
@@ -702,7 +721,8 @@ function toSubmissionLog(row) {
       submissionId: row.id,
       kind: row.kind,
       nickname: row.nickname,
-      title: row.title
+      title: row.title,
+      body: row.body
     },
     created_at: row.created_at,
     acknowledged_at: null
@@ -979,6 +999,31 @@ function handleLogout(request) {
   return json({ ok: true }, 200, { "Set-Cookie": clearAdminCookie() });
 }
 
+const AUDITED_SUBMISSION_FIELDS = [
+  "kind",
+  "nickname",
+  "email",
+  "title",
+  "body",
+  "status",
+  "reward_status",
+  "developer_reply",
+  "is_flagged",
+  "is_public",
+  "like_count",
+  "created_at"
+];
+
+function changedSubmissionFields(previous, submission) {
+  return AUDITED_SUBMISSION_FIELDS
+    .filter((field) => previous[field] !== submission[field])
+    .map((field) => ({
+      field,
+      before: previous[field] == null ? null : previous[field],
+      after: submission[field] == null ? null : submission[field]
+    }));
+}
+
 async function handleAdminSubmissions(request) {
   if (!(await isAdminRequest(request))) {
     if (request.method !== "GET") {
@@ -1007,15 +1052,41 @@ async function handleAdminSubmissions(request) {
       const body = await request.json();
       const id = typeof body.id === "string" ? body.id : "";
       if (!id) return jsonError("Invalid deletion");
-      await deleteSubmission(id);
-      await safeRecordAccessEvent(request, { scope: "admin", eventType: "submission_deleted", statusCode: 200, details: { submissionId: id } });
+      const deleted = await deleteSubmission(id);
+      await safeRecordAccessEvent(request, {
+        scope: "admin",
+        eventType: "submission_deleted",
+        statusCode: 200,
+        details: {
+          submissionId: id,
+          submissionTitle: deleted.title,
+          submissionKind: deleted.kind,
+          snapshot: {
+            title: deleted.title,
+            body: deleted.body,
+            nickname: deleted.nickname,
+            status: deleted.status,
+            reward_status: deleted.reward_status,
+            developer_reply: deleted.developer_reply,
+            like_count: deleted.like_count
+          }
+        }
+      });
       return json({ ok: true });
     } catch {
       return jsonError("删除失败", 500);
     }
   }
   if (request.method !== "PATCH") return jsonError("Method not allowed", 405);
-  if (!isSameOrigin(request)) return jsonError("Unauthorized", 401);
+  if (!isSameOrigin(request)) {
+    await safeRecordAccessEvent(request, {
+      scope: "admin",
+      eventType: "unauthorized_submission_update",
+      severity: "critical",
+      statusCode: 401
+    });
+    return jsonError("Unauthorized", 401);
+  }
   try {
     const body = await request.json();
     const statuses = ["pending", "reviewing", "accepted", "declined"];
@@ -1046,7 +1117,7 @@ async function handleAdminSubmissions(request) {
       (!kind && nickname === undefined && email === undefined && title === undefined && content === undefined && !status && !reward && reply === undefined && isFlagged === undefined && isPublic === undefined && likeCount === undefined && createdAt === undefined)) {
       return jsonError("Invalid update");
     }
-    const submission = await updateSubmission(id, {
+    const { submission, previous } = await updateSubmission(id, {
       ...(kind ? { kind } : {}),
       ...(nickname !== undefined ? { nickname } : {}),
       ...(email !== undefined ? { email } : {}),
@@ -1060,7 +1131,17 @@ async function handleAdminSubmissions(request) {
       ...(likeCount !== undefined ? { like_count: likeCount } : {}),
       ...(createdAt !== undefined ? { created_at: createdAt } : {})
     });
-    await safeRecordAccessEvent(request, { scope: "admin", eventType: "submission_updated", statusCode: 200, details: { submissionId: id } });
+    await safeRecordAccessEvent(request, {
+      scope: "admin",
+      eventType: "submission_updated",
+      statusCode: 200,
+      details: {
+        submissionId: id,
+        submissionTitle: submission.title,
+        submissionKind: submission.kind,
+        changes: changedSubmissionFields(previous, submission)
+      }
+    });
     return json({ submission });
   } catch {
     return jsonError("更新失败", 500);
@@ -1105,7 +1186,12 @@ async function handleAdminAccessLogs(request) {
       return jsonError("操作失败", 500);
     }
   }
-  await safeRecordAccessEvent(request, { scope: "admin", eventType: "unauthorized_alert_acknowledge", severity: "warning", statusCode: 401 });
+  await safeRecordAccessEvent(request, {
+    scope: "admin",
+    eventType: "unauthorized_alert_acknowledge",
+    severity: isSameOrigin(request) ? "warning" : "critical",
+    statusCode: 401
+  });
   return jsonError("Unauthorized", 401);
 }
 

@@ -110,7 +110,7 @@ globalThis.fetch = async (input, init = {}) => {
       }
     ]);
   }
-  if (url.includes("incentive_submissions?select=id,kind,nickname,title,reviewer_note,created_at")) {
+  if (url.includes("incentive_submissions?select=id,kind,nickname,title,body,reviewer_note,created_at")) {
     return response([storedSubmission(), ...insertedSubmissions]);
   }
   if (url.includes("release_previews?select=*&status=eq.published")) {
@@ -434,6 +434,22 @@ try {
   );
   assert.ok(successfulLoginLog?.created_at, "successful admin logins must retain their login time");
   assert.equal(successfulLoginLog.country, "CN");
+  const updateLog = accessLogData.logs.find((item) => item.event_type === "submission_updated");
+  assert.equal(updateLog.details.submissionTitle, "A useful suggestion");
+  assert.ok(
+    updateLog.details.changes.some(
+      (change) => change.field === "developer_reply" &&
+        change.before === "Planned for the next version." &&
+        change.after === "Confirmed for the next release."
+    ),
+    "feedback update logs must retain field-level before and after values"
+  );
+  assert.ok(
+    updateLog.details.changes.some(
+      (change) => change.field === "like_count" && change.before === 1 && change.after === 37
+    ),
+    "feedback update logs must identify numeric changes"
+  );
 
   const refreshedPublicResponse = await api.fetch(
     new Request("https://lyric-island.top/api/incentives/public")

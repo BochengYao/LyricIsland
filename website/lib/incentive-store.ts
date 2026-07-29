@@ -323,6 +323,7 @@ export async function updateSubmission(
   );
   const current = currentRows[0];
   if (!current) throw new Error("Submission not found");
+  const previous = toSubmission(current);
   const currentMeta = decodeReviewMeta(current.reviewer_note);
   const { developer_reply, is_flagged, is_public, ...storedChanges } = changes;
   const effectiveStatus = changes.status ?? current.status;
@@ -345,7 +346,7 @@ export async function updateSubmission(
       })
     }
   );
-  return toSubmission(rows[0]);
+  return { submission: toSubmission(rows[0]), previous };
 }
 
 export async function deleteSubmission(id: string) {
@@ -376,6 +377,7 @@ export async function deleteSubmission(id: string) {
     `/rest/v1/incentive_submissions?id=eq.${encodeURIComponent(id)}`,
     { method: "DELETE", headers: headers("return=representation") }
   );
+  return toSubmission(current);
 }
 
 export async function listReleasePreviews() {
