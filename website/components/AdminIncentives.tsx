@@ -71,6 +71,119 @@ const eventLabels: Record<string, string> = {
   unauthorized_alert_acknowledge: "未授权确认提醒"
 };
 
+const auditFieldLabels: Record<string, string> = {
+  kind: "反馈类型",
+  nickname: "提交者昵称",
+  email: "联系邮箱",
+  title: "标题",
+  body: "反馈内容",
+  status: "审阅状态",
+  reward_status: "奖励状态",
+  developer_reply: "开发者回复",
+  is_flagged: "红旗标注",
+  is_public: "前台展示",
+  like_count: "点赞数",
+  created_at: "提交时间"
+};
+
+const eventDescriptions: Record<string, string> = {
+  page_view: "记录一次页面访问",
+  login_succeeded: "管理员密码校验通过并建立登录会话",
+  login_failed: "管理员密码校验失败，未建立登录会话",
+  cross_origin_login_attempt: "其他站点尝试向后台登录接口发起请求",
+  security_alerts_acknowledged: "管理员已确认当前异常提醒",
+  unauthorized_submission_delete: "未通过会话或来源校验的删除请求",
+  unauthorized_submission_update: "未通过会话或来源校验的修改请求",
+  unauthorized_alert_acknowledge: "未登录状态尝试确认异常提醒"
+};
+
+type AuditChange = { field: string; before: unknown; after: unknown };
+
+function auditText(field: string, value: unknown) {
+  if (value === null || value === undefined || value === "") return "空";
+  if (field === "status" && typeof value === "string") {
+    return statusLabels[value as SubmissionStatus] ?? value;
+  }
+  if (field === "reward_status" && typeof value === "string") {
+    return rewardLabels[value as RewardStatus] ?? value;
+  }
+  if (field === "kind") return value === "bug" ? "Bug" : "新功能";
+  if (field === "is_flagged") return value ? "已标注" : "未标注";
+  if (field === "is_public") return value ? "正在展出" : "未展出";
+  if (field === "created_at" && typeof value === "string") return formatDate(value);
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+function detailString(details: Record<string, unknown>, key: string) {
+  return typeof details[key] === "string" ? details[key] : "";
+}
+
+function AccessEventDetail({ item }: { item: AccessLogEntry }) {
+  const title = detailString(item.details, "submissionTitle");
+  const kind = detailString(item.details, "submissionKind");
+  const changes = Array.isArray(item.details.changes)
+    ? item.details.changes.filter((change): change is AuditChange =>
+        Boolean(change) && typeof change === "object" && "field" in change
+      )
+    : [];
+
+  if (item.event_type === "submission_updated") {
+    return (
+      <div className="accessEventDetail">
+        <strong>{kind === "bug" ? "Bug" : "建议"} · {title || `ID ${detailString(item.details, "submissionId").slice(0, 8)}`}</strong>
+        {changes.length ? (
+          <div className="auditChanges">
+            {changes.map((change, index) => {
+              const before = auditText(change.field, change.before);
+              const after = auditText(change.field, change.after);
+              return (
+                <div className="auditChange" key={`${change.field}-${index}`}>
+                  <b>{auditFieldLabels[change.field] ?? change.field}</b>
+                  <span title={before}>{before}</span>
+                  <i aria-hidden="true">→</i>
+                  <span className="after" title={after}>{after}</span>
+                </div>
+              );
+            })}
+          </div>
+        ) : <small>旧日志未保存字段差异；后续更新会显示修改前后的具体内容。</small>}
+      </div>
+    );
+  }
+
+  if (item.event_type === "submission_created") {
+    return (
+      <div className="accessEventDetail">
+        <strong>{detailString(item.details, "kind") === "bug" ? "Bug" : "建议"} · {detailString(item.details, "title")}</strong>
+        <p title={detailString(item.details, "body")}>{detailString(item.details, "body") || "未记录反馈正文"}</p>
+        <small>提交者：@{detailString(item.details, "nickname") || "未知"}</small>
+      </div>
+    );
+  }
+
+  if (item.event_type === "submission_deleted") {
+    const snapshot = item.details.snapshot && typeof item.details.snapshot === "object"
+      ? item.details.snapshot as Record<string, unknown>
+      : {};
+    return (
+      <div className="accessEventDetail">
+        <strong>已删除 · {title || auditText("title", snapshot.title)}</strong>
+        <p title={auditText("body", snapshot.body)}>{auditText("body", snapshot.body)}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="accessEventDetail">
+      <strong>{eventDescriptions[item.event_type] ?? "系统审计事件"}</strong>
+      {item.event_type === "page_view" && typeof item.details.authenticated === "boolean" && (
+        <small>{item.details.authenticated ? "访问时后台会话有效" : "访问时未登录后台"}</small>
+      )}
+    </div>
+  );
+}
+
 function formatDate(value: string) {
   return new Date(value).toLocaleString("zh-CN", { hour12: false });
 }
@@ -129,6 +242,7 @@ export function AdminIncentives() {
   const [statusFilter, setStatusFilter] = useState<"all" | SubmissionStatus>("all");
   const [severityFilter, setSeverityFilter] = useState<"all" | AccessSeverity>("all");
   const [scopeFilter, setScopeFilter] = useState<"all" | "public" | "admin">("all");
+  const [eventFilter, setEventFilter] = useState("all");
   const [panel, setPanel] = useState<Panel>("submissions");
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [savingId, setSavingId] = useState("");
@@ -348,10 +462,17 @@ export function AdminIncentives() {
     }
   }
 
+  const eventOptions = useMemo(
+    () => Array.from(new Set(accessLogs.map((item) => item.event_type)))
+      .sort((left, right) => (eventLabels[left] ?? left).localeCompare(eventLabels[right] ?? right, "zh-CN")),
+    [accessLogs]
+  );
+
   const visibleLogs = useMemo(() => accessLogs.filter((item) =>
     (scopeFilter === "all" || item.scope === scopeFilter) &&
-    (severityFilter === "all" || item.severity === severityFilter)
-  ), [accessLogs, scopeFilter, severityFilter]);
+    (severityFilter === "all" || item.severity === severityFilter) &&
+    (eventFilter === "all" || item.event_type === eventFilter)
+  ), [accessLogs, scopeFilter, severityFilter, eventFilter]);
 
   async function acknowledgeAlerts() {
     const response = await fetch("/api/incentives/admin/access-logs", { method: "PATCH" });
@@ -693,9 +814,37 @@ export function AdminIncentives() {
 
         {panel === "access" && (
           <>
-            <header className="adminPageHeader"><div><p>ACCESS AUDIT</p><h2>访问日志</h2></div><div className="adminFilters"><select value={scopeFilter} onChange={(event) => setScopeFilter(event.target.value as typeof scopeFilter)}><option value="all">前后台全部</option><option value="public">仅前台</option><option value="admin">仅后台</option></select><select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value as typeof severityFilter)}><option value="all">全部级别</option><option value="normal">正常</option><option value="warning">异常</option><option value="critical">高风险</option></select></div></header>
+            <header className="adminPageHeader">
+              <div><p>ACCESS AUDIT</p><h2>访问日志</h2></div>
+              <div className="adminFilters accessFilters">
+                <label><span>访问事件</span><select value={eventFilter} onChange={(event) => setEventFilter(event.target.value)}><option value="all">全部事件</option>{eventOptions.map((eventType) => <option value={eventType} key={eventType}>{eventLabels[eventType] ?? eventType}</option>)}</select></label>
+                <label><span>访问范围</span><select value={scopeFilter} onChange={(event) => setScopeFilter(event.target.value as typeof scopeFilter)}><option value="all">前后台全部</option><option value="public">仅前台</option><option value="admin">仅后台</option></select></label>
+                <label><span>风险级别</span><select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value as typeof severityFilter)}><option value="all">全部级别</option><option value="normal">正常</option><option value="warning">异常</option><option value="critical">高风险</option></select></label>
+              </div>
+            </header>
             <div className="accessSummary"><div><strong>{accessLogs.filter((item) => item.scope === "public").length}</strong><span>前台记录</span></div><div><strong>{accessLogs.filter((item) => item.scope === "admin").length}</strong><span>后台记录</span></div><div className={unreadAlerts ? "hasAlert" : ""}><strong>{unreadAlerts}</strong><span>未确认异常</span></div></div>
-            <div className="adminTableWrap"><table className="adminDataTable accessTable"><thead><tr><th>时间 / 级别</th><th>访问事件</th><th>路径</th><th>访客</th><th>设备与来源</th></tr></thead><tbody>{visibleLogs.map((item) => <tr className={`severity-${item.severity}`} key={item.id}><td><time>{formatDate(item.created_at)}</time><span className={`severityBadge ${item.severity}`}>{item.severity === "critical" ? "高风险" : item.severity === "warning" ? "异常" : "正常"}{item.acknowledged_at ? " · 已确认" : ""}</span></td><td><strong>{eventLabels[item.event_type] ?? item.event_type}</strong><small>{item.scope === "admin" ? "后台" : "前台"} · {item.method} {item.status_code ?? "—"}</small></td><td><code>{item.path}</code></td><td><code title={item.visitor_hash}>{item.visitor_hash.slice(0, 12)}</code><small>{item.country ?? "未知地区"}</small></td><td><strong>{deviceSummary(item.user_agent)}</strong><small title={item.referrer ?? undefined}>{item.referrer ? `来源：${item.referrer}` : "直接访问"}</small></td></tr>)}</tbody></table>{!visibleLogs.length && <p className="adminEmpty">当前筛选条件下没有访问记录。</p>}</div>
+            <section className="severityRules" aria-label="异常事件判定规则">
+              <div><span className="severityBadge">正常</span><strong>合法成功请求</strong><p>普通页面访问、用户提交反馈、登录成功，以及已登录管理员的查看、更新和删除操作。</p></div>
+              <div><span className="severityBadge warning">异常</span><strong>校验失败，暂未确认恶意</strong><p>密码错误，或同站点请求缺少有效管理员会话。可能是登录过期或误操作，需要留意重复频率。</p></div>
+              <div><span className="severityBadge critical">高风险</span><strong>明确跨站或越权特征</strong><p>外部来源向后台登录、修改或删除接口发起请求，具备跨站请求或主动探测特征，应优先检查。</p></div>
+            </section>
+            <div className="accessResultMeta">当前显示 <strong>{visibleLogs.length}</strong> / {accessLogs.length} 条；“未确认异常”仅统计异常和高风险事件。</div>
+            <div className="adminTableWrap">
+              <table className="adminDataTable accessTable">
+                <colgroup><col className="accessTimeColumn" /><col className="accessEventColumn" /><col className="accessDetailColumn" /><col className="accessVisitorColumn" /><col className="accessDeviceColumn" /></colgroup>
+                <thead><tr><th>时间 / 级别</th><th>访问事件 / 接口</th><th>具体内容</th><th>访客</th><th>设备与来源</th></tr></thead>
+                <tbody>{visibleLogs.map((item) => (
+                  <tr className={`severity-${item.severity}`} key={item.id}>
+                    <td><time>{formatDate(item.created_at)}</time><span className={`severityBadge ${item.severity}`} title={item.severity === "critical" ? "明确跨站或越权特征" : item.severity === "warning" ? "校验失败，暂未确认恶意" : "合法成功请求"}>{item.severity === "critical" ? "高风险" : item.severity === "warning" ? "异常" : "正常"}{item.acknowledged_at ? " · 已确认" : ""}</span></td>
+                    <td><strong>{eventLabels[item.event_type] ?? item.event_type}</strong><code title={item.path}>{item.path}</code><small>{item.scope === "admin" ? "后台" : "前台"} · {item.method} {item.status_code ?? "—"}</small></td>
+                    <td><AccessEventDetail item={item} /></td>
+                    <td><code title={item.visitor_hash}>{item.visitor_hash.slice(0, 12)}</code><small>{item.country ?? "未知地区"}</small></td>
+                    <td><strong>{deviceSummary(item.user_agent)}</strong><small title={item.referrer ?? undefined}>{item.referrer ? `来源：${item.referrer}` : "直接访问"}</small></td>
+                  </tr>
+                ))}</tbody>
+              </table>
+              {!visibleLogs.length && <p className="adminEmpty">当前筛选条件下没有访问记录。</p>}
+            </div>
           </>
         )}
       </main>

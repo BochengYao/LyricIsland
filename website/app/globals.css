@@ -3866,12 +3866,155 @@ button.danger,
 .accessSummary span { color: var(--muted); font-size: 12px; font-weight: 700; }
 .accessSummary .hasAlert { border-color: #dc5f52; background: #fff1ee; color: #a82620; }
 
-.accessTable { min-width: 1080px; }
+.accessFilters label {
+  display: grid;
+  gap: 4px;
+}
+
+.accessFilters label > span {
+  padding-left: 3px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.accessFilters select {
+  min-width: 136px;
+  min-height: 38px;
+  padding: 0 34px 0 11px;
+  font-size: 12px;
+}
+
+.accessFilters label:first-child select { min-width: 170px; }
+
+.severityRules {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: -4px 0 14px;
+}
+
+.severityRules > div {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fafafa;
+}
+
+.severityRules .severityBadge { margin: 0; }
+.severityRules strong { font-size: 11px; }
+.severityRules p {
+  grid-column: 1 / -1;
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.accessResultMeta {
+  margin: 0 2px 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.accessResultMeta strong { color: var(--charcoal); }
+
+.accessTable { min-width: 0; }
+.accessTable .accessTimeColumn { width: 14%; }
+.accessTable .accessEventColumn { width: 18%; }
+.accessTable .accessDetailColumn { width: 34%; }
+.accessTable .accessVisitorColumn { width: 12%; }
+.accessTable .accessDeviceColumn { width: 22%; }
 .accessTable td:first-child { white-space: nowrap; }
 .accessTable code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 11px; }
-.accessTable td:nth-child(3) code { display: block; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.accessTable td:nth-child(2) > code {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  margin-top: 5px;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .accessTable tr.severity-warning td:first-child { box-shadow: inset 3px 0 #e2a52b; }
 .accessTable tr.severity-critical td:first-child { box-shadow: inset 3px 0 #d9483e; }
+
+.accessEventDetail {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.accessEventDetail > strong {
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.accessEventDetail > p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.accessEventDetail > small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.auditChanges {
+  display: grid;
+  gap: 3px;
+}
+
+.auditChange {
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr) 12px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 4px 6px;
+  border-radius: 5px;
+  background: #f5f6f7;
+  font-size: 10px;
+}
+
+.auditChange b {
+  overflow: hidden;
+  color: #535c65;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.auditChange span {
+  overflow: hidden;
+  color: #7a7f84;
+  text-decoration: line-through;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.auditChange i {
+  color: #92979c;
+  font-style: normal;
+  text-align: center;
+}
+
+.auditChange span.after {
+  color: #176b45;
+  font-weight: 750;
+  text-decoration: none;
+}
 
 .severityBadge {
   display: block;
@@ -4760,6 +4903,8 @@ button.danger,
   }
 
   .accessSummary { grid-template-columns: 1fr; }
+  .severityRules { grid-template-columns: 1fr; }
+  .accessTable { min-width: 920px; }
 
   .editFormGrid { grid-template-columns: 1fr; }
   .editFormGrid .wide { grid-column: auto; }
