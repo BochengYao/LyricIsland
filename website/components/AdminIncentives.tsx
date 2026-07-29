@@ -62,6 +62,7 @@ const eventLabels: Record<string, string> = {
   login_succeeded: "后台登录成功",
   login_failed: "后台登录失败",
   cross_origin_login_attempt: "跨站登录尝试",
+  submission_created: "新反馈提交",
   submission_updated: "更新反馈",
   submission_deleted: "删除反馈",
   security_alerts_acknowledged: "确认安全提醒",
@@ -97,6 +98,20 @@ function deviceSummary(userAgent: string | null) {
   const browser = userAgent.includes("Edg/") ? "Edge" : userAgent.includes("Chrome/") ? "Chrome" : userAgent.includes("Firefox/") ? "Firefox" : userAgent.includes("Safari/") ? "Safari" : "其他浏览器";
   const system = userAgent.includes("Windows") ? "Windows" : userAgent.includes("Android") ? "Android" : userAgent.includes("iPhone") || userAgent.includes("iPad") ? "iOS" : userAgent.includes("Mac OS") ? "macOS" : "未知系统";
   return `${system} · ${browser}`;
+}
+
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit,
+  timeoutMs = 15_000
+) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    window.clearTimeout(timeout);
+  }
 }
 
 export function AdminIncentives() {
@@ -289,43 +304,48 @@ export function AdminIncentives() {
     const patch = action === "delete" ? {} : bulkPatch(action);
     setBulkSaving(true);
     setBulkMessage(action === "delete" ? `正在删除 ${targets.length} 条…` : `正在处理 ${targets.length} 条…`);
-    const results = await Promise.all(targets.map(async (item) => {
-      try {
-        const response = await fetch("/api/incentives/admin/submissions", {
-          method: action === "delete" ? "DELETE" : "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: item.id, ...(action === "delete" ? {} : patch) })
-        });
-        const result = await response.json().catch(() => ({})) as { error?: string; submission?: IncentiveSubmission };
-        if (!response.ok || (action !== "delete" && !result.submission)) throw new Error(result.error ?? (action === "delete" ? "删除失败" : "更新失败"));
-        return { id: item.id, success: true, submission: result.submission };
-      } catch {
-        return { id: item.id, success: false, submission: undefined };
-      }
-    }));
-    const successfulIds = new Set(results.filter((result) => result.success).map((result) => result.id));
-    if (action === "delete") {
-      setSubmissions((items) => items.filter((item) => !successfulIds.has(item.id)));
-      setSaveFeedback((items) => Object.fromEntries(Object.entries(items).filter(([id]) => !successfulIds.has(id))));
-    } else {
-      const updated = new Map(results.filter((result) => result.submission).map((result) => [result.id, result.submission!]));
-      setSubmissions((items) => items.map((item) => updated.get(item.id) ?? item));
-      setSaveFeedback((items) => ({
-        ...items,
-        ...Object.fromEntries(results.map((result) => [
-          result.id,
-          result.success
-            ? { tone: "success", message: "批量更新成功" }
-            : { tone: "error", message: "批量更新失败" }
-        ]))
+    try {
+      const results = await Promise.all(targets.map(async (item) => {
+        try {
+          const response = await fetchWithTimeout("/api/incentives/admin/submissions", {
+            method: action === "delete" ? "DELETE" : "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: item.id, ...(action === "delete" ? {} : patch) })
+          });
+          const result = await response.json().catch(() => ({})) as { error?: string; submission?: IncentiveSubmission };
+          if (!response.ok || (action !== "delete" && !result.submission)) throw new Error(result.error ?? (action === "delete" ? "删除失败" : "更新失败"));
+          return { id: item.id, success: true, submission: result.submission };
+        } catch {
+          return { id: item.id, success: false, submission: undefined };
+        }
       }));
+      const successfulIds = new Set(results.filter((result) => result.success).map((result) => result.id));
+      if (action === "delete") {
+        setSubmissions((items) => items.filter((item) => !successfulIds.has(item.id)));
+        setSaveFeedback((items) => Object.fromEntries(Object.entries(items).filter(([id]) => !successfulIds.has(id))));
+      } else {
+        const updated = new Map(results.filter((result) => result.submission).map((result) => [result.id, result.submission!]));
+        setSubmissions((items) => items.map((item) => updated.get(item.id) ?? item));
+        setSaveFeedback((items) => ({
+          ...items,
+          ...Object.fromEntries(results.map((result) => [
+            result.id,
+            result.success
+              ? { tone: "success", message: "批量更新成功" }
+              : { tone: "error", message: "批量更新失败或请求超时" }
+          ]))
+        }));
+      }
+      const succeeded = successfulIds.size;
+      const failed = results.length - succeeded;
+      const verb = action === "delete" ? "删除" : "更新";
+      setBulkMessage(failed ? `已${verb} ${succeeded} 条，${failed} 条失败或超时` : `已批量${verb} ${succeeded} 条`);
+      setSelectedIds(results.filter((result) => !result.success).map((result) => result.id));
+    } catch {
+      setBulkMessage("批量操作失败，请重试");
+    } finally {
+      setBulkSaving(false);
     }
-    const succeeded = successfulIds.size;
-    const failed = results.length - succeeded;
-    const verb = action === "delete" ? "删除" : "更新";
-    setBulkMessage(failed ? `已${verb} ${succeeded} 条，${failed} 条失败` : `已批量${verb} ${succeeded} 条`);
-    setSelectedIds(results.filter((result) => !result.success).map((result) => result.id));
-    setBulkSaving(false);
   }
 
   const visibleLogs = useMemo(() => accessLogs.filter((item) =>

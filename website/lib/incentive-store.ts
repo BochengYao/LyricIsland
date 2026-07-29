@@ -12,6 +12,7 @@ import {
   defaultFeatureContent,
   sanitizeFeatureContent
 } from "@/data/feature-content";
+import type { AccessEventSource } from "@/lib/access-log";
 
 type SupabaseConfig = {
   url: string;
@@ -34,31 +35,64 @@ const FEATURE_CONTENT_VERSION = "__FEATURE_CONTENT_V1__";
 
 function decodeReviewMeta(value: string | null | undefined) {
   if (!value?.startsWith(REVIEW_META_PREFIX)) {
-    return { developer_reply: value || null, is_flagged: false, is_public: false };
+    return {
+      developer_reply: value || null,
+      is_flagged: false,
+      is_public: false,
+      source: null as AccessEventSource | null
+    };
   }
   try {
     const parsed = JSON.parse(value.slice(REVIEW_META_PREFIX.length)) as Record<string, unknown>;
+    const submitted = parsed.submitted && typeof parsed.submitted === "object"
+      ? parsed.submitted as Record<string, unknown>
+      : null;
     return {
       developer_reply: typeof parsed.reply === "string" && parsed.reply ? parsed.reply : null,
       is_flagged: parsed.flagged === true,
-      is_public: parsed.public === true
+      is_public: parsed.public === true,
+      source: submitted && typeof submitted.visitor_hash === "string"
+        ? {
+            visitor_hash: submitted.visitor_hash,
+            country: typeof submitted.country === "string" ? submitted.country : null,
+            user_agent: typeof submitted.user_agent === "string" ? submitted.user_agent : null,
+            referrer: typeof submitted.referrer === "string" ? submitted.referrer : null
+          }
+        : null
     };
   } catch {
-    return { developer_reply: null, is_flagged: false, is_public: false };
+    return {
+      developer_reply: null,
+      is_flagged: false,
+      is_public: false,
+      source: null as AccessEventSource | null
+    };
   }
 }
 
-function encodeReviewMeta(meta: { developer_reply: string | null; is_flagged: boolean; is_public: boolean }) {
+function encodeReviewMeta(meta: {
+  developer_reply: string | null;
+  is_flagged: boolean;
+  is_public: boolean;
+  source: AccessEventSource | null;
+}) {
   return `${REVIEW_META_PREFIX}${JSON.stringify({
     reply: meta.developer_reply ?? "",
     flagged: meta.is_flagged,
-    public: meta.is_public
+    public: meta.is_public,
+    submitted: meta.source
   })}`;
 }
 
 function toSubmission(row: StoredSubmission): IncentiveSubmission {
   const { reviewer_note, ...submission } = row;
-  return { ...submission, ...decodeReviewMeta(reviewer_note) };
+  const meta = decodeReviewMeta(reviewer_note);
+  return {
+    ...submission,
+    developer_reply: meta.developer_reply,
+    is_flagged: meta.is_flagged,
+    is_public: meta.is_public
+  };
 }
 
 function getConfig(): SupabaseConfig {
@@ -147,13 +181,23 @@ export async function createSubmission(input: {
   title: string;
   body: string;
   attachments: SubmissionAttachment[];
+  source?: AccessEventSource | null;
 }) {
+  const { source = null, ...submission } = input;
   const rows = await supabase<StoredSubmission[]>(
     "/rest/v1/incentive_submissions",
     {
       method: "POST",
       headers: headers("return=representation"),
-      body: JSON.stringify(input)
+      body: JSON.stringify({
+        ...submission,
+        reviewer_note: encodeReviewMeta({
+          developer_reply: null,
+          is_flagged: false,
+          is_public: false,
+          source
+        })
+      })
     }
   );
   return toSubmission(rows[0]);
@@ -299,7 +343,8 @@ export async function updateSubmission(
           is_flagged: is_flagged !== undefined ? is_flagged : currentMeta.is_flagged,
           is_public: effectiveStatus === "accepted"
             ? (is_public !== undefined ? is_public : currentMeta.is_public)
-            : false
+            : false,
+          source: currentMeta.source
         }),
         updated_at: new Date().toISOString()
       })
@@ -340,9 +385,9 @@ export async function deleteSubmission(id: string) {
 
 export async function listReleasePreviews() {
   const rows = await supabase<ReleasePreview[]>(
-    "/rest/v1/release_previews?select=*&order=created_at.desc&limit=50"
+    "/rest/v1/release_previews?select=*&version=not.in.(__FEATURE_CONTENT_V1__,__AUDIT_LOG_V1__)&order=created_at.desc&limit=50"
   );
-  return rows.filter((row) => row.version !== FEATURE_CONTENT_VERSION);
+  return rows.filter((row) => !row.version.startsWith("__"));
 }
 
 export async function createReleasePreview(

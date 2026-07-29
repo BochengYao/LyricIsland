@@ -36,7 +36,8 @@ const calls = [];
 let reviewerNote = '[[lyric-island-review:v1]]{"reply":"Planned for the next version.","flagged":false,"public":true}';
 let submissionStatus = "accepted";
 let rewardStatus = "not_eligible";
-let accessLogs = [];
+let auditRows = [];
+let insertedSubmissions = [];
 let featureRow = null;
 
 function storedSubmission() {
@@ -74,26 +75,6 @@ function response(data, status = 200) {
 globalThis.fetch = async (input, init = {}) => {
   const url = String(input);
   calls.push({ url, init });
-  if (url.endsWith("/rest/v1/access_logs") && init.method === "POST") {
-    const body = JSON.parse(init.body);
-    accessLogs.unshift({
-      id: accessLogs.length + 1,
-      ...body,
-      created_at: "2026-07-22T00:00:00.000Z",
-      acknowledged_at: null
-    });
-    return response([]);
-  }
-  if (url.includes("/rest/v1/access_logs?select=*")) {
-    return response(accessLogs);
-  }
-  if (url.includes("/rest/v1/access_logs?severity=in.") && init.method === "PATCH") {
-    accessLogs = accessLogs.map((item) => item.severity === "normal" ? item : {
-      ...item,
-      acknowledged_at: "2026-07-22T00:01:00.000Z"
-    });
-    return response([]);
-  }
   if (url.includes("/rest/v1/incentive_likes?")) {
     return response([{ submission_id: "11111111-1111-4111-8111-111111111111" }]);
   }
@@ -120,8 +101,14 @@ globalThis.fetch = async (input, init = {}) => {
       }
     ]);
   }
+  if (url.includes("incentive_submissions?select=id,kind,nickname,title,reviewer_note,created_at")) {
+    return response([storedSubmission(), ...insertedSubmissions]);
+  }
   if (url.includes("release_previews?select=*&status=eq.published")) {
     return response([]);
+  }
+  if (url.includes("release_previews?select=id,title_zh,title_en,body_zh,body_en,highlights_zh,created_at,published_at")) {
+    return response(auditRows);
   }
   if (url.includes(`release_previews?select=*&version=eq.${encodeURIComponent("__FEATURE_CONTENT_V1__")}`)) {
     return response(featureRow ? [featureRow] : []);
@@ -159,7 +146,16 @@ globalThis.fetch = async (input, init = {}) => {
   }
   if (url.endsWith("/rest/v1/incentive_submissions") && init.method === "POST") {
     const body = JSON.parse(init.body);
-    return response([{ ...body, status: "pending" }], 201);
+    const row = {
+      ...body,
+      status: "pending",
+      reward_status: "not_eligible",
+      like_count: 0,
+      created_at: "2026-07-22T00:02:00.000Z",
+      updated_at: "2026-07-22T00:02:00.000Z"
+    };
+    insertedSubmissions.unshift(row);
+    return response([row], 201);
   }
   if (url.endsWith("/rest/v1/release_previews") && init.method === "POST") {
     const body = JSON.parse(init.body);
@@ -169,8 +165,22 @@ globalThis.fetch = async (input, init = {}) => {
       created_at: "2026-07-18T00:00:00.000Z",
       updated_at: "2026-07-18T00:00:00.000Z"
     };
-    if (body.version === "__FEATURE_CONTENT_V1__") featureRow = row;
+    if (body.version === "__AUDIT_LOG_V1__") {
+      row.id = `audit-${auditRows.length + 1}`;
+      row.created_at = new Date(Date.UTC(2026, 6, 22, 0, 0, auditRows.length)).toISOString();
+      auditRows.unshift(row);
+    } else if (body.version === "__FEATURE_CONTENT_V1__") {
+      featureRow = row;
+    }
     return response([row], 201);
+  }
+  if (url.includes(`release_previews?version=eq.${encodeURIComponent("__AUDIT_LOG_V1__")}`) && init.method === "PATCH") {
+    const body = JSON.parse(init.body);
+    const severity = new URL(url).searchParams.get("title_en");
+    auditRows = auditRows.map((item) => item.title_en === severity?.replace("eq.", "")
+      ? { ...item, ...body }
+      : item);
+    return response([]);
   }
   if (url.includes("/rest/v1/release_previews?id=eq.") && init.method === "PATCH") {
     const body = JSON.parse(init.body);
@@ -220,7 +230,8 @@ try {
       method: "POST",
       headers: {
         Origin: "https://lyric-island.top",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "client-ip-geo-location": "CN"
       },
       body: JSON.stringify({ password: values.__ESA_ADMIN_PASSWORD__ })
     })
@@ -317,9 +328,9 @@ try {
     })
   );
   assert.equal(pageAccessResponse.status, 204);
-  assert.equal(accessLogs[0].event_type, "page_view");
-  assert.equal(accessLogs[0].scope, "public");
-  assert.equal(accessLogs[0].visitor_hash.length, 64);
+  assert.equal(auditRows[0].title_zh, "page_view");
+  assert.equal(auditRows[0].highlights_zh.scope, "public");
+  assert.equal(auditRows[0].highlights_zh.visitor_hash.length, 64);
 
   const failedLoginResponse = await api.fetch(
     new Request("https://lyric-island.top/api/incentives/admin/login", {
@@ -333,8 +344,8 @@ try {
     })
   );
   assert.equal(failedLoginResponse.status, 401);
-  assert.equal(accessLogs[0].event_type, "login_failed");
-  assert.equal(accessLogs[0].severity, "warning");
+  assert.equal(auditRows[0].title_zh, "login_failed");
+  assert.equal(auditRows[0].title_en, "warning");
 
   const accessLogResponse = await api.fetch(
     new Request("https://lyric-island.top/api/incentives/admin/access-logs", {
@@ -345,6 +356,11 @@ try {
   const accessLogData = await accessLogResponse.json();
   assert.ok(accessLogData.logs.length >= 2);
   assert.equal(accessLogData.unreadAlerts, 1);
+  const successfulLoginLog = accessLogData.logs.find(
+    (item) => item.event_type === "login_succeeded" && item.country === "CN"
+  );
+  assert.ok(successfulLoginLog?.created_at, "successful admin logins must retain their login time");
+  assert.equal(successfulLoginLog.country, "CN");
 
   const refreshedPublicResponse = await api.fetch(
     new Request("https://lyric-island.top/api/incentives/public")
@@ -424,6 +440,25 @@ try {
   );
   assert.equal(submissionResponse.status, 201);
   assert.equal(calls.length, 4, "three uploads plus one insert must use exactly four subrequests");
+  assert.ok(
+    JSON.parse(calls.at(-1).init.body).reviewer_note.includes('"submitted"'),
+    "submission source metadata must be stored in the same insert"
+  );
+
+  const submissionLogResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/access-logs", {
+      headers: { cookie: adminCookie.split(";")[0] }
+    })
+  );
+  const submissionLogData = await submissionLogResponse.json();
+  assert.ok(
+    submissionLogData.logs.some((item) => item.event_type === "submission_created"),
+    "new Bug and suggestion submissions must appear in access logs"
+  );
+  assert.ok(
+    calls.every((call) => !call.url.includes("/rest/v1/access_logs")),
+    "logging must not depend on the missing access_logs table"
+  );
 
   const crossOriginResponse = await api.fetch(
     new Request("https://lyric-island.top/api/incentives/admin/login", {
