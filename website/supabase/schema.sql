@@ -9,11 +9,14 @@ create table if not exists public.incentive_submissions (
   body text not null check (char_length(body) between 12 and 4000),
   attachments jsonb not null default '[]'::jsonb,
   status text not null default 'pending' check (status in ('pending', 'reviewing', 'accepted', 'declined')),
-  reward_status text not null default 'not_eligible' check (reward_status in ('not_eligible', 'pending', 'issued')),
+  reward_status text not null default 'pending' check (reward_status in ('not_eligible', 'pending', 'issued')),
   reviewer_note text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.incentive_submissions
+  alter column reward_status set default 'pending';
 
 alter table public.incentive_submissions
   add column if not exists like_count integer not null default 0 check (like_count >= 0);

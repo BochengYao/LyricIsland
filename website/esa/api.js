@@ -449,6 +449,7 @@ async function createSubmission(input) {
     headers: supabaseHeaders("return=representation"),
     body: JSON.stringify({
       ...submission,
+      reward_status: "pending",
       reviewer_note: encodeReviewMeta({
         developer_reply: null,
         is_flagged: false,

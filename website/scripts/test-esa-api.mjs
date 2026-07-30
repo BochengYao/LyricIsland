@@ -159,7 +159,7 @@ globalThis.fetch = async (input, init = {}) => {
     const row = {
       ...body,
       status: "pending",
-      reward_status: "not_eligible",
+      reward_status: "pending",
       like_count: 0,
       created_at: "2026-07-22T00:02:00.000Z",
       updated_at: "2026-07-22T00:02:00.000Z"
@@ -532,6 +532,11 @@ try {
   assert.ok(
     JSON.parse(calls.at(-1).init.body).reviewer_note.includes('"submitted"'),
     "submission source metadata must be stored in the same insert"
+  );
+  assert.equal(
+    JSON.parse(calls.at(-1).init.body).reward_status,
+    "pending",
+    "new submissions must default to a pending reward"
   );
 
   const submissionLogResponse = await api.fetch(
