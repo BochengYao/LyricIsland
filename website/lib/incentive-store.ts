@@ -57,10 +57,17 @@ function decodeReviewMeta(value: string | null | undefined) {
       is_public: parsed.public === true,
       source: submitted && typeof submitted.visitor_hash === "string"
         ? {
-            visitor_hash: submitted.visitor_hash,
-            country: typeof submitted.country === "string" ? submitted.country : null,
-            user_agent: typeof submitted.user_agent === "string" ? submitted.user_agent : null,
-            referrer: typeof submitted.referrer === "string" ? submitted.referrer : null
+          visitor_hash: submitted.visitor_hash,
+          ip_address: typeof submitted.ip_address === "string" ? submitted.ip_address : null,
+          ip_source: typeof submitted.ip_source === "string" ? submitted.ip_source : null,
+          country: typeof submitted.country === "string" ? submitted.country : null,
+          region: typeof submitted.region === "string" ? submitted.region : null,
+          city: typeof submitted.city === "string" ? submitted.city : null,
+          user_agent: typeof submitted.user_agent === "string" ? submitted.user_agent : null,
+          accept_language: typeof submitted.accept_language === "string" ? submitted.accept_language : null,
+          request_id: typeof submitted.request_id === "string" ? submitted.request_id : null,
+          forwarded_for: typeof submitted.forwarded_for === "string" ? submitted.forwarded_for : null,
+          referrer: typeof submitted.referrer === "string" ? submitted.referrer : null
           }
         : null
     };
