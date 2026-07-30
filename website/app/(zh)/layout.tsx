@@ -55,6 +55,7 @@ export default function ChineseRootLayout({
     <html lang="zh-CN">
       <head>
         <SiteStructuredData />
+        <meta name="baidu-site-verification" content="codeva-x0GnwjHSeW" />
         <link
           rel="preload"
           href="/fonts/xiaolai-nav-v2.woff2"
