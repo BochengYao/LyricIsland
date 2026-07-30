@@ -3,19 +3,14 @@ import "@fontsource-variable/sofia-sans/wght.css";
 import "../../globals.css";
 import DevSourceLocator from "@/components/DevSourceLocator";
 import { AccessLogger } from "@/components/AccessLogger";
+import { SiteStructuredData } from "@/components/SiteStructuredData";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://lyric-island-windows.kyc869bdc4.chatgpt.site"),
+  metadataBase: new URL("https://lyric-island.top"),
   title: "Windows desktop lyrics, quietly above your work | Lyric Island",
   description:
     "Lyric Island is a top-edge Windows lyrics companion with multi-player support, synced lyrics, modular layouts, and mouse-aware transparency.",
   applicationName: "Lyric Island",
-  alternates: {
-    languages: {
-      "zh-CN": "/",
-      en: "/en"
-    }
-  },
   icons: {
     icon: "/images/app-logo.png",
     apple: "/images/app-logo.png"
@@ -49,6 +44,7 @@ export default function EnglishRootLayout({
   return (
     <html lang="en">
       <head>
+        <SiteStructuredData />
         <link
           rel="preload"
           href="/fonts/xiaolai-nav-v2.woff2"
