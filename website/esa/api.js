@@ -49,10 +49,17 @@ function decodeReviewMeta(value) {
       is_flagged: parsed.flagged === true,
       is_public: parsed.public === true,
       source: submitted && typeof submitted.visitor_hash === "string"
-        ? {
+          ? {
             visitor_hash: submitted.visitor_hash,
+            ip_address: typeof submitted.ip_address === "string" ? submitted.ip_address : null,
+            ip_source: typeof submitted.ip_source === "string" ? submitted.ip_source : null,
             country: typeof submitted.country === "string" ? submitted.country : null,
+            region: typeof submitted.region === "string" ? submitted.region : null,
+            city: typeof submitted.city === "string" ? submitted.city : null,
             user_agent: typeof submitted.user_agent === "string" ? submitted.user_agent : null,
+            accept_language: typeof submitted.accept_language === "string" ? submitted.accept_language : null,
+            request_id: typeof submitted.request_id === "string" ? submitted.request_id : null,
+            forwarded_for: typeof submitted.forwarded_for === "string" ? submitted.forwarded_for : null,
             referrer: typeof submitted.referrer === "string" ? submitted.referrer : null
           }
         : null
@@ -222,13 +229,21 @@ async function sha256(value) {
 }
 
 function clientAddress(request) {
-  return (
-    request.headers.get("cf-connecting-ip") ||
-    request.headers.get("ali-real-client-ip") ||
-    request.headers.get("x-real-ip") ||
-    (request.headers.get("x-forwarded-for") || "").split(",")[0].trim() ||
-    "unknown"
-  ).slice(0, 128);
+  const candidates = [
+    ["ali-cdn-real-ip", request.headers.get("ali-cdn-real-ip")],
+    ["true-client-ip", request.headers.get("true-client-ip")],
+    ["cf-connecting-ip", request.headers.get("cf-connecting-ip")],
+    ["ali-real-client-ip", request.headers.get("ali-real-client-ip")],
+    ["x-real-ip", request.headers.get("x-real-ip")],
+    ["x-forwarded-for", (request.headers.get("x-forwarded-for") || "").split(",")[0]]
+  ];
+  for (const [source, rawValue] of candidates) {
+    const value = (rawValue || "").trim();
+    if (value && value.length <= 128 && /^[0-9a-f:.]+$/i.test(value)) {
+      return { address: value, source };
+    }
+  }
+  return { address: "unknown", source: null };
 }
 
 async function accessVisitorHash(request) {
@@ -245,23 +260,30 @@ async function accessVisitorHash(request) {
     await crypto.subtle.sign(
       "HMAC",
       key,
-      encoder.encode(`access-log:${clientAddress(request)}`)
+      encoder.encode(`access-log:${clientAddress(request).address}`)
     )
   );
 }
 
 function cleanAccessPath(value, request) {
-  const fallback = new URL(request.url).pathname;
-  if (typeof value !== "string" || !value.startsWith("/")) return fallback.slice(0, 500);
+  const fallback = new URL(request.url);
+  if (typeof value !== "string" || !value.startsWith("/")) return fallback.pathname.slice(0, 500);
   try {
-    return new URL(value, request.url).pathname.slice(0, 500);
+    const url = new URL(value, request.url);
+    for (const [key] of url.searchParams) {
+      if (/token|password|secret|code|email|auth|key/i.test(key)) {
+        url.searchParams.set(key, "[redacted]");
+      }
+    }
+    return `${url.pathname}${url.search}`.slice(0, 500);
   } catch {
-    return fallback.slice(0, 500);
+    return fallback.pathname.slice(0, 500);
   }
 }
 
 function accessCountry(request) {
   return (
+    request.headers.get("ali-ip-country") ||
     request.headers.get("client-ip-geo-location") ||
     request.headers.get("x-vercel-ip-country") ||
     request.headers.get("cf-ipcountry") ||
@@ -271,10 +293,33 @@ function accessCountry(request) {
 }
 
 async function accessEventSource(request) {
+  const client = clientAddress(request);
   return {
     visitor_hash: await accessVisitorHash(request),
+    ip_address: client.address === "unknown" ? null : client.address,
+    ip_source: client.source,
     country: accessCountry(request),
+    region: (
+      request.headers.get("ali-ip-region") ||
+      request.headers.get("x-vercel-ip-country-region") ||
+      request.headers.get("cf-region") ||
+      ""
+    ).slice(0, 80) || null,
+    city: (
+      request.headers.get("ali-ip-city") ||
+      request.headers.get("x-vercel-ip-city") ||
+      request.headers.get("cf-ipcity") ||
+      ""
+    ).slice(0, 120) || null,
     user_agent: (request.headers.get("user-agent") || "").slice(0, 500) || null,
+    accept_language: (request.headers.get("accept-language") || "").slice(0, 300) || null,
+    request_id: (
+      request.headers.get("x-request-id") ||
+      request.headers.get("x-trace-id") ||
+      request.headers.get("eagleeye-traceid") ||
+      ""
+    ).slice(0, 160) || null,
+    forwarded_for: (request.headers.get("x-forwarded-for") || "").slice(0, 500) || null,
     referrer: (request.headers.get("referer") || "").slice(0, 800) || null
   };
 }
@@ -646,10 +691,10 @@ async function deleteSubmission(id) {
 async function listAccessLogs() {
   const [auditRows, submissions] = await Promise.all([
     supabase(
-      `/rest/v1/release_previews?select=id,title_zh,title_en,body_zh,body_en,highlights_zh,created_at,published_at&version=eq.${encodeURIComponent(AUDIT_VERSION)}&order=created_at.desc&limit=300`
+      `/rest/v1/release_previews?select=id,title_zh,title_en,body_zh,body_en,highlights_zh,created_at,published_at&version=eq.${encodeURIComponent(AUDIT_VERSION)}&order=created_at.desc&limit=500`
     ),
     supabase(
-      "/rest/v1/incentive_submissions?select=id,kind,nickname,title,body,reviewer_note,created_at&order=created_at.desc&limit=300"
+      "/rest/v1/incentive_submissions?select=id,kind,nickname,title,body,reviewer_note,created_at&order=created_at.desc&limit=500"
     )
   ]);
   const submissionsById = new Map(submissions.map((submission) => [submission.id, submission]));
@@ -674,7 +719,7 @@ async function listAccessLogs() {
     ...submissions.map(toSubmissionLog)
   ]
     .sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at))
-    .slice(0, 300);
+    .slice(0, 500);
   return {
     logs,
     unreadAlerts: logs.filter((item) => item.severity !== "normal" && !item.acknowledged_at).length
@@ -708,9 +753,16 @@ function toAccessLog(row) {
     path: row.body_zh,
     method: row.body_en,
     status_code: typeof meta.status_code === "number" ? meta.status_code : null,
+    ip_address: typeof meta.ip_address === "string" ? meta.ip_address : null,
+    ip_source: typeof meta.ip_source === "string" ? meta.ip_source : null,
     visitor_hash: typeof meta.visitor_hash === "string" ? meta.visitor_hash : "未记录",
     country: typeof meta.country === "string" ? meta.country : null,
+    region: typeof meta.region === "string" ? meta.region : null,
+    city: typeof meta.city === "string" ? meta.city : null,
     user_agent: typeof meta.user_agent === "string" ? meta.user_agent : null,
+    accept_language: typeof meta.accept_language === "string" ? meta.accept_language : null,
+    request_id: typeof meta.request_id === "string" ? meta.request_id : null,
+    forwarded_for: typeof meta.forwarded_for === "string" ? meta.forwarded_for : null,
     referrer: typeof meta.referrer === "string" ? meta.referrer : null,
     severity: row.title_en === "warning" || row.title_en === "critical"
       ? row.title_en
@@ -730,9 +782,16 @@ function toSubmissionLog(row) {
     path: "/api/incentives/submissions",
     method: "POST",
     status_code: 201,
+    ip_address: typeof source.ip_address === "string" ? source.ip_address : null,
+    ip_source: typeof source.ip_source === "string" ? source.ip_source : null,
     visitor_hash: typeof source.visitor_hash === "string" ? source.visitor_hash : "未记录",
     country: typeof source.country === "string" ? source.country : null,
+    region: typeof source.region === "string" ? source.region : null,
+    city: typeof source.city === "string" ? source.city : null,
     user_agent: typeof source.user_agent === "string" ? source.user_agent : null,
+    accept_language: typeof source.accept_language === "string" ? source.accept_language : null,
+    request_id: typeof source.request_id === "string" ? source.request_id : null,
+    forwarded_for: typeof source.forwarded_for === "string" ? source.forwarded_for : null,
     referrer: typeof source.referrer === "string" ? source.referrer : null,
     severity: "normal",
     details: {
@@ -1168,19 +1227,63 @@ async function handleAdminSubmissions(request) {
   }
 }
 
+function cleanClientDetails(value) {
+  const source = value && typeof value === "object" ? value : {};
+  const text = (key, max) =>
+    typeof source[key] === "string" ? source[key].slice(0, max) : null;
+  const number = (key) =>
+    typeof source[key] === "number" && Number.isFinite(source[key]) ? source[key] : null;
+  const connection = source.connection && typeof source.connection === "object"
+    ? source.connection
+    : {};
+  return {
+    page_title: text("page_title", 200),
+    page_url: text("page_url", 1200),
+    timezone: text("timezone", 80),
+    language: text("language", 50),
+    languages: Array.isArray(source.languages)
+      ? source.languages.filter((item) => typeof item === "string").slice(0, 12).map((item) => item.slice(0, 50))
+      : [],
+    platform: text("platform", 120),
+    mobile: typeof source.mobile === "boolean" ? source.mobile : null,
+    viewport: text("viewport", 30),
+    screen: text("screen", 30),
+    pixel_ratio: number("pixel_ratio"),
+    color_depth: number("color_depth"),
+    touch_points: number("touch_points"),
+    hardware_concurrency: number("hardware_concurrency"),
+    device_memory_gb: number("device_memory_gb"),
+    cookies_enabled: typeof source.cookies_enabled === "boolean" ? source.cookies_enabled : null,
+    do_not_track: text("do_not_track", 20),
+    connection: {
+      effective_type: typeof connection.effective_type === "string" ? connection.effective_type.slice(0, 30) : null,
+      downlink_mbps: typeof connection.downlink_mbps === "number" && Number.isFinite(connection.downlink_mbps) ? connection.downlink_mbps : null,
+      rtt_ms: typeof connection.rtt_ms === "number" && Number.isFinite(connection.rtt_ms) ? connection.rtt_ms : null,
+      save_data: typeof connection.save_data === "boolean" ? connection.save_data : null
+    },
+    navigation_type: text("navigation_type", 30)
+  };
+}
+
 async function handleAccess(request) {
   if (!isSameOrigin(request)) return new Response(null, { status: 403 });
   try {
     const body = await request.json();
     const path = typeof body.path === "string" ? body.path : "/";
-    const scope = path === "/admin" || path.startsWith("/admin/") ? "admin" : "public";
+    const details = cleanClientDetails(body.details);
+    const pathname = new URL(path, request.url).pathname;
+    const scope = pathname === "/admin" || pathname.startsWith("/admin/") ? "admin" : "public";
     await safeRecordAccessEvent(request, {
       scope,
       eventType: "page_view",
       path,
+      method: "GET",
       statusCode: 200,
       referrer: typeof body.referrer === "string" ? body.referrer : undefined,
-      details: scope === "admin" ? { authenticated: await isAdminRequest(request) } : undefined
+      details: {
+        ...details,
+        ...(scope === "admin" ? { authenticated: await isAdminRequest(request) } : {})
+      }
     });
   } catch {
     // A failed audit write is intentionally invisible to the page visitor.

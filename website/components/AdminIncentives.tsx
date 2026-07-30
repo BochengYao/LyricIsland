@@ -201,12 +201,44 @@ function AccessEventDetail({ item }: { item: AccessLogEntry }) {
     );
   }
 
+  if (item.event_type === "page_view") {
+    const pageTitle = accessDetailText(item.details, "page_title");
+    const viewport = accessDetailText(item.details, "viewport");
+    const screen = accessDetailText(item.details, "screen");
+    const timezone = accessDetailText(item.details, "timezone");
+    const language = accessDetailText(item.details, "language");
+    return (
+      <div className="accessEventDetail">
+        <strong>{pageTitle || "官网页面访问"}</strong>
+        <p>{[viewport && `视口 ${viewport}`, screen && `屏幕 ${screen}`, timezone, language].filter(Boolean).join(" · ") || "客户端未上报显示环境"}</p>
+        {typeof item.details.authenticated === "boolean" && (
+          <small>{item.details.authenticated ? "访问时后台会话有效" : "访问时未登录后台"}</small>
+        )}
+        <details>
+          <summary>完整访问参数</summary>
+          <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-all", fontSize: 11, maxWidth: 520 }}>
+            {JSON.stringify({
+              ip: item.ip_address,
+              ip_source: item.ip_source,
+              forwarded_for: item.forwarded_for,
+              country: item.country,
+              region: item.region,
+              city: item.city,
+              request_id: item.request_id,
+              accept_language: item.accept_language,
+              user_agent: item.user_agent,
+              referrer: item.referrer,
+              ...item.details
+            }, null, 2)}
+          </pre>
+        </details>
+      </div>
+    );
+  }
+
   return (
     <div className="accessEventDetail">
       <strong>{eventDescriptions[item.event_type] ?? "系统审计事件"}</strong>
-      {item.event_type === "page_view" && typeof item.details.authenticated === "boolean" && (
-        <small>{item.details.authenticated ? "访问时后台会话有效" : "访问时未登录后台"}</small>
-      )}
     </div>
   );
 }
@@ -240,6 +272,28 @@ function deviceSummary(userAgent: string | null) {
   return `${system} · ${browser}`;
 }
 
+function deviceCategory(userAgent: string | null) {
+  if (!userAgent) return "unknown";
+  if (/bot|crawler|spider|headless|curl|wget/i.test(userAgent)) return "bot";
+  if (/Android|iPhone|iPad|Mobile/i.test(userAgent)) return "mobile";
+  return "desktop";
+}
+
+function accessDetailText(details: Record<string, unknown>, key: string) {
+  const value = details[key];
+  return typeof value === "string" || typeof value === "number" ? String(value) : "";
+}
+
+const accessFilterInputStyle = {
+  minWidth: "150px",
+  minHeight: "42px",
+  border: "1px solid #cbc6bf",
+  borderRadius: "12px",
+  padding: "8px 11px",
+  font: "inherit",
+  background: "#fff"
+} as const;
+
 async function fetchWithTimeout(
   input: RequestInfo | URL,
   init: RequestInit,
@@ -270,6 +324,12 @@ export function AdminIncentives() {
   const [severityFilter, setSeverityFilter] = useState<"all" | AccessSeverity>("all");
   const [scopeFilter, setScopeFilter] = useState<"all" | "public" | "admin">("all");
   const [eventFilter, setEventFilter] = useState("all");
+  const [methodFilter, setMethodFilter] = useState("all");
+  const [countryFilter, setCountryFilter] = useState("all");
+  const [deviceFilter, setDeviceFilter] = useState<"all" | "desktop" | "mobile" | "bot" | "unknown">("all");
+  const [logQuery, setLogQuery] = useState("");
+  const [logDateFrom, setLogDateFrom] = useState("");
+  const [logDateTo, setLogDateTo] = useState("");
   const [panel, setPanel] = useState<Panel>("submissions");
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [savingId, setSavingId] = useState("");
@@ -503,11 +563,71 @@ export function AdminIncentives() {
     [accessLogs]
   );
 
-  const visibleLogs = useMemo(() => accessLogs.filter((item) =>
-    (scopeFilter === "all" || item.scope === scopeFilter) &&
-    (severityFilter === "all" || item.severity === severityFilter) &&
-    (eventFilter === "all" || item.event_type === eventFilter)
-  ), [accessLogs, scopeFilter, severityFilter, eventFilter]);
+  const countryOptions = useMemo(() =>
+    [...new Set(accessLogs.map((item) => item.country).filter((value): value is string => Boolean(value)))].sort(),
+  [accessLogs]);
+  const methodOptions = useMemo(() =>
+    [...new Set(accessLogs.map((item) => item.method).filter(Boolean))].sort(),
+  [accessLogs]);
+
+  const visibleLogs = useMemo(() => {
+    const query = logQuery.trim().toLocaleLowerCase();
+    const from = logDateFrom ? new Date(logDateFrom).getTime() : Number.NEGATIVE_INFINITY;
+    const to = logDateTo ? new Date(logDateTo).getTime() : Number.POSITIVE_INFINITY;
+    return accessLogs.filter((item) => {
+      const timestamp = Date.parse(item.created_at);
+      const searchable = [
+        item.ip_address,
+        item.visitor_hash,
+        item.country,
+        item.region,
+        item.city,
+        item.path,
+        item.event_type,
+        item.method,
+        item.referrer,
+        item.user_agent,
+        item.accept_language,
+        item.request_id,
+        item.forwarded_for,
+        JSON.stringify(item.details)
+      ].filter(Boolean).join(" ").toLocaleLowerCase();
+      return (
+        (scopeFilter === "all" || item.scope === scopeFilter) &&
+        (severityFilter === "all" || item.severity === severityFilter) &&
+        (eventFilter === "all" || item.event_type === eventFilter) &&
+        (methodFilter === "all" || item.method === methodFilter) &&
+        (countryFilter === "all" || item.country === countryFilter) &&
+        (deviceFilter === "all" || deviceCategory(item.user_agent) === deviceFilter) &&
+        timestamp >= from &&
+        timestamp <= to &&
+        (!query || searchable.includes(query))
+      );
+    });
+  }, [
+    accessLogs,
+    countryFilter,
+    deviceFilter,
+    eventFilter,
+    logDateFrom,
+    logDateTo,
+    logQuery,
+    methodFilter,
+    scopeFilter,
+    severityFilter
+  ]);
+
+  function clearLogFilters() {
+    setEventFilter("all");
+    setScopeFilter("all");
+    setSeverityFilter("all");
+    setMethodFilter("all");
+    setCountryFilter("all");
+    setDeviceFilter("all");
+    setLogQuery("");
+    setLogDateFrom("");
+    setLogDateTo("");
+  }
 
   async function acknowledgeAlerts() {
     const response = await fetch("/api/incentives/admin/access-logs", { method: "PATCH" });
@@ -876,12 +996,19 @@ export function AdminIncentives() {
           <>
             <header className="adminPageHeader">
               <div><p>ACCESS AUDIT</p><h2>访问日志</h2></div>
-              <div className="adminFilters accessFilters">
-                <label><span>访问事件</span><select value={eventFilter} onChange={(event) => setEventFilter(event.target.value)}><option value="all">全部事件</option>{eventOptions.map((eventType) => <option value={eventType} key={eventType}>{eventLabels[eventType] ?? eventType}</option>)}</select></label>
-                <label><span>访问范围</span><select value={scopeFilter} onChange={(event) => setScopeFilter(event.target.value as typeof scopeFilter)}><option value="all">前后台全部</option><option value="public">仅前台</option><option value="admin">仅后台</option></select></label>
-                <label><span>风险级别</span><select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value as typeof severityFilter)}><option value="all">全部级别</option><option value="normal">正常</option><option value="warning">异常</option><option value="critical">高风险</option></select></label>
-              </div>
             </header>
+            <div className="adminFilters accessFilters" style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "end", marginBottom: 18 }}>
+              <label><span>搜索 IP / 路径 / 来源 / 设备</span><input style={{ ...accessFilterInputStyle, minWidth: 280 }} type="search" value={logQuery} onChange={(event) => setLogQuery(event.target.value)} placeholder="输入 IP、国家、URL、UA…" /></label>
+              <label><span>访问事件</span><select value={eventFilter} onChange={(event) => setEventFilter(event.target.value)}><option value="all">全部事件</option>{eventOptions.map((eventType) => <option value={eventType} key={eventType}>{eventLabels[eventType] ?? eventType}</option>)}</select></label>
+              <label><span>访问范围</span><select value={scopeFilter} onChange={(event) => setScopeFilter(event.target.value as typeof scopeFilter)}><option value="all">前后台全部</option><option value="public">仅前台</option><option value="admin">仅后台</option></select></label>
+              <label><span>风险级别</span><select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value as typeof severityFilter)}><option value="all">全部级别</option><option value="normal">正常</option><option value="warning">异常</option><option value="critical">高风险</option></select></label>
+              <label><span>请求方法</span><select value={methodFilter} onChange={(event) => setMethodFilter(event.target.value)}><option value="all">全部方法</option>{methodOptions.map((method) => <option key={method} value={method}>{method}</option>)}</select></label>
+              <label><span>国家 / 地区</span><select value={countryFilter} onChange={(event) => setCountryFilter(event.target.value)}><option value="all">全部地区</option>{countryOptions.map((country) => <option key={country} value={country}>{country}</option>)}</select></label>
+              <label><span>设备类型</span><select value={deviceFilter} onChange={(event) => setDeviceFilter(event.target.value as typeof deviceFilter)}><option value="all">全部设备</option><option value="desktop">桌面设备</option><option value="mobile">移动设备</option><option value="bot">机器人 / 脚本</option><option value="unknown">未知设备</option></select></label>
+              <label><span>开始时间</span><input style={accessFilterInputStyle} type="datetime-local" value={logDateFrom} onChange={(event) => setLogDateFrom(event.target.value)} /></label>
+              <label><span>结束时间</span><input style={accessFilterInputStyle} type="datetime-local" value={logDateTo} onChange={(event) => setLogDateTo(event.target.value)} /></label>
+              <button className="button buttonSecondary" type="button" onClick={clearLogFilters}>清除筛选</button>
+            </div>
             <div className="accessSummary"><div><strong>{accessLogs.filter((item) => item.scope === "public").length}</strong><span>前台记录</span></div><div><strong>{accessLogs.filter((item) => item.scope === "admin").length}</strong><span>后台记录</span></div><div className={unreadAlerts ? "hasAlert" : ""}><strong>{unreadAlerts}</strong><span>未确认异常</span></div></div>
             <section className="severityRules" aria-label="异常事件判定规则">
               <div><span className="severityBadge">正常</span><strong>合法成功请求</strong><p>普通页面访问、用户提交反馈、登录成功，以及已登录管理员的查看、更新和删除操作。</p></div>
@@ -898,8 +1025,8 @@ export function AdminIncentives() {
                     <td><time>{formatDate(item.created_at)}</time><span className={`severityBadge ${item.severity}`} title={item.severity === "critical" ? "明确跨站或越权特征" : item.severity === "warning" ? "校验失败，暂未确认恶意" : "合法成功请求"}>{item.severity === "critical" ? "高风险" : item.severity === "warning" ? "异常" : "正常"}{item.acknowledged_at ? " · 已确认" : ""}</span></td>
                     <td><strong>{eventLabels[item.event_type] ?? item.event_type}</strong><code title={item.path}>{item.path}</code><small>{item.scope === "admin" ? "后台" : "前台"} · {item.method} {item.status_code ?? "—"}</small></td>
                     <td><AccessEventDetail item={item} /></td>
-                    <td><code title={item.visitor_hash}>{item.visitor_hash.slice(0, 12)}</code><small>{item.country ?? "未知地区"}</small></td>
-                    <td><strong>{deviceSummary(item.user_agent)}</strong><small title={item.referrer ?? undefined}>{item.referrer ? `来源：${item.referrer}` : "直接访问"}</small></td>
+                    <td><code title={item.ip_source ? `来源字段：${item.ip_source}` : undefined}>{item.ip_address ?? "IP 未记录"}</code><small>{[item.country, item.region, item.city].filter(Boolean).join(" · ") || "未知地区"}</small><small title={item.visitor_hash}>访客标识：{item.visitor_hash.slice(0, 12)}</small></td>
+                    <td><strong>{deviceSummary(item.user_agent)}</strong><small>{item.accept_language ? `语言：${item.accept_language}` : "语言未知"}{item.request_id ? ` · 请求 ${item.request_id.slice(0, 12)}` : ""}</small><small title={item.referrer ?? undefined}>{item.referrer ? `来源：${item.referrer}` : "直接访问"}</small><small title={item.user_agent ?? undefined}>{item.user_agent ?? "未记录 User-Agent"}</small></td>
                   </tr>
                 ))}</tbody>
               </table>

@@ -346,15 +346,37 @@ try {
       headers: {
         Origin: "https://lyric-island.top",
         "Content-Type": "application/json",
-        "x-forwarded-for": "203.0.113.10"
+        "ali-cdn-real-ip": "203.0.113.10",
+        "x-forwarded-for": "203.0.113.10, 10.0.0.1",
+        "ali-ip-country": "CN",
+        "ali-ip-city": "Hangzhou",
+        "accept-language": "zh-CN,zh;q=0.9",
+        "x-request-id": "request-page-view-001",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edg/140.0"
       },
-      body: JSON.stringify({ path: "/incentives", referrer: "https://example.com/" })
+      body: JSON.stringify({
+        path: "/incentives?campaign=summer&token=secret-value",
+        referrer: "https://example.com/",
+        details: {
+          page_title: "用户激励计划",
+          timezone: "Asia/Shanghai",
+          viewport: "1440×900",
+          screen: "1920×1080"
+        }
+      })
     })
   );
   assert.equal(pageAccessResponse.status, 204);
   assert.equal(auditRows[0].title_zh, "page_view");
   assert.equal(auditRows[0].highlights_zh.scope, "public");
   assert.equal(auditRows[0].highlights_zh.visitor_hash.length, 64);
+  assert.equal(auditRows[0].highlights_zh.ip_address, "203.0.113.10");
+  assert.equal(auditRows[0].highlights_zh.ip_source, "ali-cdn-real-ip");
+  assert.equal(auditRows[0].highlights_zh.country, "CN");
+  assert.equal(auditRows[0].highlights_zh.city, "Hangzhou");
+  assert.equal(auditRows[0].body_zh, "/incentives?campaign=summer&token=%5Bredacted%5D");
+  assert.equal(auditRows[0].body_en, "GET");
+  assert.equal(auditRows[0].highlights_zh.details.timezone, "Asia/Shanghai");
 
   const failedLoginResponse = await api.fetch(
     new Request("https://lyric-island.top/api/incentives/admin/login", {
@@ -385,6 +407,12 @@ try {
   );
   assert.ok(successfulLoginLog?.created_at, "successful admin logins must retain their login time");
   assert.equal(successfulLoginLog.country, "CN");
+  const pageViewLog = accessLogData.logs.find((item) => item.event_type === "page_view");
+  assert.equal(pageViewLog.ip_address, "203.0.113.10");
+  assert.equal(pageViewLog.city, "Hangzhou");
+  assert.equal(pageViewLog.accept_language, "zh-CN,zh;q=0.9");
+  assert.equal(pageViewLog.request_id, "request-page-view-001");
+  assert.equal(pageViewLog.details.viewport, "1440×900");
   const updateLog = accessLogData.logs.find((item) => item.event_type === "submission_updated");
   assert.equal(updateLog.details.submissionTitle, "A useful suggestion");
   assert.ok(

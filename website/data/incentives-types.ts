@@ -87,9 +87,16 @@ export type AccessLogEntry = {
   path: string;
   method: string;
   status_code: number | null;
+  ip_address: string | null;
+  ip_source: string | null;
   visitor_hash: string;
   country: string | null;
+  region: string | null;
+  city: string | null;
   user_agent: string | null;
+  accept_language: string | null;
+  request_id: string | null;
+  forwarded_for: string | null;
   referrer: string | null;
   severity: AccessSeverity;
   details: Record<string, unknown>;
