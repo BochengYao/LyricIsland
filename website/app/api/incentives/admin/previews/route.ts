@@ -62,8 +62,21 @@ export async function PATCH(request: Request) {
     if (!id || (body.status !== "draft" && body.status !== "published")) {
       return Response.json({ error: "Invalid update" }, { status: 400 });
     }
+    const hasContent = ["version", "body_zh", "body_en", "target_date"]
+      .some((field) => Object.hasOwn(body, field));
+    if (hasContent) {
+      const payload = previewPayload(body);
+      if (!payload.version || !payload.body_zh || !payload.body_en) {
+        return Response.json({ error: "版本号、中英文更新内容均为必填项" }, { status: 400 });
+      }
+      return Response.json({
+        preview: await updateReleasePreview(id, payload)
+      });
+    }
     return Response.json({
-      preview: await updateReleasePreview(id, { status: body.status })
+      preview: await updateReleasePreview(id, {
+        status: body.status as "draft" | "published"
+      })
     });
   } catch {
     return Response.json({ error: "更新失败" }, { status: 500 });

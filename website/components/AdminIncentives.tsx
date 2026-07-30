@@ -22,6 +22,14 @@ import type {
 type AuthState = "checking" | "login" | "ready";
 type Panel = "submissions" | "features" | "previews" | "access";
 type SaveFeedback = { tone: "pending" | "success" | "error"; message: string };
+type PreviewDraft = {
+  id?: string;
+  version: string;
+  body_zh: string;
+  body_en: string;
+  target_date: string;
+  status: "draft" | "published";
+};
 type BulkAction =
   | `status:${SubmissionStatus}`
   | `reward:${RewardStatus}`
@@ -56,6 +64,25 @@ const compactRewardLabels: Record<RewardStatus, string> = {
   pending: "待发",
   issued: "已发"
 };
+
+const emptyPreviewDraft: PreviewDraft = {
+  version: "",
+  body_zh: "",
+  body_en: "",
+  target_date: "",
+  status: "draft"
+};
+
+function previewToDraft(preview: ReleasePreview): PreviewDraft {
+  return {
+    id: preview.id,
+    version: preview.version,
+    body_zh: [preview.body_zh, ...preview.highlights_zh].filter(Boolean).join("\n"),
+    body_en: [preview.body_en, ...preview.highlights_en].filter(Boolean).join("\n"),
+    target_date: preview.target_date ?? "",
+    status: preview.status
+  };
+}
 
 const eventLabels: Record<string, string> = {
   page_view: "页面访问",
@@ -252,6 +279,8 @@ export function AdminIncentives() {
   const [saveFeedback, setSaveFeedback] = useState<Record<string, SaveFeedback>>({});
   const [editing, setEditing] = useState<IncentiveSubmission | null>(null);
   const [previewDateTbd, setPreviewDateTbd] = useState(false);
+  const [previewDraft, setPreviewDraft] = useState<PreviewDraft>(emptyPreviewDraft);
+  const [previewSaving, setPreviewSaving] = useState(false);
 
   async function loadData() {
     const [submissionResponse, featureResponse, previewResponse, logResponse] = await Promise.all([
@@ -274,6 +303,12 @@ export function AdminIncentives() {
     setSubmissions(submissionData.submissions);
     setFeatureContent(sanitizeFeatureContent(featureData.content));
     setPreviews(previewData.previews);
+    const currentPreview = previewData.previews.find((preview) => preview.status === "published")
+      ?? previewData.previews[0];
+    if (currentPreview) {
+      setPreviewDraft(previewToDraft(currentPreview));
+      setPreviewDateTbd(!currentPreview.target_date);
+    }
     setAccessLogs(logData.logs);
     setUnreadAlerts(logData.unreadAlerts);
     if (!logResponse.ok) setError("访问日志表尚未初始化；反馈管理仍可正常使用");
@@ -485,29 +520,51 @@ export function AdminIncentives() {
     setUnreadAlerts(0);
   }
 
-  async function createPreview(event: React.FormEvent<HTMLFormElement>) {
+  async function savePreview(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/incentives/admin/previews", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        version: form.get("version"),
-        body_zh: form.get("body_zh"),
-        body_en: form.get("body_en"),
-        target_date: previewDateTbd ? "" : form.get("target_date"),
-        status: form.get("intent")
-      })
-    });
-    const result = (await response.json()) as { error?: string; preview?: ReleasePreview };
-    if (!response.ok || !result.preview) {
-      setError(result.error ?? "发布失败");
-      return;
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    const status = submitter?.value === "published" ? "published" : previewDraft.status;
+    setPreviewSaving(true);
+    try {
+      const response = await fetch("/api/incentives/admin/previews", {
+        method: previewDraft.id ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...(previewDraft.id ? { id: previewDraft.id } : {}),
+          version: previewDraft.version,
+          body_zh: previewDraft.body_zh,
+          body_en: previewDraft.body_en,
+          target_date: previewDateTbd ? "" : previewDraft.target_date,
+          status
+        })
+      });
+      const result = (await response.json()) as { error?: string; preview?: ReleasePreview };
+      if (!response.ok || !result.preview) {
+        setError(result.error ?? "保存失败");
+        return;
+      }
+      setPreviews((items) => items.some((item) => item.id === result.preview!.id)
+        ? items.map((item) => item.id === result.preview!.id ? result.preview! : item)
+        : [result.preview!, ...items]);
+      setPreviewDraft(previewToDraft(result.preview));
+      setPreviewDateTbd(!result.preview.target_date);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "保存失败");
+    } finally {
+      setPreviewSaving(false);
     }
-    setPreviews((items) => [result.preview!, ...items]);
-    event.currentTarget.reset();
-    setPreviewDateTbd(false);
+  }
+
+  function editPreview(preview: ReleasePreview) {
+    setPreviewDraft(previewToDraft(preview));
+    setPreviewDateTbd(!preview.target_date);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function newPreview() {
+    setPreviewDraft(emptyPreviewDraft);
+    setPreviewDateTbd(true);
   }
 
   async function togglePreview(preview: ReleasePreview) {
@@ -523,6 +580,9 @@ export function AdminIncentives() {
       return;
     }
     setPreviews((items) => items.map((item) => item.id === preview.id ? result.preview! : item));
+    if (previewDraft.id === preview.id) {
+      setPreviewDraft((draft) => ({ ...draft, status: result.preview!.status }));
+    }
   }
 
   function markFeatureDirty() {
@@ -802,13 +862,13 @@ export function AdminIncentives() {
 
         {panel === "previews" && (
           <>
-            <header className="adminPageHeader"><div><p>RELEASE PREVIEW</p><h2>发布版本预告</h2></div></header>
-            <form className="previewEditor" onSubmit={createPreview}>
-              <div className="previewEditorMeta"><label><span>版本号</span><input name="version" placeholder="例如：v2.1 Beta" required /></label><label><span>预计上线时间</span><input name="target_date" type="date" disabled={previewDateTbd} /></label><button className={`previewDateTbdButton ${previewDateTbd ? "isActive" : ""}`} type="button" aria-pressed={previewDateTbd} onClick={() => setPreviewDateTbd((current) => !current)}>上线时间待定</button></div>
-              <div className="previewEditorLanguages"><label><span>更新内容（中文）</span><textarea name="body_zh" rows={9} required /></label><label><span>Update content (English)</span><textarea name="body_en" rows={9} required /></label></div>
-              <div className="previewEditorActions"><button className="button buttonSecondary" type="submit" name="intent" value="draft">保存草稿</button><button className="button buttonPrimary" type="submit" name="intent" value="published">发布预告</button></div>
+            <header className="adminPageHeader"><div><p>RELEASE PREVIEW</p><h2>发布版本预告</h2></div><button className="button buttonSecondary" type="button" onClick={newPreview}>新建预告</button></header>
+            <form className="previewEditor" onSubmit={savePreview}>
+              <div className="previewEditorMeta"><label><span>版本号</span><input name="version" placeholder="例如：v2.1 Beta" value={previewDraft.version} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, version: event.target.value }))} required /></label><label><span>预计上线时间</span><input name="target_date" type="date" value={previewDraft.target_date} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, target_date: event.target.value }))} disabled={previewDateTbd} /></label><button className={`previewDateTbdButton ${previewDateTbd ? "isActive" : ""}`} type="button" aria-pressed={previewDateTbd} onClick={() => setPreviewDateTbd((current) => !current)}>上线时间待定</button></div>
+              <div className="previewEditorLanguages"><label><span>更新内容（中文）</span><textarea name="body_zh" rows={9} value={previewDraft.body_zh} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, body_zh: event.target.value }))} required /></label><label><span>Update content (English)</span><textarea name="body_en" rows={9} value={previewDraft.body_en} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, body_en: event.target.value }))} required /></label></div>
+              <div className="previewEditorActions"><button className="button buttonSecondary" type="submit" name="intent" value="save" disabled={previewSaving}>{previewDraft.status === "published" ? "保存更改" : "保存草稿"}</button><button className="button buttonPrimary" type="submit" name="intent" value="published" disabled={previewSaving}>{previewSaving ? "正在保存…" : previewDraft.status === "published" ? "保持发布并保存" : "发布预告"}</button></div>
             </form>
-            <div className="previewAdminList">{previews.map((preview) => <article key={preview.id}><div><span className={preview.status}>{preview.status === "published" ? "已发布" : "草稿"}</span><small>{preview.version} · 预计上线：{preview.target_date ?? "待定"}</small><p>中文：{preview.body_zh}</p>{preview.body_en && <p>English: {preview.body_en}</p>}</div><button className="button buttonSecondary" onClick={() => void togglePreview(preview)}>{preview.status === "published" ? "撤回为草稿" : "发布到前台"}</button></article>)}</div>
+            <div className="previewAdminList">{previews.map((preview) => <article key={preview.id}><div><span className={preview.status}>{preview.status === "published" ? "已发布" : "草稿"}</span><small>{preview.version} · 预计上线：{preview.target_date ?? "待定"}</small><p>中文：{[preview.body_zh, ...preview.highlights_zh].filter(Boolean).join(" / ")}</p>{preview.body_en && <p>English: {[preview.body_en, ...preview.highlights_en].filter(Boolean).join(" / ")}</p>}</div><div><button className="button buttonSecondary" type="button" onClick={() => editPreview(preview)}>编辑</button><button className="button buttonSecondary" type="button" onClick={() => void togglePreview(preview)}>{preview.status === "published" ? "撤回为草稿" : "发布到前台"}</button></div></article>)}</div>
           </>
         )}
 
