@@ -3,9 +3,10 @@ import "@fontsource-variable/sofia-sans/wght.css";
 import "../globals.css";
 import DevSourceLocator from "@/components/DevSourceLocator";
 import { AccessLogger } from "@/components/AccessLogger";
+import { SiteStructuredData } from "@/components/SiteStructuredData";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://lyric-island-windows.kyc869bdc4.chatgpt.site"),
+  metadataBase: new URL("https://lyric-island.top"),
   title: {
     default: "歌词岛 | Lyric Island",
     template: "%s | Lyric Island"
@@ -20,12 +21,6 @@ export const metadata: Metadata = {
     "multi-player desktop lyrics",
     "SMTC"
   ],
-  alternates: {
-    languages: {
-      "zh-CN": "/",
-      en: "/en"
-    }
-  },
   icons: {
     icon: "/images/app-logo.png",
     apple: "/images/app-logo.png"
@@ -59,6 +54,7 @@ export default function ChineseRootLayout({
   return (
     <html lang="zh-CN">
       <head>
+        <SiteStructuredData />
         <link
           rel="preload"
           href="/fonts/xiaolai-nav.woff2"
