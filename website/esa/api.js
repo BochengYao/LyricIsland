@@ -19,6 +19,7 @@ const REVIEW_META_PREFIX = "[[lyric-island-review:v1]]";
 const FEATURE_CONTENT_VERSION = "__FEATURE_CONTENT_V1__";
 const AUDIT_VERSION = "__AUDIT_LOG_V1__";
 const DEFAULT_FEATURE_CONTENT = JSON.parse("__ESA_FEATURE_CONTENT_JSON__");
+const DEFAULT_RELEASE_PREVIEW = JSON.parse("__ESA_RELEASE_PREVIEW_JSON__");
 const ALLOWED_MIME_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -519,7 +520,18 @@ async function getPublicIncentives(voterHash) {
         : {})
     };
   });
-  return { suggestions, previews };
+  return {
+    suggestions,
+    previews: previews.length
+      ? previews
+      : [{
+          id: "default-release-preview-v2-1",
+          ...DEFAULT_RELEASE_PREVIEW,
+          created_at: "2026-07-29T00:00:00.000Z",
+          updated_at: "2026-07-29T00:00:00.000Z",
+          published_at: "2026-07-29T00:00:00.000Z"
+        }]
+  };
 }
 
 async function toggleSuggestionLike(submissionId, voterTokenHash) {
@@ -739,7 +751,9 @@ async function listReleasePreviews() {
   const rows = await supabase(
     "/rest/v1/release_previews?select=*&version=not.in.(__FEATURE_CONTENT_V1__,__AUDIT_LOG_V1__)&order=created_at.desc&limit=50"
   );
-  return rows.filter((row) => !row.version.startsWith("__"));
+  const previews = rows.filter((row) => !row.version.startsWith("__"));
+  if (previews.length) return previews;
+  return [await createReleasePreview(DEFAULT_RELEASE_PREVIEW)];
 }
 
 async function createReleasePreview(input) {
@@ -1229,8 +1243,14 @@ async function handleAdminPreviews(request) {
       if (!id || (body.status !== "draft" && body.status !== "published")) {
         return jsonError("Invalid update");
       }
+      const hasContent = ["version", "body_zh", "body_en", "target_date"]
+        .some((field) => Object.prototype.hasOwnProperty.call(body, field));
+      const payload = hasContent ? previewPayload(body) : { status: body.status };
+      if (hasContent && (!payload.version || !payload.body_zh || !payload.body_en)) {
+        return jsonError("版本号、中英文更新内容均为必填项");
+      }
       return json({
-        preview: await updateReleasePreview(id, { status: body.status })
+        preview: await updateReleasePreview(id, payload)
       });
     } catch {
       return jsonError("更新失败", 500);

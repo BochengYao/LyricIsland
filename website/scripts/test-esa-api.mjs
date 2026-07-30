@@ -18,6 +18,10 @@ const values = {
   "__ESA_FEATURE_CONTENT_JSON__": await readFile(
     resolve(root, "data", "feature-content-default.json"),
     "utf8"
+  ),
+  "__ESA_RELEASE_PREVIEW_JSON__": await readFile(
+    resolve(root, "data", "release-preview-default.json"),
+    "utf8"
   )
 };
 
@@ -39,6 +43,7 @@ let rewardStatus = "not_eligible";
 let auditRows = [];
 let insertedSubmissions = [];
 let featureRow = null;
+let releasePreviewRows = [];
 
 function storedSubmission() {
   return {
@@ -105,7 +110,10 @@ globalThis.fetch = async (input, init = {}) => {
     return response([storedSubmission(), ...insertedSubmissions]);
   }
   if (url.includes("release_previews?select=*&status=eq.published")) {
-    return response([]);
+    return response(releasePreviewRows.filter((row) => row.status === "published"));
+  }
+  if (url.includes("release_previews?select=*&version=not.in.")) {
+    return response(releasePreviewRows);
   }
   if (url.includes("release_previews?select=id,title_zh,title_en,body_zh,body_en,highlights_zh,created_at,published_at")) {
     return response(auditRows);
@@ -171,6 +179,9 @@ globalThis.fetch = async (input, init = {}) => {
       auditRows.unshift(row);
     } else if (body.version === "__FEATURE_CONTENT_V1__") {
       featureRow = row;
+    } else {
+      row.id = `preview-${releasePreviewRows.length + 1}`;
+      releasePreviewRows.unshift(row);
     }
     return response([row], 201);
   }
@@ -184,6 +195,12 @@ globalThis.fetch = async (input, init = {}) => {
   }
   if (url.includes("/rest/v1/release_previews?id=eq.") && init.method === "PATCH") {
     const body = JSON.parse(init.body);
+    const id = decodeURIComponent(url.split("id=eq.")[1]);
+    const previewIndex = releasePreviewRows.findIndex((row) => row.id === id);
+    if (previewIndex >= 0) {
+      releasePreviewRows[previewIndex] = { ...releasePreviewRows[previewIndex], ...body };
+      return response([releasePreviewRows[previewIndex]]);
+    }
     featureRow = { ...featureRow, ...body };
     return response([featureRow]);
   }
@@ -205,6 +222,13 @@ try {
   assert.equal(publicData.suggestions[0].liked, true);
   assert.equal(publicData.suggestions[0].developer_reply, "Planned for the next version.");
   assert.match(publicData.suggestions[0].attachment.url, /token=test$/);
+  assert.equal(publicData.previews[0].version, "v2.1");
+  assert.equal(publicData.previews[0].target_date, null);
+  assert.deepEqual(publicData.previews[0].highlights_zh, [
+    "自定义歌词岛形状",
+    "自定义字体、颜色",
+    "自定义各模块颜色"
+  ]);
   assert.equal(calls.length, 4, "public API must stay within ESA's four-subrequest limit");
   assert.ok(
     calls.every((call) => call.init.headers.apikey === values.__ESA_SUPABASE_SERVICE_ROLE_KEY__),
@@ -410,6 +434,40 @@ try {
   );
   const hiddenPublicData = await hiddenPublicResponse.json();
   assert.equal(hiddenPublicData.suggestions.length, 0);
+
+  const seededPreviewResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/previews", {
+      headers: { cookie: adminCookie.split(";")[0] }
+    })
+  );
+  assert.equal(seededPreviewResponse.status, 200);
+  const seededPreviewData = await seededPreviewResponse.json();
+  assert.equal(seededPreviewData.previews[0].version, "v2.1");
+  assert.equal(seededPreviewData.previews[0].status, "published");
+  assert.equal(releasePreviewRows.length, 1, "an empty preview database should be initialized once");
+
+  const previewUpdateResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/previews", {
+      method: "PATCH",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({
+        id: seededPreviewData.previews[0].id,
+        version: "v2.1",
+        body_zh: "保留并更新当前预告",
+        body_en: "Keep and update the current preview",
+        target_date: "",
+        status: "published"
+      })
+    })
+  );
+  assert.equal(previewUpdateResponse.status, 200);
+  const previewUpdateData = await previewUpdateResponse.json();
+  assert.equal(previewUpdateData.preview.body_zh, "保留并更新当前预告");
+  assert.equal(releasePreviewRows.length, 1, "editing must update the current preview instead of duplicating it");
 
   calls.length = 0;
   const previewResponse = await api.fetch(

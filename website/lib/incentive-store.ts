@@ -12,6 +12,10 @@ import {
   defaultFeatureContent,
   sanitizeFeatureContent
 } from "@/data/feature-content";
+import {
+  defaultReleasePreview,
+  releasePreviewFallback
+} from "@/data/release-preview";
 import type { AccessEventSource } from "@/lib/access-log";
 
 type SupabaseConfig = {
@@ -230,7 +234,10 @@ export async function getPublicIncentives(voterHash?: string) {
   const previews = await supabase<ReleasePreview[]>(
     "/rest/v1/release_previews?select=*&status=eq.published&order=published_at.desc&limit=6"
   );
-  return { suggestions, previews };
+  return {
+    suggestions,
+    previews: previews.length ? previews : [releasePreviewFallback()]
+  };
 }
 
 export async function toggleSuggestionLike(
@@ -390,7 +397,9 @@ export async function listReleasePreviews() {
   const rows = await supabase<ReleasePreview[]>(
     "/rest/v1/release_previews?select=*&version=not.in.(__FEATURE_CONTENT_V1__,__AUDIT_LOG_V1__)&order=created_at.desc&limit=50"
   );
-  return rows.filter((row) => !row.version.startsWith("__"));
+  const previews = rows.filter((row) => !row.version.startsWith("__"));
+  if (previews.length) return previews;
+  return [await createReleasePreview(defaultReleasePreview)];
 }
 
 export async function createReleasePreview(
