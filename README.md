@@ -276,8 +276,4 @@ website/             Lyric Island 官方网站与相关 API
 
 Lyric Island / 歌词岛是独立项目，与 Apple、腾讯、网易、酷狗、酷我、Spotify 及其音乐服务不存在隶属、合作或背书关系。相关名称与商标归各自权利人所有。歌词内容来自第三方歌词服务，使用时请尊重内容版权与服务条款。
 
-## 开源许可证
-
-本项目采用 GNU General Public License v3.0 only（GPL-3.0-only）开源许可。详情请参阅 [LICENSE](LICENSE)。
-
 © 2026 Lyric Island · 歌词岛
