@@ -1913,6 +1913,14 @@ html[lang="en"] :where(
   font-size: 18px;
 }
 
+.updatesDownloads .button {
+  inline-size: 192px;
+}
+
+.updatesDownloads .buttonSecondary {
+  gap: 20px;
+}
+
 .updatesFooter {
   padding: 56px 0;
   border-radius: 40px 40px 0 0;
@@ -2929,6 +2937,17 @@ html[lang="en"] :where(
 
 .previewDatabaseLoading {
   min-height: 280px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .databaseContentReveal {
+    animation: databaseContentFadeIn 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+@keyframes databaseContentFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes databaseLoadingPulse {

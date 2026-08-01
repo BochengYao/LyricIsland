@@ -120,7 +120,7 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
     downloadsTitle: "歌词岛，现已登陆 Microsoft Store。",
     downloadsBody:
       "在 Microsoft Store 下载并获取后续更新。源代码可在 GitHub 查看。",
-    storeLabel: "打开 Microsoft Store",
+    storeLabel: "Microsoft Store",
     footerNote: "播放器与音乐服务名称及商标归各自权利人所有。"
   },
   en: {
@@ -218,7 +218,7 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
     downloadsTitle: "Lyric Island is now on Microsoft Store.",
     downloadsBody:
       "Download Lyric Island from Microsoft Store and get future updates there. Source code is available on GitHub.",
-    storeLabel: "Open Microsoft Store",
+    storeLabel: "Microsoft Store",
     footerNote:
       "Player and music-service names and trademarks belong to their respective owners."
   }

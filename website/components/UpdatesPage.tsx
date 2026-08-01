@@ -17,6 +17,8 @@ type Props = {
   locale: Locale;
 };
 
+const githubUrl = "https://github.com/BochengYao/AppleMusicDesktopLyrics";
+
 export function UpdatesPage({ locale }: Props) {
   const siteCopy = copyByLocale[locale];
   const copy = updatesByLocale[locale];
@@ -62,6 +64,15 @@ export function UpdatesPage({ locale }: Props) {
               rel="noreferrer"
             >
               {copy.storeLabel}
+              <ExternalArrow />
+            </a>
+            <a
+              className="button buttonSecondary"
+              href={githubUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              GitHub
               <ExternalArrow />
             </a>
           </div>

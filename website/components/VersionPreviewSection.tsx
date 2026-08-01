@@ -54,7 +54,7 @@ export function VersionPreviewSection({ locale }: { locale: Locale }) {
         <h2 data-text-reveal="title">{copy.title}</h2>
         <p>{copy.body}</p>
       </div>
-      <div className="previewList" aria-live="polite">
+      <div className={`previewList${loading ? "" : " databaseContentReveal"}`} aria-live="polite">
         {previews.length ? previews.map((preview) => {
           const title = locale === "zh" ? preview.title_zh : preview.title_en || preview.title_zh;
           const body = locale === "zh" ? preview.body_zh : preview.body_en || preview.body_zh;
@@ -83,7 +83,7 @@ export function VersionPreviewSection({ locale }: { locale: Locale }) {
             </article>
           );
         }) : <p className="previewEmpty">{loading
-          ? (locale === "zh" ? "正在读取版本预告…" : "Loading release previews…")
+          ? (locale === "zh" ? "正在载入" : "Loading")
           : loadFailed
             ? (locale === "zh" ? "版本预告暂时无法载入，请稍后刷新。" : "Release previews could not be loaded. Please refresh later.")
             : copy.empty}</p>}

@@ -50,7 +50,7 @@ export function ManagedFeatureContent({
   if (!content) {
     const loadingText = loadFailed
       ? locale === "zh" ? "更新内容暂时无法载入，请稍后刷新。" : "Updates could not be loaded. Please refresh later."
-      : locale === "zh" ? "正在载入最新更新内容" : "Loading the latest updates";
+      : locale === "zh" ? "正在载入" : "Loading";
     return (
       <>
         <section
@@ -69,7 +69,6 @@ export function ManagedFeatureContent({
             role="status"
           >
             <span className="databaseLoadingLabel">{loadingText}</span>
-            {!loadFailed && <span className="databaseLoadingPulse" aria-hidden="true" />}
           </div>
         </section>
 
@@ -86,7 +85,6 @@ export function ManagedFeatureContent({
               role="status"
             >
               <span className="databaseLoadingLabel">{loadingText}</span>
-              {!loadFailed && <span className="databaseLoadingPulse" aria-hidden="true" />}
             </div>
           </div>
         </section>
@@ -99,7 +97,7 @@ export function ManagedFeatureContent({
   return (
     <>
       <section
-        className="updatesOverviewSnap"
+        className="updatesOverviewSnap databaseContentReveal"
         id="updates-overview"
         data-snap-section
       >
@@ -122,7 +120,7 @@ export function ManagedFeatureContent({
       </section>
 
       <section
-        className="updatesDetailsSnap"
+        className="updatesDetailsSnap databaseContentReveal"
         id="updates-details"
         data-snap-section
       >
