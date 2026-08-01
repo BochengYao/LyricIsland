@@ -2204,7 +2204,7 @@ namespace LyricsIsland.App
 
                 SetTutorialText("该功能可方便看到岛下内容", "无需频繁拖动歌词岛，助你高效工作");
                 await DelayTutorialAsync(3200, cancellationToken);
-                SetTutorialText("可以透过岛直接左键点击控制岛下内容", string.Empty, "（ 新功能! ）");
+                SetTutorialText("可以透过岛直接左键点击控制岛下内容", string.Empty, "（新功能！）");
                 await DelayTutorialAsync(3000, cancellationToken);
 
                 tutorialLayoutOverride = CreateTutorialProfile(IslandModuleType.Lyrics, IslandModuleType.Divider, IslandModuleType.PlaybackControls);

@@ -14,7 +14,15 @@ const values = {
   "__ESA_SUPABASE_SERVICE_ROLE_KEY__": "sb_secret_test_only",
   "__ESA_SUPABASE_STORAGE_BUCKET__": "lyric-island-submissions",
   "__ESA_ADMIN_PASSWORD__": "correct horse battery staple",
-  "__ESA_ADMIN_SESSION_SECRET__": "test-session-secret-with-at-least-32-characters"
+  "__ESA_ADMIN_SESSION_SECRET__": "test-session-secret-with-at-least-32-characters",
+  "__ESA_FEATURE_CONTENT_JSON__": await readFile(
+    resolve(root, "data", "feature-content-default.json"),
+    "utf8"
+  ),
+  "__ESA_RELEASE_PREVIEW_JSON__": await readFile(
+    resolve(root, "data", "release-preview-default.json"),
+    "utf8"
+  )
 };
 
 let source = await readFile(resolve(root, "esa", "api.js"), "utf8");
@@ -32,7 +40,10 @@ const calls = [];
 let reviewerNote = '[[lyric-island-review:v1]]{"reply":"Planned for the next version.","flagged":false,"public":true}';
 let submissionStatus = "accepted";
 let rewardStatus = "not_eligible";
-let accessLogs = [];
+let auditRows = [];
+let insertedSubmissions = [];
+let featureRow = null;
+let releasePreviewRows = [];
 
 function storedSubmission() {
   return {
@@ -69,26 +80,6 @@ function response(data, status = 200) {
 globalThis.fetch = async (input, init = {}) => {
   const url = String(input);
   calls.push({ url, init });
-  if (url.endsWith("/rest/v1/access_logs") && init.method === "POST") {
-    const body = JSON.parse(init.body);
-    accessLogs.unshift({
-      id: accessLogs.length + 1,
-      ...body,
-      created_at: "2026-07-22T00:00:00.000Z",
-      acknowledged_at: null
-    });
-    return response([]);
-  }
-  if (url.includes("/rest/v1/access_logs?select=*")) {
-    return response(accessLogs);
-  }
-  if (url.includes("/rest/v1/access_logs?severity=in.") && init.method === "PATCH") {
-    accessLogs = accessLogs.map((item) => item.severity === "normal" ? item : {
-      ...item,
-      acknowledged_at: "2026-07-22T00:01:00.000Z"
-    });
-    return response([]);
-  }
   if (url.includes("/rest/v1/incentive_likes?")) {
     return response([{ submission_id: "11111111-1111-4111-8111-111111111111" }]);
   }
@@ -115,8 +106,20 @@ globalThis.fetch = async (input, init = {}) => {
       }
     ]);
   }
+  if (url.includes("incentive_submissions?select=id,kind,nickname,title,body,reviewer_note,created_at")) {
+    return response([storedSubmission(), ...insertedSubmissions]);
+  }
   if (url.includes("release_previews?select=*&status=eq.published")) {
-    return response([]);
+    return response(releasePreviewRows.filter((row) => row.status === "published"));
+  }
+  if (url.includes("release_previews?select=*&version=not.in.")) {
+    return response(releasePreviewRows);
+  }
+  if (url.includes("release_previews?select=id,title_zh,title_en,body_zh,body_en,highlights_zh,created_at,published_at")) {
+    return response(auditRows);
+  }
+  if (url.includes(`release_previews?select=*&version=eq.${encodeURIComponent("__FEATURE_CONTENT_V1__")}`)) {
+    return response(featureRow ? [featureRow] : []);
   }
   if (url.includes("/storage/v1/object/sign/lyric-island-submissions")) {
     const paths = JSON.parse(init.body).paths;
@@ -151,16 +154,55 @@ globalThis.fetch = async (input, init = {}) => {
   }
   if (url.endsWith("/rest/v1/incentive_submissions") && init.method === "POST") {
     const body = JSON.parse(init.body);
-    return response([{ ...body, status: "pending" }], 201);
+    const row = {
+      ...body,
+      status: "pending",
+      reward_status: "pending",
+      like_count: 0,
+      created_at: "2026-07-22T00:02:00.000Z",
+      updated_at: "2026-07-22T00:02:00.000Z"
+    };
+    insertedSubmissions.unshift(row);
+    return response([row], 201);
   }
   if (url.endsWith("/rest/v1/release_previews") && init.method === "POST") {
     const body = JSON.parse(init.body);
-    return response([{
+    const row = {
       id: "22222222-2222-4222-8222-222222222222",
       ...body,
       created_at: "2026-07-18T00:00:00.000Z",
       updated_at: "2026-07-18T00:00:00.000Z"
-    }], 201);
+    };
+    if (body.version === "__AUDIT_LOG_V1__") {
+      row.id = `audit-${auditRows.length + 1}`;
+      row.created_at = new Date(Date.UTC(2026, 6, 22, 0, 0, auditRows.length)).toISOString();
+      auditRows.unshift(row);
+    } else if (body.version === "__FEATURE_CONTENT_V1__") {
+      featureRow = row;
+    } else {
+      row.id = `preview-${releasePreviewRows.length + 1}`;
+      releasePreviewRows.unshift(row);
+    }
+    return response([row], 201);
+  }
+  if (url.includes(`release_previews?version=eq.${encodeURIComponent("__AUDIT_LOG_V1__")}`) && init.method === "PATCH") {
+    const body = JSON.parse(init.body);
+    const severity = new URL(url).searchParams.get("title_en");
+    auditRows = auditRows.map((item) => item.title_en === severity?.replace("eq.", "")
+      ? { ...item, ...body }
+      : item);
+    return response([]);
+  }
+  if (url.includes("/rest/v1/release_previews?id=eq.") && init.method === "PATCH") {
+    const body = JSON.parse(init.body);
+    const id = decodeURIComponent(url.split("id=eq.")[1]);
+    const previewIndex = releasePreviewRows.findIndex((row) => row.id === id);
+    if (previewIndex >= 0) {
+      releasePreviewRows[previewIndex] = { ...releasePreviewRows[previewIndex], ...body };
+      return response([releasePreviewRows[previewIndex]]);
+    }
+    featureRow = { ...featureRow, ...body };
+    return response([featureRow]);
   }
   throw new Error(`Unexpected fetch in ESA API test: ${url}`);
 };
@@ -180,6 +222,13 @@ try {
   assert.equal(publicData.suggestions[0].liked, true);
   assert.equal(publicData.suggestions[0].developer_reply, "Planned for the next version.");
   assert.match(publicData.suggestions[0].attachment.url, /token=test$/);
+  assert.equal(publicData.previews[0].version, "v2.1");
+  assert.equal(publicData.previews[0].target_date, null);
+  assert.deepEqual(publicData.previews[0].highlights_zh, [
+    "自定义歌词岛形状",
+    "自定义字体、颜色",
+    "自定义各模块颜色"
+  ]);
   assert.equal(calls.length, 4, "public API must stay within ESA's four-subrequest limit");
   assert.ok(
     calls.every((call) => call.init.headers.apikey === values.__ESA_SUPABASE_SERVICE_ROLE_KEY__),
@@ -190,12 +239,23 @@ try {
     "opaque sb_secret_ keys must not be sent as bearer JWTs"
   );
 
+  calls.length = 0;
+  const publicFeaturesResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/features")
+  );
+  assert.equal(publicFeaturesResponse.status, 200);
+  const publicFeaturesData = await publicFeaturesResponse.json();
+  assert.equal(publicFeaturesData.content.summary.label_zh, "本次重点");
+  assert.equal(publicFeaturesData.content.sections.length, 6);
+  assert.equal(calls.length, 2, "first feature read must import the bundled content in two requests");
+
   const loginResponse = await api.fetch(
     new Request("https://lyric-island.top/api/incentives/admin/login", {
       method: "POST",
       headers: {
         Origin: "https://lyric-island.top",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "client-ip-geo-location": "CN"
       },
       body: JSON.stringify({ password: values.__ESA_ADMIN_PASSWORD__ })
     })
@@ -203,6 +263,25 @@ try {
   assert.equal(loginResponse.status, 200);
   const adminCookie = loginResponse.headers.get("set-cookie");
   assert.match(adminCookie, /HttpOnly; Secure; SameSite=Strict/);
+
+  const managedFeatures = structuredClone(publicFeaturesData.content);
+  managedFeatures.sections[0].title_zh = "后台修改后的标题";
+  managedFeatures.sections.reverse();
+  const featureSaveResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/features", {
+      method: "PUT",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({ content: managedFeatures })
+    })
+  );
+  assert.equal(featureSaveResponse.status, 200);
+  const featureSaveData = await featureSaveResponse.json();
+  assert.equal(featureSaveData.content.sections[5].title_zh, "后台修改后的标题");
+  assert.equal(featureSaveData.content.sections[0].id, "feature-06");
 
   const proxiedLoginResponse = await api.fetch(
     new Request("https://internal-worker.local/api/incentives/admin/login", {
@@ -244,7 +323,9 @@ try {
         reward_status: "pending",
         developer_reply: "Confirmed for the next release.",
         is_flagged: true,
-        is_public: true
+        is_public: true,
+        like_count: 37,
+        created_at: "2026-07-20T04:30:00.000Z"
       })
     })
   );
@@ -255,6 +336,8 @@ try {
   assert.equal(saveData.submission.developer_reply, "Confirmed for the next release.");
   assert.equal(saveData.submission.is_flagged, true);
   assert.equal(saveData.submission.is_public, true);
+  assert.equal(saveData.submission.like_count, 37);
+  assert.equal(saveData.submission.created_at, "2026-07-20T04:30:00.000Z");
   assert.equal(calls.length, 3, "saving a review must read, update and append an audit record");
 
   const pageAccessResponse = await api.fetch(
@@ -263,15 +346,37 @@ try {
       headers: {
         Origin: "https://lyric-island.top",
         "Content-Type": "application/json",
-        "x-forwarded-for": "203.0.113.10"
+        "ali-cdn-real-ip": "203.0.113.10",
+        "x-forwarded-for": "203.0.113.10, 10.0.0.1",
+        "ali-ip-country": "CN",
+        "ali-ip-city": "Hangzhou",
+        "accept-language": "zh-CN,zh;q=0.9",
+        "x-request-id": "request-page-view-001",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edg/140.0"
       },
-      body: JSON.stringify({ path: "/incentives", referrer: "https://example.com/" })
+      body: JSON.stringify({
+        path: "/incentives?campaign=summer&token=secret-value",
+        referrer: "https://example.com/",
+        details: {
+          page_title: "用户激励计划",
+          timezone: "Asia/Shanghai",
+          viewport: "1440×900",
+          screen: "1920×1080"
+        }
+      })
     })
   );
   assert.equal(pageAccessResponse.status, 204);
-  assert.equal(accessLogs[0].event_type, "page_view");
-  assert.equal(accessLogs[0].scope, "public");
-  assert.equal(accessLogs[0].visitor_hash.length, 64);
+  assert.equal(auditRows[0].title_zh, "page_view");
+  assert.equal(auditRows[0].highlights_zh.scope, "public");
+  assert.equal(auditRows[0].highlights_zh.visitor_hash.length, 64);
+  assert.equal(auditRows[0].highlights_zh.ip_address, "203.0.113.10");
+  assert.equal(auditRows[0].highlights_zh.ip_source, "ali-cdn-real-ip");
+  assert.equal(auditRows[0].highlights_zh.country, "CN");
+  assert.equal(auditRows[0].highlights_zh.city, "Hangzhou");
+  assert.equal(auditRows[0].body_zh, "/incentives?campaign=summer&token=%5Bredacted%5D");
+  assert.equal(auditRows[0].body_en, "GET");
+  assert.equal(auditRows[0].highlights_zh.details.timezone, "Asia/Shanghai");
 
   const failedLoginResponse = await api.fetch(
     new Request("https://lyric-island.top/api/incentives/admin/login", {
@@ -285,8 +390,8 @@ try {
     })
   );
   assert.equal(failedLoginResponse.status, 401);
-  assert.equal(accessLogs[0].event_type, "login_failed");
-  assert.equal(accessLogs[0].severity, "warning");
+  assert.equal(auditRows[0].title_zh, "login_failed");
+  assert.equal(auditRows[0].title_en, "warning");
 
   const accessLogResponse = await api.fetch(
     new Request("https://lyric-island.top/api/incentives/admin/access-logs", {
@@ -297,6 +402,33 @@ try {
   const accessLogData = await accessLogResponse.json();
   assert.ok(accessLogData.logs.length >= 2);
   assert.equal(accessLogData.unreadAlerts, 1);
+  const successfulLoginLog = accessLogData.logs.find(
+    (item) => item.event_type === "login_succeeded" && item.country === "CN"
+  );
+  assert.ok(successfulLoginLog?.created_at, "successful admin logins must retain their login time");
+  assert.equal(successfulLoginLog.country, "CN");
+  const pageViewLog = accessLogData.logs.find((item) => item.event_type === "page_view");
+  assert.equal(pageViewLog.ip_address, "203.0.113.10");
+  assert.equal(pageViewLog.city, "Hangzhou");
+  assert.equal(pageViewLog.accept_language, "zh-CN,zh;q=0.9");
+  assert.equal(pageViewLog.request_id, "request-page-view-001");
+  assert.equal(pageViewLog.details.viewport, "1440×900");
+  const updateLog = accessLogData.logs.find((item) => item.event_type === "submission_updated");
+  assert.equal(updateLog.details.submissionTitle, "A useful suggestion");
+  assert.ok(
+    updateLog.details.changes.some(
+      (change) => change.field === "developer_reply" &&
+        change.before === "Planned for the next version." &&
+        change.after === "Confirmed for the next release."
+    ),
+    "feedback update logs must retain field-level before and after values"
+  );
+  assert.ok(
+    updateLog.details.changes.some(
+      (change) => change.field === "like_count" && change.before !== 37 && change.after === 37
+    ),
+    "feedback update logs must identify numeric changes"
+  );
 
   const refreshedPublicResponse = await api.fetch(
     new Request("https://lyric-island.top/api/incentives/public")
@@ -330,6 +462,40 @@ try {
   );
   const hiddenPublicData = await hiddenPublicResponse.json();
   assert.equal(hiddenPublicData.suggestions.length, 0);
+
+  const seededPreviewResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/previews", {
+      headers: { cookie: adminCookie.split(";")[0] }
+    })
+  );
+  assert.equal(seededPreviewResponse.status, 200);
+  const seededPreviewData = await seededPreviewResponse.json();
+  assert.equal(seededPreviewData.previews[0].version, "v2.1");
+  assert.equal(seededPreviewData.previews[0].status, "published");
+  assert.equal(releasePreviewRows.length, 1, "an empty preview database should be initialized once");
+
+  const previewUpdateResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/previews", {
+      method: "PATCH",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({
+        id: seededPreviewData.previews[0].id,
+        version: "v2.1",
+        body_zh: "保留并更新当前预告",
+        body_en: "Keep and update the current preview",
+        target_date: "",
+        status: "published"
+      })
+    })
+  );
+  assert.equal(previewUpdateResponse.status, 200);
+  const previewUpdateData = await previewUpdateResponse.json();
+  assert.equal(previewUpdateData.preview.body_zh, "保留并更新当前预告");
+  assert.equal(releasePreviewRows.length, 1, "editing must update the current preview instead of duplicating it");
 
   calls.length = 0;
   const previewResponse = await api.fetch(
@@ -376,6 +542,30 @@ try {
   );
   assert.equal(submissionResponse.status, 201);
   assert.equal(calls.length, 4, "three uploads plus one insert must use exactly four subrequests");
+  assert.ok(
+    JSON.parse(calls.at(-1).init.body).reviewer_note.includes('"submitted"'),
+    "submission source metadata must be stored in the same insert"
+  );
+  assert.equal(
+    JSON.parse(calls.at(-1).init.body).reward_status,
+    "pending",
+    "new submissions must default to a pending reward"
+  );
+
+  const submissionLogResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/access-logs", {
+      headers: { cookie: adminCookie.split(";")[0] }
+    })
+  );
+  const submissionLogData = await submissionLogResponse.json();
+  assert.ok(
+    submissionLogData.logs.some((item) => item.event_type === "submission_created"),
+    "new Bug and suggestion submissions must appear in access logs"
+  );
+  assert.ok(
+    calls.every((call) => !call.url.includes("/rest/v1/access_logs")),
+    "logging must not depend on the missing access_logs table"
+  );
 
   const crossOriginResponse = await api.fetch(
     new Request("https://lyric-island.top/api/incentives/admin/login", {

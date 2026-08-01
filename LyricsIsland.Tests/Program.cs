@@ -86,10 +86,11 @@ namespace LyricsIsland.Tests
             suite.Run("keeps island expanded while editing", KeepsIslandExpandedWhileEditing);
             suite.Run("settings layout mode labels are product facing", SettingsLayoutModeLabelsAreProductFacing);
             suite.Run("layout cards directly select the edited mode", LayoutCardsDirectlySelectEditedMode);
-            suite.Run("about page exposes v2 Beta product information", AboutPageExposesV2BetaProductInformation);
+            suite.Run("about page hides prerelease wording", AboutPageHidesPrereleaseWording);
             suite.Run("support developer page exposes Pro and free support actions", SupportDeveloperPageExposesProAndFreeSupportActions);
             suite.Run("formats the public Beta version", FormatsThePublicBetaVersion);
             suite.Run("release version has one source and auto increments", ReleaseVersionHasOneSourceAndAutoIncrements);
+            suite.Run("store package reuses the reserved product identity", StorePackageReusesReservedProductIdentity);
             suite.Run("tutorial waits for required user actions", TutorialWaitsForRequiredUserActions);
             suite.Run("tutorial rejects control click without temporary interaction", TutorialRejectsControlClickWithoutTemporaryInteraction);
             suite.Run("first launch tutorial is persisted and can be replayed", FirstLaunchTutorialIsPersistedAndCanBeReplayed);
@@ -1293,7 +1294,7 @@ namespace LyricsIsland.Tests
             Assert.False(xaml.Contains("M0,18 L6,10"));
         }
 
-        static void AboutPageExposesV2BetaProductInformation()
+        static void AboutPageHidesPrereleaseWording()
         {
             var root = GetSolutionRoot();
             var xaml = File.ReadAllText(Path.Combine(root, "LyricsIsland.App", "PlacementSettingsWindow.xaml"));
@@ -1327,8 +1328,7 @@ namespace LyricsIsland.Tests
             Assert.False(xaml.Contains("调整歌词岛位置、缓存和鼠标避让效果"));
             Assert.True(xaml.Contains("Text=\"大丞子\""));
             Assert.True(xaml.Contains("ProductVersion.DisplayVersionNumber"));
-            Assert.True(xaml.Contains("ProductVersion.DisplayVersionChannel"));
-            Assert.True(aboutPanel.Contains("Foreground=\"{DynamicResource {x:Static SystemColors.HighlightBrushKey}}\""));
+            Assert.False(aboutPanel.Contains("ProductVersion.DisplayVersionChannel"));
             Assert.True(xaml.Contains("x:Name=\"AboutSettingsList\""));
             Assert.True(aboutPanel.Contains("<Grid x:Name=\"AboutPageBody\""));
             Assert.False(aboutPanel.Contains("MinHeight=\"20\""));
@@ -1343,7 +1343,8 @@ namespace LyricsIsland.Tests
             Assert.False(aboutPanel.Contains("x:Name=\"AboutFeedbackRow\""));
             Assert.True(xaml.Contains("x:Name=\"AboutTutorialRow\""));
             Assert.False(aboutPanel.Contains("Style=\"{StaticResource AboutActionRowButtonStyle}\""));
-            Assert.Equal(2, CountOccurrences(aboutPanel, "Style=\"{StaticResource TextLinkButtonStyle}\""));
+            Assert.Equal(3, CountOccurrences(aboutPanel, "Style=\"{StaticResource TextLinkButtonStyle}\""));
+            Assert.Equal(1, CountOccurrences(aboutPanel, "Click=\"OpenWebsiteAboutRow_Click\""));
             Assert.True(xaml.Contains("Property=\"IsKeyboardFocused\" Value=\"True\""));
             Assert.Equal(1, CountOccurrences(aboutPanel, "Click=\"OpenGitHubAboutRow_Click\""));
             Assert.Equal(1, CountOccurrences(aboutPanel, "Click=\"RestartTutorialAboutRow_Click\""));
@@ -1352,12 +1353,15 @@ namespace LyricsIsland.Tests
             Assert.False(xaml.Contains("x:Name=\"AboutInfoGrid\""));
             Assert.False(xaml.Contains("x:Name=\"AboutActionFlow\""));
             Assert.False(xaml.Contains("x:Name=\"AboutUpdateCard\""));
-            Assert.Equal(2, CountOccurrences(xaml, "Text=\"即将上线\""));
+            Assert.Equal(0, CountOccurrences(xaml, "Text=\"即将上线\""));
             Assert.False(xaml.Contains("Text=\"功能规划中\""));
             Assert.True(xaml.Contains("Text=\"软件著作权\" Visibility=\"Collapsed\""));
             Assert.False(xaml.Contains("Text=\"运行环境\""));
             Assert.False(xaml.Contains("Text=\"数据说明\""));
+            Assert.True(xaml.Contains("Text=\"打开官网\""));
             Assert.True(xaml.Contains("Text=\"打开 GitHub\""));
+            Assert.True(source.Contains("https://lyric-island.top/"));
+            Assert.True(source.Contains("OpenWebsiteAboutRow_Click"));
             Assert.True(xaml.Contains("x:Name=\"OpenGitHubLinkArrow\""));
             Assert.True(xaml.Contains("Data=\"M1,11 L11,1 M4,1 H11 V8\""));
             Assert.False(xaml.Contains("↗"));
@@ -1373,7 +1377,9 @@ namespace LyricsIsland.Tests
             var hotkeySource = source.Substring(hotkeySourceStart, hotkeySourceEnd - hotkeySourceStart);
             Assert.True(hotkeySource.Contains("GetVisualOrLogicalParent(source)"));
             Assert.False(hotkeySource.Contains("VisualTreeHelper.GetParent(source)"));
-            Assert.True(xaml.Contains("v2.0 Beta 更新内容"));
+            Assert.True(aboutPanel.Contains("v2.0 更新内容"));
+            Assert.True(aboutPanel.Contains("感谢参与 v2.0 测试"));
+            Assert.False(aboutPanel.Contains("Beta"));
             Assert.True(source.Contains("https://github.com/BochengYao/LyricIsland"));
             Assert.True(source.Contains("AboutSettingsPanel.Visibility = section == \"About\""));
         }
@@ -1452,14 +1458,17 @@ namespace LyricsIsland.Tests
             Assert.True(supportPanel.Contains("x:Name=\"SupportFeedbackTextGrid\""));
             Assert.False(supportPanel.Contains("Margin=\"6,0,0,0\""));
             Assert.False(supportPanel.Contains("x:Key=\"SupportActionButtonStyle\""));
-            Assert.Equal(3, CountOccurrences(supportPanel, "Style=\"{StaticResource TextLinkButtonStyle}\""));
+            Assert.Equal(4, CountOccurrences(supportPanel, "Style=\"{StaticResource TextLinkButtonStyle}\""));
             Assert.True(xaml.Contains("<Setter Property=\"Foreground\" Value=\"#FF2F91FF\" />"));
             Assert.False(xaml.Contains("<Setter Property=\"Opacity\" Value=\"0.78\" />"));
-            Assert.Equal(3, CountOccurrences(supportPanel, "Foreground=\"{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}\""));
+            Assert.Equal(4, CountOccurrences(supportPanel, "Foreground=\"{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}\""));
             Assert.Equal(1, CountOccurrences(supportPanel, "Click=\"SupportStoreReviewButton_Click\""));
             Assert.Equal(1, CountOccurrences(supportPanel, "Click=\"SupportShareButton_Click\""));
             Assert.Equal(1, CountOccurrences(supportPanel, "Click=\"OpenGitHubAboutRow_Click\""));
-            Assert.False(source.Contains("SupportFeedbackButton_Click"));
+            Assert.Equal(1, CountOccurrences(supportPanel, "Click=\"SupportFeedbackButton_Click\""));
+            Assert.True(supportPanel.Contains("Text=\"去反馈  &gt;\""));
+            Assert.True(source.Contains("https://lyric-island.top/incentives/"));
+            Assert.True(source.Contains("SupportFeedbackButton_Click"));
             Assert.True(supportPanel.Contains("Pro 支持计划"));
             Assert.True(supportPanel.Contains("Margin=\"0,8,0,0\""));
             Assert.True(supportPanel.Contains("LineHeight=\"22\""));
@@ -1581,6 +1590,32 @@ namespace LyricsIsland.Tests
             Assert.True(publishScript.Contains("dotnet publish"));
             Assert.True(publishScript.Contains("WaitForExit"));
             Assert.True(publishScript.Contains("Move-DirectoryWithRetry"));
+        }
+
+        static void StorePackageReusesReservedProductIdentity()
+        {
+            var root = GetSolutionRoot();
+            var manifest = File.ReadAllText(Path.Combine(root, "store", "msix", "AppxManifest.template.xml"));
+            var buildScript = File.ReadAllText(Path.Combine(root, "store", "msix", "build-msix.ps1"));
+            var publishScript = File.ReadAllText(Path.Combine(root, "tools", "publish-next-version.ps1"));
+            var gitIgnore = File.ReadAllText(Path.Combine(root, ".gitignore"));
+
+            Assert.True(manifest.Contains("Name=\"70643607.LyricIsland\""));
+            Assert.True(manifest.Contains("Publisher=\"CN=D0EA2A8A-59FF-4BC5-AB6E-5ABC356AF3E3\""));
+            Assert.True(manifest.Contains("<PublisherDisplayName>大丞子</PublisherDisplayName>"));
+            Assert.True(manifest.Contains("Version=\"__PACKAGE_VERSION__\""));
+            Assert.True(manifest.Contains("Executable=\"LyricsIsland.App.exe\""));
+            Assert.True(manifest.Contains("uap10:RuntimeBehavior=\"packagedClassicApp\""));
+            Assert.True(manifest.Contains("<rescap:Capability Name=\"runFullTrust\""));
+            Assert.True(buildScript.Contains("VersionPrefix"));
+            Assert.True(buildScript.Contains("$storePublishPath"));
+            Assert.True(buildScript.Contains("dotnet publish"));
+            Assert.True(buildScript.Contains("dotnet restore --runtime win-x64"));
+            Assert.True(buildScript.Contains("--self-contained true"));
+            Assert.False(buildScript.Contains("publish\\current"));
+            Assert.True(buildScript.Contains("MakeAppx.exe"));
+            Assert.True(publishScript.Contains("--self-contained false"));
+            Assert.True(gitIgnore.Contains("store/package/msix/"));
         }
 
         static void ModuleToolboxCapturesMouseDownForDrag()
@@ -1950,6 +1985,7 @@ namespace LyricsIsland.Tests
             Assert.True(settingsXaml.Contains("PreviewKeyDown=\"HotkeyTextBox_PreviewKeyDown\""));
             Assert.True(settingsXaml.Contains("IsReadOnly=\"True\""));
             Assert.True(settingsXaml.Contains("LinearGradientBrush StartPoint=\"0,0\" EndPoint=\"1,1\""));
+            Assert.True(settingsXaml.Contains("Text=\"单击后，按下新的快捷键组合\""));
             Assert.True(settingsWindowSource.Contains("FormatHotkeyKey"));
             Assert.True(settingsWindowSource.Contains("Keyboard.ClearFocus()"));
             Assert.False(settingsXaml.Contains("组合键使用 + 分隔"));
@@ -2799,12 +2835,18 @@ namespace LyricsIsland.Tests
             var root = GetSolutionRoot();
             var code = File.ReadAllText(Path.Combine(root, "LyricsIsland.App", "Modules", "LyricsModuleView.xaml.cs"));
             var xaml = File.ReadAllText(Path.Combine(root, "LyricsIsland.App", "Modules", "LyricsModuleView.xaml"));
+            var project = File.ReadAllText(Path.Combine(root, "LyricsIsland.App", "LyricsIsland.App.csproj"));
+            var fontLicense = File.ReadAllText(Path.Combine(root, "LyricsIsland.App", "Assets", "Xiaolai-OFL.txt"));
             var stopStart = code.IndexOf("private void StopMarquee()", StringComparison.Ordinal);
             var stopBody = code.Substring(stopStart);
 
             Assert.False(stopBody.Contains("Canvas.SetLeft(PrimaryLyricLinePanel, 0)"));
             Assert.False(stopBody.Contains("Canvas.SetLeft(SecondaryLyricText, 0)"));
-            Assert.True(xaml.Contains("FontFamily=\"FZShuTi, Microsoft YaHei UI\""));
+            Assert.Equal(2, CountOccurrences(xaml, "FontFamily=\"/LyricsIsland.App;component/Assets/#Xiaolai\""));
+            Assert.True(project.Contains("<Resource Include=\"Assets\\Xiaolai-Regular.ttf\" />"));
+            Assert.True(project.Contains("<Content Include=\"Assets\\Xiaolai-OFL.txt\" CopyToOutputDirectory=\"PreserveNewest\" />"));
+            Assert.True(fontLicense.Contains("SIL OPEN FONT LICENSE Version 1.1"));
+            Assert.True(File.Exists(Path.Combine(root, "LyricsIsland.App", "Assets", "Xiaolai-Regular.ttf")));
         }
 
         static void TutorialHoverWaitsBeforeEnablingAvoidance()

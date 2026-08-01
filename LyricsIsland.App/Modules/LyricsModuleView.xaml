@@ -27,7 +27,7 @@
                                    TextWrapping="NoWrap" />
                         <TextBlock x:Name="PrimaryAccentText"
                                    Margin="6,-1,0,0"
-                                   FontFamily="FZShuTi, Microsoft YaHei UI"
+                                   FontFamily="/LyricsIsland.App;component/Assets/#Xiaolai"
                                    FontSize="13.5"
                                    FontWeight="Bold"
                                    Foreground="#FFFFD45C"
@@ -77,7 +77,7 @@
                                    TextWrapping="NoWrap" />
                         <TextBlock x:Name="IncomingPrimaryAccentText"
                                    Margin="6,-1,0,0"
-                                   FontFamily="FZShuTi, Microsoft YaHei UI"
+                                   FontFamily="/LyricsIsland.App;component/Assets/#Xiaolai"
                                    FontSize="13.5"
                                    FontWeight="Bold"
                                    Foreground="#FFFFD45C"

@@ -65,6 +65,8 @@ namespace LyricsIsland.App
         private const string MicrosoftStoreProductId = "9NRXZP5HMXK2";
         private const string MicrosoftStoreProductUrl = "https://apps.microsoft.com/detail/9nrxzp5hmxk2";
         private const string MicrosoftStoreProProductId = "lyric_island_pro";
+        private const string WebsiteUrl = "https://lyric-island.top/";
+        private const string FeedbackUrl = "https://lyric-island.top/incentives/";
 
         [ComImport]
         [Guid("3E68D4BD-7135-4D10-8018-9FB6D9F33FA1")]
@@ -1259,6 +1261,13 @@ namespace LyricsIsland.App
             }
         }
 
+        private void SupportFeedbackButton_Click(object sender, RoutedEventArgs e)
+        {
+            Dispatcher.BeginInvoke(
+                DispatcherPriority.Background,
+                new Action(() => OpenExternalUrl(FeedbackUrl)));
+        }
+
         private async void SupportProPurchaseButton_Click(object sender, RoutedEventArgs e)
         {
             SupportProPurchaseButton.IsEnabled = false;
@@ -1632,6 +1641,13 @@ namespace LyricsIsland.App
             Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(OpenGitHub));
         }
 
+        private void OpenWebsiteAboutRow_Click(object sender, RoutedEventArgs e)
+        {
+            Dispatcher.BeginInvoke(
+                DispatcherPriority.Background,
+                new Action(() => OpenExternalUrl(WebsiteUrl)));
+        }
+
         private static void OpenGitHub()
         {
             try
@@ -1639,6 +1655,22 @@ namespace LyricsIsland.App
                 Process.Start(new ProcessStartInfo
                 {
                     FileName = "https://github.com/BochengYao/LyricIsland",
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception)
+            {
+                // External navigation is best-effort; keep the settings window uninterrupted.
+            }
+        }
+
+        private static void OpenExternalUrl(string url)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = url,
                     UseShellExecute = true
                 });
             }

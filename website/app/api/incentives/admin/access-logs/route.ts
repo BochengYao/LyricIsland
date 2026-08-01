@@ -15,7 +15,7 @@ export async function PATCH(request: Request) {
     await safeRecordAccessEvent(request, {
       scope: "admin",
       eventType: "unauthorized_alert_acknowledge",
-      severity: "warning",
+      severity: isSameOrigin(request) ? "warning" : "critical",
       statusCode: 401
     });
     return Response.json({ error: "Unauthorized" }, { status: 401 });
