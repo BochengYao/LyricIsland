@@ -33,13 +33,9 @@ export function UpdatesPage({ locale }: Props) {
           <Eyebrow reveal>{copy.eyebrow}</Eyebrow>
           <h1 data-text-reveal="title">{copy.title}</h1>
           <p className="updatesLead">{copy.intro}</p>
-          <div className="releaseMeta">
-            <span>{copy.version}</span>
-            <span>{copy.status}</span>
-          </div>
         </section>
 
-        <ManagedFeatureContent locale={locale} />
+        <ManagedFeatureContent locale={locale} releaseLabel={copy.version} />
 
         <VersionPreviewSection locale={locale} />
 

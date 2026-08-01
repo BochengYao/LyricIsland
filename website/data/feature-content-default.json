@@ -81,8 +81,8 @@
       "id": "feature-04",
       "title_zh": "时间轴不可靠时仍尽量保持同步",
       "title_en": "Lyrics keep moving when timelines are unreliable",
-      "body_zh": "不同播放器提供的时间轴质量并不一致。v2.0 Beta 1 把差异收敛在统一策略层，并在必要时使用内部单调时钟继续推进歌词。",
-      "body_en": "Timeline quality varies by player. Beta 1 contains those differences in one policy layer and uses an internal monotonic clock when necessary.",
+      "body_zh": "不同播放器提供的时间轴质量并不一致。v2.0 把差异收敛在统一策略层，并在必要时使用内部单调时钟继续推进歌词。",
+      "body_en": "Timeline quality varies by player. v2.0 contains those differences in one policy layer and uses an internal monotonic clock when necessary.",
       "items_zh": [
         "可靠时间轴直接跟随播放器位置。",
         "时间轴缺失或短暂冻结时，使用内部计时补偿。",

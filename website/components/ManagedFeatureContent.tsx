@@ -8,12 +8,14 @@ import {
 } from "@/data/feature-content";
 import type { FeatureContent } from "@/data/incentives-types";
 import type { Locale } from "@/data/site-copy";
+import { Eyebrow } from "@/components/SitePage";
 
 type Props = {
   locale: Locale;
+  releaseLabel: string;
 };
 
-export function ManagedFeatureContent({ locale }: Props) {
+export function ManagedFeatureContent({ locale, releaseLabel }: Props) {
   const [content, setContent] = useState<FeatureContent>(defaultFeatureContent);
 
   useEffect(() => {
@@ -46,6 +48,7 @@ export function ManagedFeatureContent({ locale }: Props) {
       )}
 
       <section className="releaseSections sectionContainer">
+        <Eyebrow reveal>{releaseLabel}</Eyebrow>
         {localized.sections.map((section) => (
           <article className="releaseSection" key={section.number}>
             <span className="releaseNumber">{section.number}</span>

@@ -1770,6 +1770,7 @@ html[lang="en"] :where(
 
 .updatesHero h1 {
   max-width: 1040px;
+  white-space: pre-line;
 }
 
 .updatesLead {
@@ -1779,29 +1780,6 @@ html[lang="en"] :where(
   color: var(--muted);
   font-size: 21px;
   line-height: 1.55;
-}
-
-.releaseMeta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.releaseMeta span {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 18px;
-  border: 1px solid var(--ink);
-  border-radius: var(--radius-pill);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-.releaseMeta span:first-child {
-  background: var(--ink);
-  color: var(--canvas);
 }
 
 .updatesSummary {
@@ -1851,6 +1829,10 @@ html[lang="en"] :where(
 .releaseSections {
   padding-top: 120px;
   padding-bottom: 128px;
+}
+
+.releaseSections > .eyebrow {
+  margin-bottom: 12px;
 }
 
 .releaseSection {
