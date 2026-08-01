@@ -56,18 +56,47 @@ export type ReleasePreview = {
   published_at: string | null;
 };
 
+export type FeatureContentSection = {
+  id: string;
+  title_zh: string;
+  title_en: string;
+  body_zh: string;
+  body_en: string;
+  items_zh: string[];
+  items_en: string[];
+  visible: boolean;
+};
+
+export type FeatureContent = {
+  summary: {
+    label_zh: string;
+    label_en: string;
+    items_zh: string[];
+    items_en: string[];
+    visible: boolean;
+  };
+  sections: FeatureContentSection[];
+};
+
 export type AccessSeverity = "normal" | "warning" | "critical";
 
 export type AccessLogEntry = {
-  id: number;
+  id: number | string;
   scope: "public" | "admin";
   event_type: string;
   path: string;
   method: string;
   status_code: number | null;
+  ip_address: string | null;
+  ip_source: string | null;
   visitor_hash: string;
   country: string | null;
+  region: string | null;
+  city: string | null;
   user_agent: string | null;
+  accept_language: string | null;
+  request_id: string | null;
+  forwarded_for: string | null;
   referrer: string | null;
   severity: AccessSeverity;
   details: Record<string, unknown>;

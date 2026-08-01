@@ -4,7 +4,15 @@ import { incentivesByLocale } from "@/data/incentives-copy";
 
 export const metadata: Metadata = {
   title: incentivesByLocale.zh.pageTitle,
-  description: incentivesByLocale.zh.pageDescription
+  description: incentivesByLocale.zh.pageDescription,
+  alternates: {
+    canonical: "/incentives/",
+    languages: {
+      "zh-CN": "/incentives/",
+      en: "/en/incentives/",
+      "x-default": "/incentives/"
+    }
+  }
 };
 
 export default function ChineseIncentivesPage() {

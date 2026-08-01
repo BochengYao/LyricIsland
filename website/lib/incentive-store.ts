@@ -1,4 +1,5 @@
 import type {
+  FeatureContent,
   IncentiveSubmission,
   PublicSuggestion,
   ReleasePreview,
@@ -7,6 +8,15 @@ import type {
   SubmissionStatus,
   RewardStatus
 } from "@/data/incentives-types";
+import {
+  defaultFeatureContent,
+  sanitizeFeatureContent
+} from "@/data/feature-content";
+import {
+  defaultReleasePreview,
+  releasePreviewFallback
+} from "@/data/release-preview";
+import type { AccessEventSource } from "@/lib/access-log";
 
 type SupabaseConfig = {
   url: string;
@@ -19,35 +29,81 @@ type StoredSubmission = Omit<
   "developer_reply" | "is_flagged" | "is_public"
 > & { reviewer_note: string | null };
 
+type StoredFeatureRow = Omit<ReleasePreview, "highlights_zh" | "highlights_en"> & {
+  highlights_zh: unknown;
+  highlights_en: unknown;
+};
+
 const REVIEW_META_PREFIX = "[[lyric-island-review:v1]]";
+const FEATURE_CONTENT_VERSION = "__FEATURE_CONTENT_V1__";
 
 function decodeReviewMeta(value: string | null | undefined) {
   if (!value?.startsWith(REVIEW_META_PREFIX)) {
-    return { developer_reply: value || null, is_flagged: false, is_public: false };
+    return {
+      developer_reply: value || null,
+      is_flagged: false,
+      is_public: false,
+      source: null as AccessEventSource | null
+    };
   }
   try {
     const parsed = JSON.parse(value.slice(REVIEW_META_PREFIX.length)) as Record<string, unknown>;
+    const submitted = parsed.submitted && typeof parsed.submitted === "object"
+      ? parsed.submitted as Record<string, unknown>
+      : null;
     return {
       developer_reply: typeof parsed.reply === "string" && parsed.reply ? parsed.reply : null,
       is_flagged: parsed.flagged === true,
-      is_public: parsed.public === true
+      is_public: parsed.public === true,
+      source: submitted && typeof submitted.visitor_hash === "string"
+        ? {
+          visitor_hash: submitted.visitor_hash,
+          ip_address: typeof submitted.ip_address === "string" ? submitted.ip_address : null,
+          ip_source: typeof submitted.ip_source === "string" ? submitted.ip_source : null,
+          country: typeof submitted.country === "string" ? submitted.country : null,
+          region: typeof submitted.region === "string" ? submitted.region : null,
+          city: typeof submitted.city === "string" ? submitted.city : null,
+          user_agent: typeof submitted.user_agent === "string" ? submitted.user_agent : null,
+          accept_language: typeof submitted.accept_language === "string" ? submitted.accept_language : null,
+          request_id: typeof submitted.request_id === "string" ? submitted.request_id : null,
+          forwarded_for: typeof submitted.forwarded_for === "string" ? submitted.forwarded_for : null,
+          referrer: typeof submitted.referrer === "string" ? submitted.referrer : null
+          }
+        : null
     };
   } catch {
-    return { developer_reply: null, is_flagged: false, is_public: false };
+    return {
+      developer_reply: null,
+      is_flagged: false,
+      is_public: false,
+      source: null as AccessEventSource | null
+    };
   }
 }
 
-function encodeReviewMeta(meta: { developer_reply: string | null; is_flagged: boolean; is_public: boolean }) {
+function encodeReviewMeta(meta: {
+  developer_reply: string | null;
+  is_flagged: boolean;
+  is_public: boolean;
+  source: AccessEventSource | null;
+}) {
   return `${REVIEW_META_PREFIX}${JSON.stringify({
     reply: meta.developer_reply ?? "",
     flagged: meta.is_flagged,
-    public: meta.is_public
+    public: meta.is_public,
+    submitted: meta.source
   })}`;
 }
 
 function toSubmission(row: StoredSubmission): IncentiveSubmission {
   const { reviewer_note, ...submission } = row;
-  return { ...submission, ...decodeReviewMeta(reviewer_note) };
+  const meta = decodeReviewMeta(reviewer_note);
+  return {
+    ...submission,
+    developer_reply: meta.developer_reply,
+    is_flagged: meta.is_flagged,
+    is_public: meta.is_public
+  };
 }
 
 function getConfig(): SupabaseConfig {
@@ -136,13 +192,24 @@ export async function createSubmission(input: {
   title: string;
   body: string;
   attachments: SubmissionAttachment[];
+  source?: AccessEventSource | null;
 }) {
+  const { source = null, ...submission } = input;
   const rows = await supabase<StoredSubmission[]>(
     "/rest/v1/incentive_submissions",
     {
       method: "POST",
       headers: headers("return=representation"),
-      body: JSON.stringify(input)
+      body: JSON.stringify({
+        ...submission,
+        reward_status: "pending",
+        reviewer_note: encodeReviewMeta({
+          developer_reply: null,
+          is_flagged: false,
+          is_public: false,
+          source
+        })
+      })
     }
   );
   return toSubmission(rows[0]);
@@ -174,7 +241,10 @@ export async function getPublicIncentives(voterHash?: string) {
   const previews = await supabase<ReleasePreview[]>(
     "/rest/v1/release_previews?select=*&status=eq.published&order=published_at.desc&limit=6"
   );
-  return { suggestions, previews };
+  return {
+    suggestions,
+    previews: previews.length ? previews : [releasePreviewFallback()]
+  };
 }
 
 export async function toggleSuggestionLike(
@@ -264,6 +334,8 @@ export async function updateSubmission(
     developer_reply?: string | null;
     is_flagged?: boolean;
     is_public?: boolean;
+    like_count?: number;
+    created_at?: string;
   }
 ) {
   const currentRows = await supabase<StoredSubmission[]>(
@@ -271,6 +343,7 @@ export async function updateSubmission(
   );
   const current = currentRows[0];
   if (!current) throw new Error("Submission not found");
+  const previous = toSubmission(current);
   const currentMeta = decodeReviewMeta(current.reviewer_note);
   const { developer_reply, is_flagged, is_public, ...storedChanges } = changes;
   const effectiveStatus = changes.status ?? current.status;
@@ -286,13 +359,14 @@ export async function updateSubmission(
           is_flagged: is_flagged !== undefined ? is_flagged : currentMeta.is_flagged,
           is_public: effectiveStatus === "accepted"
             ? (is_public !== undefined ? is_public : currentMeta.is_public)
-            : false
+            : false,
+          source: currentMeta.source
         }),
         updated_at: new Date().toISOString()
       })
     }
   );
-  return toSubmission(rows[0]);
+  return { submission: toSubmission(rows[0]), previous };
 }
 
 export async function deleteSubmission(id: string) {
@@ -323,12 +397,16 @@ export async function deleteSubmission(id: string) {
     `/rest/v1/incentive_submissions?id=eq.${encodeURIComponent(id)}`,
     { method: "DELETE", headers: headers("return=representation") }
   );
+  return toSubmission(current);
 }
 
 export async function listReleasePreviews() {
-  return supabase<ReleasePreview[]>(
-    "/rest/v1/release_previews?select=*&order=created_at.desc&limit=50"
+  const rows = await supabase<ReleasePreview[]>(
+    "/rest/v1/release_previews?select=*&version=not.in.(__FEATURE_CONTENT_V1__,__AUDIT_LOG_V1__)&order=created_at.desc&limit=50"
   );
+  const previews = rows.filter((row) => !row.version.startsWith("__"));
+  if (previews.length) return previews;
+  return [await createReleasePreview(defaultReleasePreview)];
 }
 
 export async function createReleasePreview(
@@ -367,4 +445,74 @@ export async function updateReleasePreview(
     }
   );
   return rows[0];
+}
+
+async function getFeatureContentRow() {
+  const rows = await supabase<StoredFeatureRow[]>(
+    `/rest/v1/release_previews?select=*&version=eq.${encodeURIComponent(FEATURE_CONTENT_VERSION)}&order=updated_at.desc&limit=1`
+  );
+  return rows[0];
+}
+
+function featureContentRowPayload(content: FeatureContent) {
+  return {
+    version: FEATURE_CONTENT_VERSION,
+    title_zh: "新功能页内容",
+    title_en: "Updates page content",
+    body_zh: "由维护者后台管理的新功能页内容。",
+    body_en: "Updates page content managed in the maintainer console.",
+    highlights_zh: content,
+    highlights_en: [],
+    target_date: null,
+    status: "draft" as const,
+    published_at: null
+  };
+}
+
+export async function getFeatureContent() {
+  const existing = await getFeatureContentRow();
+  if (existing) return sanitizeFeatureContent(existing.highlights_zh);
+
+  const content = sanitizeFeatureContent(defaultFeatureContent);
+  const rows = await supabase<StoredFeatureRow[]>("/rest/v1/release_previews", {
+    method: "POST",
+    headers: headers("return=representation"),
+    body: JSON.stringify(featureContentRowPayload(content))
+  });
+  return sanitizeFeatureContent(rows[0]?.highlights_zh ?? content);
+}
+
+export async function saveFeatureContent(value: unknown) {
+  const content = sanitizeFeatureContent(value);
+  if (!content.sections.length) {
+    throw new Error("At least one feature section is required");
+  }
+  if (content.sections.some((section) =>
+    section.visible &&
+    (!section.title_zh || !section.title_en || !section.body_zh || !section.body_en)
+  )) {
+    throw new Error("Visible feature sections require bilingual titles and descriptions");
+  }
+  const existing = await getFeatureContentRow();
+  if (!existing) {
+    const rows = await supabase<StoredFeatureRow[]>("/rest/v1/release_previews", {
+      method: "POST",
+      headers: headers("return=representation"),
+      body: JSON.stringify(featureContentRowPayload(content))
+    });
+    return sanitizeFeatureContent(rows[0]?.highlights_zh ?? content);
+  }
+
+  const rows = await supabase<StoredFeatureRow[]>(
+    `/rest/v1/release_previews?id=eq.${encodeURIComponent(existing.id)}`,
+    {
+      method: "PATCH",
+      headers: headers("return=representation"),
+      body: JSON.stringify({
+        highlights_zh: content,
+        updated_at: new Date().toISOString()
+      })
+    }
+  );
+  return sanitizeFeatureContent(rows[0]?.highlights_zh ?? content);
 }

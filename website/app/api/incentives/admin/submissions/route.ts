@@ -1,10 +1,34 @@
-import type { RewardStatus, SubmissionStatus } from "@/data/incentives-types";
+import type { IncentiveSubmission, RewardStatus, SubmissionStatus } from "@/data/incentives-types";
 import { safeRecordAccessEvent } from "@/lib/access-log";
 import { isAdminRequest, isSameOrigin } from "@/lib/admin-auth";
 import { deleteSubmission, listSubmissions, updateSubmission } from "@/lib/incentive-store";
 
 const statuses: SubmissionStatus[] = ["pending", "reviewing", "accepted", "declined"];
 const rewards: RewardStatus[] = ["not_eligible", "pending", "issued"];
+const auditedFields: Array<keyof IncentiveSubmission> = [
+  "kind",
+  "nickname",
+  "email",
+  "title",
+  "body",
+  "status",
+  "reward_status",
+  "developer_reply",
+  "is_flagged",
+  "is_public",
+  "like_count",
+  "created_at"
+];
+
+function changedFields(previous: IncentiveSubmission, submission: IncentiveSubmission) {
+  return auditedFields
+    .filter((field) => previous[field] !== submission[field])
+    .map((field) => ({
+      field,
+      before: previous[field] ?? null,
+      after: submission[field] ?? null
+    }));
+}
 
 export async function GET(request: Request) {
   if (!(await isAdminRequest(request))) {
@@ -46,12 +70,19 @@ export async function PATCH(request: Request) {
       : undefined;
     const isFlagged = typeof body.is_flagged === "boolean" ? body.is_flagged : undefined;
     const isPublic = typeof body.is_public === "boolean" ? body.is_public : undefined;
+    const likeCount = typeof body.like_count === "number" && Number.isInteger(body.like_count) && body.like_count >= 0
+      ? body.like_count
+      : undefined;
+    const createdAt = typeof body.created_at === "string" && !Number.isNaN(Date.parse(body.created_at))
+      ? new Date(body.created_at).toISOString()
+      : undefined;
     if (!id || (nickname !== undefined && !nickname) || (title !== undefined && title.length < 4) ||
       (content !== undefined && content.length < 12) || (email !== undefined && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) ||
-      (!kind && nickname === undefined && email === undefined && title === undefined && content === undefined && !status && !reward && reply === undefined && isFlagged === undefined && isPublic === undefined)) {
+      (body.like_count !== undefined && likeCount === undefined) || (body.created_at !== undefined && createdAt === undefined) ||
+      (!kind && nickname === undefined && email === undefined && title === undefined && content === undefined && !status && !reward && reply === undefined && isFlagged === undefined && isPublic === undefined && likeCount === undefined && createdAt === undefined)) {
       return Response.json({ error: "Invalid update" }, { status: 400 });
     }
-    const submission = await updateSubmission(id, {
+    const { submission, previous } = await updateSubmission(id, {
       ...(kind ? { kind } : {}),
       ...(nickname !== undefined ? { nickname } : {}),
       ...(email !== undefined ? { email } : {}),
@@ -61,13 +92,20 @@ export async function PATCH(request: Request) {
       ...(reward ? { reward_status: reward } : {}),
       ...(reply !== undefined ? { developer_reply: reply || null } : {}),
       ...(isFlagged !== undefined ? { is_flagged: isFlagged } : {}),
-      ...(isPublic !== undefined ? { is_public: status && status !== "accepted" ? false : isPublic } : {})
+      ...(isPublic !== undefined ? { is_public: status && status !== "accepted" ? false : isPublic } : {}),
+      ...(likeCount !== undefined ? { like_count: likeCount } : {}),
+      ...(createdAt !== undefined ? { created_at: createdAt } : {})
     });
     await safeRecordAccessEvent(request, {
       scope: "admin",
       eventType: "submission_updated",
       statusCode: 200,
-      details: { submissionId: id }
+      details: {
+        submissionId: id,
+        submissionTitle: submission.title,
+        submissionKind: submission.kind,
+        changes: changedFields(previous, submission)
+      }
     });
     return Response.json({ submission });
   } catch {
@@ -80,7 +118,7 @@ export async function DELETE(request: Request) {
     await safeRecordAccessEvent(request, {
       scope: "admin",
       eventType: "unauthorized_submission_delete",
-      severity: "critical",
+      severity: isSameOrigin(request) ? "warning" : "critical",
       statusCode: 401
     });
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -89,12 +127,25 @@ export async function DELETE(request: Request) {
     const body = (await request.json()) as Record<string, unknown>;
     const id = typeof body.id === "string" ? body.id : "";
     if (!id) return Response.json({ error: "Invalid deletion" }, { status: 400 });
-    await deleteSubmission(id);
+    const deleted = await deleteSubmission(id);
     await safeRecordAccessEvent(request, {
       scope: "admin",
       eventType: "submission_deleted",
       statusCode: 200,
-      details: { submissionId: id }
+      details: {
+        submissionId: id,
+        submissionTitle: deleted.title,
+        submissionKind: deleted.kind,
+        snapshot: {
+          title: deleted.title,
+          body: deleted.body,
+          nickname: deleted.nickname,
+          status: deleted.status,
+          reward_status: deleted.reward_status,
+          developer_reply: deleted.developer_reply,
+          like_count: deleted.like_count
+        }
+      }
     });
     return Response.json({ ok: true });
   } catch {

@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <AssemblyName>LyricsIsland.App</AssemblyName>
+    <PackageId>LyricsIsland.App</PackageId>
+    <AssemblyTitle>Lyric Island</AssemblyTitle>
+    <Product>Lyric Island 歌词岛</Product>
+    <Description>Windows multi-player desktop lyrics companion.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.SDK.Contracts" Version="10.0.19041.1" />
+    <ProjectReference Include="..\LyricsIsland.Core\LyricsIsland.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\app.ico" CopyToOutputDirectory="Always" />
+    <Content Include="Assets\Xiaolai-OFL.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\app-logo.png" />
+    <Resource Include="Assets\grab-open.cur" />
+    <Resource Include="Assets\grab-closed.cur" />
+    <Resource Include="Assets\pro-support-badge.png" />
+    <Resource Include="Assets\pro-support-badge.svg" />
+    <Resource Include="Assets\pro-support-badge-dark.png" />
+    <Resource Include="Assets\pro-support-badge-dark.svg" />
+    <Resource Include="Assets\Xiaolai-Regular.ttf" />
+  </ItemGroup>
+
+</Project>

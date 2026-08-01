@@ -1,4 +1,5 @@
 import type { SubmissionKind } from "@/data/incentives-types";
+import { safeAccessEventSource } from "@/lib/access-log";
 import { createSubmission, uploadAttachments } from "@/lib/incentive-store";
 
 const MAX_FILES = 3;
@@ -58,7 +59,8 @@ export async function POST(request: Request) {
       email,
       title,
       body,
-      attachments
+      attachments,
+      source: await safeAccessEventSource(request)
     });
 
     return Response.json({ id: submission.id, status: submission.status }, { status: 201 });
