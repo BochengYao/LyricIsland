@@ -12,6 +12,8 @@ Lyric Island（歌词岛）是一款为 Windows 10/11 打造的顶部动态歌�
 
 **[前往 Microsoft Store 下载发布版本 →](https://apps.microsoft.com/detail/9NRXZP5HMXK2)**
 
+> **下载说明：** [GitHub Releases](https://github.com/BochengYao/LyricIsland/releases/tag/v1.0.0) 中提供的安装包仅为早期 Demo，不代表当前正式版本。Lyric Island V2 即将于 **2026 年 8 月 2 日**上线 Microsoft Store；新版本请前往 [Microsoft Store](https://apps.microsoft.com/detail/9NRXZP5HMXK2) 下载。
+
 ## 一眼了解歌词岛
 
 - **始终在场，不打断工作。** 歌词贴合屏幕顶边出现，需要时展开，不播放时自然收起。
@@ -188,7 +190,7 @@ Lyric Island（歌词岛）是一款为 Windows 10/11 打造的顶部动态歌�
 
 ### 从 Microsoft Store 安装
 
-前往 [Microsoft Store](https://apps.microsoft.com/detail/9NRXZP5HMXK2) 获取 Lyric Island。安装后，从开始菜单打开歌词岛，并在任一受支持播放器中开始播放音乐。
+新版本统一通过 [Microsoft Store](https://apps.microsoft.com/detail/9NRXZP5HMXK2) 发布。Lyric Island V2 即将于 **2026 年 8 月 2 日**上线；安装后，从开始菜单打开歌词岛，并在任一受支持播放器中开始播放音乐。GitHub Releases 中保留的安装包仅供早期 Demo 体验。
 
 首次启动会进入教学模式。右键歌词岛或通过系统托盘可以打开设置。
 
