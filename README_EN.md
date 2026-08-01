@@ -186,4 +186,8 @@ Player integration also requires live testing in a normal Windows desktop sessio
 
 Lyric Island is an independent project and is not affiliated with or endorsed by Apple, Tencent, NetEase, KuGou, KuWo, Spotify, or their music services. Product names and trademarks belong to their respective owners. Lyrics are obtained from third-party lyric services; please respect content rights and provider terms.
 
+## License
+
+This project is licensed under the GNU General Public License v3.0 only (GPL-3.0-only). See [LICENSE](LICENSE) for details.
+
 © 2026 Lyric Island · 歌词岛
