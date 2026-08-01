@@ -1974,13 +1974,17 @@ html[lang="en"] :where(
     min-block-size: 100svh;
     block-size: 100svh;
     max-block-size: 100svh;
-    padding-top: clamp(152px, 15svh, 168px);
+    padding-top: clamp(120px, 13svh, 144px);
     padding-bottom: clamp(28px, 4svh, 44px);
     overflow: hidden;
   }
 
   .previewSection.updatesPreviewSection .previewIntro {
     position: static;
+  }
+
+  .previewSection.updatesPreviewSection .previewItems {
+    gap: 14px;
   }
 
   .updatesClosingSnap {

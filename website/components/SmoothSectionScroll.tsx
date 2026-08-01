@@ -266,7 +266,12 @@ export function SmoothSectionScroll() {
         return;
       }
 
-      animateTo(target.top);
+      const targetTop =
+        direction < 0 && target.height > window.innerHeight + EDGE_TOLERANCE
+          ? target.bottom - window.innerHeight
+          : target.top;
+
+      animateTo(targetTop);
     };
 
     const onAnchorClick = (event: MouseEvent) => {
