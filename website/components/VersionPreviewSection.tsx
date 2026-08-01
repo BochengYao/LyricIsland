@@ -37,7 +37,12 @@ export function VersionPreviewSection({ locale }: { locale: Locale }) {
   }, []);
 
   return (
-    <section className="previewSection updatesPreviewSection sectionContainer" id="release-preview" aria-busy={loading}>
+    <section
+      className="previewSection updatesPreviewSection sectionContainer"
+      id="release-preview"
+      aria-busy={loading}
+      data-snap-section
+    >
       <div className="previewIntro">
         <Eyebrow reveal>{copy.eyebrow}</Eyebrow>
         <h2 data-text-reveal="title">{copy.title}</h2>

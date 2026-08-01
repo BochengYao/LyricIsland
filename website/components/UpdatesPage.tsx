@@ -3,6 +3,7 @@ import { ExternalArrow } from "@/components/ExternalArrow";
 import { ManagedFeatureContent } from "@/components/ManagedFeatureContent";
 import { Eyebrow, LogoLockup, PrimaryNavigation } from "@/components/SitePage";
 import { SelectiveTextReveal } from "@/components/SelectiveTextReveal";
+import { SmoothSectionScroll } from "@/components/SmoothSectionScroll";
 import { VersionPreviewSection } from "@/components/VersionPreviewSection";
 import {
   copyByLocale,
@@ -25,21 +26,28 @@ export function UpdatesPage({ locale }: Props) {
       <a className="skipLink" href="#updates-main">
         {locale === "zh" ? "跳到更新内容" : "Skip to updates"}
       </a>
+      <SmoothSectionScroll />
       <SelectiveTextReveal />
       <PrimaryNavigation locale={locale} homeHref={home} languageHref={copy.languageHref} />
 
       <main id="updates-main" className="updatesMain">
-        <section className="updatesHero sectionContainer">
-          <Eyebrow reveal>{copy.eyebrow}</Eyebrow>
-          <h1 data-text-reveal="title">{copy.title}</h1>
-          <p className="updatesLead">{copy.intro}</p>
-        </section>
-
-        <ManagedFeatureContent locale={locale} releaseLabel={copy.version} />
+        <ManagedFeatureContent
+          locale={locale}
+          heroEyebrow={copy.eyebrow}
+          heroTitle={copy.title}
+          heroIntro={copy.intro}
+          releaseLabel={copy.version}
+        />
 
         <VersionPreviewSection locale={locale} />
+      </main>
 
-        <section className="updatesDownloads sectionContainer">
+      <section
+        className="updatesClosingSnap"
+        id="updates-download"
+        data-snap-section
+      >
+        <div className="updatesDownloads sectionContainer">
           <Eyebrow reveal>{copy.downloadsEyebrow}</Eyebrow>
           <h2 data-text-reveal="title">{copy.downloadsTitle}</h2>
           <p>{copy.downloadsBody}</p>
@@ -54,19 +62,19 @@ export function UpdatesPage({ locale }: Props) {
               <ExternalArrow />
             </a>
           </div>
-        </section>
-      </main>
-
-      <footer className="updatesFooter">
-        <div className="sectionContainer">
-          <LogoLockup />
-          <p>{copy.footerNote}</p>
-          <div>
-            <Link href={home}>{copy.backLabel}</Link>
-            <span>© 2026 Lyric Island</span>
-          </div>
         </div>
-      </footer>
+
+        <footer className="updatesFooter">
+          <div className="sectionContainer">
+            <LogoLockup />
+            <p>{copy.footerNote}</p>
+            <div>
+              <Link href={home}>{copy.backLabel}</Link>
+              <span>© 2026 Lyric Island</span>
+            </div>
+          </div>
+        </footer>
+      </section>
     </>
   );
 }

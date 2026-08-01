@@ -1832,7 +1832,13 @@ html[lang="en"] :where(
 }
 
 .releaseSections > .eyebrow {
-  margin-bottom: 12px;
+  margin-bottom: 18px;
+  font-size: 18px;
+  letter-spacing: 0.04em;
+}
+
+.releaseSections > .eyebrow span {
+  font-size: 24px;
 }
 
 .releaseSection {
@@ -1935,6 +1941,54 @@ html[lang="en"] :where(
   gap: 8px;
   color: rgba(255, 255, 255, 0.62);
   font-size: 12px;
+}
+
+@media (min-width: 1024px) {
+  .updatesOverviewSnap {
+    display: grid;
+    align-content: center;
+    gap: clamp(28px, 4svh, 48px);
+    min-block-size: 100svh;
+    padding: clamp(136px, 15svh, 168px) 0 clamp(36px, 5svh, 56px);
+  }
+
+  .updatesOverviewSnap .updatesHero {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .updatesOverviewSnap .updatesLead {
+    margin-bottom: 0;
+  }
+
+  .updatesDetailsSnap {
+    min-block-size: 100svh;
+  }
+
+  .updatesPreviewSection {
+    align-content: center;
+    min-block-size: 100svh;
+    padding-top: clamp(136px, 15svh, 168px);
+    padding-bottom: clamp(64px, 8svh, 96px);
+  }
+
+  .updatesPreviewSection .previewIntro {
+    position: static;
+  }
+
+  .updatesClosingSnap {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    align-content: stretch;
+    min-block-size: 100svh;
+    padding-top: clamp(120px, 14svh, 152px);
+  }
+
+  .updatesClosingSnap .updatesDownloads {
+    align-self: center;
+    padding-top: 48px;
+    padding-bottom: 56px;
+  }
 }
 
 @media (max-width: 1023px) {
