@@ -12,6 +12,8 @@ It is no longer built around Apple Music alone. Apple Music, QQ Music, NetEase C
 
 **[Download the release from Microsoft Store →](https://apps.microsoft.com/detail/9NRXZP5HMXK2)**
 
+> **Download note:** Packages on [GitHub Releases](https://github.com/BochengYao/LyricIsland/releases/tag/v1.0.0) are early demos only and do not represent the current production release. Lyric Island V2 arrives on the Microsoft Store on **August 2, 2026**. Download the new version from the [Microsoft Store](https://apps.microsoft.com/detail/9NRXZP5HMXK2).
+
 ## Lyric Island at a glance
 
 - **Always in sight. Never in your way.** The island rests against the top edge, expands when you need it, and retracts when the music stops.
@@ -188,7 +190,7 @@ Players do not expose artwork, timeline, duration, and transport capabilities in
 
 ### Get it from Microsoft Store
 
-Get Lyric Island from the [Microsoft Store](https://apps.microsoft.com/detail/9NRXZP5HMXK2). Open it from the Start menu, then begin playback in any supported music player.
+New versions are distributed through the [Microsoft Store](https://apps.microsoft.com/detail/9NRXZP5HMXK2). Lyric Island V2 arrives on **August 2, 2026**. Open it from the Start menu, then begin playback in any supported music player. Packages retained on GitHub Releases are early demos only.
 
 The first launch opens the guided tutorial. Right-click the island or use the system tray icon to open Settings.
 
