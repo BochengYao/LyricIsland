@@ -1,6 +1,6 @@
 # Lyric Island / 歌词岛
 
-[English](README_EN.md) · [Microsoft Store](https://apps.microsoft.com/detail/9NRXZP5HMXK2) · [官方网站](https://lyric-island.top/) · [意见反馈](https://lyric-island.top/incentives/) · [问题追踪](https://github.com/BochengYao/LyricIsland/issues)
+[English](README_EN.md) · [下载发布版本](https://apps.microsoft.com/detail/9NRXZP5HMXK2) · [官方网站](https://lyric-island.top/) · [问题反馈](https://lyric-island.top/incentives/) · [GitHub Issues](https://github.com/BochengYao/LyricIsland/issues)
 
 > 这一句，值得被看见。
 
@@ -9,6 +9,8 @@ Lyric Island（歌词岛）是一款为 Windows 10/11 打造的顶部动态歌�
 它不再只为 Apple Music 工作。QQ 音乐、网易云音乐、酷狗音乐、酷我音乐、Spotify，以及 Apple Music，都可以在同一个轻盈、连贯的桌面体验中被识别和切换。
 
 ![Lyric Island 歌词岛主视觉](视觉宣传/zh/1.png)
+
+**[前往 Microsoft Store 下载发布版本 →](https://apps.microsoft.com/detail/9NRXZP5HMXK2)**
 
 ## 一眼了解歌词岛
 

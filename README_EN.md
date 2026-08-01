@@ -1,6 +1,6 @@
 # Lyric Island
 
-[中文](README.md) · [Microsoft Store](https://apps.microsoft.com/detail/9NRXZP5HMXK2) · [Website](https://lyric-island.top/) · [Feedback](https://lyric-island.top/incentives/) · [Issues](https://github.com/BochengYao/LyricIsland/issues)
+[中文](README.md) · [Download the release](https://apps.microsoft.com/detail/9NRXZP5HMXK2) · [Website](https://lyric-island.top/en/) · [Feedback](https://lyric-island.top/en/incentives/) · [GitHub Issues](https://github.com/BochengYao/LyricIsland/issues)
 
 > This line deserves to be seen.
 
@@ -9,6 +9,8 @@ Lyric Island is a top-edge lyrics experience made for Windows 10 and 11. When mu
 It is no longer built around Apple Music alone. Apple Music, QQ Music, NetEase Cloud Music, KuGou Music, KuWo Music, and Spotify can all be recognized and followed through the same calm, consistent desktop experience.
 
 ![Lyric Island hero](视觉宣传/en/1.png)
+
+**[Download the release from Microsoft Store →](https://apps.microsoft.com/detail/9NRXZP5HMXK2)**
 
 ## Lyric Island at a glance
 
@@ -143,8 +145,8 @@ It is no longer built around Apple Music alone. Apple Music, QQ Music, NetEase C
 - The tutorial waits for the user to actually complete each action before advancing.
 - Exit behavior, masking, highlights, and action guidance are improved throughout tutorial mode.
 - The tutorial's **New Feature** marker uses the bundled Xiaolai typeface; no separate font installation is required.
-- Settings now includes a direct link to the [Lyric Island website](https://lyric-island.top/).
-- Feedback opens the official [rewards and feedback page](https://lyric-island.top/incentives/).
+- Settings now includes a direct link to the English [Lyric Island website](https://lyric-island.top/en/).
+- Feedback opens the English [rewards and feedback page](https://lyric-island.top/en/incentives/).
 - A new Support the Developer page offers free ways to help and the optional Lyric Island Pro support plan.
 - The About page no longer shows the Beta label and now presents the current version directly.
 
@@ -263,7 +265,7 @@ The user-facing name is **Lyric Island / 歌词岛**. The solution, project fold
 
 - When reporting a problem in [Issues](https://github.com/BochengYao/LyricIsland/issues), include your Windows version, player, lyric provider, and reproduction steps.
 - For player compatibility reports, describe artwork, timeline, playback controls, track changes, and seeking separately.
-- Product ideas and campaign feedback can be submitted through the [rewards and feedback page](https://lyric-island.top/incentives/).
+- Product ideas and campaign feedback can be submitted through the English [rewards and feedback page](https://lyric-island.top/en/incentives/).
 - Please discuss large changes in an Issue first so they remain aligned with the current design.
 
 ## License
