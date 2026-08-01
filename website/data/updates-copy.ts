@@ -31,9 +31,9 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
     languageName: "EN",
     languageHref: "/en/updates",
     eyebrow: "版本说明",
-    title: "歌词岛 v2.0\n一次更完整的重做",
+    title: "歌词岛 V2.0\n一次更完整的重做",
     intro:
-      "歌词岛 v2.0 支持更多 Windows 播放器与自由组合模块，并进一步优化歌词匹配、展开收起、快捷键、鼠标避让和运行稳定性，让整体体验更完整、更自然。",
+      "歌词岛 V2.0 支持更多 Windows 播放器与自由组合模块，并进一步优化歌词匹配、展开收起、快捷键、鼠标避让和运行稳定性，让整体体验更完整、更自然。",
     version: "V 2.0.36",
     summaryLabel: "本次重点",
     summary: [
@@ -83,7 +83,7 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
         number: "04",
         title: "时间轴不可靠时仍尽量保持同步",
         body:
-          "不同播放器提供的时间轴质量并不一致。v2.0 把差异收敛在统一策略层，并在必要时使用内部单调时钟继续推进歌词。",
+          "不同播放器提供的时间轴质量并不一致。V2.0 把差异收敛在统一策略层，并在必要时使用内部单调时钟继续推进歌词。",
         items: [
           "可靠时间轴直接跟随播放器位置。",
           "时间轴缺失或短暂冻结时，使用内部计时补偿。",
@@ -129,9 +129,9 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
     languageName: "中文",
     languageHref: "/updates",
     eyebrow: "Release notes",
-    title: "Lyric Island v2.0\nA more complete rebuild",
+    title: "Lyric Island V2.0\nA more complete rebuild",
     intro:
-      "Lyric Island v2.0 supports more Windows players and freely configurable modules, with further improvements to lyric matching, expand-and-collapse behavior, shortcuts, mouse avoidance, and runtime stability for a more complete, more natural experience.",
+      "Lyric Island V2.0 supports more Windows players and freely configurable modules, with further improvements to lyric matching, expand-and-collapse behavior, shortcuts, mouse avoidance, and runtime stability for a more complete, more natural experience.",
     version: "V 2.0.36",
     summaryLabel: "Release focus",
     summary: [
@@ -171,7 +171,7 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
         body:
           "Player integration is unified through Windows SMTC instead of copying private connectors. Every named player receives equal visual weight on the site.",
         items: [
-          "Explicitly adapted for Apple Music, QQ Music, NetEase, KuGou, Spotify, and KuWo.",
+          "Explicitly adapted for Apple Music, QQ Music, NetEase, Kugou Music, Spotify, and Kuwo Music.",
           "By default, the currently playing and most recently active session is selected.",
           "A specific player can be locked in Settings.",
           "Previous, play/pause, and next are enabled only when the player advertises support."
@@ -181,7 +181,7 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
         number: "04",
         title: "Lyrics keep moving when timelines are unreliable",
         body:
-          "Timeline quality varies by player. v2.0 contains those differences in one policy layer and uses an internal monotonic clock when necessary.",
+          "Timeline quality varies by player. V2.0 contains those differences in one policy layer and uses an internal monotonic clock when necessary.",
         items: [
           "Reliable timelines follow the player position directly.",
           "Missing or briefly frozen timelines use internal time compensation.",
@@ -195,7 +195,7 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
         body:
           "Fallback matching remains available across providers, with an optional preferred source that does not block temporary fallback.",
         items: [
-          "Supports LRCLIB, QQ Music, KuGou, NetEase, and fallback matching.",
+          "Supports LRCLIB, QQ Music, Kugou Music, NetEase, and fallback matching.",
           "Prefers synced lyrics and translations already supplied by a provider.",
           "Lyric Island does not generate machine translations.",
           "A song-level local LRU cache reduces repeated requests."

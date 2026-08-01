@@ -70,7 +70,7 @@
         "上一曲、播放/暂停和下一曲仅在播放器向 Windows 声明支持时启用。"
       ],
       "items_en": [
-        "Explicitly adapted for Apple Music, QQ Music, NetEase, KuGou, Spotify, and KuWo.",
+        "Explicitly adapted for Apple Music, QQ Music, NetEase, Kugou Music, Spotify, and Kuwo Music.",
         "By default, the currently playing and most recently active session is selected.",
         "A specific player can be locked in Settings.",
         "Previous, play/pause, and next are enabled only when the player advertises support."
@@ -81,8 +81,8 @@
       "id": "feature-04",
       "title_zh": "时间轴不可靠时仍尽量保持同步",
       "title_en": "Lyrics keep moving when timelines are unreliable",
-      "body_zh": "不同播放器提供的时间轴质量并不一致。v2.0 把差异收敛在统一策略层，并在必要时使用内部单调时钟继续推进歌词。",
-      "body_en": "Timeline quality varies by player. v2.0 contains those differences in one policy layer and uses an internal monotonic clock when necessary.",
+      "body_zh": "不同播放器提供的时间轴质量并不一致。V2.0 把差异收敛在统一策略层，并在必要时使用内部单调时钟继续推进歌词。",
+      "body_en": "Timeline quality varies by player. V2.0 contains those differences in one policy layer and uses an internal monotonic clock when necessary.",
       "items_zh": [
         "可靠时间轴直接跟随播放器位置。",
         "时间轴缺失或短暂冻结时，使用内部计时补偿。",
@@ -110,7 +110,7 @@
         "按歌曲维度维护本地 LRU 缓存，减少重复请求。"
       ],
       "items_en": [
-        "Supports LRCLIB, QQ Music, KuGou, NetEase, and fallback matching.",
+        "Supports LRCLIB, QQ Music, Kugou Music, NetEase, and fallback matching.",
         "Prefers synced lyrics and translations already supplied by a provider.",
         "Lyric Island does not generate machine translations.",
         "A song-level local LRU cache reduces repeated requests."

@@ -1961,18 +1961,25 @@ html[lang="en"] :where(
     margin-bottom: 0;
   }
 
+  .updatesOverviewSnap .updatesHero h1 {
+    line-height: 1.1;
+  }
+
   .updatesDetailsSnap {
     min-block-size: 100svh;
   }
 
-  .updatesPreviewSection {
-    align-content: center;
+  .previewSection.updatesPreviewSection {
+    align-content: start;
     min-block-size: 100svh;
-    padding-top: clamp(136px, 15svh, 168px);
-    padding-bottom: clamp(64px, 8svh, 96px);
+    block-size: 100svh;
+    max-block-size: 100svh;
+    padding-top: clamp(152px, 15svh, 168px);
+    padding-bottom: clamp(28px, 4svh, 44px);
+    overflow: hidden;
   }
 
-  .updatesPreviewSection .previewIntro {
+  .previewSection.updatesPreviewSection .previewIntro {
     position: static;
   }
 
@@ -2867,6 +2874,62 @@ html[lang="en"] :where(
   margin: 14px 0 0;
   color: var(--muted);
   font-size: 16px;
+}
+
+.databaseLoading {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 16px;
+  border-radius: 40px;
+  background: var(--surface);
+  color: var(--muted);
+  text-align: center;
+}
+
+.databaseLoadingLabel {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.databaseLoadingPulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--orbit);
+  box-shadow: 18px 0 0 rgba(243, 115, 56, 0.52), 36px 0 0 rgba(243, 115, 56, 0.24);
+  animation: databaseLoadingPulse 1100ms ease-in-out infinite alternate;
+  transform: translateX(-18px);
+}
+
+.databaseLoading.isError {
+  border: 1px solid var(--line);
+  background: transparent;
+}
+
+.updatesOverviewDatabaseLoading {
+  min-height: 180px;
+  margin-top: 28px;
+}
+
+.updatesDetailsDatabaseLoading {
+  min-height: 480px;
+  margin-top: 28px;
+}
+
+.acceptedDatabaseLoading {
+  height: 520px;
+  margin-top: 24px;
+}
+
+.previewDatabaseLoading {
+  min-height: 280px;
+}
+
+@keyframes databaseLoadingPulse {
+  from { opacity: 0.4; transform: translateX(-18px) scale(0.9); }
+  to { opacity: 1; transform: translateX(-18px) scale(1.08); }
 }
 
 .acceptedWaterfallViewport {

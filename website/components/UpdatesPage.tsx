@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DatabasePreload } from "@/components/DatabasePreload";
 import { ExternalArrow } from "@/components/ExternalArrow";
 import { ManagedFeatureContent } from "@/components/ManagedFeatureContent";
 import { Eyebrow, LogoLockup, PrimaryNavigation } from "@/components/SitePage";
@@ -23,6 +24,8 @@ export function UpdatesPage({ locale }: Props) {
 
   return (
     <>
+      <DatabasePreload href="/api/features" />
+      <DatabasePreload href="/api/incentives/public" />
       <a className="skipLink" href="#updates-main">
         {locale === "zh" ? "跳到更新内容" : "Skip to updates"}
       </a>

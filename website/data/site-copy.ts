@@ -99,9 +99,9 @@ const sharedPlayers = [
   "Apple Music",
   "QQ Music",
   "NetEase Cloud Music*",
-  "KuGou",
+  "Kugou Music",
   "Spotify",
-  "KuWo",
+  "Kuwo Music",
   "SMTC"
 ];
 
@@ -381,7 +381,7 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
         {
           question: "Which music players does Lyric Island support?",
           answer:
-            "Lyric Island supports popular players including Apple Music, NetEase Cloud Music, QQ Music, KuGou, and KuWo. If a player connects to the Windows SMTC media-control protocol, Lyric Island can usually recognize the song automatically.\nPlease note that NetEase Cloud Music has incomplete Windows SMTC support. If you seek manually within the player, lyric progress may not update immediately."
+            "Lyric Island supports popular players including Apple Music, NetEase Cloud Music, QQ Music, Kugou Music, and Kuwo Music. If a player connects to the Windows SMTC media-control protocol, Lyric Island can usually recognize the song automatically.\nPlease note that NetEase Cloud Music has incomplete Windows SMTC support. If you seek manually within the player, lyric progress may not update immediately."
         },
         {
           question: "Is Lyric Island free? Do I need an account or subscription?",

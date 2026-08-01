@@ -5,6 +5,7 @@ import { Eyebrow } from "@/components/SitePage";
 import { incentivesByLocale } from "@/data/incentives-copy";
 import type { ReleasePreview } from "@/data/incentives-types";
 import type { Locale } from "@/data/site-copy";
+import { preloadClientJson } from "@/lib/client-data";
 
 function splitPreviewItems(value: string): string[] {
   return value
@@ -13,26 +14,31 @@ function splitPreviewItems(value: string): string[] {
     .filter(Boolean);
 }
 
+type PublicIncentivesResponse = { previews?: ReleasePreview[] };
+
+const publicIncentivesPreload = preloadClientJson<PublicIncentivesResponse>("/api/incentives/public");
+
 export function VersionPreviewSection({ locale }: { locale: Locale }) {
   const copy = incentivesByLocale[locale].preview;
   const [previews, setPreviews] = useState<ReleasePreview[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
-    const controller = new AbortController();
     let active = true;
-    fetch("/api/incentives/public", { signal: controller.signal, cache: "no-store" })
-      .then((response) => response.json())
-      .then((data: { previews?: ReleasePreview[] }) => {
+    const request = publicIncentivesPreload ?? preloadClientJson<PublicIncentivesResponse>("/api/incentives/public");
+    request
+      ?.then((data) => {
         if (active) setPreviews(data.previews ?? []);
       })
-      .catch(() => undefined)
+      .catch(() => {
+        if (active) setLoadFailed(true);
+      })
       .finally(() => {
         if (active) setLoading(false);
       });
     return () => {
       active = false;
-      controller.abort();
     };
   }, []);
 
@@ -76,7 +82,11 @@ export function VersionPreviewSection({ locale }: { locale: Locale }) {
               </div>
             </article>
           );
-        }) : <p className="previewEmpty">{loading ? (locale === "zh" ? "正在读取版本预告…" : "Loading release previews…") : copy.empty}</p>}
+        }) : <p className="previewEmpty">{loading
+          ? (locale === "zh" ? "正在读取版本预告…" : "Loading release previews…")
+          : loadFailed
+            ? (locale === "zh" ? "版本预告暂时无法载入，请稍后刷新。" : "Release previews could not be loaded. Please refresh later.")
+            : copy.empty}</p>}
       </div>
     </section>
   );
