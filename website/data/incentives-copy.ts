@@ -64,26 +64,26 @@ export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
     backLabel: "返回官网",
     languageName: "EN",
     languageHref: "/en/incentives",
-    eyebrow: "一起把歌词岛做得更好",
-    title: "你的想法\n值得被听到",
+    eyebrow: "一起完善歌词岛",
+    title: "你的建议，\n也可能成为下一次更新。",
     intro:
-      "在这里提出新功能或报告 Bug。我们会在后台逐条审阅；采纳后会通过邮箱联系并发放对应奖励。",
-    privacyNote: "昵称与邮箱只用于确认提交和发放奖励。",
+      "提出新功能，或告诉我们哪里还不够好。每一条反馈都会被认真查看；建议被采纳后，我们将通过邮箱与你联系，并送上相应奖励。",
+    privacyNote: "昵称与邮箱仅用于核对提交信息及发放奖励。",
     tabs: { feature: "新功能提议", bug: "Bug 提交" },
     feature: {
       eyebrow: "新功能提议",
-      title: "如果它让歌词岛更好，我们请你收下 3 元红包。",
-      body: "说清楚使用场景、目前的不便，以及你希望歌词岛如何回应。越具体的建议，越容易进入评估。",
-      reward: "建议被正式采纳后，发送 3 元红包",
+      title: "把你的想法，\n说具体一点。",
+      body: "告诉我们你会在什么场景下使用它、目前哪里不够顺手，以及你期待它如何工作。信息越具体，越有助于我们评估和实现。",
+      reward: "建议正式采纳后，赠送 3 元红包",
       acceptedTitle: "已经被听见...",
       acceptedSubtitle: "给你认为可行的方案点赞，开发者会优先处理哦",
       acceptedEmpty: "第一批被采纳的建议将在这里滚动出现。"
     },
     bug: {
       eyebrow: "Bug 提交",
-      title: "帮我们找到问题，采纳后送你软件礼品码。",
-      body: "请描述出现问题前做了什么、实际结果和预期结果；截图或短视频会大幅提高定位速度。",
-      reward: "问题被确认并采纳后，发放软件礼品码"
+      title: "发现问题，告诉我们。",
+      body: "请写下问题出现前的操作、实际结果和预期结果。附上截图或短视频，能帮助我们更快定位并修复。",
+      reward: "问题确认有效后，赠送软件礼品码"
     },
     form: {
       nickname: "昵称",
@@ -96,7 +96,7 @@ export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
       bugDescriptionPlaceholder: "复现步骤、实际结果、预期结果、系统与播放器版本……",
       attachments: "图片或视频",
       attachmentHint: "最多 3 个文件；单个不超过 15 MB，总计不超过 30 MB。",
-      identityHint: "填写一次后会在这台设备上自动带入另一类提交。",
+      identityHint: "",
       submitFeature: "提交新功能提议",
       submitBug: "提交 Bug",
       submitting: "正在提交…",
@@ -109,7 +109,7 @@ export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
       title: "下一版，\n先见一面。",
       body: "正在开发中的新功能，会在这里提前亮相。正式发布前，设计与功能仍可能随测试继续调整。",
       empty: "新的版本预告正在准备中。",
-      target: "预计"
+      target: "预计发布时间"
     },
     footerNote: "奖励由歌词岛维护者人工审核与发放；重复、无法复现或已有记录的内容可能不会重复奖励。"
   },
@@ -120,16 +120,16 @@ export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
     backLabel: "Back to the site",
     languageName: "中文",
     languageHref: "/incentives",
-    eyebrow: "Help shape Lyric Island",
-    title: "Your idea\ndeserves to be heard",
+    eyebrow: "Shape Lyric Island with us",
+    title: "Your feedback,\ncould shape the next update.",
     intro:
-      "Suggest a feature or report a bug here. We review every submission; if accepted, we will contact you by email and issue the corresponding reward.",
-    privacyNote: "Your nickname and email are used only to confirm submissions and issue rewards.",
+      "Suggest a feature, or tell us what could be better. We read every submission; if your idea is accepted, we will contact you by email and send the corresponding reward.",
+    privacyNote: "Your nickname and email are used only to verify your submission and issue rewards.",
     tabs: { feature: "Feature ideas", bug: "Bug reports" },
     feature: {
       eyebrow: "Feature ideas",
-      title: "If it makes Lyric Island better, we will send a small ¥3 red-packet reward.",
-      body: "Describe the situation, what feels difficult today, and how you would like Lyric Island to respond. Specific ideas are easier to evaluate.",
+      title: "Make your idea\nclear and concrete.",
+      body: "Tell us where you would use it, what feels awkward today, and how you expect it to work. The more specific the details, the easier it is for us to evaluate and build.",
       reward: "Accepted ideas receive a ¥3 red-packet reward",
       acceptedTitle: "Already heard...",
       acceptedSubtitle: "Like the ideas you believe in, and the developer will prioritize them.",
@@ -137,9 +137,9 @@ export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
     },
     bug: {
       eyebrow: "Bug reports",
-      title: "Help us find the issue and receive a software gift code when it is accepted.",
-      body: "Tell us what you did, what happened, and what you expected. A screenshot or short video can make diagnosis much faster.",
-      reward: "Confirmed and accepted reports receive a software gift code"
+      title: "Found a problem? Tell us.",
+      body: "Tell us what you did before the issue appeared, what happened, and what you expected. A screenshot or short video helps us diagnose and fix it faster.",
+      reward: "Verified reports receive a software gift code"
     },
     form: {
       nickname: "Nickname",
@@ -152,7 +152,7 @@ export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
       bugDescriptionPlaceholder: "Steps, actual result, expected result, Windows and player version…",
       attachments: "Images or video",
       attachmentHint: "Up to 3 files; 15 MB each and 30 MB total.",
-      identityHint: "Fill this in once and the other form will reuse it on this device.",
+      identityHint: "",
       submitFeature: "Submit feature idea",
       submitBug: "Submit bug",
       submitting: "Submitting…",
@@ -165,7 +165,7 @@ export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
       title: "Next up.\nFirst look.",
       body: "Features now in development make an early appearance here. Before release, the design and functionality may continue to evolve through testing.",
       empty: "The next release preview is being prepared.",
-      target: "Target"
+      target: "Expected release date"
     },
     footerNote: "Rewards are reviewed and issued manually. Duplicate, non-reproducible, or previously reported items may not receive another reward."
   }

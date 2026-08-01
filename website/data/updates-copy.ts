@@ -32,9 +32,9 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
     languageName: "EN",
     languageHref: "/en/updates",
     eyebrow: "版本说明",
-    title: "歌词岛 v2.0 Beta 1，更新了什么？",
+    title: "歌词岛 v2.0 Beta 1\n一次更完整的重做",
     intro:
-      "这次更新把歌词岛从固定的单播放器桌面歌词，推进为支持多个 Windows 播放器、可以自由组合模块的顶部音乐抬头显示。",
+      "歌词岛 v2.0 支持更多 Windows 播放器与自由组合模块，并进一步优化歌词匹配、展开收起、快捷键、鼠标避让和运行稳定性，让整体体验更完整、更自然。",
     version: "v2.0.0-beta.1",
     status: "公开测试版",
     summaryLabel: "本次重点",
@@ -119,9 +119,9 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
       }
     ],
     downloadsEyebrow: "获取歌词岛",
-    downloadsTitle: "软件下载，只通过 Microsoft Store。",
+    downloadsTitle: "歌词岛，现已登陆 Microsoft Store。",
     downloadsBody:
-      "Microsoft Store 是唯一软件下载入口；GitHub 仅用于查看 v1.0 与源码。",
+      "在 Microsoft Store 下载并获取后续更新。源代码可在 GitHub 查看。",
     storeLabel: "打开 Microsoft Store",
     footerNote: "播放器与音乐服务名称及商标归各自权利人所有。"
   },
@@ -131,9 +131,9 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
     languageName: "中文",
     languageHref: "/updates",
     eyebrow: "Release notes",
-    title: "What changed in Lyric Island v2.0 Beta 1?",
+    title: "Lyric Island v2.0 Beta 1\nA more complete rebuild",
     intro:
-      "This release moves Lyric Island beyond a fixed single-player companion into a modular top-edge music HUD for multiple Windows players.",
+      "Lyric Island v2.0 supports more Windows players and freely configurable modules, with further improvements to lyric matching, expand-and-collapse behavior, shortcuts, mouse avoidance, and runtime stability for a more complete, more natural experience.",
     version: "v2.0.0-beta.1",
     status: "Public beta",
     summaryLabel: "Release focus",
@@ -218,9 +218,9 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
       }
     ],
     downloadsEyebrow: "Get Lyric Island",
-    downloadsTitle: "Download only from Microsoft Store.",
+    downloadsTitle: "Lyric Island is now on Microsoft Store.",
     downloadsBody:
-      "Microsoft Store is the only software download channel. GitHub is only for viewing v1.0 and the source code.",
+      "Download Lyric Island from Microsoft Store and get future updates there. Source code is available on GitHub.",
     storeLabel: "Open Microsoft Store",
     footerNote:
       "Player and music-service names and trademarks belong to their respective owners."
