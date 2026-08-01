@@ -81,7 +81,7 @@ export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
     },
     bug: {
       eyebrow: "Bug 提交",
-      title: "发现问题，告诉我们。",
+      title: "发现问题，\n告诉我们。",
       body: "请写下问题出现前的操作、实际结果和预期结果。附上截图或短视频，能帮助我们更快定位并修复。",
       reward: "问题确认有效后，赠送软件礼品码"
     },

@@ -2641,6 +2641,7 @@ html[lang="en"] :where(
 .submissionPitch h2 {
   max-width: 560px;
   margin-bottom: 32px;
+  white-space: pre-line;
 }
 
 .submissionPitch > p {
