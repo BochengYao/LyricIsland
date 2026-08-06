@@ -1,2 +1,2 @@
 Set-Location $PSScriptRoot
-dotnet run --project .\LyricsIsland.App\LyricsIsland.App.csproj
+dotnet run --project .\LyricHover.App\LyricHover.App.csproj

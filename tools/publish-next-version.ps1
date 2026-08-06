@@ -74,13 +74,13 @@ try {
 
     Push-Location $root
     try {
-        dotnet run --no-restore --configuration Release --project LyricsIsland.Tests
+        dotnet run --no-restore --configuration Release --project LyricHover.Tests
         if ($LASTEXITCODE -ne 0) { throw '自动测试失败。' }
 
-        dotnet build --no-restore --configuration Release --runtime win-x64 LyricsIsland.App\LyricsIsland.App.csproj
+        dotnet build --no-restore --configuration Release --runtime win-x64 LyricHover.App\LyricHover.App.csproj
         if ($LASTEXITCODE -ne 0) { throw 'Release 构建失败。' }
 
-        dotnet publish --no-restore --configuration Release --runtime win-x64 --self-contained false --output $stagingPath LyricsIsland.App\LyricsIsland.App.csproj
+        dotnet publish --no-restore --configuration Release --runtime win-x64 --self-contained false --output $stagingPath LyricHover.App\LyricHover.App.csproj
         if ($LASTEXITCODE -ne 0) { throw '发布失败。' }
     }
     finally {
@@ -122,7 +122,7 @@ try {
     }
 
     if (-not $NoLaunch) {
-        Start-Process -FilePath (Join-Path $currentPath 'LyricsIsland.App.exe') -WorkingDirectory $currentPath
+        Start-Process -FilePath (Join-Path $currentPath 'LyricHover.App.exe') -WorkingDirectory $currentPath
     }
 
     Write-Host "发布完成：$releaseName"

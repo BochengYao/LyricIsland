@@ -7,30 +7,30 @@ import { SiteStructuredData } from "@/components/SiteStructuredData";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://lyric-island.top"),
-  title: "This line deserves to be seen | Lyric Island",
+  title: "This line deserves to be seen | LyricHover",
   description:
     "Meet music at the top of your screen with mouse-aware transparency, modular layouts, auto collapse, translation, and multi-player support.",
-  applicationName: "Lyric Island",
+  applicationName: "LyricHover",
   icons: {
     icon: "/images/app-logo.png",
     apple: "/images/app-logo.png"
   },
   openGraph: {
     type: "website",
-    title: "Lyric Island",
+    title: "LyricHover",
     description: "This line deserves to be seen. Meet the music at the top of your screen.",
     images: [
       {
         url: "/images/campaign/hero.png",
         width: 1998,
         height: 1125,
-        alt: "Lyric Island at the top of a Windows desktop"
+        alt: "LyricHover at the top of a Windows desktop"
       }
     ]
   },
   twitter: {
     card: "summary_large_image",
-    title: "Lyric Island",
+    title: "LyricHover",
     description: "This line deserves to be seen. Meet the music at the top of your screen.",
     images: ["/images/campaign/hero.png"]
   }

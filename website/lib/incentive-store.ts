@@ -13,8 +13,7 @@ import {
   sanitizeFeatureContent
 } from "@/data/feature-content";
 import {
-  defaultReleasePreview,
-  releasePreviewFallback
+  defaultReleasePreview
 } from "@/data/release-preview";
 import type { AccessEventSource } from "@/lib/access-log";
 
@@ -216,14 +215,19 @@ export async function createSubmission(input: {
 }
 
 export async function getPublicIncentives(voterHash?: string) {
-  const rows = await supabase<Array<Pick<StoredSubmission, "id" | "kind" | "nickname" | "title" | "body" | "created_at" | "like_count" | "attachments" | "reviewer_note" | "status">>>(
-    "/rest/v1/incentive_submissions?select=id,kind,nickname,title,body,created_at,like_count,attachments,reviewer_note,status&order=updated_at.desc&limit=100"
-  );
-  const likedRows = voterHash
-    ? await supabase<Array<{ submission_id: string }>>(
+  const [rows, likedRows, previews] = await Promise.all([
+    supabase<Array<Pick<StoredSubmission, "id" | "kind" | "nickname" | "title" | "body" | "created_at" | "like_count" | "attachments" | "reviewer_note" | "status">>>(
+      "/rest/v1/incentive_submissions?select=id,kind,nickname,title,body,created_at,like_count,attachments,reviewer_note,status&order=updated_at.desc&limit=100"
+    ),
+    voterHash
+      ? supabase<Array<{ submission_id: string }>>(
         `/rest/v1/incentive_likes?select=submission_id&voter_token_hash=eq.${encodeURIComponent(voterHash)}&limit=200`
       )
-    : [];
+      : Promise.resolve([] as Array<{ submission_id: string }>),
+    supabase<ReleasePreview[]>(
+      "/rest/v1/release_previews?select=*&status=eq.published&order=published_at.desc&limit=6"
+    )
+  ]);
   const likedIds = new Set(likedRows.map((row) => row.submission_id));
   const publicRows = rows.filter((row) => row.status === "accepted" && decodeReviewMeta(row.reviewer_note).is_public).slice(0, 24);
   const suggestions = await Promise.all(publicRows.map(async ({ attachments, reviewer_note, status: _status, ...suggestion }) => {
@@ -238,12 +242,9 @@ export async function getPublicIncentives(voterHash?: string) {
         : {})
     };
   }));
-  const previews = await supabase<ReleasePreview[]>(
-    "/rest/v1/release_previews?select=*&status=eq.published&order=published_at.desc&limit=6"
-  );
   return {
     suggestions,
-    previews: previews.length ? previews : [releasePreviewFallback()]
+    previews
   };
 }
 

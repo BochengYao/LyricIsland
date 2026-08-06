@@ -32,22 +32,22 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
     languageName: "EN",
     languageHref: "/en/updates",
     eyebrow: "版本说明",
-    title: "歌词岛 v2.0 Beta 1，更新了什么？",
+    title: "LyricHover v2.0 Beta 1\n一次更完整的重做",
     intro:
-      "这次更新把歌词岛从固定的单播放器桌面歌词，推进为支持多个 Windows 播放器、可以自由组合模块的顶部音乐抬头显示。",
+      "LyricHover v2.0 支持更多 Windows 播放器与自由组合模块，并进一步优化歌词匹配、展开收起、快捷键、鼠标避让和运行稳定性，让整体体验更完整、更自然。",
     version: "v2.0.0-beta.1",
     status: "公开测试版",
     summaryLabel: "本次重点",
     summary: [
       "A / C 两套独立模块布局",
       "Windows SMTC 多播放器选择",
-      "真实歌词岛上的拖放编辑",
+      "真实LyricHover上的拖放编辑",
       "歌词源、时间轴和控制能力局部降级"
     ],
     sections: [
       {
         number: "01",
-        title: "歌词岛变成可组合模块",
+        title: "LyricHover变成可组合模块",
         body:
           "固定结构被拆分为六种模块。每个布局可以决定显示什么、以什么顺序出现，并保留重复分割线等组合能力。",
         items: [
@@ -59,9 +59,9 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
       },
       {
         number: "02",
-        title: "直接编辑屏幕上的真实歌词岛",
+        title: "直接编辑屏幕上的真实LyricHover",
         body:
-          "模块编辑不再只发生在抽象预览里。设置窗口提供模块工具箱，可以把模块拖到正在使用的顶部歌词岛。",
+          "模块编辑不再只发生在抽象预览里。设置窗口提供模块工具箱，可以把模块拖到正在使用的顶部LyricHover。",
         items: [
           "拖入、重排和删除模块，并通过 18 px 网格完成吸附。",
           "分割线可配置宽度、粗细和透明度。",
@@ -90,7 +90,7 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
           "可靠时间轴直接跟随播放器位置。",
           "时间轴缺失或短暂冻结时，使用内部计时补偿。",
           "用户拖动播放器进度后重新校准，减少歌词长期漂移。",
-          "播放器能力不足时局部降级，不让整个歌词岛失效。"
+          "播放器能力不足时局部降级，不让整个LyricHover失效。"
         ]
       },
       {
@@ -101,7 +101,7 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
         items: [
           "支持 LRCLIB、QQ 音乐、酷狗和网易云等歌词来源。",
           "优先使用歌词库已经提供的同步歌词和中文翻译。",
-          "歌词岛不会自行生成机器翻译。",
+          "LyricHover不会自行生成机器翻译。",
           "按歌曲维度维护本地 LRU 缓存，减少重复请求。"
         ]
       },
@@ -118,10 +118,10 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
         ]
       }
     ],
-    downloadsEyebrow: "获取歌词岛",
-    downloadsTitle: "软件下载，只通过 Microsoft Store。",
+    downloadsEyebrow: "获取LyricHover",
+    downloadsTitle: "LyricHover，现已登陆 Microsoft Store。",
     downloadsBody:
-      "Microsoft Store 是唯一软件下载入口；GitHub 仅用于查看 v1.0 与源码。",
+      "在 Microsoft Store 下载并获取后续更新。源代码可在 GitHub 查看。",
     storeLabel: "打开 Microsoft Store",
     footerNote: "播放器与音乐服务名称及商标归各自权利人所有。"
   },
@@ -131,9 +131,9 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
     languageName: "中文",
     languageHref: "/updates",
     eyebrow: "Release notes",
-    title: "What changed in Lyric Island v2.0 Beta 1?",
+    title: "What changed in LyricHover v2.0 Beta 1?",
     intro:
-      "This release moves Lyric Island beyond a fixed single-player companion into a modular top-edge music HUD for multiple Windows players.",
+      "This release moves LyricHover beyond a fixed single-player companion into a modular top-edge music HUD for multiple Windows players.",
     version: "v2.0.0-beta.1",
     status: "Public beta",
     summaryLabel: "Release focus",
@@ -174,7 +174,7 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
         body:
           "Player integration is unified through Windows SMTC instead of copying private connectors. Every named player receives equal visual weight on the site.",
         items: [
-          "Explicitly adapted for Apple Music, QQ Music, NetEase, KuGou, Spotify, and KuWo.",
+          "Explicitly adapted for Apple Music, QQ Music, NetEase, Kugou Music, Spotify, and Kuwo Music.",
           "By default, the currently playing and most recently active session is selected.",
           "A specific player can be locked in Settings.",
           "Previous, play/pause, and next are enabled only when the player advertises support."
@@ -198,9 +198,9 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
         body:
           "Fallback matching remains available across providers, with an optional preferred source that does not block temporary fallback.",
         items: [
-          "Supports LRCLIB, QQ Music, KuGou, NetEase, and fallback matching.",
+          "Supports LRCLIB, QQ Music, Kugou Music, NetEase, and fallback matching.",
           "Prefers synced lyrics and translations already supplied by a provider.",
-          "Lyric Island does not generate machine translations.",
+          "LyricHover does not generate machine translations.",
           "A song-level local LRU cache reduces repeated requests."
         ]
       },
@@ -217,7 +217,7 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
         ]
       }
     ],
-    downloadsEyebrow: "Get Lyric Island",
+    downloadsEyebrow: "Get LyricHover",
     downloadsTitle: "Download only from Microsoft Store.",
     downloadsBody:
       "Microsoft Store is the only software download channel. GitHub is only for viewing v1.0 and the source code.",

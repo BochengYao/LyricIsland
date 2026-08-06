@@ -49,24 +49,24 @@ Remove-VerifiedDirectory $verifyPath
 
 Push-Location $root
 try {
-    dotnet restore LyricsIsland.sln
+    dotnet restore LyricHover.sln
     if ($LASTEXITCODE -ne 0) {
         throw '应用依赖还原失败。'
     }
 
-    dotnet restore --runtime win-x64 LyricsIsland.App\LyricsIsland.App.csproj
+    dotnet restore --runtime win-x64 LyricHover.App\LyricHover.App.csproj
     if ($LASTEXITCODE -ne 0) {
         throw 'MSIX win-x64 运行时依赖还原失败。'
     }
 
     if (-not $SkipTests) {
-        dotnet run --no-restore --configuration Release --project LyricsIsland.Tests
+        dotnet run --no-restore --configuration Release --project LyricHover.Tests
         if ($LASTEXITCODE -ne 0) {
             throw '自动测试失败。'
         }
     }
 
-    dotnet publish --no-restore --configuration Release --runtime win-x64 --self-contained true --output $storePublishPath LyricsIsland.App\LyricsIsland.App.csproj
+    dotnet publish --no-restore --configuration Release --runtime win-x64 --self-contained true --output $storePublishPath LyricHover.App\LyricHover.App.csproj
     if ($LASTEXITCODE -ne 0) {
         throw 'MSIX 自包含应用发布失败。'
     }
@@ -75,10 +75,10 @@ finally {
     Pop-Location
 }
 
-$appExe = Join-Path $storePublishPath 'LyricsIsland.App.exe'
-$appDll = Join-Path $storePublishPath 'LyricsIsland.App.dll'
+$appExe = Join-Path $storePublishPath 'LyricHover.App.exe'
+$appDll = Join-Path $storePublishPath 'LyricHover.App.dll'
 if (-not (Test-Path -LiteralPath $appExe) -or -not (Test-Path -LiteralPath $appDll)) {
-    throw 'MSIX 自包含发布目录缺少 LyricsIsland.App。'
+    throw 'MSIX 自包含发布目录缺少 LyricHover.App。'
 }
 
 $fileVersion = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($appDll).FileVersion
@@ -120,7 +120,7 @@ $manifestText = $manifestText.Replace('__PACKAGE_VERSION__', $packageVersion)
 $manifestPath = Join-Path $stagingPath 'AppxManifest.xml'
 [System.IO.File]::WriteAllText($manifestPath, $manifestText, [System.Text.UTF8Encoding]::new($false))
 
-$packagePath = Join-Path $outputRoot "LyricIsland_$($packageVersion)_x64.msix"
+$packagePath = Join-Path $outputRoot "LyricHover_$($packageVersion)_x64.msix"
 if (Test-Path -LiteralPath $packagePath) {
     Remove-Item -LiteralPath $packagePath -Force
 }
@@ -143,7 +143,7 @@ if ($identity.Name -ne '70643607.LyricIsland' -or
     $identity.ProcessorArchitecture -ne 'x64') {
     throw '生成的 MSIX 身份、版本或架构不正确。'
 }
-if (-not (Test-Path -LiteralPath (Join-Path $verifyPath 'LyricsIsland.App.exe'))) {
+if (-not (Test-Path -LiteralPath (Join-Path $verifyPath 'LyricHover.App.exe'))) {
     throw '生成的 MSIX 中缺少主程序。'
 }
 

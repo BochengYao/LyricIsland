@@ -1,14 +1,12 @@
-# Lyric Island Installer Return Codes
+# LyricHover Installer Return Codes
 
-This page documents the return codes for `LyricIslandSetup.exe`.
+This page is retained only as a historical return-code reference. LyricHover no
+longer publishes or supports a standalone Win32 installer; use the Microsoft
+Store package instead.
 
 ## Install
 
-Command:
-
-```text
-LyricIslandSetup.exe /silent
-```
+The historical installer accepted `/silent`.
 
 Return codes:
 
@@ -19,11 +17,7 @@ Return codes:
 
 ## Uninstall
 
-Command:
-
-```text
-LyricIslandSetup.exe /uninstall /silent
-```
+The historical installer accepted `/uninstall /silent`.
 
 Return codes:
 
@@ -34,7 +28,6 @@ Return codes:
 
 ## Notes
 
-- The installer installs per user under `%LOCALAPPDATA%\Programs\LyricIsland`.
-- The installer creates a Start Menu shortcut named `Lyric Island`.
-- The installer writes uninstall metadata under the current user's uninstall registry key.
-- The installer does not require administrator privileges.
+- The archived installer is not part of any LyricHover release.
+- Current releases display as `LyricHover` and use the Microsoft Store update
+  path.

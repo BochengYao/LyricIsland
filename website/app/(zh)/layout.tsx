@@ -8,15 +8,15 @@ import { SiteStructuredData } from "@/components/SiteStructuredData";
 export const metadata: Metadata = {
   metadataBase: new URL("https://lyric-island.top"),
   title: {
-    default: "歌词岛 | Lyric Island",
-    template: "%s | Lyric Island"
+    default: "LyricHover | LyricHover",
+    template: "%s | LyricHover"
   },
   description:
-    "在屏幕顶部遇见音乐。歌词岛支持鼠标避让、模块化布局、自动折叠、歌词翻译与多播放器连接。",
-  applicationName: "Lyric Island",
+    "在屏幕顶部遇见音乐。LyricHover支持鼠标避让、模块化布局、自动折叠、歌词翻译与多播放器连接。",
+  applicationName: "LyricHover",
   keywords: [
-    "歌词岛",
-    "Lyric Island",
+    "LyricHover",
+    "LyricHover",
     "Windows desktop lyrics",
     "multi-player desktop lyrics",
     "SMTC"
@@ -27,20 +27,20 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    title: "歌词岛 | Lyric Island",
+    title: "LyricHover | LyricHover",
     description: "这一句，值得被看见。在屏幕顶部，遇见音乐。",
     images: [
       {
         url: "/images/campaign/hero.png",
         width: 1998,
         height: 1125,
-        alt: "歌词岛停靠在 Windows 桌面顶部"
+        alt: "LyricHover停靠在 Windows 桌面顶部"
       }
     ]
   },
   twitter: {
     card: "summary_large_image",
-    title: "歌词岛 | Lyric Island",
+    title: "LyricHover | LyricHover",
     description: "这一句，值得被看见。在屏幕顶部，遇见音乐。",
     images: ["/images/campaign/hero.png"]
   }

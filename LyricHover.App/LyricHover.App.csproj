@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <AssemblyName>LyricHover.App</AssemblyName>
+    <PackageId>LyricHover.App</PackageId>
+    <AssemblyTitle>LyricHover | LYRIC HOVER</AssemblyTitle>
+    <Product>LyricHover | LYRIC HOVER</Product>
+    <Description>Windows multi-player desktop lyrics companion.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.SDK.Contracts" Version="10.0.19041.1" />
+    <ProjectReference Include="..\LyricHover.Core\LyricHover.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\app.ico" CopyToOutputDirectory="Always" />
+    <Content Include="..\artifacts\pro-supporter-badge\restored-runtime-baseline\supporter-badge-back-slot-v2.glb" Link="Assets\Models\supporter-badge-final.glb" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Xiaolai-OFL.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\app-logo.png" />
+    <Resource Include="Assets\grab-open.cur" />
+    <Resource Include="Assets\grab-closed.cur" />
+    <Resource Include="Assets\pro-support-badge.png" />
+    <Resource Include="Assets\pro-support-badge.svg" />
+    <Resource Include="Assets\pro-support-badge-dark.png" />
+    <Resource Include="Assets\pro-support-badge-dark.svg" />
+    <Resource Include="Assets\Xiaolai-Regular.ttf" />
+  </ItemGroup>
+
+</Project>

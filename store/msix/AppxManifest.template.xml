@@ -12,9 +12,9 @@
     ProcessorArchitecture="x64" />
 
   <Properties>
-    <DisplayName>Lyric Island 歌词岛</DisplayName>
+    <DisplayName>LyricHover</DisplayName>
     <PublisherDisplayName>大丞子</PublisherDisplayName>
-    <Description>Windows 桌面歌词岛，支持多播放器歌词显示与媒体控制。</Description>
+    <Description>Windows desktop lyrics companion with multi-player lyrics and media controls.</Description>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
@@ -33,12 +33,12 @@
   <Applications>
     <Application
       Id="LyricsIsland"
-      Executable="LyricsIsland.App.exe"
+      Executable="LyricHover.App.exe"
       uap10:RuntimeBehavior="packagedClassicApp"
       uap10:TrustLevel="mediumIL">
       <uap:VisualElements
-        DisplayName="Lyric Island 歌词岛"
-        Description="Windows 桌面歌词岛"
+        DisplayName="LyricHover"
+        Description="Windows desktop lyrics companion"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">

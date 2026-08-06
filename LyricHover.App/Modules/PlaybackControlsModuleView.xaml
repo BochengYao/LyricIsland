@@ -1,0 +1,86 @@
+<UserControl x:Class="LyricHover.App.Modules.PlaybackControlsModuleView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Width="108"
+             Height="48"
+             ClipToBounds="False">
+    <UserControl.Resources>
+        <Style x:Key="PlaybackIconButtonStyle" TargetType="Button">
+          <Setter Property="Width" Value="36" />
+          <Setter Property="Height" Value="34" />
+          <Setter Property="Background" Value="Transparent" />
+          <Setter Property="BorderThickness" Value="0" />
+          <Setter Property="Foreground" Value="#D8D8D8" />
+          <Setter Property="Template">
+            <Setter.Value>
+              <ControlTemplate TargetType="Button">
+                <Border x:Name="HitBackground" Background="Transparent" CornerRadius="10">
+                  <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <ControlTemplate.Triggers>
+                  <Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="HitBackground" Property="Background" Value="#24FFFFFF" />
+                  </Trigger>
+                  <Trigger Property="IsPressed" Value="True">
+                    <Setter TargetName="HitBackground" Property="Background" Value="#3DFFFFFF" />
+                    <Setter TargetName="HitBackground" Property="RenderTransformOrigin" Value="0.5,0.5" />
+                    <Setter TargetName="HitBackground" Property="RenderTransform">
+                      <Setter.Value><ScaleTransform ScaleX="0.92" ScaleY="0.92" /></Setter.Value>
+                    </Setter>
+                  </Trigger>
+                  <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.28" />
+                  </Trigger>
+                </ControlTemplate.Triggers>
+              </ControlTemplate>
+            </Setter.Value>
+          </Setter>
+        </Style>
+    </UserControl.Resources>
+    <StackPanel Orientation="Horizontal"
+                VerticalAlignment="Center"
+                HorizontalAlignment="Center"
+                ClipToBounds="False">
+        <Button x:Name="PreviousButton"
+                Style="{StaticResource PlaybackIconButtonStyle}"
+                Click="PreviousButton_Click"
+                MouseEnter="Button_MouseEnter"
+                MouseLeave="Button_MouseLeave"
+                PreviewMouseLeftButtonDown="Button_PreviewMouseLeftButtonDown"
+                PreviewMouseLeftButtonUp="Button_PreviewMouseLeftButtonUp">
+            <Path Width="23" Height="18" Stretch="Fill" Fill="#D8D8D8" Data="M 11,1 L 11,19 L 0,10 Z M 23,1 L 23,19 L 12,10 Z" />
+        </Button>
+        <Button x:Name="PlayPauseButton"
+                Style="{StaticResource PlaybackIconButtonStyle}"
+                Click="PlayPauseButton_Click"
+                MouseEnter="Button_MouseEnter"
+                MouseLeave="Button_MouseLeave"
+                PreviewMouseLeftButtonDown="Button_PreviewMouseLeftButtonDown"
+                PreviewMouseLeftButtonUp="Button_PreviewMouseLeftButtonUp">
+            <Grid x:Name="PlayPauseGlyph" Width="16" Height="18">
+                <Path x:Name="PlayGlyph"
+                      Width="16"
+                      Height="18"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Center"
+                      Stretch="Uniform"
+                      Fill="#D8D8D8"
+                      Data="M 1,0 L 16,9 L 1,18 Z"
+                      Visibility="Collapsed" />
+                <StackPanel x:Name="PauseGlyph" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Border Width="4" Height="18" CornerRadius="2" Background="#D8D8D8" />
+                    <Border Width="4" Height="18" Margin="4,0,0,0" CornerRadius="2" Background="#D8D8D8" />
+                </StackPanel>
+            </Grid>
+        </Button>
+        <Button x:Name="NextButton"
+                Style="{StaticResource PlaybackIconButtonStyle}"
+                Click="NextButton_Click"
+                MouseEnter="Button_MouseEnter"
+                MouseLeave="Button_MouseLeave"
+                PreviewMouseLeftButtonDown="Button_PreviewMouseLeftButtonDown"
+                PreviewMouseLeftButtonUp="Button_PreviewMouseLeftButtonUp">
+            <Path Width="23" Height="18" Stretch="Fill" Fill="#D8D8D8" Data="M 0,1 L 0,19 L 11,10 Z M 12,1 L 12,19 L 23,10 Z" />
+        </Button>
+    </StackPanel>
+</UserControl>

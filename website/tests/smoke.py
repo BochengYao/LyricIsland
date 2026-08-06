@@ -471,6 +471,32 @@ def test_incentive_page(page: Page, path: str, lang: str, mobile: bool = False) 
     assert len({surface["background"] for surface in card_surfaces}) == 3
     assert all(surface["background"] == surface["border"] for surface in card_surfaces)
 
+    seamless_cycle = page.locator(".acceptedWaterfallColumn").first.evaluate(
+        """(column) => {
+          const frames = [...column.querySelectorAll('.acceptedCardFrame')];
+          const half = frames.length / 2;
+          return frames.slice(0, half).map((frame, index) => {
+            const originalCard = frame.querySelector('.acceptedCard');
+            const duplicateFrame = frames[index + half];
+            const duplicateCard = duplicateFrame.querySelector('.acceptedCard');
+            return {
+              originalCycleIndex: frame.dataset.cycleIndex,
+              duplicateCycleIndex: duplicateFrame.dataset.cycleIndex,
+              originalSurface: getComputedStyle(originalCard).backgroundColor,
+              duplicateSurface: getComputedStyle(duplicateCard).backgroundColor,
+              originalTitle: originalCard.querySelector('h3').textContent,
+              duplicateTitle: duplicateCard.querySelector('h3').textContent
+            };
+          });
+        }"""
+    )
+    assert all(
+        pair["originalCycleIndex"] == pair["duplicateCycleIndex"]
+        and pair["originalSurface"] == pair["duplicateSurface"]
+        and pair["originalTitle"] == pair["duplicateTitle"]
+        for pair in seamless_cycle
+    ), "Both waterfall halves must be pixel-equivalent at the animation seam"
+
     spacing = page.locator(".acceptedWaterfallColumn").first.evaluate(
         """(column) => {
           const frames = [...column.querySelectorAll('.acceptedCardFrame')].slice(0, 3);

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { DatabasePreload } from "@/components/DatabasePreload";
 import { Eyebrow, LogoLockup, PrimaryNavigation } from "@/components/SitePage";
 import { SelectiveTextReveal } from "@/components/SelectiveTextReveal";
 import {
@@ -15,7 +16,7 @@ import type {
 } from "@/data/incentives-types";
 import { incentivesByLocale } from "@/data/incentives-copy";
 import type { Locale } from "@/data/site-copy";
-import { v2Suggestions } from "@/data/v2-suggestions";
+import { preloadClientJson } from "@/lib/client-data";
 
 const IDENTITY_COOKIE = "lyric_island_contributor";
 const LOCAL_LIKES_KEY = "lyric_island_preview_likes";
@@ -315,11 +316,14 @@ function AcceptedRail({
               <div className="acceptedWaterfallTrack">
                 {[...cycle, ...cycle].map((item, index) => {
                   const duplicate = index >= cycle.length;
+                  const cycleIndex = index % cycle.length;
+                  const tone = ["tonePaper", "toneYellow", "toneBlue"][cycleIndex % 3];
                   const accessible = columnIndex === 0 && !duplicate && index < suggestions.length;
                   return (
                     <article
-                      className="acceptedCardFrame"
+                      className={`acceptedCardFrame ${tone}`}
                       data-duplicate={duplicate ? "true" : "false"}
+                      data-cycle-index={cycleIndex}
                       key={`${item.id}-${columnIndex}-${index}`}
                       aria-hidden={!accessible}
                     >
@@ -379,43 +383,60 @@ function AcceptedRail({
   );
 }
 
+type PublicIncentivesResponse = {
+  suggestions?: PublicSuggestion[];
+  previews?: ReleasePreview[];
+  configured?: boolean;
+};
+
+const publicIncentivesPreload = preloadClientJson<PublicIncentivesResponse>("/api/incentives/public");
+
 export function IncentivePage({ locale }: { locale: Locale }) {
   const copy = incentivesByLocale[locale];
   const home = locale === "zh" ? "/" : "/en";
   const [tab, setTab] = useState<SubmissionKind>("feature");
   const [identity, setIdentity] = useState<Identity>({ nickname: "", email: "" });
-  const [suggestions, setSuggestions] = useState<PublicSuggestion[]>(() => v2Suggestions(locale));
+  const [suggestions, setSuggestions] = useState<PublicSuggestion[]>([]);
   const [previews, setPreviews] = useState<ReleasePreview[]>([]);
+  const [publicDataState, setPublicDataState] = useState<"loading" | "ready" | "error">("loading");
   const [poppingId, setPoppingId] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<SubmissionReceipt | null>(null);
   const [storageConfigured, setStorageConfigured] = useState(false);
 
   useEffect(() => {
+    let active = true;
     setIdentity(readIdentity());
+    let localLikes = new Set<string>();
     try {
-      const localLikes = new Set(JSON.parse(localStorage.getItem(LOCAL_LIKES_KEY) ?? "[]") as string[]);
-      setSuggestions((items) => items.map((item) => localLikes.has(item.id) ? {
-        ...item,
-        liked: true,
-        like_count: Math.max(1, item.like_count)
-      } : item));
+      localLikes = new Set(JSON.parse(localStorage.getItem(LOCAL_LIKES_KEY) ?? "[]") as string[]);
     } catch {
       localStorage.removeItem(LOCAL_LIKES_KEY);
     }
     const syncHash = () => setTab(location.hash === "#bugs" ? "bug" : "feature");
     syncHash();
     addEventListener("hashchange", syncHash);
-    fetch("/api/incentives/public")
-      .then((response) => response.json())
-      .then((data: { suggestions?: PublicSuggestion[]; previews?: ReleasePreview[]; configured?: boolean }) => {
+    const request = publicIncentivesPreload ?? preloadClientJson<PublicIncentivesResponse>("/api/incentives/public");
+    request
+      ?.then((data) => {
+        if (!active) return;
         const configured = Boolean(data.configured);
         setStorageConfigured(configured);
-        if (configured) setSuggestions(data.suggestions ?? []);
-        else if (data.suggestions?.length) setSuggestions(data.suggestions);
+        const nextSuggestions = data.suggestions ?? [];
+        setSuggestions(configured ? nextSuggestions : nextSuggestions.map((item) => localLikes.has(item.id) ? {
+          ...item,
+          liked: true,
+          like_count: Math.max(1, item.like_count)
+        } : item));
         setPreviews(data.previews ?? []);
+        setPublicDataState("ready");
       })
-      .catch(() => undefined);
-    return () => removeEventListener("hashchange", syncHash);
+      .catch(() => {
+        if (active) setPublicDataState("error");
+      });
+    return () => {
+      active = false;
+      removeEventListener("hashchange", syncHash);
+    };
   }, []);
 
   function selectTab(next: SubmissionKind) {
@@ -470,6 +491,7 @@ export function IncentivePage({ locale }: { locale: Locale }) {
 
   return (
     <>
+      <DatabasePreload href="/api/incentives/public" />
       <a className="skipLink" href="#incentives-main">
         {locale === "zh" ? "跳到用户激励计划" : "Skip to community rewards"}
       </a>
@@ -481,8 +503,13 @@ export function IncentivePage({ locale }: { locale: Locale }) {
           <Eyebrow reveal>{copy.eyebrow}</Eyebrow>
           <div className="incentivesHeroGrid">
             <div className="incentivesHeroTitle">
-              <h1 data-text-reveal="title" style={{ whiteSpace: "pre-line" }}>
-                {copy.title}
+              <h1 data-text-reveal="title" style={{ whiteSpace: "pre-wrap" }}>
+                {copy.title.split("\n").map((line, idx, arr) => (
+                  <span key={idx}>
+                    {line}
+                    {idx < arr.length - 1 && <br />}
+                  </span>
+                ))}
               </h1>
               <div className={`incentiveTabs ${tab === "bug" ? "isBug" : ""}`} role="tablist" aria-label={copy.navLabel}>
                 <button role="tab" aria-selected={tab === "feature"} onClick={() => selectTab("feature")}>{copy.tabs.feature}</button>
@@ -512,7 +539,22 @@ export function IncentivePage({ locale }: { locale: Locale }) {
           <div className="sectionContainer acceptedHeading">
             <div><h2 data-text-reveal="title">{copy.feature.acceptedTitle}</h2><p>{copy.feature.acceptedSubtitle}</p></div>
           </div>
-          <AcceptedRail suggestions={suggestions} emptyText={copy.feature.acceptedEmpty} locale={locale} onLike={toggleLike} poppingId={poppingId} />
+          {publicDataState === "loading" ? (
+            <div className="databaseLoading acceptedDatabaseLoading" aria-busy="true" role="status">
+              <span className="databaseLoadingLabel">{locale === "zh" ? "正在载入最新建议" : "Loading the latest suggestions"}</span>
+              <span className="databaseLoadingPulse" aria-hidden="true" />
+            </div>
+          ) : (
+            <AcceptedRail
+              suggestions={suggestions}
+              emptyText={publicDataState === "error"
+                ? locale === "zh" ? "暂时无法载入建议，请稍后刷新。" : "Suggestions could not be loaded. Please refresh later."
+                : copy.feature.acceptedEmpty}
+              locale={locale}
+              onLike={toggleLike}
+              poppingId={poppingId}
+            />
+          )}
         </section>
 
         <section className="previewSection sectionContainer">
@@ -522,7 +564,12 @@ export function IncentivePage({ locale }: { locale: Locale }) {
             <p>{copy.preview.body}</p>
           </div>
           <div className="previewList">
-            {previews.length ? previews.map((preview) => {
+            {publicDataState === "loading" ? (
+              <div className="databaseLoading previewDatabaseLoading" aria-busy="true" role="status">
+                <span className="databaseLoadingLabel">{locale === "zh" ? "正在载入版本预告" : "Loading release previews"}</span>
+                <span className="databaseLoadingPulse" aria-hidden="true" />
+              </div>
+            ) : previews.length ? previews.map((preview) => {
               const title = locale === "zh" ? preview.title_zh : preview.title_en || preview.title_zh;
               const body = locale === "zh" ? preview.body_zh : preview.body_en || preview.body_zh;
               const highlights = locale === "zh" ? preview.highlights_zh : preview.highlights_en.length ? preview.highlights_en : preview.highlights_zh;
@@ -545,7 +592,7 @@ export function IncentivePage({ locale }: { locale: Locale }) {
                   </div>
                 </article>
               );
-            }) : <p className="previewEmpty">{copy.preview.empty}</p>}
+            }) : <p className="previewEmpty">{publicDataState === "error" ? (locale === "zh" ? "暂时无法载入版本预告，请稍后刷新。" : "Release previews could not be loaded. Please refresh later.") : copy.preview.empty}</p>}
           </div>
         </section>
       </main>
@@ -554,7 +601,7 @@ export function IncentivePage({ locale }: { locale: Locale }) {
         <div className="sectionContainer">
           <LogoLockup />
           <p>{copy.footerNote}</p>
-          <div><Link href={home}>{copy.backLabel}</Link><span>© 2026 Lyric Island</span></div>
+          <div><Link href={home}>{copy.backLabel}</Link><span>© 2026 LyricHover</span></div>
         </div>
       </footer>
       {receipt && <SubmissionTicket receipt={receipt} locale={locale} onClose={() => setReceipt(null)} />}

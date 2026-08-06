@@ -52,19 +52,26 @@ export function sanitizeFeatureContent(value: unknown): FeatureContent {
   };
 }
 
+function normalizeEnglishPlayerNames(value: string) {
+  return value
+    .replace(/\bKugou(?:\s+Music)?\b/gi, "Kugou Music")
+    .replace(/\bKuwo(?:\s+Music)?\b/gi, "Kuwo Music");
+}
+
 export function localizedFeatureContent(content: FeatureContent, locale: "zh" | "en") {
   const suffix = locale === "zh" ? "zh" : "en";
+  const localizeText = locale === "en" ? normalizeEnglishPlayerNames : (value: string) => value;
   return {
-    summaryLabel: content.summary[`label_${suffix}`],
-    summary: content.summary[`items_${suffix}`],
+    summaryLabel: localizeText(content.summary[`label_${suffix}`]),
+    summary: content.summary[`items_${suffix}`].map(localizeText),
     summaryVisible: content.summary.visible,
     sections: content.sections
       .filter((section) => section.visible)
       .map((section, index) => ({
         number: String(index + 1).padStart(2, "0"),
-        title: section[`title_${suffix}`],
-        body: section[`body_${suffix}`],
-        items: section[`items_${suffix}`]
+        title: localizeText(section[`title_${suffix}`]),
+        body: localizeText(section[`body_${suffix}`]),
+        items: section[`items_${suffix}`].map(localizeText)
       }))
   };
 }

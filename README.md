@@ -1,32 +1,32 @@
-# Lyric Island / 歌词岛
+# LyricHover | LyricHover
 
 [English](README_EN.md) · [下载发布版本](https://apps.microsoft.com/detail/9NRXZP5HMXK2) · [官方网站](https://lyric-island.top/) · [问题反馈](https://lyric-island.top/incentives/) · [GitHub Issues](https://github.com/BochengYao/LyricIsland/issues)
 
 > 这一句，值得被看见。
 
-Lyric Island（歌词岛）是一款为 Windows 10/11 打造的顶部动态歌词工具。音乐响起，歌词从屏幕顶端自然浮现；播放结束，歌词岛完整收起。它通过 Windows 原生媒体会话连接你正在使用的播放器，从多个歌词来源匹配同步歌词与翻译，并把歌词、封面、歌曲信息、播放控制和进度组合成一座真正属于你的歌词岛。
+LyricHover | LyricHover 是一款为 Windows 10/11 打造的顶部动态歌词工具。音乐响起，歌词从屏幕顶端自然浮现；播放结束，LyricHover完整收起。它通过 Windows 原生媒体会话连接你正在使用的播放器，从多个歌词来源匹配同步歌词与翻译，并把歌词、封面、歌曲信息、播放控制和进度组合成一座真正属于你的LyricHover。
 
 它不再只为 Apple Music 工作。QQ 音乐、网易云音乐、酷狗音乐、酷我音乐、Spotify，以及 Apple Music，都可以在同一个轻盈、连贯的桌面体验中被识别和切换。
 
-![Lyric Island 歌词岛主视觉](视觉宣传/zh/1.png)
+![LyricHover LyricHover主视觉](视觉宣传/zh/1.png)
 
 **[前往 Microsoft Store 下载发布版本 →](https://apps.microsoft.com/detail/9NRXZP5HMXK2)**
 
-## 一眼了解歌词岛
+## 一眼了解LyricHover
 
 - **始终在场，不打断工作。** 歌词贴合屏幕顶边出现，需要时展开，不播放时自然收起。
 - **换个播放器，歌词照常在场。** 自动识别当前音乐播放器，也可以优先选择你常用的播放器。
-- **想怎么展开，就怎么呈现。** 六种模块、两种布局、独立的紧凑与展开组合，都可以直接在真实歌词岛上调整。
+- **想怎么展开，就怎么呈现。** 六种模块、两种布局、独立的紧凑与展开组合，都可以直接在真实LyricHover上调整。
 - **鼠标靠近，内容仍是主角。** 只淡化指针附近的区域，让下方内容保持可读、可操作。
 - **歌词与翻译更可靠。** 多来源自动回退、智能翻译复用、稳定缓存与时间轴补偿共同减少缺词、闪烁和不同步。
-- **主体功能始终免费。** 你可以自愿加入 Lyric Island Pro 支持计划，帮助歌词岛继续生长。
+- **主体功能始终免费。** 你可以自愿加入 LyricHover Pro 支持计划，帮助LyricHover继续生长。
 
 ## 视觉预览
 
 <table>
   <tr>
     <td width="50%"><img src="视觉宣传/zh/2.png" alt="鼠标智能避让" /></td>
-    <td width="50%"><img src="视觉宣传/zh/3.png" alt="模块化歌词岛" /></td>
+    <td width="50%"><img src="视觉宣传/zh/3.png" alt="模块化LyricHover" /></td>
   </tr>
   <tr>
     <td align="center"><strong>鼠标靠近，内容仍是主角。</strong></td>
@@ -50,7 +50,7 @@ Lyric Island（歌词岛）是一款为 Windows 10/11 打造的顶部动态歌�
 - 改用 Windows 原生媒体会话读取歌曲信息、封面、播放状态与时间轴，减少中间脚本带来的延迟。
 - 自动选择 Windows 当前播放器或最近开始播放的音乐播放器。
 - 支持“优先选择”指定播放器；目标播放器不可用时，仍可自动切换至其他正在播放的音乐播放器。
-- 仅响应已识别的音乐播放器，网页视频、短视频和其他非音乐媒体不再唤出歌词岛。
+- 仅响应已识别的音乐播放器，网页视频、短视频和其他非音乐媒体不再唤出LyricHover。
 - 新增上一首、播放、暂停和下一首控制模块。
 - 新增播放进度与歌曲时长显示。
 - 针对时间轴信息不完整的播放器，增加本地进度估算、暂停冻结、延迟补偿与时长回退。
@@ -60,16 +60,16 @@ Lyric Island（歌词岛）是一款为 Windows 10/11 打造的顶部动态歌�
 
 > **网易云音乐说明：** 受网易云音乐桌面版接口限制，在播放器内拖动进度条时，歌词进度仍无法实时同步；正常播放、切歌、歌词显示和播放控制不受影响。
 
-### 全新的模块化歌词岛
+### 全新的模块化LyricHover
 
-- 歌词岛现在由六种模块组成：歌词、专辑封面、歌曲信息、播放控制、播放进度和分割线。
+- LyricHover现在由六种模块组成：歌词、专辑封面、歌曲信息、播放控制、播放进度和分割线。
 - 新增“水平积木”布局，让所有模块像积木一样横向排列并始终完整显示。
 - 新增“自动折叠”布局，平时保持紧凑，按下交互快捷键后展开完整内容。
 - 紧凑状态与展开状态可以保存各自独立的模块组合。
 - 可以从模块工具箱直接拖入模块。
-- 支持在真实歌词岛上拖动、吸附和重新排序。
+- 支持在真实LyricHover上拖动、吸附和重新排序。
 - 支持在同一布局中放入多个相同模块，包括多个分割线。
-- 将模块拖出歌词岛即可删除；如果没有真正拖出，模块会自动恢复，避免误操作。
+- 将模块拖出LyricHover即可删除；如果没有真正拖出，模块会自动恢复，避免误操作。
 - 新增明确的插入位置与占位预览，让模块落点更直观。
 - 支持保存、取消与关闭回退；未保存的布局不会覆盖原有设置。
 - 可以调整歌词模块宽度。
@@ -80,13 +80,13 @@ Lyric Island（歌词岛）是一款为 Windows 10/11 打造的顶部动态歌�
 
 ### 更直接的展开与收起
 
-- “自动折叠”模式不再需要先点击歌词岛。
-- 按下“临时启用交互”快捷键，歌词岛会立即展开并进入可操作状态。
+- “自动折叠”模式不再需要先点击LyricHover。
+- 按下“临时启用交互”快捷键，LyricHover会立即展开并进入可操作状态。
 - 松开快捷键后，按照“展开停留”设置开始计时，再自动折叠。
 - 新增可调节的“展开停留”时间。
 - 新增可调节的“无播放后收起”时间。
 - 关闭设置窗口或松开交互快捷键后，会重新开始“无播放后收起”计时。
-- 编辑模块期间，歌词岛会保持展开，不会在操作中途收起。
+- 编辑模块期间，LyricHover会保持展开，不会在操作中途收起。
 - 播放控制按钮不会再被模块拖动操作拦截。
 - 启动提示现在会自动开始收起计时，无需额外确认。
 - 展开、收起与尺寸变化使用更自然的非线性动画。
@@ -128,10 +128,10 @@ Lyric Island（歌词岛）是一款为 Windows 10/11 打造的顶部动态歌�
 
 - 保留并完善鼠标智能避让功能。
 - 鼠标靠近时，只降低指针附近区域的背景与文字不透明度。
-- 鼠标离开后，歌词岛会恢复完整不透明度。
+- 鼠标离开后，LyricHover会恢复完整不透明度。
 - 支持调节探测范围、光晕大小、长宽比例与透明度变化。
 - 新增更直观的长宽比例与透明度频谱预览。
-- 新增交互穿透选项，同时保留左键拖动歌词岛的能力。
+- 新增交互穿透选项，同时保留左键拖动LyricHover的能力。
 - 优化避让边缘的透明度过渡，让变化更加平滑。
 
 ### 重新设计的设置与教学
@@ -145,26 +145,26 @@ Lyric Island（歌词岛）是一款为 Windows 10/11 打造的顶部动态歌�
 - 教学会等待用户真正完成对应操作，再进入下一步。
 - 教学模式增加退出、遮罩、高亮与操作提示优化。
 - 教学中的“新功能”标记使用内置小赖字体，无需用户额外安装。
-- 设置中加入[歌词岛官方网站](https://lyric-island.top/)入口。
+- 设置中加入[LyricHover官方网站](https://lyric-island.top/)入口。
 - 意见反馈入口连接至官方[用户激励与反馈页面](https://lyric-island.top/incentives/)。
-- 新增“支持开发者”页面，提供免费支持方式和 Lyric Island Pro 支持计划。
+- 新增“支持开发者”页面，提供免费支持方式和 LyricHover Pro 支持计划。
 - 关于页面移除 Beta 字样，正式显示当前版本信息。
 
 ### 品牌与稳定性
 
-- 应用、程序集和发布文件统一更名为 `LyricIsland`，不再使用旧的 `AppleMusicDesktopLyrics` 名称。
+- 发布程序集和文件使用 `LyricHover.App`；为保证已有用户升级兼容，解决方案、项目目录、命名空间和本地数据目录继续保留 `LyricHover` 技术名称。
 - 自动迁移旧版设置与歌词缓存，升级后无需重新配置。
 - 设置文件改为安全替换写入，损坏的设置会先备份再恢复。
-- 保持单实例运行，重复启动时会唤起现有歌词岛。
+- 保持单实例运行，重复启动时会唤起现有LyricHover。
 - 新增系统托盘入口。
 - 优化媒体会话订阅、窗口关闭清理与后台资源释放。
 - 合并重复动画和鼠标采样，减少不必要的界面刷新。
 - 未发生变化的模块不再重复渲染，提升长时间运行时的稳定性。
 - 完成 Microsoft Store 产品身份与 MSIX 安装包适配。
 
-### Lyric Island Pro
+### LyricHover Pro
 
-歌词岛主体功能始终免费。Pro 是自愿加入的支持计划，用于支持持续开发，并提供支持者徽章与新功能优先体验。
+LyricHover主体功能始终免费。Pro 是自愿加入的支持计划，用于支持持续开发，并提供支持者徽章与新功能优先体验。
 
 - 已拥有 Microsoft Store Pro 加载项的用户会自动识别为 Pro。
 - 在北京时间 `2026-07-30 00:00` 前正式购买 v1、且不是试用许可的用户，会在 v2 中自动激活同等 Pro 权益。
@@ -182,15 +182,15 @@ Lyric Island（歌词岛）是一款为 Windows 10/11 打造的顶部动态歌�
 | 酷我音乐 | ✓ | 支持已发布到 Windows 媒体会话的信息与控制能力。 |
 | Spotify | ✓ | 支持已发布到 Windows 媒体会话的信息与控制能力。 |
 
-播放器对封面、时间轴、时长和控制接口的实现并不完全一致。更细的实机结果见[播放器测试矩阵](docs/testing/v2-beta1-player-matrix.md)。歌词岛仅响应已识别的音乐播放器，不会因为网页视频、短视频或其他非音乐媒体会话而弹出。
+播放器对封面、时间轴、时长和控制接口的实现并不完全一致。更细的实机结果见[播放器测试矩阵](docs/testing/v2-beta1-player-matrix.md)。LyricHover仅响应已识别的音乐播放器，不会因为网页视频、短视频或其他非音乐媒体会话而弹出。
 
 ## 安装与使用
 
 ### 从 Microsoft Store 安装
 
-前往 [Microsoft Store](https://apps.microsoft.com/detail/9NRXZP5HMXK2) 获取 Lyric Island。安装后，从开始菜单打开歌词岛，并在任一受支持播放器中开始播放音乐。
+前往 [Microsoft Store](https://apps.microsoft.com/detail/9NRXZP5HMXK2) 获取 LyricHover。安装后，从开始菜单打开LyricHover，并在任一受支持播放器中开始播放音乐。
 
-首次启动会进入教学模式。右键歌词岛或通过系统托盘可以打开设置。
+首次启动会进入教学模式。右键LyricHover或通过系统托盘可以打开设置。
 
 ### 默认全局快捷键
 
@@ -205,17 +205,17 @@ Lyric Island（歌词岛）是一款为 Windows 10/11 打造的顶部动态歌�
 
 ## 歌词来源与隐私
 
-歌词岛支持 LRCLIB、QQ 音乐、酷狗音乐和网易云音乐等歌词来源，并只会发送匹配歌词所需的歌曲标题、歌手、专辑和时长等信息。歌词内容与接口由相应第三方提供，使用时请同时遵守其服务条款。
+LyricHover支持 LRCLIB、QQ 音乐、酷狗音乐和网易云音乐等歌词来源，并只会发送匹配歌词所需的歌曲标题、歌手、专辑和时长等信息。歌词内容与接口由相应第三方提供，使用时请同时遵守其服务条款。
 
 设置、歌词缓存与 Pro 验证结果保存在本地：
 
 ```text
-%LOCALAPPDATA%\LyricsIsland\settings.json
-%LOCALAPPDATA%\LyricsIsland\lyrics\
-%LOCALAPPDATA%\LyricsIsland\pro-entitlement.json
+%LOCALAPPDATA%\LyricHover\settings.json
+%LOCALAPPDATA%\LyricHover\lyrics\
+%LOCALAPPDATA%\LyricHover\pro-entitlement.json
 ```
 
-程序会自动迁移旧版 `%LOCALAPPDATA%\AppleMusicDesktopLyrics\` 中的设置与缓存。Pro 验证缓存不保存 Microsoft Store 令牌。桌面端不要求注册歌词岛账号。
+程序会自动迁移旧版 `%LOCALAPPDATA%\LyricHover\` 中的设置与缓存。Pro 验证缓存不保存 Microsoft Store 令牌。桌面端不要求注册LyricHover账号。
 
 ## 从源码运行
 
@@ -228,8 +228,8 @@ Lyric Island（歌词岛）是一款为 Windows 10/11 打造的顶部动态歌�
 
 ```powershell
 git clone https://github.com/BochengYao/LyricIsland.git
-cd LyricIsland
-dotnet restore LyricsIsland.sln
+cd LyricHover
+dotnet restore LyricHover.sln
 .\run.ps1
 ```
 
@@ -239,27 +239,27 @@ dotnet restore LyricsIsland.sln
 $env:TargetPlatformSdkPath='C:\Program Files (x86)\Windows Kits\10\'
 $env:TargetPlatformDisplayName='Windows'
 
-dotnet restore --runtime win-x64 LyricsIsland.App\LyricsIsland.App.csproj
-dotnet run --no-restore --configuration Release --project LyricsIsland.Tests
-dotnet build --no-restore --configuration Release LyricsIsland.sln
+dotnet restore --runtime win-x64 LyricHover.App\LyricHover.App.csproj
+dotnet run --no-restore --configuration Release --project LyricHover.Tests
+dotnet build --no-restore --configuration Release LyricHover.sln
 .\publish.ps1 -KeepVersion -NoLaunch
 ```
 
-发布入口为 `publish\current\LyricsIsland.App.exe`。Microsoft Store 使用的自包含 MSIX 通过 `store\msix\build-msix.ps1` 单独生成。
+发布入口为 `publish\current\LyricHover.App.exe`。Microsoft Store 使用的自包含 MSIX 通过 `store\msix\build-msix.ps1` 单独生成。
 
 ## 项目结构
 
 ```text
-LyricsIsland.App/    WPF 桌面应用、歌词岛窗口、设置与原生媒体会话
-LyricsIsland.Core/   歌词匹配、解析、缓存、布局与通用业务逻辑
-LyricsIsland.Tests/  轻量自动化回归测试入口
+LyricHover.App/    WPF 桌面应用、LyricHover窗口、设置与原生媒体会话
+LyricHover.Core/   歌词匹配、解析、缓存、布局与通用业务逻辑
+LyricHover.Tests/  轻量自动化回归测试入口
 store/               Microsoft Store 身份、资源与 MSIX 构建脚本
 docs/                设计、计划、兼容性矩阵与项目资料
-website/             Lyric Island 官方网站与相关 API
+website/             LyricHover 官方网站与相关 API
 视觉宣传/            中文、英文宣传海报与无文字背景
 ```
 
-面向用户的产品名为 **Lyric Island / 歌词岛**；解决方案、项目目录、命名空间、程序集与发布文件统一使用 `LyricsIsland`。
+面向用户的产品名为 **LyricHover | LyricHover**。为兼容既有设置、缓存与 Store 更新，解决方案、项目目录、命名空间和本地数据目录保留 `LyricHover`；发布程序集与文件使用 `LyricHover.App`。
 
 ## 参与与支持
 
@@ -274,6 +274,6 @@ website/             Lyric Island 官方网站与相关 API
 
 ## 说明
 
-Lyric Island / 歌词岛是独立项目，与 Apple、腾讯、网易、酷狗、酷我、Spotify 及其音乐服务不存在隶属、合作或背书关系。相关名称与商标归各自权利人所有。歌词内容来自第三方歌词服务，使用时请尊重内容版权与服务条款。
+LyricHover / LyricHover是独立项目，与 Apple、腾讯、网易、酷狗、酷我、Spotify 及其音乐服务不存在隶属、合作或背书关系。相关名称与商标归各自权利人所有。歌词内容来自第三方歌词服务，使用时请尊重内容版权与服务条款。
 
-© 2026 Lyric Island · 歌词岛
+© 2026 LyricHover · LyricHover

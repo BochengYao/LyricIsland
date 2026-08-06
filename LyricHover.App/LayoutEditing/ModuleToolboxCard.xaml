@@ -1,0 +1,27 @@
+<UserControl x:Class="LyricHover.App.LayoutEditing.ModuleToolboxCard"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Height="48"
+             Cursor="Hand"
+             Focusable="False"
+             SnapsToDevicePixels="True">
+    <Border Padding="7,6"
+            Background="{DynamicResource SettingsControlBackgroundBrush}"
+            BorderBrush="{DynamicResource SettingsControlBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="9">
+        <StackPanel>
+            <Path Width="19"
+                  Height="19"
+                  HorizontalAlignment="Center"
+                  Data="{Binding IconGeometry}"
+                  Fill="{DynamicResource SettingsControlForegroundBrush}"
+                  Stretch="Uniform" />
+            <TextBlock Margin="0,4,0,0"
+                       HorizontalAlignment="Center"
+                       Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                       FontSize="9.5"
+                       Text="{Binding DisplayName}" />
+        </StackPanel>
+    </Border>
+</UserControl>

@@ -2614,6 +2614,54 @@ p {
   font-size: 16px;
 }
 
+.databaseLoading {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 16px;
+  border-radius: 40px;
+  background: var(--lifted);
+  color: var(--muted);
+  text-align: center;
+}
+
+.databaseLoadingLabel {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.databaseLoadingPulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--orbit);
+  box-shadow: 18px 0 0 rgba(243, 115, 56, 0.52), 36px 0 0 rgba(243, 115, 56, 0.24);
+  animation: databaseLoadingPulse 1100ms ease-in-out infinite alternate;
+  transform: translateX(-18px);
+}
+
+.databaseLoading.isError {
+  min-height: 240px;
+  border: 1px solid var(--line);
+  background: transparent;
+}
+
+.updatesDatabaseLoading {
+  min-height: 520px;
+  margin-top: 32px;
+  margin-bottom: 96px;
+}
+
+.acceptedDatabaseLoading {
+  height: 520px;
+  margin-top: 24px;
+}
+
+.previewDatabaseLoading {
+  min-height: 280px;
+}
+
 .acceptedWaterfallViewport {
   position: relative;
   height: 520px;
@@ -2878,11 +2926,16 @@ p {
   object-fit: cover;
 }
 
-.acceptedCardFrame:nth-child(3n + 2) .acceptedCard {
+.acceptedCardFrame.toneYellow .acceptedCard {
   --accepted-card-surface: #ffd84d;
 }
 
-.acceptedCardFrame:nth-child(3n + 3) .acceptedCard {
+@keyframes databaseLoadingPulse {
+  from { opacity: 0.4; transform: translateX(-18px) scale(0.9); }
+  to { opacity: 1; transform: translateX(-18px) scale(1.08); }
+}
+
+.acceptedCardFrame.toneBlue .acceptedCard {
   --accepted-card-surface: #e6ebf8;
 }
 
@@ -4648,6 +4701,24 @@ button.danger,
     margin-top: 24px;
   }
 
+  .databaseLoading {
+    border-radius: 24px;
+  }
+
+  .updatesDatabaseLoading {
+    min-height: 360px;
+    margin-top: 24px;
+    margin-bottom: 64px;
+  }
+
+  .acceptedDatabaseLoading {
+    height: 384px;
+  }
+
+  .previewDatabaseLoading {
+    min-height: 220px;
+  }
+
   .acceptedWaterfall {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
@@ -4984,6 +5055,10 @@ button.danger,
 
   .ticketDispenser {
     display: none;
+  }
+
+  .databaseLoadingPulse {
+    animation: none;
   }
 
   .incentiveTabs::before,

@@ -12,7 +12,7 @@ import {
   type Locale
 } from "@/data/site-copy";
 
-const githubUrl = "https://github.com/BochengYao/AppleMusicDesktopLyrics";
+const githubUrl = "https://github.com/BochengYao/LyricIsland";
 
 const moduleIconPaths = [
   "M2,2 L16,2 L16,16 L2,16 Z M4,13 L8,8 L11,11 L13,9 L15,13 Z M12,5 A2,2 0 1 1 11.99,5 Z",
@@ -54,8 +54,8 @@ export function LogoLockup() {
         priority
       />
       <span>
-        <strong>歌词岛</strong>
-        <small>Lyric Island</small>
+        <strong>LyricHover</strong>
+        <small>LyricHover</small>
       </span>
     </span>
   );

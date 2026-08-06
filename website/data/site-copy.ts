@@ -101,9 +101,9 @@ const sharedPlayers = [
   "Apple Music",
   "QQ Music",
   "NetEase Cloud Music",
-  "KuGou",
+  "Kugou Music",
   "Spotify",
-  "KuWo",
+  "Kuwo Music",
   "SMTC"
 ];
 
@@ -130,10 +130,10 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
     eyebrow: "Windows 桌面歌词伴侣",
     heroTitle: "歌词，停在工作上方。",
     heroBody:
-      "播放时从屏幕顶端轻轻滑入，空闲时完整收起。歌词岛把同步歌词留在视线边缘，让音乐陪伴工作，却不打断工作。",
+      "播放时从屏幕顶端轻轻滑入，空闲时完整收起。LyricHover把同步歌词留在视线边缘，让音乐陪伴工作，却不打断工作。",
     storeLabel: "Microsoft Store 稳定版",
     exploreLabel: "看看它如何工作",
-    heroImageAlt: "歌词岛显示在 Windows 桌面顶部",
+    heroImageAlt: "LyricHover显示在 Windows 桌面顶部",
     heroBadge: "v2.0 Beta 1",
     heroIslandTitle: "City lights above the screen",
     heroIslandSub: "城市光停在屏幕边缘",
@@ -141,7 +141,7 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       eyebrow: "出现得刚刚好",
       title: "像一座岛，知道什么时候靠岸。",
       body:
-        "歌词岛不占据任务栏，也不制造新的窗口负担。它跟随播放状态行动，并在鼠标靠近时主动让出屏幕内容。",
+        "LyricHover不占据任务栏，也不制造新的窗口负担。它跟随播放状态行动，并在鼠标靠近时主动让出屏幕内容。",
       watermark: "QUIETLY ABOVE",
       items: [
         {
@@ -149,7 +149,7 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
           title: "开始播放，歌词自然滑入",
           body: "读取 Windows 当前媒体会话，让歌词从顶部边缘进入视线。",
           image: "/images/product-hero.png",
-          imageAlt: "歌词岛在播放时显示于屏幕顶部",
+          imageAlt: "LyricHover在播放时显示于屏幕顶部",
           imagePosition: "72% 8%"
         },
         {
@@ -157,7 +157,7 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
           title: "暂停之后，完整收回屏幕外",
           body: "没有正在播放的内容时，桌面恢复安静，不留下悬浮占位。",
           image: "/images/product-focus.png",
-          imageAlt: "工作界面中的顶部歌词岛",
+          imageAlt: "工作界面中的顶部LyricHover",
           imagePosition: "50% 5%"
         },
         {
@@ -165,14 +165,14 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
           title: "鼠标靠近，只让附近变轻",
           body: "按光晕范围降低局部背景和文字不透明度，下面的内容仍然可读、可点。",
           image: "/images/product-modules.png",
-          imageAlt: "歌词岛与 Windows 桌面共存",
+          imageAlt: "LyricHover与 Windows 桌面共存",
           imagePosition: "12% 52%"
         }
       ]
     },
     demo: {
       eyebrow: "亲手感受",
-      title: "让歌词岛跟着你的状态变化。",
+      title: "让LyricHover跟着你的状态变化。",
       body:
         "切换播放、空闲、鼠标靠近和布局模式。这里的示例完全在浏览器中运行，不会连接你的播放器。",
       playbackLabel: "播放状态",
@@ -184,11 +184,11 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       layoutC: "C 双态展开",
       nowPlaying: "正在播放",
       track: "Quiet Orbit",
-      artist: "Lyric Island",
+      artist: "LyricHover",
       lyric: "城市灯光停在屏幕边缘",
       translation: "City lights rest above the screen",
-      statusPlaying: "歌词岛已滑入",
-      statusIdle: "歌词岛已收起",
+      statusPlaying: "LyricHover已滑入",
+      statusIdle: "LyricHover已收起",
       statusNear: "鼠标避让已开启",
       statusA: "当前为 A 横向积木布局",
       statusC: "当前为 C 双态展开布局"
@@ -197,11 +197,11 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       eyebrow: "由你组合",
       title: "不只是歌词\n而是你的音乐 HUD",
       body:
-        "v2 把歌词岛拆成可组合模块。新增水平积木与自动折叠两种布局，适配你的各种需求。",
+        "v2 把LyricHover拆成可组合模块。新增水平积木与自动折叠两种布局，适配你的各种需求。",
       names: ["专辑封面", "同步歌词", "播放控制", "歌曲信息", "播放进度", "分割线"]
     },
     compatibility: {
-      title: "一个歌词岛，适配多种播放器",
+      title: "一个LyricHover，适配多种播放器",
       body:
         "通过 Windows SMTC 读取当前媒体会话。可以跟随最近活跃的播放器，也允许在设置里锁定指定播放器。",
       note: "*网易云音乐由于接口限制无法实时同步歌曲进度（播放器内拖动进度条无法同步）。",
@@ -223,24 +223,24 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       title: "开始之前，你可能想知道。",
       items: [
         {
-          question: "歌词岛支持哪些播放器？",
+          question: "LyricHover支持哪些播放器？",
           answer:
             "v2.0 Beta 1 通过 Windows SMTC 支持 Apple Music、QQ 音乐、网易云音乐、酷狗、Spotify、酷我以及通用兼容播放器。"
         },
         {
           question: "歌词和翻译会上传到云端吗？",
           answer:
-            "应用会从已支持的歌词服务检索内容，并在本机按歌曲维度缓存。歌词岛本身不提供账号或云端布局同步。"
+            "应用会从已支持的歌词服务检索内容，并在本机按歌曲维度缓存。LyricHover本身不提供账号或云端布局同步。"
         },
         {
           question: "它会自己翻译歌词吗？",
           answer:
-            "不会。歌词岛只显示歌词来源已经提供的同步歌词和翻译，不自行生成机器翻译。"
+            "不会。LyricHover只显示歌词来源已经提供的同步歌词和翻译，不自行生成机器翻译。"
         },
         {
           question: "如何打开设置？",
           answer:
-            "右键单击歌词岛即可打开偏好设置，调整显示、屏幕位置、播放器锁定、模块布局和鼠标避让效果。"
+            "右键单击LyricHover即可打开偏好设置，调整显示、屏幕位置、播放器锁定、模块布局和鼠标避让效果。"
         }
       ]
     },
@@ -262,13 +262,13 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       resources: "资源",
       resourceLinks: [
         { label: "Microsoft Store", href: microsoftStoreUrl },
-        { label: "GitHub：v1.0 与源码", href: "https://github.com/BochengYao/AppleMusicDesktopLyrics" },
+        { label: "GitHub：v1.0 与源码", href: "https://github.com/BochengYao/LyricIsland" },
         { label: "更新内容", href: "/updates" },
         { label: "用户激励计划", href: "/incentives" },
         { label: "English", href: "/en" }
       ],
       note: "播放器与音乐服务名称及商标归各自权利人所有。",
-      copyright: "© 2026 Lyric Island"
+      copyright: "© 2026 LyricHover"
     }
   },
   en: {
@@ -290,10 +290,10 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
     eyebrow: "Windows desktop lyrics companion",
     heroTitle: "Lyrics, quietly above your work.",
     heroBody:
-      "It glides in from the top edge when music plays and fully retreats when the room goes quiet. Lyric Island keeps synced lyrics within sight, without pulling focus away from your work.",
+      "It glides in from the top edge when music plays and fully retreats when the room goes quiet. LyricHover keeps synced lyrics within sight, without pulling focus away from your work.",
     storeLabel: "Microsoft Store stable",
     exploreLabel: "See how it works",
-    heroImageAlt: "Lyric Island shown at the top of a Windows desktop",
+    heroImageAlt: "LyricHover shown at the top of a Windows desktop",
     heroBadge: "v2.0 Beta 1",
     heroIslandTitle: "City lights above the screen",
     heroIslandSub: "城市光停在屏幕边缘",
@@ -301,7 +301,7 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       eyebrow: "There when it matters",
       title: "An island that knows when to surface.",
       body:
-        "Lyric Island does not claim the taskbar or add another window to manage. It follows playback and softly yields nearby content when your pointer approaches.",
+        "LyricHover does not claim the taskbar or add another window to manage. It follows playback and softly yields nearby content when your pointer approaches.",
       watermark: "QUIETLY ABOVE",
       items: [
         {
@@ -309,7 +309,7 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
           title: "Music starts. Lyrics glide into view.",
           body: "It reads the current Windows media session and enters from the top edge.",
           image: "/images/product-hero.png",
-          imageAlt: "Lyric Island visible while music is playing",
+          imageAlt: "LyricHover visible while music is playing",
           imagePosition: "72% 8%"
         },
         {
@@ -317,7 +317,7 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
           title: "Playback stops. The island leaves no trace.",
           body: "With nothing playing, the desktop returns to its quiet, uninterrupted state.",
           image: "/images/product-focus.png",
-          imageAlt: "Lyric Island above a focused workspace",
+          imageAlt: "LyricHover above a focused workspace",
           imagePosition: "50% 5%"
         },
         {
@@ -325,7 +325,7 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
           title: "Move closer. Only the nearby area softens.",
           body: "Local background and text opacity fall around the pointer, keeping content underneath readable and clickable.",
           image: "/images/product-modules.png",
-          imageAlt: "Lyric Island coexisting with a Windows desktop",
+          imageAlt: "LyricHover coexisting with a Windows desktop",
           imagePosition: "12% 52%"
         }
       ]
@@ -344,7 +344,7 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       layoutC: "C dual-state",
       nowPlaying: "Now playing",
       track: "Quiet Orbit",
-      artist: "Lyric Island",
+      artist: "LyricHover",
       lyric: "City lights rest above the screen",
       translation: "城市灯光停在屏幕边缘",
       statusPlaying: "The island is in view",
@@ -357,13 +357,13 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       eyebrow: "Compose your own",
       title: "More than lyrics\nYour music HUD, built around you",
       body:
-        "v2 turns Lyric Island into reusable modules. New horizontal blocks and auto-collapse layouts adapt to whatever you need.",
+        "v2 turns LyricHover into reusable modules. New horizontal blocks and auto-collapse layouts adapt to whatever you need.",
       names: ["Album art", "Synced lyrics", "Playback controls", "Track info", "Progress", "Divider"]
     },
     compatibility: {
       title: "One island, made for many players",
       body:
-        "Lyric Island reads the current media session through Windows SMTC. It can follow the most recently active player and also lets you lock a specific player in Settings.",
+        "LyricHover reads the current media session through Windows SMTC. It can follow the most recently active player and also lets you lock a specific player in Settings.",
       note:
         "*NetEase Cloud Music cannot synchronize song progress in real time due to API limitations (seeking in the player will not synchronize).",
       players: sharedPlayers
@@ -372,7 +372,7 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       eyebrow: "Where lyrics come from",
       title: "Multiple providers, with lyrics and translations left intact.",
       body:
-        "Supports LRCLIB, QQ Music, KuGou, NetEase, and fallback matching. It prefers source-provided synced lyrics and translations and does not generate machine translations.",
+        "Supports LRCLIB, QQ Music, Kugou Music, NetEase, and fallback matching. It prefers source-provided synced lyrics and translations and does not generate machine translations.",
       facts: [
         { value: "4+", label: "lyric providers", detail: "Fallback matching when a preferred source does not fit" },
         { value: "LRU", label: "local cache", detail: "A configurable song-level cache" },
@@ -384,19 +384,19 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       title: "A few things to know before you begin.",
       items: [
         {
-          question: "Which players does Lyric Island support?",
+          question: "Which players does LyricHover support?",
           answer:
-            "v2.0 Beta 1 uses Windows SMTC with Apple Music, QQ Music, NetEase, KuGou, Spotify, KuWo, and generic compatible players."
+            "v2.0 Beta 1 uses Windows SMTC with Apple Music, QQ Music, NetEase, Kugou Music, Spotify, Kuwo Music, and generic compatible players."
         },
         {
           question: "Are lyrics and translations uploaded to the cloud?",
           answer:
-            "The app retrieves content from supported lyric services and keeps a song-level cache on your device. Lyric Island does not provide accounts or cloud layout sync."
+            "The app retrieves content from supported lyric services and keeps a song-level cache on your device. LyricHover does not provide accounts or cloud layout sync."
         },
         {
           question: "Does it translate lyrics on its own?",
           answer:
-            "No. Lyric Island displays synced lyrics and translations already provided by a source. It does not generate machine translations."
+            "No. LyricHover displays synced lyrics and translations already provided by a source. It does not generate machine translations."
         },
         {
           question: "How do I open Settings?",
@@ -423,13 +423,13 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       resources: "Resources",
       resourceLinks: [
         { label: "Microsoft Store", href: microsoftStoreUrl },
-        { label: "GitHub: v1.0 & source", href: "https://github.com/BochengYao/AppleMusicDesktopLyrics" },
+        { label: "GitHub: v1.0 & source", href: "https://github.com/BochengYao/LyricIsland" },
         { label: "Updates", href: "/en/updates" },
         { label: "Community rewards", href: "/en/incentives" },
         { label: "中文", href: "/" }
       ],
       note: "Player and music-service names and trademarks belong to their respective owners.",
-      copyright: "© 2026 Lyric Island"
+      copyright: "© 2026 LyricHover"
     }
   }
 };

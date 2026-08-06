@@ -5,12 +5,12 @@
   "body_zh": "进一步增加可自定义内容",
   "body_en": "Further increase customizable content",
   "highlights_zh": [
-    "自定义歌词岛形状",
+    "自定义LyricHover形状",
     "自定义字体、颜色",
     "自定义各模块颜色"
   ],
   "highlights_en": [
-    "Customize lyric island shapes",
+    "Customize LyricHover shapes",
     "Customize fonts and colors",
     "Customize colors for each module"
   ],

@@ -1,32 +1,32 @@
-# Lyric Island
+# LyricHover
 
 [中文](README.md) · [Download the release](https://apps.microsoft.com/detail/9NRXZP5HMXK2) · [Website](https://lyric-island.top/en/) · [Feedback](https://lyric-island.top/en/incentives/) · [GitHub Issues](https://github.com/BochengYao/LyricIsland/issues)
 
 > This line deserves to be seen.
 
-Lyric Island is a top-edge lyrics experience made for Windows 10 and 11. When music starts, lyrics appear naturally. When it ends, the island slips away. It connects to the player you are already using through native Windows media sessions, finds synced lyrics and translations across multiple providers, and brings lyrics, artwork, track details, playback controls, and progress together in one fluid island.
+LyricHover is a top-edge lyrics experience made for Windows 10 and 11. When music starts, lyrics appear naturally. When it ends, the island slips away. It connects to the player you are already using through native Windows media sessions, finds synced lyrics and translations across multiple providers, and brings lyrics, artwork, track details, playback controls, and progress together in one fluid island.
 
 It is no longer built around Apple Music alone. Apple Music, QQ Music, NetEase Cloud Music, KuGou Music, KuWo Music, and Spotify can all be recognized and followed through the same calm, consistent desktop experience.
 
-![Lyric Island hero](视觉宣传/en/1.png)
+![LyricHover hero](视觉宣传/en/1.png)
 
 **[Download the release from Microsoft Store →](https://apps.microsoft.com/detail/9NRXZP5HMXK2)**
 
-## Lyric Island at a glance
+## LyricHover at a glance
 
 - **Always in sight. Never in your way.** The island rests against the top edge, expands when you need it, and retracts when the music stops.
 - **Players may change. Lyrics stay.** Follow the active music player automatically, or give your favorite player priority.
 - **How it unfolds is yours to mold.** Six modules, two layout modes, and separate compact and expanded compositions—all edited on the real island.
 - **Move near. Work stays clear.** Only the region around your pointer fades, keeping what is underneath readable and clickable.
 - **Lyrics and translations that hold together.** Multi-source fallback, careful translation reuse, reliable caching, and timeline compensation reduce missing lines, flicker, and drift.
-- **The core experience stays free.** Lyric Island Pro is an optional way to support continued development.
+- **The core experience stays free.** LyricHover Pro is an optional way to support continued development.
 
 ## Gallery
 
 <table>
   <tr>
     <td width="50%"><img src="视觉宣传/en/2.png" alt="Cursor-aware transparency" /></td>
-    <td width="50%"><img src="视觉宣传/en/3.png" alt="Modular Lyric Island layouts" /></td>
+    <td width="50%"><img src="视觉宣传/en/3.png" alt="Modular LyricHover layouts" /></td>
   </tr>
   <tr>
     <td align="center"><strong>Move near. Work stays clear.</strong></td>
@@ -46,10 +46,10 @@ It is no longer built around Apple Music alone. Apple Music, QQ Music, NetEase C
 
 ### A new multi-player experience
 
-- Lyric Island no longer works with Apple Music alone. It now recognizes and adapts to media sessions from QQ Music, NetEase Cloud Music, KuGou Music, KuWo Music, and Spotify.
+- LyricHover no longer works with Apple Music alone. It now recognizes and adapts to media sessions from QQ Music, NetEase Cloud Music, KuGou Music, KuWo Music, and Spotify.
 - Track metadata, artwork, playback state, and timeline data now come directly from native Windows media sessions, reducing the delay introduced by intermediary scripts.
-- Lyric Island can automatically follow the current Windows media player or the music player that most recently started playback.
-- A chosen player can be marked as preferred. If it is unavailable, Lyric Island can still switch to another music player that is currently playing.
+- LyricHover can automatically follow the current Windows media player or the music player that most recently started playback.
+- A chosen player can be marked as preferred. If it is unavailable, LyricHover can still switch to another music player that is currently playing.
 - Only recognized music players can reveal the island. Web videos, short-form video apps, and other non-music media sessions no longer summon it.
 - New modules provide previous, play, pause, and next controls.
 - Playback progress and total track duration can now be displayed.
@@ -60,7 +60,7 @@ It is no longer built around Apple Music alone. Apple Music, QQ Music, NetEase C
 
 > **A note about NetEase Cloud Music:** the NetEase desktop app does not expose live seek changes through its current interface, so dragging its in-player progress bar cannot update lyric progress in real time. Normal playback, track changes, lyric display, and playback controls are unaffected.
 
-### A fully modular Lyric Island
+### A fully modular LyricHover
 
 - The island is now built from six module types: lyrics, album artwork, track information, playback controls, playback progress, and dividers.
 - The new **Horizontal Blocks** layout keeps every module arranged in one complete horizontal row.
@@ -104,7 +104,7 @@ It is no longer built around Apple Music alone. Apple Music, QQ Music, NetEase C
 ### More reliable lyrics and translations
 
 - Automatic fallback and translation preference are improved across lyric providers.
-- If an album-scoped LRCLIB search misses, Lyric Island continues with a broader match.
+- If an album-scoped LRCLIB search misses, LyricHover continues with a broader match.
 - If the primary provider returns no lyrics, fails, or has no usable translation, other providers are tried automatically.
 - Remixes, collaborations, and similar variants can intelligently reuse a matching original translation.
 - A translation is reused only when the source lines match closely enough, preventing unrelated versions from being stitched together.
@@ -145,30 +145,30 @@ It is no longer built around Apple Music alone. Apple Music, QQ Music, NetEase C
 - The tutorial waits for the user to actually complete each action before advancing.
 - Exit behavior, masking, highlights, and action guidance are improved throughout tutorial mode.
 - The tutorial's **New Feature** marker uses the bundled Xiaolai typeface; no separate font installation is required.
-- Settings now includes a direct link to the English [Lyric Island website](https://lyric-island.top/en/).
+- Settings now includes a direct link to the English [LyricHover website](https://lyric-island.top/en/).
 - Feedback opens the English [rewards and feedback page](https://lyric-island.top/en/incentives/).
-- A new Support the Developer page offers free ways to help and the optional Lyric Island Pro support plan.
+- A new Support the Developer page offers free ways to help and the optional LyricHover Pro support plan.
 - The About page no longer shows the Beta label and now presents the current version directly.
 
 ### Brand and stability
 
-- The application, assemblies, and published files now use the `LyricIsland` name instead of `AppleMusicDesktopLyrics`.
+- Published assemblies and files use `LyricHover.App`; solution paths, namespaces, and local data keep the technical `LyricHover` name for upgrade compatibility.
 - Legacy settings and lyric caches migrate automatically, so upgrading does not require reconfiguration.
 - Settings are written through safe file replacement; damaged settings are backed up before recovery.
-- Lyric Island remains single-instance. Launching it again activates the existing island instead of opening a duplicate.
+- LyricHover remains single-instance. Launching it again activates the existing island instead of opening a duplicate.
 - A system tray entry has been added.
 - Media-session subscriptions, window shutdown, and background resource cleanup are more robust.
 - Repeated animations and pointer samples are coalesced to reduce unnecessary UI work.
 - Modules that have not changed are no longer rendered again, improving stability during long sessions.
 - Microsoft Store identity and MSIX packaging are fully integrated.
 
-### Lyric Island Pro
+### LyricHover Pro
 
-The core Lyric Island experience stays free. Pro is an optional support plan that helps fund continued development and includes a supporter badge plus early access to new features.
+The core LyricHover experience stays free. Pro is an optional support plan that helps fund continued development and includes a supporter badge plus early access to new features.
 
 - Owners of the Microsoft Store Pro durable add-on are recognized automatically.
 - Anyone who made a full, non-trial v1 purchase before `2026-07-30 00:00` China Standard Time receives equivalent Pro access in v2 automatically.
-- Pro status is verified against the current Microsoft Store account. When offline, Lyric Island keeps the most recent successfully verified Pro state.
+- Pro status is verified against the current Microsoft Store account. When offline, LyricHover keeps the most recent successfully verified Pro state.
 - Legacy migration grants the same in-app access but does not fabricate a new add-on transaction in Microsoft Store.
 
 ## Player compatibility
@@ -182,13 +182,13 @@ The core Lyric Island experience stays free. Pro is an optional support plan tha
 | KuWo Music | ✓ | Uses the metadata and controls the player publishes through Windows media sessions. |
 | Spotify | ✓ | Uses the metadata and controls the player publishes through Windows media sessions. |
 
-Players do not expose artwork, timeline, duration, and transport capabilities in exactly the same way. See the [player validation matrix](docs/testing/v2-beta1-player-matrix.md) for detailed live-test results. Lyric Island responds only to recognized music players, so web video, short-form video, and unrelated media sessions do not make the island appear.
+Players do not expose artwork, timeline, duration, and transport capabilities in exactly the same way. See the [player validation matrix](docs/testing/v2-beta1-player-matrix.md) for detailed live-test results. LyricHover responds only to recognized music players, so web video, short-form video, and unrelated media sessions do not make the island appear.
 
 ## Install and use
 
 ### Get it from Microsoft Store
 
-Get Lyric Island from the [Microsoft Store](https://apps.microsoft.com/detail/9NRXZP5HMXK2). Open it from the Start menu, then begin playback in any supported music player.
+Get LyricHover from the [Microsoft Store](https://apps.microsoft.com/detail/9NRXZP5HMXK2). Open it from the Start menu, then begin playback in any supported music player.
 
 The first launch opens the guided tutorial. Right-click the island or use the system tray icon to open Settings.
 
@@ -205,17 +205,17 @@ Every shortcut can be rebound. Click a shortcut field, then press the new key co
 
 ## Lyric providers and privacy
 
-Lyric Island can search LRCLIB, QQ Music, KuGou Music, NetEase Cloud Music, and other configured providers. It sends only the metadata needed for matching, such as title, artist, album, and duration. Lyrics and provider APIs remain subject to their respective terms.
+LyricHover can search LRCLIB, QQ Music, KuGou Music, NetEase Cloud Music, and other configured providers. It sends only the metadata needed for matching, such as title, artist, album, and duration. Lyrics and provider APIs remain subject to their respective terms.
 
 Settings, lyric caches, and the latest Pro verification result are stored locally:
 
 ```text
-%LOCALAPPDATA%\LyricsIsland\settings.json
-%LOCALAPPDATA%\LyricsIsland\lyrics\
-%LOCALAPPDATA%\LyricsIsland\pro-entitlement.json
+%LOCALAPPDATA%\LyricHover\settings.json
+%LOCALAPPDATA%\LyricHover\lyrics\
+%LOCALAPPDATA%\LyricHover\pro-entitlement.json
 ```
 
-Settings and caches from `%LOCALAPPDATA%\AppleMusicDesktopLyrics\` are migrated automatically. The Pro verification cache contains no Microsoft Store token. The desktop app does not require a Lyric Island account.
+Settings and caches from `%LOCALAPPDATA%\LyricHover\` are migrated automatically. The Pro verification cache contains no Microsoft Store token. The desktop app does not require a LyricHover account.
 
 ## Run from source
 
@@ -228,8 +228,8 @@ Requirements:
 
 ```powershell
 git clone https://github.com/BochengYao/LyricIsland.git
-cd LyricIsland
-dotnet restore LyricsIsland.sln
+cd LyricHover
+dotnet restore LyricHover.sln
 .\run.ps1
 ```
 
@@ -239,27 +239,27 @@ dotnet restore LyricsIsland.sln
 $env:TargetPlatformSdkPath='C:\Program Files (x86)\Windows Kits\10\'
 $env:TargetPlatformDisplayName='Windows'
 
-dotnet restore --runtime win-x64 LyricsIsland.App\LyricsIsland.App.csproj
-dotnet run --no-restore --configuration Release --project LyricsIsland.Tests
-dotnet build --no-restore --configuration Release LyricsIsland.sln
+dotnet restore --runtime win-x64 LyricHover.App\LyricHover.App.csproj
+dotnet run --no-restore --configuration Release --project LyricHover.Tests
+dotnet build --no-restore --configuration Release LyricHover.sln
 .\publish.ps1 -KeepVersion -NoLaunch
 ```
 
-The published entry point is `publish\current\LyricsIsland.App.exe`. The self-contained Microsoft Store MSIX is built separately with `store\msix\build-msix.ps1`.
+The published entry point is `publish\current\LyricHover.App.exe`. The self-contained Microsoft Store MSIX is built separately with `store\msix\build-msix.ps1`.
 
 ## Repository layout
 
 ```text
-LyricsIsland.App/    WPF desktop app, island UI, Settings, and native media sessions
-LyricsIsland.Core/   Lyric matching, parsing, caching, layouts, and shared logic
-LyricsIsland.Tests/  Lightweight automated regression test entry point
+LyricHover.App/    WPF desktop app, island UI, Settings, and native media sessions
+LyricHover.Core/   Lyric matching, parsing, caching, layouts, and shared logic
+LyricHover.Tests/  Lightweight automated regression test entry point
 store/               Microsoft Store identity, assets, and MSIX build scripts
 docs/                Design notes, plans, compatibility matrices, and project material
-website/             Lyric Island website and related APIs
+website/             LyricHover website and related APIs
 视觉宣传/            Chinese and English campaign artwork plus text-free backgrounds
 ```
 
-The user-facing name is **Lyric Island / 歌词岛**. The solution, project folders, namespaces, assemblies, and published files consistently use `LyricsIsland`.
+The user-facing name is **LyricHover | LyricHover**. For upgrade compatibility, the solution, project folders, namespaces, and local data retain `LyricHover`; published assemblies and files use `LyricHover.App`.
 
 ## Contributing and support
 
@@ -274,6 +274,6 @@ This project is licensed under the GNU General Public License v3.0 only (GPL-3.0
 
 ## Disclaimer
 
-Lyric Island is an independent project and is not affiliated with, partnered with, sponsored by, or endorsed by Apple, Tencent, NetEase, KuGou, KuWo, Spotify, or their music services. Product names and trademarks belong to their respective owners. Lyrics come from third-party lyric services; please respect content rights and provider terms.
+LyricHover is an independent project and is not affiliated with, partnered with, sponsored by, or endorsed by Apple, Tencent, NetEase, KuGou, KuWo, Spotify, or their music services. Product names and trademarks belong to their respective owners. Lyrics come from third-party lyric services; please respect content rights and provider terms.
 
-© 2026 Lyric Island · 歌词岛
+© 2026 LyricHover · LyricHover

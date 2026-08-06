@@ -5,7 +5,7 @@
     "items_zh": [
       "A / C 两套独立模块布局",
       "Windows SMTC 多播放器选择",
-      "真实歌词岛上的拖放编辑",
+      "真实LyricHover上的拖放编辑",
       "歌词源、时间轴和控制能力局部降级"
     ],
     "items_en": [
@@ -19,7 +19,7 @@
   "sections": [
     {
       "id": "feature-01",
-      "title_zh": "歌词岛变成可组合模块",
+      "title_zh": "LyricHover变成可组合模块",
       "title_en": "The island is now modular",
       "body_zh": "固定结构被拆分为六种模块。每个布局可以决定显示什么、以什么顺序出现，并保留重复分割线等组合能力。",
       "body_en": "The fixed layout has been split into six modules. Each layout controls what appears, in what order, while preserving repeated divider instances.",
@@ -39,9 +39,9 @@
     },
     {
       "id": "feature-02",
-      "title_zh": "直接编辑屏幕上的真实歌词岛",
+      "title_zh": "直接编辑屏幕上的真实LyricHover",
       "title_en": "Edit the real on-screen island",
-      "body_zh": "模块编辑不再只发生在抽象预览里。设置窗口提供模块工具箱，可以把模块拖到正在使用的顶部歌词岛。",
+      "body_zh": "模块编辑不再只发生在抽象预览里。设置窗口提供模块工具箱，可以把模块拖到正在使用的顶部LyricHover。",
       "body_en": "Layout editing is no longer limited to an abstract preview. A module toolbox in Settings can target the actual top-edge island.",
       "items_zh": [
         "拖入、重排和删除模块，并通过 18 px 网格完成吸附。",
@@ -70,7 +70,7 @@
         "上一曲、播放/暂停和下一曲仅在播放器向 Windows 声明支持时启用。"
       ],
       "items_en": [
-        "Explicitly adapted for Apple Music, QQ Music, NetEase, KuGou, Spotify, and KuWo.",
+        "Explicitly adapted for Apple Music, QQ Music, NetEase, Kugou Music, Spotify, and Kuwo Music.",
         "By default, the currently playing and most recently active session is selected.",
         "A specific player can be locked in Settings.",
         "Previous, play/pause, and next are enabled only when the player advertises support."
@@ -87,7 +87,7 @@
         "可靠时间轴直接跟随播放器位置。",
         "时间轴缺失或短暂冻结时，使用内部计时补偿。",
         "用户拖动播放器进度后重新校准，减少歌词长期漂移。",
-        "播放器能力不足时局部降级，不让整个歌词岛失效。"
+        "播放器能力不足时局部降级，不让整个LyricHover失效。"
       ],
       "items_en": [
         "Reliable timelines follow the player position directly.",
@@ -106,13 +106,13 @@
       "items_zh": [
         "支持 LRCLIB、QQ 音乐、酷狗和网易云等歌词来源。",
         "优先使用歌词库已经提供的同步歌词和中文翻译。",
-        "歌词岛不会自行生成机器翻译。",
+        "LyricHover不会自行生成机器翻译。",
         "按歌曲维度维护本地 LRU 缓存，减少重复请求。"
       ],
       "items_en": [
-        "Supports LRCLIB, QQ Music, KuGou, NetEase, and fallback matching.",
+        "Supports LRCLIB, QQ Music, Kugou Music, NetEase, and fallback matching.",
         "Prefers synced lyrics and translations already supplied by a provider.",
-        "Lyric Island does not generate machine translations.",
+        "LyricHover does not generate machine translations.",
         "A song-level local LRU cache reduces repeated requests."
       ],
       "visible": true

@@ -1,0 +1,2629 @@
+<Window x:Class="LyricHover.App.PlacementSettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:layoutEditing="clr-namespace:LyricHover.App.LayoutEditing"
+        xmlns:core="clr-namespace:LyricHover.Core;assembly=LyricHover.Core"
+        Title="LyricHover | LYRIC HOVER - 偏好设置"
+        Width="1040"
+        Height="720"
+        AllowsTransparency="True"
+        Background="Transparent"
+        WindowStartupLocation="Manual"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        Topmost="True"
+        Icon="Assets/app-logo.png"
+        PreviewMouseLeftButtonDown="Window_MouseLeftButtonDown">
+    <Window.Resources>
+        <SolidColorBrush x:Key="SettingsControlBackgroundBrush" Color="#F8FAFC" />
+        <SolidColorBrush x:Key="SettingsControlForegroundBrush" Color="#1F2937" />
+        <SolidColorBrush x:Key="SettingsControlMutedForegroundBrush" Color="#667085" />
+        <SolidColorBrush x:Key="SettingsControlBorderBrush" Color="#D8DEE8" />
+        <SolidColorBrush x:Key="SettingsControlHoverBackgroundBrush" Color="#FFFFFF" />
+        <SolidColorBrush x:Key="SettingsControlPressedBackgroundBrush" Color="#EEF2F7" />
+        <SolidColorBrush x:Key="SettingsSelectedBackgroundBrush" Color="#FFFFFF" />
+        <SolidColorBrush x:Key="SettingsSelectedForegroundBrush" Color="#111827" />
+        <SolidColorBrush x:Key="SettingsSidebarHoverBackgroundBrush" Color="#F2F5FA" />
+        <SolidColorBrush x:Key="SettingsSidebarSelectedBackgroundBrush" Color="#EAF2FF" />
+        <SolidColorBrush x:Key="SettingsSidebarSelectedForegroundBrush" Color="#0F5FD7" />
+        <SolidColorBrush x:Key="SettingsTrackBackgroundBrush" Color="#E6EAF0" />
+        <SolidColorBrush x:Key="SettingsToastBackgroundBrush" Color="#FFFFFFFF" />
+        <SolidColorBrush x:Key="SettingsToastBorderBrush" Color="#C9D7EC" />
+        <SolidColorBrush x:Key="SettingsToastForegroundBrush" Color="#243044" />
+        <SolidColorBrush x:Key="SettingsDragGhostBackgroundBrush" Color="#F2FFFFFF" />
+        <SolidColorBrush x:Key="SettingsDragGhostBorderBrush" Color="#7A8E9CAF" />
+        <SolidColorBrush x:Key="SettingsDragGhostForegroundBrush" Color="#1F2937" />
+        <SolidColorBrush x:Key="SettingsRootBackgroundBrush" Color="#F4F3FA" />
+        <SolidColorBrush x:Key="SettingsSidebarBackgroundBrush" Color="#FBFBFD" />
+        <SolidColorBrush x:Key="SettingsThemeToggleBackgroundBrush" Color="#ECECF2" />
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
+            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+        <Style x:Key="CardStyle" TargetType="Border">
+            <Setter Property="Padding" Value="18" />
+            <Setter Property="Background" Value="{DynamicResource SettingsControlBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SettingsControlBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="14" />
+        </Style>
+        <Style x:Key="SettingLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlMutedForegroundBrush}" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="CompoundSettingLabel"
+               TargetType="TextBlock"
+               BasedOn="{StaticResource SettingLabel}">
+            <Setter Property="VerticalAlignment" Value="Top" />
+        </Style>
+        <Style x:Key="SettingValue" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+        </Style>
+        <Style x:Key="SidebarKeyboardFocusVisualStyle" TargetType="Control">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate>
+                        <Border Margin="1"
+                                BorderBrush="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"
+                                BorderThickness="2"
+                                CornerRadius="9" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SidebarButtonStyle" TargetType="RadioButton">
+            <Setter Property="Height" Value="42" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource SidebarKeyboardFocusVisualStyle}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="SidebarRoot"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10">
+                            <ContentPresenter Margin="{TemplateBinding Padding}"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="SidebarRoot" Property="Background" Value="{DynamicResource SettingsSidebarHoverBackgroundBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="SidebarRoot" Property="Background" Value="{DynamicResource SettingsSidebarSelectedBackgroundBrush}" />
+                                <Setter TargetName="SidebarRoot" Property="BorderBrush" Value="{DynamicResource SettingsSidebarSelectedForegroundBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="AboutDividerStyle" TargetType="Border">
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Background" Value="{DynamicResource SettingsControlBorderBrush}" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+        </Style>
+        <Style x:Key="AboutActionTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
+        </Style>
+        <Style x:Key="AboutActionDescriptionStyle" TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,1,0,0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlMutedForegroundBrush}" />
+        </Style>
+        <Style x:Key="TextLinkButtonStyle" TargetType="Button">
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="FocusBorder"
+                                Background="Transparent"
+                                BorderBrush="Transparent"
+                                BorderThickness="0,0,0,1"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="#FF2F91FF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Opacity" Value="0.6" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="FocusBorder"
+                                        Property="BorderBrush"
+                                        Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SidebarIconStyle" TargetType="Path">
+            <Setter Property="Width" Value="18" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="Margin" Value="0,0,12,0" />
+            <Setter Property="Stretch" Value="Uniform" />
+            <Setter Property="Fill" Value="Transparent" />
+            <Setter Property="Stroke" Value="{DynamicResource SettingsControlMutedForegroundBrush}" />
+            <Setter Property="StrokeThickness" Value="1.5" />
+            <Setter Property="StrokeStartLineCap" Value="Round" />
+            <Setter Property="StrokeEndLineCap" Value="Round" />
+            <Setter Property="StrokeLineJoin" Value="Round" />
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="MinWidth" Value="86" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Padding" Value="16,0" />
+            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SettingsControlBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SettingsControlBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonRoot"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="9">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonRoot" Property="Background" Value="{DynamicResource SettingsControlHoverBackgroundBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonRoot" Property="Background" Value="{DynamicResource SettingsControlPressedBackgroundBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+            <Setter Property="MinWidth" Value="86" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Padding" Value="16,0" />
+            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Background" Value="#1677FF" />
+            <Setter Property="BorderBrush" Value="#1677FF" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonRoot"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="9">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonRoot" Property="Background" Value="#0F6BEF" />
+                                <Setter TargetName="ButtonRoot" Property="BorderBrush" Value="#0F6BEF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonRoot" Property="Background" Value="#0B5FD7" />
+                                <Setter TargetName="ButtonRoot" Property="BorderBrush" Value="#0B5FD7" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="ActionButtonStyle" TargetType="Button">
+            <Setter Property="MinWidth" Value="86" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Padding" Value="16,0" />
+            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonRoot"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="9">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonRoot" Property="Opacity" Value="0.92" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonRoot" Property="Opacity" Value="0.82" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="LayoutChoiceButtonStyle" TargetType="Button">
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="Height" Value="Auto" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid Background="Transparent">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Opacity" Value="0.96" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Opacity" Value="0.88" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Padding" Value="11,0" />
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SettingsControlBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SettingsControlBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="TextBoxRoot"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="9">
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          Margin="{TemplateBinding Padding}"
+                                          VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="TextBoxRoot" Property="BorderThickness" Value="2" />
+                                <Setter TargetName="TextBoxRoot" Property="BorderBrush">
+                                    <Setter.Value>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                            <GradientStop Offset="0" Color="#5AA7FF" />
+                                            <GradientStop Offset="0.5" Color="#1677FF" />
+                                            <GradientStop Offset="1" Color="#7C5CFF" />
+                                        </LinearGradientBrush>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Padding" Value="8,3" />
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SettingsControlBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SettingsControlBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid x:Name="TemplateRoot">
+                            <ToggleButton x:Name="ToggleButton"
+                                          Focusable="False"
+                                          IsTabStop="False"
+                                          ClickMode="Press"
+                                          Foreground="{TemplateBinding Foreground}"
+                                          Background="{TemplateBinding Background}"
+                                          BorderBrush="{TemplateBinding BorderBrush}"
+                                          BorderThickness="{TemplateBinding BorderThickness}"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="ComboRoot"
+                                                Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="9">
+                                            <Grid>
+                                                <Path HorizontalAlignment="Right"
+                                                      Margin="0,0,13,0"
+                                                      VerticalAlignment="Center"
+                                                      Fill="#667085"
+                                                      Data="M 0 0 L 4 4 L 8 0 Z" />
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="ComboRoot" Property="Background" Value="{DynamicResource SettingsControlHoverBackgroundBrush}" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <ContentPresenter x:Name="SelectionContent"
+                                              Margin="11,0,34,0"
+                                              HorizontalAlignment="Left"
+                                              VerticalAlignment="Center"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                              ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                              IsHitTestVisible="False"
+                                              SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                            <Popup x:Name="PART_Popup"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True"
+                                   Placement="Bottom"
+                                   PlacementTarget="{Binding ElementName=TemplateRoot}"
+                                   StaysOpen="False"
+                                   Focusable="False"
+                                   PopupAnimation="Fade">
+                                <Border MinWidth="{TemplateBinding ActualWidth}"
+                                        Margin="0,4,0,0"
+                                        Padding="4"
+                                        Background="{DynamicResource SettingsControlBackgroundBrush}"
+                                        BorderBrush="{DynamicResource SettingsControlBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="10">
+                                    <ScrollViewer MaxHeight="220"
+                                                  CanContentScroll="True"
+                                                  KeyboardNavigation.DirectionalNavigation="Contained">
+                                        <ItemsPresenter x:Name="ItemsPresenter"
+                                                        KeyboardNavigation.DirectionalNavigation="Contained" />
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="ComboBoxItem">
+            <EventSetter Event="PreviewMouseLeftButtonUp"
+                         Handler="ComboBoxItem_PreviewMouseLeftButtonUp" />
+            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="ItemRoot"
+                                Background="Transparent"
+                                CornerRadius="7">
+                            <ContentPresenter Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemRoot" Property="Background" Value="{DynamicResource SettingsSidebarSelectedBackgroundBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemRoot" Property="Background" Value="{DynamicResource SettingsSidebarSelectedBackgroundBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
+            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <StackPanel Orientation="Horizontal">
+                            <Border x:Name="CheckRoot"
+                                    Width="19"
+                                    Height="19"
+                                    Background="#FFFFFF"
+                                    BorderBrush="#CBD3DF"
+                                    BorderThickness="1.4"
+                                    CornerRadius="6">
+                                <Path x:Name="CheckGlyph"
+                                      Width="11"
+                                      Height="8"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      Stroke="White"
+                                      StrokeThickness="2"
+                                      StrokeEndLineCap="Round"
+                                      StrokeStartLineCap="Round"
+                                      Data="M 1,4 L 4.2,7 L 10,1"
+                                      Visibility="Collapsed" />
+                            </Border>
+                            <ContentPresenter Margin="9,0,0,0"
+                                              VerticalAlignment="Center" />
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="CheckRoot" Property="Background" Value="#1677FF" />
+                                <Setter TargetName="CheckRoot" Property="BorderBrush" Value="#1677FF" />
+                                <Setter TargetName="CheckGlyph" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="CheckRoot" Property="BorderBrush" Value="#1677FF" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="Slider">
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid Height="30"
+                              VerticalAlignment="Center">
+                            <Track x:Name="PART_Track"
+                                   VerticalAlignment="Center">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="{x:Static Slider.DecreaseLarge}"
+                                                  Focusable="False"
+                                                  IsTabStop="False">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Height="5"
+                                                        Background="#1677FF"
+                                                        CornerRadius="3" />
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="{x:Static Slider.IncreaseLarge}"
+                                                  Focusable="False"
+                                                  IsTabStop="False">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Height="5"
+                                                        Background="{DynamicResource SettingsTrackBackgroundBrush}"
+                                                        CornerRadius="3" />
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.IncreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Width="18"
+                                           Height="18">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border x:Name="ThumbRoot"
+                                                        Background="#FFFFFF"
+                                                        BorderBrush="#C8D1DC"
+                                                        BorderThickness="1"
+                                                        CornerRadius="9">
+                                                    <Border.Effect>
+                                                        <DropShadowEffect BlurRadius="7"
+                                                                          Direction="270"
+                                                                          Opacity="0.18"
+                                                                          ShadowDepth="1" />
+                                                    </Border.Effect>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="ThumbRoot" Property="BorderBrush" Value="#1677FF" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsDragging" Value="True">
+                                                        <Setter TargetName="ThumbRoot" Property="BorderBrush" Value="#1677FF" />
+                                                        <Setter TargetName="ThumbRoot" Property="Background" Value="#F8FAFF" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SegmentButtonStyle" TargetType="RadioButton">
+            <Setter Property="Height" Value="30" />
+            <Setter Property="MinWidth" Value="92" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlMutedForegroundBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="SegmentRoot"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource SettingsSelectedForegroundBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="1" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="ThemeSegmentButtonStyle" TargetType="RadioButton">
+            <Setter Property="Width" Value="42" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="FontFamily" Value="Segoe UI Symbol" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlMutedForegroundBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="ThemeSegmentRoot"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="9">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ThemeSegmentRoot" Property="Background" Value="{DynamicResource SettingsControlHoverBackgroundBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource SettingsSelectedForegroundBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border x:Name="RootChrome"
+            Background="{DynamicResource SettingsRootBackgroundBrush}"
+            BorderThickness="0"
+            CornerRadius="20">
+        <Grid Margin="22,20,24,20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0"
+                  Margin="0,0,0,18">
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="42"
+                            Height="42"
+                            Margin="0,0,12,0">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="12"
+                                              Color="#66000000"
+                                              Direction="0"
+                                              Opacity="0.32"
+                                              ShadowDepth="0" />
+                        </Border.Effect>
+                        <Border CornerRadius="15"
+                                ClipToBounds="True">
+                            <Image Source="Assets/app-logo.png"
+                                   Stretch="UniformToFill" />
+                        </Border>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock x:Name="HeaderTitleText"
+                                   FontSize="28"
+                                   FontWeight="SemiBold"
+                                   Text="偏好设置" />
+                    </StackPanel>
+                </StackPanel>
+
+            </Grid>
+
+            <Grid Grid.Row="1"
+                  Grid.RowSpan="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="194" />
+                    <ColumnDefinition Width="28" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border x:Name="SidebarCard"
+                        Grid.Column="0"
+                        Background="{DynamicResource SettingsSidebarBackgroundBrush}"
+                        BorderThickness="0"
+                        CornerRadius="20"
+                        Style="{StaticResource CardStyle}">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="24"
+                                          Direction="270"
+                                          Opacity="0.18"
+                                          ShadowDepth="5"
+                                          Color="#40000000" />
+                    </Border.Effect>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0">
+                        <RadioButton x:Name="LyricsSectionButton"
+                                     GroupName="SettingsSection"
+                                     Tag="Lyrics"
+                                     Checked="SectionButton_Checked"
+                                     Style="{StaticResource SidebarButtonStyle}">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource SidebarIconStyle}"
+                                      Data="M2,4 L18,4 M2,10 L18,10 M2,16 L13,16" />
+                                <TextBlock VerticalAlignment="Center" Text="歌词显示" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="PositionSectionButton"
+                                     GroupName="SettingsSection"
+                                     Tag="Position"
+                                     Checked="SectionButton_Checked"
+                                     Style="{StaticResource SidebarButtonStyle}">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource SidebarIconStyle}"
+                                      Data="M10,1 L10,4 M10,16 L10,19 M1,10 L4,10 M16,10 L19,10 M10,4 A6,6 0 1 1 9.99,4 M10,7 A3,3 0 1 1 9.99,7" />
+                                <TextBlock VerticalAlignment="Center" Text="位置与状态" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="CacheSectionButton"
+                                     GroupName="SettingsSection"
+                                     Tag="Cache"
+                                     Checked="SectionButton_Checked"
+                                     Style="{StaticResource SidebarButtonStyle}">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource SidebarIconStyle}"
+                                      Data="M3,3 L17,3 L19,9 L19,17 L1,17 L1,9 Z M1,9 L19,9 M14,13 L16,13" />
+                                <TextBlock VerticalAlignment="Center" Text="缓存" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="HoverSectionButton"
+                                     GroupName="SettingsSection"
+                                     Tag="Hover"
+                                     Checked="SectionButton_Checked"
+                                     Style="{StaticResource SidebarButtonStyle}">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource SidebarIconStyle}"
+                                      Data="M10,1 A9,9 0 1 1 9.99,1 M10,5 A5,5 0 1 1 9.99,5" />
+                                <TextBlock VerticalAlignment="Center" Text="鼠标避让" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="HotkeysSectionButton"
+                                     GroupName="SettingsSection"
+                                     Tag="Hotkeys"
+                                     Checked="SectionButton_Checked"
+                                     Style="{StaticResource SidebarButtonStyle}">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource SidebarIconStyle}"
+                                      Data="M7,7 L7,4 A3,3 0 1 0 4,7 Z M13,7 L13,4 A3,3 0 1 1 16,7 Z M7,13 L7,16 A3,3 0 1 1 4,13 Z M13,13 L13,16 A3,3 0 1 0 16,13 Z M7,7 L13,7 L13,13 L7,13 Z" />
+                                <TextBlock VerticalAlignment="Center" Text="快捷键" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="LayoutSectionButton"
+                                     GroupName="SettingsSection"
+                                     Tag="Layout"
+                                     Checked="SectionButton_Checked"
+                                     Style="{StaticResource SidebarButtonStyle}">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource SidebarIconStyle}"
+                                      Data="M2,2 L18,2 L18,18 L2,18 Z M7.33,2 L7.33,18 M12.66,2 L12.66,18 M2,7.33 L18,7.33 M2,12.66 L18,12.66" />
+                                <TextBlock VerticalAlignment="Center" Text="模块布局" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="AboutSectionButton"
+                                     GroupName="SettingsSection"
+                                     Tag="About"
+                                     Checked="SectionButton_Checked"
+                                     Style="{StaticResource SidebarButtonStyle}">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource SidebarIconStyle}"
+                                      Data="M10,1 A9,9 0 1 1 9.99,1 M10,8 L10,15 M10,5 L10,5.2" />
+                                <TextBlock VerticalAlignment="Center" Text="关于" />
+                            </StackPanel>
+                        </RadioButton>
+                    </StackPanel>
+                        <StackPanel Grid.Row="1">
+                            <TextBlock Margin="8,0,0,8"
+                                       Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                       FontSize="12.5"
+                                       Text="外观" />
+                            <Border x:Name="ThemeToggleRoot"
+                                    Width="134"
+                                    Height="36"
+                                    Padding="3"
+                                    HorizontalAlignment="Left"
+                                    Background="{DynamicResource SettingsThemeToggleBackgroundBrush}"
+                                    ClipToBounds="True"
+                                    CornerRadius="12">
+                                <Grid>
+                                    <Border x:Name="ThemeSelectionThumb"
+                                            Width="42"
+                                            Height="30"
+                                            HorizontalAlignment="Left"
+                                            IsHitTestVisible="False"
+                                            Background="{DynamicResource SettingsSelectedBackgroundBrush}"
+                                            BorderBrush="{DynamicResource SettingsControlBorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="9">
+                                        <Border.RenderTransform>
+                                            <TranslateTransform x:Name="ThemeSelectionTransform" />
+                                        </Border.RenderTransform>
+                                    </Border>
+                                    <StackPanel Panel.ZIndex="1" Orientation="Horizontal">
+                                    <RadioButton x:Name="LightThemeRadioButton"
+                                                 GroupName="SettingsTheme"
+                                                 Tag="Light"
+                                                 Checked="ThemeRadioButton_Checked"
+                                                 Style="{StaticResource ThemeSegmentButtonStyle}"
+                                                 ToolTip="浅色模式"
+                                                 Content="☀" />
+                                    <RadioButton x:Name="DarkThemeRadioButton"
+                                                 GroupName="SettingsTheme"
+                                                 Tag="Dark"
+                                                 Checked="ThemeRadioButton_Checked"
+                                                 Style="{StaticResource ThemeSegmentButtonStyle}"
+                                                 ToolTip="深色模式"
+                                                 Content="☾" />
+                                    <RadioButton x:Name="SystemThemeRadioButton"
+                                                 GroupName="SettingsTheme"
+                                                 Tag="System"
+                                                 Checked="ThemeRadioButton_Checked"
+                                                 Style="{StaticResource ThemeSegmentButtonStyle}"
+                                                 ToolTip="跟随系统"
+                                                 Content="◐" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                            <RadioButton x:Name="SupportSectionButton"
+                                         Margin="0,16,0,0"
+                                         GroupName="SettingsSection"
+                                         Tag="Support"
+                                         Checked="SectionButton_Checked"
+                                         Style="{StaticResource SidebarButtonStyle}">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource SidebarIconStyle}"
+                                          Data="M10,18 C8,16 2,12 2,7 A4,4 0 0 1 9,4 L10,5 L11,4 A4,4 0 0 1 18,7 C18,12 12,16 10,18 Z" />
+                                    <TextBlock VerticalAlignment="Center" Text="支持开发者" />
+                                </StackPanel>
+                            </RadioButton>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border x:Name="ContentCard"
+                        Grid.Column="2"
+                        Margin="0,0,0,54"
+                        Padding="4,0,8,8"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        CornerRadius="0"
+                        Style="{StaticResource CardStyle}">
+                    <Grid>
+                        <Grid x:Name="LyricsSettingsPanel">
+                            <Grid.RowDefinitions>
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                             </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="112" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                             <TextBlock Grid.Row="0"
+                                       Grid.ColumnSpan="2"
+                                       Margin="0,0,0,22"
+                                       FontSize="17"
+                                       FontWeight="SemiBold"
+                                       Text="歌词显示" />
+
+                            <TextBlock Grid.Row="1"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,16"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="首选歌词源" />
+                            <ComboBox x:Name="LyricsSourceComboBox"
+                                      Grid.Row="1"
+                                      Grid.Column="1"
+                                      Margin="0,0,0,16"
+                                      DisplayMemberPath="DisplayName"
+                                      SelectedValuePath="Value" />
+
+                            <TextBlock Grid.Row="2"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,16"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="行数" />
+                            <StackPanel Grid.Row="2"
+                                        Grid.Column="1"
+                                        Margin="0,0,0,16"
+                                        Orientation="Horizontal">
+                                <Border x:Name="LineModeSegmentRoot"
+                                        Padding="3"
+                                        VerticalAlignment="Center"
+                                        Background="{DynamicResource SettingsControlPressedBackgroundBrush}"
+                                        ClipToBounds="True"
+                                        CornerRadius="10">
+                                    <Grid>
+                                        <Border x:Name="LineModeSelectionThumb"
+                                                Width="92"
+                                                Height="30"
+                                                HorizontalAlignment="Left"
+                                                IsHitTestVisible="False"
+                                                Background="{DynamicResource SettingsSelectedBackgroundBrush}"
+                                                BorderBrush="{DynamicResource SettingsControlBorderBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="8">
+                                            <Border.RenderTransform>
+                                                <TranslateTransform x:Name="LineModeSelectionTransform" />
+                                            </Border.RenderTransform>
+                                        </Border>
+                                        <StackPanel Panel.ZIndex="1" Orientation="Horizontal">
+                                        <RadioButton x:Name="SingleLineRadioButton"
+                                                     GroupName="LineMode"
+                                                     Style="{StaticResource SegmentButtonStyle}"
+                                                     Checked="LineModeRadioButton_Checked"
+                                                     PreviewMouseLeftButtonDown="SingleLineRadioButton_PreviewMouseLeftButtonDown"
+                                                     Content="单行" />
+                                        <RadioButton x:Name="MultiLineRadioButton"
+                                                     GroupName="LineMode"
+                                                     Style="{StaticResource SegmentButtonStyle}"
+                                                     Checked="LineModeRadioButton_Checked"
+                                                     Content="多行" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                                <Border x:Name="TranslationModeToast"
+                                        Margin="10,0,0,0"
+                                        Padding="12,7"
+                                        VerticalAlignment="Center"
+                                        Opacity="0"
+                                        Visibility="Collapsed"
+                                        Background="{DynamicResource SettingsToastBackgroundBrush}"
+                                        BorderBrush="{DynamicResource SettingsToastBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="10"
+                                        IsHitTestVisible="False">
+                                    <TextBlock FontSize="12.5"
+                                               Foreground="{DynamicResource SettingsToastForegroundBrush}"
+                                               Text="翻译模式下仅支持多行模式" />
+                                </Border>
+                            </StackPanel>
+
+                            <TextBlock Grid.Row="3"
+                                       Grid.Column="0"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="翻译" />
+                            <CheckBox x:Name="ShowTranslationCheckBox"
+                                      Grid.Row="3"
+                                      Grid.Column="1"
+                                      VerticalAlignment="Center"
+                                      Checked="ShowTranslationCheckBox_Changed"
+                                      Unchecked="ShowTranslationCheckBox_Changed"
+                                      Content="显示歌词库里的中文翻译" />
+                        </Grid>
+
+                        <Grid x:Name="PositionSettingsPanel"
+                              Visibility="Collapsed">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="52" />
+                                <RowDefinition Height="52" />
+                                <RowDefinition Height="52" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="112" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="76" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Row="0"
+                                       Grid.ColumnSpan="3"
+                                       Margin="0,0,0,22"
+                                       FontSize="17"
+                                       FontWeight="SemiBold"
+                                       Text="位置与状态" />
+
+                            <TextBlock Grid.Row="1"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,16"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="显示器" />
+                            <ComboBox x:Name="ScreenComboBox"
+                                      Grid.Row="1"
+                                      Grid.Column="1"
+                                      Grid.ColumnSpan="2"
+                                      Margin="0,0,0,16"
+                                      DisplayMemberPath="DisplayName"
+                                      SelectedValuePath="Name" />
+
+                            <TextBlock Grid.Row="2"
+                                       Grid.Column="0"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="边缘位置" />
+                            <Slider x:Name="OffsetSlider"
+                                    Grid.Row="2"
+                                    Grid.Column="1"
+                                    Margin="0,0,12,0"
+                                    Minimum="0"
+                                    Maximum="100"
+                                    TickFrequency="5"
+                                    IsSnapToTickEnabled="False" />
+                            <Button Grid.Row="2"
+                                    Grid.Column="2"
+                                    Width="68"
+                                    MinWidth="68"
+                                    Height="32"
+                                    FontSize="13"
+                                    VerticalAlignment="Center"
+                                    Content="居中"
+                                    Click="CenterIslandButton_Click" />
+
+                            <TextBlock Grid.Row="3"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,0"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="无播放后收起" />
+                            <Slider x:Name="NoPlaybackAutoRetractSlider"
+                                    Grid.Row="3"
+                                    Grid.Column="1"
+                                    Margin="0,0,12,0"
+                                    Minimum="0"
+                                    Maximum="300"
+                                    TickFrequency="1"
+                                    ValueChanged="SettingSlider_ValueChanged" />
+                            <TextBlock x:Name="NoPlaybackAutoRetractValueText"
+                                       Grid.Row="3"
+                                       Grid.Column="2"
+                                       HorizontalAlignment="Stretch"
+                                       TextAlignment="Center"
+                                       Style="{StaticResource SettingValue}" />
+
+                            <TextBlock Grid.Row="4"
+                                       Grid.Column="0"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="展开停留" />
+                            <Slider x:Name="ExpandedAutoCollapseSlider"
+                                    Grid.Row="4"
+                                    Grid.Column="1"
+                                    Margin="0,0,12,0"
+                                    Minimum="1"
+                                    Maximum="60"
+                                    TickFrequency="1"
+                                    ValueChanged="SettingSlider_ValueChanged" />
+                            <TextBlock x:Name="ExpandedAutoCollapseValueText"
+                                       Grid.Row="4"
+                                       Grid.Column="2"
+                                       HorizontalAlignment="Stretch"
+                                       TextAlignment="Center"
+                                       Style="{StaticResource SettingValue}" />
+                        </Grid>
+
+                        <Grid x:Name="CacheSettingsPanel"
+                              Visibility="Collapsed">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="112" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Row="0"
+                                       Grid.ColumnSpan="2"
+                                       Margin="0,0,0,22"
+                                       FontSize="17"
+                                       FontWeight="SemiBold"
+                                       Text="缓存" />
+
+                            <TextBlock Grid.Row="1"
+                                       Grid.Column="0"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="缓存容量" />
+                            <DockPanel Grid.Row="1"
+                                       Grid.Column="1"
+                                       LastChildFill="False">
+                                <TextBox x:Name="CacheLimitTextBox"
+                                         Width="118"
+                                         TextAlignment="Center" />
+                                <TextBlock Margin="8,0,0,0"
+                                           Style="{StaticResource SettingLabel}"
+                                           Text="MB" />
+                            </DockPanel>
+
+                            <StackPanel Grid.Row="2"
+                                        Grid.ColumnSpan="2"
+                                        Margin="0,24,0,0">
+                                <TextBlock Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                           FontSize="12.5"
+                                           LineHeight="18"
+                                           LineStackingStrategy="BlockLineHeight"
+                                           TextWrapping="Wrap"
+                                           Text="缓存用于保存已经下载过的同步歌词，下次播放同一首歌时可以直接读取，减少等待和重复请求" />
+                                <TextBlock Margin="0,10,0,0"
+                                           Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                           FontSize="12.5"
+                                           LineHeight="18"
+                                           LineStackingStrategy="BlockLineHeight"
+                                           TextWrapping="Wrap"
+                                           Text="按每首约10KB计算:实际数量会随歌词长度变化&#x0a;1 MB≈100首&#x0a;500 MB≈50,000首&#x0a;1000 MB≈100,000首" />
+                                <TextBlock Margin="0,10,0,0"
+                                           Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                           FontSize="12.5"
+                                           LineHeight="18"
+                                           LineStackingStrategy="BlockLineHeight"
+                                           TextWrapping="Wrap"
+                                           Text="写入歌词或修改容量后会检查总大小&#x0a;超过上限时优先删除最久未使用的歌词，直到低于容量上限" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid x:Name="HoverSettingsPanel"
+                              ClipToBounds="True"
+                              Visibility="Collapsed">
+                          <Grid x:Name="HoverSettingsContent"
+                                Margin="0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" MinHeight="34" />
+                                <RowDefinition Height="*" MinHeight="34" />
+                                <RowDefinition Height="*" MinHeight="34" />
+                                <RowDefinition Height="*" MinHeight="34" />
+                                <RowDefinition Height="*" MinHeight="102" />
+                                <RowDefinition Height="*" MinHeight="50" />
+                                <RowDefinition Height="*" MinHeight="34" />
+                                <RowDefinition Height="*" MinHeight="34" />
+                                <RowDefinition Height="*" MinHeight="34" />
+                                <RowDefinition Height="*" MinHeight="34" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="112" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="64" />
+                            </Grid.ColumnDefinitions>
+
+                            <Grid Grid.Row="0"
+                                  Grid.ColumnSpan="3"
+                                  Margin="0,0,0,14">
+                                <TextBlock VerticalAlignment="Center"
+                                           FontSize="17"
+                                           FontWeight="SemiBold"
+                                           Text="鼠标避让" />
+                                <Button x:Name="ResetHoverDefaultsButton"
+                                        MinWidth="80"
+                                        Height="30"
+                                        Padding="14,0"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Center"
+                                        Click="ResetHoverDefaultsButton_Click"
+                                        Content="恢复默认" />
+                            </Grid>
+
+                            <TextBlock Grid.Row="1"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,0"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="光晕大小" />
+                            <Slider x:Name="HoverAuraSizeSlider"
+                                    Grid.Row="1"
+                                    Grid.Column="1"
+                                    Margin="0,0,10,0"
+                                    Minimum="40"
+                                    Maximum="220"
+                                    TickFrequency="10"
+                                    ValueChanged="SettingSlider_ValueChanged" />
+                            <TextBlock x:Name="HoverAuraSizeValueText"
+                                       Grid.Row="1"
+                                       Grid.Column="2"
+                                       Margin="0"
+                                       Style="{StaticResource SettingValue}" />
+
+                            <TextBlock Grid.Row="2"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,0"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="探测范围" />
+                            <Slider x:Name="HoverDetectionRangeSlider"
+                                    Grid.Row="2"
+                                    Grid.Column="1"
+                                    Margin="0,0,10,0"
+                                    Minimum="60"
+                                    Maximum="640"
+                                    TickFrequency="20"
+                                    ValueChanged="SettingSlider_ValueChanged" />
+                            <TextBlock x:Name="HoverDetectionRangeValueText"
+                                       Grid.Row="2"
+                                       Grid.Column="2"
+                                       Margin="0"
+                                       Style="{StaticResource SettingValue}" />
+
+                            <TextBlock Grid.Row="3"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,0"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="光晕形状" />
+                            <Slider x:Name="HoverAuraAspectRatioSlider"
+                                    Grid.Row="3"
+                                    Grid.Column="1"
+                                    Margin="0,0,10,0"
+                                    Minimum="0.8"
+                                    Maximum="2.0"
+                                    TickFrequency="0.05"
+                                    ValueChanged="SettingSlider_ValueChanged" />
+                            <TextBlock x:Name="HoverAuraAspectRatioValueText"
+                                       Grid.Row="3"
+                                       Grid.Column="2"
+                                       Margin="0"
+                                       Style="{StaticResource SettingValue}" />
+
+                            <TextBlock Grid.Row="4"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,0"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="鼠标穿透" />
+                            <CheckBox x:Name="PassThroughOnHoverCheckBox"
+                                      Grid.Row="4"
+                                      Grid.Column="1"
+                                      Grid.ColumnSpan="2"
+                                      Margin="0"
+                                      VerticalAlignment="Center"
+                                      Content="透明避让时允许左键点到下方窗口" />
+
+                            <TextBlock Grid.Row="5"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,0"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="实时预览" />
+                            <Border x:Name="HoverPreviewScene"
+                                    Grid.Row="5"
+                                    Grid.Column="1"
+                                    Grid.ColumnSpan="2"
+                                    Height="96"
+                                    Margin="0"
+                                    VerticalAlignment="Center"
+                                    Background="#15171C"
+                                    BorderBrush="#E6EAF0"
+                                    BorderThickness="1"
+                                    CornerRadius="14">
+                                <Grid ClipToBounds="True">
+                                    <Grid Margin="12">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <Grid Grid.Row="0"
+                                              Grid.RowSpan="3">
+                                            <StackPanel VerticalAlignment="Center">
+                                                <Border Height="8" HorizontalAlignment="Stretch" Background="#334B5563" CornerRadius="4" />
+                                                <Border Height="8" Margin="0,15,0,0" HorizontalAlignment="Stretch" Background="#334B5563" CornerRadius="4" />
+                                                <Border Height="8" Margin="0,15,0,0" HorizontalAlignment="Stretch" Background="#334B5563" CornerRadius="4" />
+                                            </StackPanel>
+
+                                            <Border x:Name="HoverPreviewIsland"
+                                                    Width="372"
+                                                    Height="52"
+                                                    HorizontalAlignment="Center"
+                                                    VerticalAlignment="Center"
+                                                    Background="#000000"
+                                                    CornerRadius="22">
+                                                <Border.OpacityMask>
+                                                    <RadialGradientBrush x:Name="HoverPreviewAura"
+                                                                         MappingMode="Absolute"
+                                                                         Center="186,26"
+                                                                         GradientOrigin="186,26"
+                                                                         RadiusX="70"
+                                                                         RadiusY="50">
+                                                        <GradientStop x:Name="HoverPreviewCenterStop"
+                                                                      Offset="0"
+                                                                      Color="#40FFFFFF" />
+                                                        <GradientStop x:Name="HoverPreviewMidStop"
+                                                                      Offset="0.58"
+                                                                      Color="#B0FFFFFF" />
+                                                        <GradientStop x:Name="HoverPreviewEdgeStop"
+                                                                      Offset="1"
+                                                                      Color="#FFFFFFFF" />
+                                                    </RadialGradientBrush>
+                                                </Border.OpacityMask>
+                                                <Grid ClipToBounds="True">
+                                                    <StackPanel HorizontalAlignment="Center"
+                                                                VerticalAlignment="Center">
+                                                        <TextBlock HorizontalAlignment="Center"
+                                                                   Foreground="White"
+                                                                   FontSize="13"
+                                                                   FontWeight="SemiBold"
+                                                                   Text="歌词光影预览" />
+                                                        <TextBlock HorizontalAlignment="Center"
+                                                                   Margin="0,2,0,0"
+                                                                   Foreground="#D7DCE5"
+                                                                   FontSize="9.5"
+                                                                   Text="鼠标附近会变淡，底下文字应能看清" />
+                                                    </StackPanel>
+                                                   <Ellipse x:Name="HoverShapePreviewEllipse"
+                                                             Width="112"
+                                                             Height="64"
+                                                             HorizontalAlignment="Center"
+                                                             VerticalAlignment="Center"
+                                                             Fill="Transparent"
+                                                             IsHitTestVisible="False"
+                                                             Opacity="0.55"
+                                                             Stroke="#88FFFFFF"
+                                                             StrokeThickness="1" />
+                                                </Grid>
+                                            </Border>
+                                        </Grid>
+                                    </Grid>
+                                </Grid>
+                            </Border>
+
+                            <TextBlock Grid.Row="6"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,0"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="光晕频谱" />
+                            <StackPanel Grid.Row="6"
+                                        Grid.Column="1"
+                                        Grid.ColumnSpan="2"
+                                        Margin="0"
+                                        VerticalAlignment="Center">
+                                <Border Height="20"
+                                        CornerRadius="12"
+                                        Background="{DynamicResource SettingsTrackBackgroundBrush}"
+                                        BorderBrush="{DynamicResource SettingsControlBorderBrush}"
+                                        BorderThickness="1"
+                                        ClipToBounds="True">
+                                    <Rectangle RadiusX="11"
+                                               RadiusY="11">
+                                        <Rectangle.Fill>
+                                            <LinearGradientBrush StartPoint="0,0.5"
+                                                                 EndPoint="1,0.5">
+                                                <GradientStop x:Name="SpectrumCenterPreviewStop"
+                                                              Offset="0"
+                                                              Color="#1F1677FF" />
+                                                <GradientStop x:Name="SpectrumMidPreviewStop"
+                                                              Offset="0.46"
+                                                              Color="#751677FF" />
+                                                <GradientStop x:Name="SpectrumEdgePreviewStop"
+                                                              Offset="1"
+                                                              Color="#FF1677FF" />
+                                            </LinearGradientBrush>
+                                        </Rectangle.Fill>
+                                    </Rectangle>
+                                </Border>
+                                <Grid Margin="0,4,0,0">
+                                    <TextBlock HorizontalAlignment="Left"
+                                               Foreground="#98A2B3"
+                                               FontSize="12.5"
+                                               Text="中心" />
+                                    <TextBlock x:Name="SpectrumMidPositionValueText"
+                                               HorizontalAlignment="Center"
+                                               Foreground="#98A2B3"
+                                               FontSize="12.5" />
+                                    <TextBlock HorizontalAlignment="Right"
+                                               Foreground="#98A2B3"
+                                               FontSize="12.5"
+                                               Text="边缘" />
+                                </Grid>
+                            </StackPanel>
+
+                            <TextBlock Grid.Row="7"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,0"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="过渡位置" />
+                            <Slider x:Name="SpectrumMidPositionSlider"
+                                    Grid.Row="7"
+                                    Grid.Column="1"
+                                    Margin="0,0,10,0"
+                                    Minimum="5"
+                                    Maximum="95"
+                                    TickFrequency="5"
+                                    ValueChanged="SettingSlider_ValueChanged" />
+                            <TextBlock x:Name="SpectrumMidPositionSliderValueText"
+                                       Grid.Row="7"
+                                       Grid.Column="2"
+                                       Margin="0"
+                                       Style="{StaticResource SettingValue}" />
+
+                            <TextBlock Grid.Row="8"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,0"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="中心透明" />
+                            <Slider x:Name="SpectrumCenterTransparencySlider"
+                                    Grid.Row="8"
+                                    Grid.Column="1"
+                                    Margin="0,0,10,0"
+                                    Minimum="0"
+                                    Maximum="100"
+                                    TickFrequency="5"
+                                    ValueChanged="SettingSlider_ValueChanged" />
+                            <TextBlock x:Name="SpectrumCenterTransparencyValueText"
+                                       Grid.Row="8"
+                                       Grid.Column="2"
+                                       Margin="0"
+                                       Style="{StaticResource SettingValue}" />
+
+                            <TextBlock Grid.Row="9"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,0"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="过渡透明" />
+                            <Slider x:Name="SpectrumMidTransparencySlider"
+                                    Grid.Row="9"
+                                    Grid.Column="1"
+                                    Margin="0,0,10,0"
+                                    Minimum="0"
+                                    Maximum="100"
+                                    TickFrequency="5"
+                                    ValueChanged="SettingSlider_ValueChanged" />
+                            <TextBlock x:Name="SpectrumMidTransparencyValueText"
+                                       Grid.Row="9"
+                                       Grid.Column="2"
+                                       Margin="0"
+                                       Style="{StaticResource SettingValue}" />
+
+                            <TextBlock Grid.Row="10"
+                                       Grid.Column="0"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="边缘透明" />
+                            <Slider x:Name="SpectrumEdgeTransparencySlider"
+                                    Grid.Row="10"
+                                    Grid.Column="1"
+                                    Margin="0,0,10,0"
+                                    Minimum="0"
+                                    Maximum="100"
+                                    TickFrequency="5"
+                                    ValueChanged="SettingSlider_ValueChanged" />
+                            <TextBlock x:Name="SpectrumEdgeTransparencyValueText"
+                                       Grid.Row="10"
+                                       Grid.Column="2"
+                                       Style="{StaticResource SettingValue}" />
+                          </Grid>
+                        </Grid>
+
+                        <Grid x:Name="HotkeySettingsPanel"
+                              Visibility="Collapsed">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="150" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Row="0"
+                                        Grid.ColumnSpan="2"
+                                        Margin="0,0,0,16">
+                                <TextBlock FontSize="17"
+                                           FontWeight="SemiBold"
+                                           Text="快捷键" />
+                                <TextBlock Margin="0,5,0,0"
+                                           Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                           FontSize="13"
+                                           Text="单击后，按下新的快捷键组合" />
+                            </StackPanel>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,0,16,16" Style="{StaticResource SettingLabel}" Text="歌词提前 0.5 秒" />
+                            <TextBox x:Name="EarlierHotkeyTextBox" Grid.Row="1" Grid.Column="1" Margin="0,0,0,16"
+                                     IsReadOnly="True" Cursor="Hand" ToolTip="单击后直接按下新的快捷键"
+                                     PreviewKeyDown="HotkeyTextBox_PreviewKeyDown" GotKeyboardFocus="HotkeyTextBox_GotKeyboardFocus" />
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Margin="0,0,16,16" Style="{StaticResource SettingLabel}" Text="歌词延后 0.5 秒" />
+                            <TextBox x:Name="LaterHotkeyTextBox" Grid.Row="2" Grid.Column="1" Margin="0,0,0,16"
+                                     IsReadOnly="True" Cursor="Hand" ToolTip="单击后直接按下新的快捷键"
+                                     PreviewKeyDown="HotkeyTextBox_PreviewKeyDown" GotKeyboardFocus="HotkeyTextBox_GotKeyboardFocus" />
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Margin="0,0,16,16" Style="{StaticResource SettingLabel}" Text="重置歌词偏移" />
+                            <TextBox x:Name="ResetHotkeyTextBox" Grid.Row="3" Grid.Column="1" Margin="0,0,0,16"
+                                     IsReadOnly="True" Cursor="Hand" ToolTip="单击后直接按下新的快捷键"
+                                     PreviewKeyDown="HotkeyTextBox_PreviewKeyDown" GotKeyboardFocus="HotkeyTextBox_GotKeyboardFocus" />
+
+                            <TextBlock Grid.Row="4" Grid.Column="0" Margin="0,0,16,16" Style="{StaticResource SettingLabel}" Text="临时启用交互" />
+                            <TextBox x:Name="TemporaryInteractionHotkeyTextBox" Grid.Row="4" Grid.Column="1" Margin="0,0,0,16"
+                                     IsReadOnly="True" Cursor="Hand" ToolTip="单击后直接按下新的快捷键"
+                                     PreviewKeyDown="HotkeyTextBox_PreviewKeyDown" GotKeyboardFocus="HotkeyTextBox_GotKeyboardFocus" />
+
+                        </Grid>
+
+                         <Grid x:Name="LayoutSettingsPanel"
+                               ClipToBounds="True"
+                               Visibility="Collapsed">
+                           <Grid Margin="0">
+                             <Grid.RowDefinitions>
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="2.2*" MinHeight="118" />
+                                 <RowDefinition Height="1.05*" MinHeight="54" />
+                                  <RowDefinition Height="1.35*" MinHeight="76" />
+                                  <RowDefinition Height="0.75*" MinHeight="34" />
+                                  <RowDefinition Height="1.35*" MinHeight="112" />
+                                 <RowDefinition Height="Auto" />
+                             </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="112" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Row="0"
+                                       Grid.ColumnSpan="2"
+                                       Margin="0,0,0,12"
+                                       FontSize="17"
+                                       FontWeight="SemiBold"
+                                       Text="模块布局" />
+
+                            <Border x:Name="LayoutEditTutorialHighlight"
+                                    Grid.Row="1"
+                                    Grid.ColumnSpan="2"
+                                    Margin="-10,-8,-10,4"
+                                    Background="#321677FF"
+                                    CornerRadius="16"
+                                    IsHitTestVisible="False"
+                                    Opacity="0" />
+
+                             <TextBlock Grid.Row="1"
+                                       Grid.Column="0"
+                                       Margin="0,8,16,0"
+                                       VerticalAlignment="Top"
+                                       Style="{StaticResource CompoundSettingLabel}"
+                                       Text="编辑布局" />
+                            <Grid x:Name="LayoutModePreviewPanel"
+                                  Grid.Row="1"
+                                  Grid.Column="1"
+                                  Margin="0"
+                                  VerticalAlignment="Top"
+                                  IsHitTestVisible="True">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Button Grid.Row="0"
+                                        Grid.Column="0"
+                                        Style="{StaticResource LayoutChoiceButtonStyle}"
+                                        Click="HorizontalLayoutPreviewButton_Click"
+                                        AutomationProperties.Name="选择水平积木布局">
+                                    <Border x:Name="HorizontalLayoutPreviewCard"
+                                            Padding="8"
+                                            Background="{DynamicResource SettingsControlBackgroundBrush}"
+                                            BorderBrush="{DynamicResource SettingsControlBorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="12">
+                                        <StackPanel>
+                                            <Border Height="54"
+                                                    Background="#FF000000"
+                                                    CornerRadius="20">
+                                                <Viewbox Margin="10,0"
+                                                         HorizontalAlignment="Stretch"
+                                                         VerticalAlignment="Center"
+                                                         Stretch="Uniform"
+                                                         StretchDirection="DownOnly">
+                                                  <StackPanel HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center"
+                                                              Orientation="Horizontal">
+                                                    <Border Width="34" Height="34" Background="#FF2F3948" CornerRadius="7">
+                                                        <Border Width="18" Height="18" Background="#FF8FB6E8" CornerRadius="5" />
+                                                    </Border>
+                                                    <Border Width="1" Height="28" Margin="8,0" Background="#FF353C47" />
+                                                    <StackPanel Width="72" VerticalAlignment="Center">
+                                                        <Border Width="64" Height="5" HorizontalAlignment="Left" Background="#FFF4F6FA" CornerRadius="2.5" />
+                                                        <Border Width="46" Height="4" Margin="0,6,0,0" HorizontalAlignment="Left" Background="#FF7E8795" CornerRadius="2" />
+                                                    </StackPanel>
+                                                    <Border Width="1" Height="28" Margin="7,0" Background="#FF353C47" />
+                                                    <StackPanel Width="54" VerticalAlignment="Center" Orientation="Horizontal">
+                                                        <Border Width="10" Height="14" Margin="0,0,7,0" Background="#FF8B95A3" CornerRadius="4" />
+                                                        <Border Width="14" Height="18" Margin="0,0,7,0" Background="#FFFFFFFF" CornerRadius="5" />
+                                                        <Border Width="10" Height="14" Background="#FF8B95A3" CornerRadius="4" />
+                                                    </StackPanel>
+                                                    <Border Width="1" Height="28" Margin="7,0" Background="#FF353C47" />
+                                                    <StackPanel Width="70" VerticalAlignment="Center">
+                                                        <Grid Height="10">
+                                                            <Border Width="68" Height="4" HorizontalAlignment="Left" VerticalAlignment="Center" Background="#FF424B58" CornerRadius="2" />
+                                                            <Border Width="42" Height="4" HorizontalAlignment="Left" VerticalAlignment="Center" Background="#FF1677FF" CornerRadius="2" />
+                                                            <Ellipse Width="8" Height="8" Margin="38,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Fill="#FFFFFFFF" />
+                                                        </Grid>
+                                                        <Grid Margin="0,2,0,0">
+                                                            <TextBlock HorizontalAlignment="Left" Foreground="#FF98A2B1" FontSize="6" Text="1:24" />
+                                                            <TextBlock HorizontalAlignment="Right" Foreground="#FF98A2B1" FontSize="6" Text="3:48" />
+                                                        </Grid>
+                                                    </StackPanel>
+                                                  </StackPanel>
+                                                </Viewbox>
+                                            </Border>
+                                            <TextBlock Margin="0,5,0,0" FontSize="12.5" FontWeight="SemiBold" Text="水平积木" />
+                                            <TextBlock Margin="0,2,0,0"
+                                                       Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                                       FontSize="10.5"
+                                                       TextWrapping="Wrap"
+                                                       Text="所有模块像积木一样横向排列，始终完整显示。" />
+                                        </StackPanel>
+                                    </Border>
+                                </Button>
+
+                                <Button Grid.Row="0"
+                                        Grid.Column="2"
+                                        Style="{StaticResource LayoutChoiceButtonStyle}"
+                                        Click="ExpandableLayoutPreviewButton_Click"
+                                        AutomationProperties.Name="选择自动折叠布局">
+                                    <Border x:Name="ExpandableLayoutPreviewCard"
+                                            Padding="8"
+                                            Background="{DynamicResource SettingsControlBackgroundBrush}"
+                                            BorderBrush="{DynamicResource SettingsControlBorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="12">
+                                        <StackPanel>
+                                            <Grid Height="54" ClipToBounds="True">
+                                                <Border x:Name="ExpandablePreviewIsland"
+                                                        Width="116"
+                                                        Height="52"
+                                                        HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center"
+                                                        Background="#FF000000"
+                                                        ClipToBounds="True"
+                                                        CornerRadius="18">
+                                                    <Canvas Width="250" Height="52" HorizontalAlignment="Left">
+                                                        <Border Canvas.Left="10" Canvas.Top="12" Width="28" Height="28" Background="#FF2F3948" CornerRadius="6">
+                                                            <Border Width="14" Height="14" Background="#FF8FB6E8" CornerRadius="4" />
+                                                        </Border>
+                                                        <StackPanel Canvas.Left="46" Canvas.Top="16" Width="60">
+                                                            <Border Width="52" Height="5" HorizontalAlignment="Left" Background="#FFF4F6FA" CornerRadius="2.5" />
+                                                            <Border Width="38" Height="4" Margin="0,6,0,0" HorizontalAlignment="Left" Background="#FF7E8795" CornerRadius="2" />
+                                                        </StackPanel>
+                                                        <StackPanel x:Name="ExpandablePreviewExtraModules"
+                                                                    Canvas.Left="114"
+                                                                    Canvas.Top="11"
+                                                                    Height="30"
+                                                                    Orientation="Horizontal"
+                                                                    Opacity="0">
+                                                            <Border Width="1" Height="28" Margin="0,0,8,0" Background="#FF353C47" />
+                                                            <StackPanel Width="42" Margin="0,6,8,0" Orientation="Horizontal">
+                                                                <Border Width="8" Height="13" Margin="0,0,5,0" Background="#FF8B95A3" CornerRadius="3" />
+                                                                <Border Width="11" Height="16" Margin="0,0,5,0" Background="#FFFFFFFF" CornerRadius="4" />
+                                                                <Border Width="8" Height="13" Background="#FF8B95A3" CornerRadius="3" />
+                                                            </StackPanel>
+                                                            <Border Width="1" Height="28" Margin="0,0,8,0" Background="#FF353C47" />
+                                                            <StackPanel Width="54" Margin="0,5,0,0">
+                                                                <Grid Height="10">
+                                                                    <Border Width="52" Height="4" HorizontalAlignment="Left" VerticalAlignment="Center" Background="#FF424B58" CornerRadius="2" />
+                                                                    <Border Width="30" Height="4" HorizontalAlignment="Left" VerticalAlignment="Center" Background="#FF1677FF" CornerRadius="2" />
+                                                                    <Ellipse Width="8" Height="8" Margin="26,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Fill="#FFFFFFFF" />
+                                                                </Grid>
+                                                                <Grid Margin="0,2,0,0">
+                                                                    <TextBlock HorizontalAlignment="Left" Foreground="#FF98A2B1" FontSize="6" Text="1:24" />
+                                                                    <TextBlock HorizontalAlignment="Right" Foreground="#FF98A2B1" FontSize="6" Text="3:48" />
+                                                                </Grid>
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                    </Canvas>
+                                                </Border>
+                                            </Grid>
+                                            <TextBlock Margin="0,5,0,0" FontSize="12.5" FontWeight="SemiBold" Text="自动折叠" />
+                                            <TextBlock Margin="0,2,0,0"
+                                                       Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                                       FontSize="10.5"
+                                                       TextWrapping="Wrap">
+                                                <Run Text="平时保持紧凑，按住 " />
+                                                <Run x:Name="ExpandablePreviewShortcutRun"
+                                                     Foreground="#FF1677FF"
+                                                     FontWeight="Bold"
+                                                     Text="Ctrl" />
+                                                <Run Text="即展开，松开后自动折叠。" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Border>
+                                </Button>
+
+                            </Grid>
+
+                            <TextBlock Grid.Row="2"
+                                       Grid.Column="0"
+                                       Margin="0,7,16,0"
+                                       VerticalAlignment="Top"
+                                       Style="{StaticResource CompoundSettingLabel}"
+                                       Text="播放器" />
+                            <StackPanel x:Name="LayoutPlayerRowContent"
+                                        Grid.Row="2"
+                                        Grid.Column="1"
+                                        Margin="0"
+                                        VerticalAlignment="Top">
+                                <ComboBox x:Name="PlayerSelectionComboBox"
+                                          DisplayMemberPath="DisplayName"
+                                          IsSynchronizedWithCurrentItem="False"
+                                          SelectedValuePath="Value"
+                                          SelectionChanged="PlayerSelectionComboBox_SelectionChanged" />
+                                <TextBlock x:Name="PlayerSelectionHintText"
+                                           Margin="0,5,0,0"
+                                           Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                           FontSize="12"
+                                           TextWrapping="Wrap">
+                                    <Run Text="自动选择会跟随最近活跃的播放器" />
+                                    <LineBreak />
+                                    <Run Text="注：网易云音乐由于接口限制无法实时同步歌曲进度（播放器内拖动进度条无法同步）" />
+                                </TextBlock>
+                            </StackPanel>
+
+                            <TextBlock Grid.Row="3"
+                                       Grid.Column="0"
+                                       Margin="0,17,16,0"
+                                       VerticalAlignment="Top"
+                                       Style="{StaticResource CompoundSettingLabel}"
+                                       Text="自定义模块" />
+                            <StackPanel x:Name="ModuleToolboxDropZone"
+                                        Grid.Row="3"
+                                        Grid.Column="1"
+                                        Margin="0"
+                                        VerticalAlignment="Top">
+                                <ItemsControl x:Name="ModuleToolbox"
+                                             Padding="4"
+                                             Background="Transparent"
+                                             PreviewMouseLeftButtonDown="ModuleToolbox_PreviewMouseLeftButtonDown"
+                                             PreviewMouseLeftButtonUp="ModuleToolbox_PreviewMouseLeftButtonUp"
+                                             PreviewMouseMove="ModuleToolbox_PreviewMouseMove"
+                                             GiveFeedback="ModuleDrag_GiveFeedback">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <layoutEditing:ModuleToolboxCard Descriptor="{Binding}"
+                                                                         Margin="0,0,8,8"
+                                                                         ToolTip="拖动到上方LyricHover指定位置" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                             </ItemsControl>
+                                <TextBlock Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                           FontSize="12"
+                                           Text="拖上岛内插入；岛内拖动排序；拖出岛外删除" />
+                            </StackPanel>
+
+                            <TextBlock Grid.Row="4"
+                                       Grid.Column="0"
+                                       Margin="0,4,16,0"
+                                       VerticalAlignment="Top"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="歌词宽度" />
+                            <Grid x:Name="LayoutLyricsWidthRow"
+                                  Grid.Row="4"
+                                  Grid.Column="1"
+                                  Margin="0"
+                                  VerticalAlignment="Top">
+                                <Slider x:Name="LyricsWidthSlider"
+                                        Margin="0,0,64,0"
+                                        Minimum="220"
+                                        Maximum="900"
+                                        SmallChange="10"
+                                        TickFrequency="20"
+                                        ValueChanged="SettingSlider_ValueChanged" />
+                                <TextBlock x:Name="LyricsWidthValueText"
+                                           HorizontalAlignment="Right"
+                                           Style="{StaticResource SettingValue}" />
+                            </Grid>
+
+                            <TextBlock Grid.Row="5"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,0"
+                                       VerticalAlignment="Top"
+                                         Style="{StaticResource CompoundSettingLabel}"
+                                         Text="分割线样式" />
+                            <StackPanel x:Name="LayoutDividerStyleRow"
+                                        Grid.Row="5"
+                                        Grid.Column="1"
+                                        Margin="0"
+                                        VerticalAlignment="Top">
+                                <TextBlock Margin="0,0,0,4"
+                                           Style="{StaticResource SettingLabel}"
+                                           Text="透明度" />
+                                <Grid>
+                                    <Slider x:Name="DividerOpacitySlider"
+                                            Margin="0,0,64,0"
+                                            Minimum="0"
+                                            Maximum="1"
+                                            SmallChange="0.05"
+                                            ValueChanged="SettingSlider_ValueChanged" />
+                                    <TextBlock x:Name="DividerOpacityValueText"
+                                               HorizontalAlignment="Right"
+                                               Style="{StaticResource SettingValue}" />
+                                </Grid>
+                                <TextBlock Margin="0,6,0,4"
+                                           Style="{StaticResource SettingLabel}"
+                                           Text="左右间距" />
+                                <Grid>
+                                    <Slider x:Name="DividerSpacingSlider"
+                                            Margin="0,0,64,0"
+                                            Minimum="0"
+                                            Maximum="64"
+                                            SmallChange="1"
+                                            ValueChanged="SettingSlider_ValueChanged" />
+                                    <TextBlock x:Name="DividerSpacingValueText"
+                                               HorizontalAlignment="Right"
+                                               Style="{StaticResource SettingValue}" />
+                                </Grid>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="6"
+                                        Grid.Column="1"
+                                        Margin="0,14,0,0"
+                                        VerticalAlignment="Top"
+                                        Orientation="Horizontal">
+                                <Button Margin="0,0,8,0"
+                                        Content="恢复默认"
+                                        Click="ResetLayoutButton_Click" />
+                            </StackPanel>
+                           </Grid>
+                         </Grid>
+
+                        <Grid x:Name="SupportSettingsPanel"
+                              ClipToBounds="True"
+                              Visibility="Collapsed">
+                            <Grid.Resources>
+                                <Style x:Key="SupportActionTitleStyle" TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
+                                    <Setter Property="FontSize" Value="13.5" />
+                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                    <Setter Property="TextWrapping" Value="NoWrap" />
+                                </Style>
+                                <Style x:Key="SupportActionDescriptionStyle" TargetType="TextBlock">
+                                    <Setter Property="Margin" Value="0,3,0,0" />
+                                    <Setter Property="Foreground" Value="{DynamicResource SettingsControlMutedForegroundBrush}" />
+                                    <Setter Property="FontSize" Value="11.5" />
+                                    <Setter Property="TextWrapping" Value="Wrap" />
+                                </Style>
+                                <Style x:Key="SupportProContainerStyle" TargetType="Border">
+                                    <Setter Property="Padding" Value="24,20" />
+                                    <Setter Property="Background" Value="{DynamicResource SettingsControlBackgroundBrush}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource SettingsControlBorderBrush}" />
+                                    <Setter Property="BorderThickness" Value="1" />
+                                    <Setter Property="CornerRadius" Value="9" />
+                                    <Setter Property="ClipToBounds" Value="True" />
+                                </Style>
+                                <!-- Icon paths: Lucide (ISC), except the GitHub mark from Primer Octicons (MIT). -->
+                                <Style x:Key="SupportLineIconStyle" TargetType="Path">
+                                    <Setter Property="Width" Value="28" />
+                                    <Setter Property="Height" Value="28" />
+                                    <Setter Property="Fill" Value="Transparent" />
+                                    <Setter Property="Stroke" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+                                    <Setter Property="StrokeThickness" Value="1.75" />
+                                    <Setter Property="StrokeStartLineCap" Value="Round" />
+                                    <Setter Property="StrokeEndLineCap" Value="Round" />
+                                    <Setter Property="StrokeLineJoin" Value="Round" />
+                                    <Setter Property="Stretch" Value="Uniform" />
+                                </Style>
+                                <Style x:Key="SupportBrandIconStyle" TargetType="Path">
+                                    <Setter Property="Width" Value="28" />
+                                    <Setter Property="Height" Value="28" />
+                                    <Setter Property="Fill" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+                                    <Setter Property="Stretch" Value="Uniform" />
+                                </Style>
+                                <Style x:Key="SupportProFeatureTitleStyle" TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
+                                    <Setter Property="FontSize" Value="14" />
+                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                    <Setter Property="TextWrapping" Value="NoWrap" />
+                                </Style>
+                            </Grid.Resources>
+
+                            <Grid x:Name="SupportPageContent">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" MinHeight="96" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="1.45*" MinHeight="198" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0"
+                                           FontSize="29"
+                                           FontWeight="SemiBold"
+                                           Text="支持开发者" />
+                                <TextBlock Grid.Row="1"
+                                           Margin="0,8,0,0"
+                                           Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                           FontSize="14.5"
+                                           LineHeight="22"
+                                           LineStackingStrategy="BlockLineHeight"
+                                           TextWrapping="Wrap">
+                                    <Run Text="LyricHover主体功能始终免费。您可以通过免费方式支持项目，您也可以升级Pro来支持开发者。" />
+                                    <LineBreak />
+                                    <Run Text="这对我们真的很重要，谢谢！❤️" />
+                                </TextBlock>
+
+                                <StackPanel x:Name="SupportFreeHeading"
+                                            Grid.Row="2"
+                                            Margin="0,21,0,0">
+                                    <TextBlock FontSize="22"
+                                               FontWeight="SemiBold"
+                                               Text="免费支持" />
+                                </StackPanel>
+
+                                <Grid x:Name="SupportFreeActionsGrid"
+                                      Grid.Row="3"
+                                      Margin="0,12,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="1" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="1" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="1" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Grid Grid.Column="0"
+                                          Margin="0,0,12,0">
+                                        <Grid Margin="0,8,0,8" VerticalAlignment="Center">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="28" />
+                                                <ColumnDefinition Width="12" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Path Style="{StaticResource SupportLineIconStyle}"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Top"
+                                                  Data="M22,17 A2,2 0 0 1 20,19 H6.828 A2,2 0 0 0 5.414,19.586 L3.212,21.788 A0.71,0.71 0 0 1 2,21.286 V5 A2,2 0 0 1 4,3 H20 A2,2 0 0 1 22,5 Z M7,11 H17 M7,15 H13 M7,7 H15" />
+                                            <Grid x:Name="SupportReviewTextGrid"
+                                                  Grid.Column="2">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="20" />
+                                                    <RowDefinition Height="34" />
+                                                    <RowDefinition Height="20" />
+                                                </Grid.RowDefinitions>
+                                                <TextBlock Grid.Row="0" Style="{StaticResource SupportActionTitleStyle}" Text="评价与撰写评价" />
+                                                <TextBlock Grid.Row="1" Style="{StaticResource SupportActionDescriptionStyle}" Text="你的想法会让LyricHover更好" />
+                                                <Button Grid.Row="2"
+                                                        VerticalAlignment="Top"
+                                                        Style="{StaticResource TextLinkButtonStyle}"
+                                                        Click="SupportStoreReviewButton_Click">
+                                                    <TextBlock Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                               FontSize="12"
+                                                               FontWeight="SemiBold"
+                                                               Text="去评价  &gt;" />
+                                                </Button>
+                                            </Grid>
+                                        </Grid>
+                                    </Grid>
+
+                                    <Border Grid.Column="1"
+                                            Width="1"
+                                            Height="62"
+                                            VerticalAlignment="Center"
+                                            Background="{DynamicResource SettingsControlBorderBrush}"
+                                            Opacity="0.55" />
+
+                                    <Grid Grid.Column="2"
+                                          Margin="12,0">
+                                        <Grid Margin="0,8" VerticalAlignment="Center">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="28" />
+                                                <ColumnDefinition Width="12" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Path Style="{StaticResource SupportLineIconStyle}"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Top"
+                                                  Data="M18,2 A3,3 0 1 1 18,8 A3,3 0 1 1 18,2 M6,9 A3,3 0 1 1 6,15 A3,3 0 1 1 6,9 M18,16 A3,3 0 1 1 18,22 A3,3 0 1 1 18,16 M8.59,13.51 L15.42,17.49 M15.41,6.51 L8.59,10.49" />
+                                            <Grid x:Name="SupportShareTextGrid"
+                                                  Grid.Column="2">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="20" />
+                                                    <RowDefinition Height="34" />
+                                                    <RowDefinition Height="20" />
+                                                </Grid.RowDefinitions>
+                                                <TextBlock Grid.Row="0" Style="{StaticResource SupportActionTitleStyle}" Text="分享给身边的朋友" />
+                                                <TextBlock Grid.Row="1" Style="{StaticResource SupportActionDescriptionStyle}" Text="让更多人发现并使用LyricHover" />
+                                                <Button Grid.Row="2"
+                                                        VerticalAlignment="Top"
+                                                        Style="{StaticResource TextLinkButtonStyle}"
+                                                        Click="SupportShareButton_Click">
+                                                    <TextBlock Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                               FontSize="12"
+                                                               FontWeight="SemiBold"
+                                                               Text="立即分享  &gt;" />
+                                                </Button>
+                                            </Grid>
+                                        </Grid>
+                                    </Grid>
+
+                                    <Border Grid.Column="3"
+                                            Width="1"
+                                            Height="62"
+                                            VerticalAlignment="Center"
+                                            Background="{DynamicResource SettingsControlBorderBrush}"
+                                            Opacity="0.55" />
+
+                                    <Grid Grid.Column="4"
+                                          Margin="12,0">
+                                        <Grid Margin="0,8" VerticalAlignment="Center">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="28" />
+                                                <ColumnDefinition Width="12" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Path Style="{StaticResource SupportBrandIconStyle}"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Top"
+                                                  Data="M10.226,17.284 C7.261,16.924 5.172,14.791 5.172,12.028 C5.172,10.905 5.576,9.692 6.25,8.884 C5.958,8.143 6.003,6.57 6.34,5.919 C7.238,5.807 8.451,6.279 9.17,6.929 C10.023,6.66 10.922,6.525 12.023,6.525 C13.123,6.525 14.022,6.66 14.83,6.907 C15.526,6.278 16.762,5.807 17.66,5.919 C17.975,6.525 18.02,8.098 17.727,8.861 C18.447,9.715 18.828,10.861 18.828,12.028 C18.828,14.791 16.739,16.88 13.73,17.262 C14.493,17.756 15.01,18.834 15.01,20.069 V22.405 C15.01,23.079 15.571,23.461 16.245,23.191 C20.311,21.641 23.5,17.576 23.5,12.545 C23.5,6.188 18.334,1 11.978,1 C5.62,1 0.5,6.188 0.5,12.545 C0.5,17.531 3.667,21.665 7.935,23.214 C8.541,23.439 9.125,23.034 9.125,22.428 V20.63 C8.766,20.765 8.406,20.854 8.047,20.854 C6.564,20.854 5.688,20.046 5.06,18.541 C4.813,17.934 4.543,17.575 4.026,17.508 C3.756,17.485 3.667,17.373 3.667,17.238 C3.667,16.968 4.117,16.767 4.565,16.767 C5.217,16.767 5.778,17.171 6.362,18.002 C6.812,18.653 7.283,18.945 7.845,18.945 C8.406,18.945 8.765,18.743 9.282,18.226 C9.664,17.845 9.956,17.508 10.226,17.284" />
+                                            <Grid x:Name="SupportGitHubTextGrid"
+                                                  Grid.Column="2">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="20" />
+                                                    <RowDefinition Height="34" />
+                                                    <RowDefinition Height="20" />
+                                                </Grid.RowDefinitions>
+                                                <TextBlock Grid.Row="0" Style="{StaticResource SupportActionTitleStyle}" Text="在 GitHub 上点 Star" />
+                                                <TextBlock Grid.Row="1" Style="{StaticResource SupportActionDescriptionStyle}" Text="Star 越多，越多人看到LyricHover" />
+                                                <Button Grid.Row="2"
+                                                        VerticalAlignment="Top"
+                                                        Style="{StaticResource TextLinkButtonStyle}"
+                                                        Click="OpenGitHubAboutRow_Click">
+                                                    <TextBlock Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                               FontSize="12"
+                                                               FontWeight="SemiBold"
+                                                               Text="去 GitHub  &gt;" />
+                                                </Button>
+                                            </Grid>
+                                        </Grid>
+                                    </Grid>
+
+                                    <Border Grid.Column="5"
+                                            Width="1"
+                                            Height="62"
+                                            VerticalAlignment="Center"
+                                            Background="{DynamicResource SettingsControlBorderBrush}"
+                                            Opacity="0.55" />
+
+                                    <Grid x:Name="SupportFeedbackItem"
+                                          Grid.Column="6"
+                                          Margin="12,0,0,0">
+                                        <Grid Margin="0,8,0,8" VerticalAlignment="Center">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="28" />
+                                                <ColumnDefinition Width="12" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Path Style="{StaticResource SupportLineIconStyle}"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Top"
+                                                  Data="M9,18 H15 M10,22 H14 M15.09,14 C15.27,13.82 15.45,13.64 15.6,13.45 A6.5,6.5 0 1 0 8.4,13.45 C8.56,13.64 8.74,13.82 8.91,14 A4.5,4.5 0 0 1 10,17.5 V18 H14 V17.5 A4.5,4.5 0 0 1 15.09,14" />
+                                            <Grid x:Name="SupportFeedbackTextGrid"
+                                                  Grid.Column="2">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="20" />
+                                                    <RowDefinition Height="34" />
+                                                    <RowDefinition Height="20" />
+                                                </Grid.RowDefinitions>
+                                                <TextBlock Grid.Row="0" Style="{StaticResource SupportActionTitleStyle}" Text="意见反馈" />
+                                                <TextBlock Grid.Row="1" Style="{StaticResource SupportActionDescriptionStyle}" Text="提交问题与功能建议" />
+                                                <Button Grid.Row="2"
+                                                        VerticalAlignment="Top"
+                                                        Style="{StaticResource TextLinkButtonStyle}"
+                                                        Click="SupportFeedbackButton_Click">
+                                                    <TextBlock Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                               FontSize="12"
+                                                               FontWeight="SemiBold"
+                                                               Text="去反馈  &gt;" />
+                                                </Button>
+                                            </Grid>
+                                        </Grid>
+                                    </Grid>
+                                </Grid>
+
+                                <TextBlock x:Name="SupportStatusText"
+                                           Grid.Row="4"
+                                           Height="16"
+                                           Margin="0,2,0,0"
+                                           Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                           FontSize="11.5"
+                                           Text=""
+                                           TextTrimming="CharacterEllipsis" />
+
+                                <Border Grid.Row="5"
+                                        Margin="0,14,0,0"
+                                        VerticalAlignment="Stretch"
+                                        Style="{StaticResource SupportProContainerStyle}">
+                                    <Grid>
+                                        <Grid x:Name="SupportProContentGrid"
+                                              Margin="0,0,80,0">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Grid.Row="0"
+                                                   Foreground="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"
+                                                   FontSize="11.5"
+                                                   FontWeight="SemiBold"
+                                                   Text="LYRIC HOVER PRO" />
+                                        <TextBlock x:Name="SupportProTitleText"
+                                                   Grid.Row="1"
+                                                   Margin="0,3,0,0"
+                                                   MaxWidth="760"
+                                                   HorizontalAlignment="Left"
+                                                   FontSize="23"
+                                                   FontWeight="SemiBold"
+                                                   TextWrapping="Wrap"
+                                                   Text="Pro 支持计划" />
+                                         <TextBlock x:Name="SupportProDescriptionText"
+                                                    Grid.Row="2"
+                                                    Margin="0,8,0,0"
+                                                    MaxWidth="760"
+                                                    HorizontalAlignment="Left"
+                                                    Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                                   FontSize="13"
+                                                   LineHeight="20"
+                                                   LineStackingStrategy="BlockLineHeight"
+                                                    TextWrapping="Wrap"
+                                                    Text="通过 Microsoft Store 升级 Pro，支持LyricHover持续开发，并解锁更多专属权益。" />
+
+                                        <Grid x:Name="SupportProBenefitsGrid"
+                                              Grid.Row="3"
+                                              Margin="0,14,0,0"
+                                              VerticalAlignment="Center">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="1" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="1" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="16" />
+                                                <ColumnDefinition Width="248" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Path Width="25"
+                                                          Height="25"
+                                                          Margin="0,0,8,0"
+                                                          Style="{StaticResource SupportLineIconStyle}"
+                                                          Data="M12,15 V20 C12,20 15.03,19.45 16,18 C17.08,16.38 16,13 16,13 M4.5,16.5 C3,17.76 2.5,21.5 2.5,21.5 C2.5,21.5 6.24,21 7.5,19.5 C8.21,18.66 8.2,17.37 7.41,16.59 C6.63,15.8 5.34,15.79 4.5,16.5 M9,12 C9.54,10.63 10.21,9.31 11,8.05 C13.49,4.15 17.56,1.86 22,2 C22,4.72 21.22,9.5 16,13 C14.74,13.79 13.4,14.46 12,15 Z M9,12 H4 C4,12 4.55,8.97 6,8 C7.62,6.92 11,8.05 11,8.05" />
+                                                    <TextBlock Style="{StaticResource SupportProFeatureTitleStyle}"
+                                                               VerticalAlignment="Center"
+                                                               Text="抢先使用新功能" />
+                                                </StackPanel>
+                                                <TextBlock Margin="33,1,0,0"
+                                                            Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                                            FontSize="12"
+                                                            LineHeight="16"
+                                                            LineStackingStrategy="BlockLineHeight"
+                                                            Text="新能力发布后优先体验。"
+                                                            TextWrapping="Wrap" />
+                                            </StackPanel>
+
+                                            <Border Grid.Column="1"
+                                                    Width="1"
+                                                    Height="50"
+                                                    VerticalAlignment="Center"
+                                                    Background="{DynamicResource SettingsControlBorderBrush}"
+                                                    Opacity="0.48" />
+
+                                            <StackPanel Grid.Column="2" Margin="8,0">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Path Width="25"
+                                                          Height="25"
+                                                          Margin="0,0,8,0"
+                                                          Style="{StaticResource SupportLineIconStyle}"
+                                                          Data="M7.21,15 L2.66,7.14 A2,2 0 0 1 2.79,4.94 L4.4,2.8 A2,2 0 0 1 6,2 H18 A2,2 0 0 1 19.6,2.8 L21.2,4.94 A2,2 0 0 1 21.34,7.14 L16.79,15 M11,12 L5.12,2.2 M13,12 L18.88,2.2 M8,7 H16 M12,12 A5,5 0 1 1 12,22 A5,5 0 1 1 12,12 M12,18 V16 H11.5" />
+                                                    <TextBlock Style="{StaticResource SupportProFeatureTitleStyle}"
+                                                               VerticalAlignment="Center"
+                                                               Text="支持者徽章" />
+                                                </StackPanel>
+                                                <TextBlock Margin="33,1,0,0"
+                                                            Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                                            FontSize="12"
+                                                            LineHeight="16"
+                                                            LineStackingStrategy="BlockLineHeight"
+                                                           Text="一次性设置署名与激活日期，永久展示支持者身份。"
+                                                            TextWrapping="Wrap" />
+                                            </StackPanel>
+
+                                            <Border Grid.Column="3"
+                                                    Width="1"
+                                                    Height="50"
+                                                    VerticalAlignment="Center"
+                                                    Background="{DynamicResource SettingsControlBorderBrush}"
+                                                    Opacity="0.48" />
+
+                                            <StackPanel Grid.Column="4" Margin="8,0,0,0">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Path Width="25"
+                                                          Height="25"
+                                                          Margin="0,0,8,0"
+                                                          Style="{StaticResource SupportLineIconStyle}"
+                                                          Data="M6,16 C11,16 13,8 18,8 A4,4 0 0 1 18,16 C13,16 11,8 6,8 A4,4 0 1 0 6,16" />
+                                                    <TextBlock Style="{StaticResource SupportProFeatureTitleStyle}"
+                                                               VerticalAlignment="Center"
+                                                               Text="永久有效" />
+                                                </StackPanel>
+                                                <TextBlock Margin="33,1,0,0"
+                                                            Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                                            FontSize="12"
+                                                            LineHeight="16"
+                                                            LineStackingStrategy="BlockLineHeight"
+                                                            Text="买断制会员，已购权益长期有效。"
+                                                            TextWrapping="Wrap" />
+                                            </StackPanel>
+
+                                            <Button x:Name="SupportProPurchaseButton"
+                                                    Grid.Column="6"
+                                                    Width="248"
+                                                    Height="46"
+                                                    VerticalAlignment="Center"
+                                                    Background="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"
+                                                    BorderBrush="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"
+                                                    Foreground="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}"
+                                                    FocusVisualStyle="{x:Null}"
+                                                    Click="SupportProPurchaseButton_Click"
+                                                    Style="{StaticResource PrimaryButtonStyle}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Path x:Name="SupportProButtonIcon"
+                                                          Width="18"
+                                                          Height="18"
+                                                          Margin="0,0,9,0"
+                                                          VerticalAlignment="Center"
+                                                          Data="M4,7 L16,7 L17,18 L3,18 Z M7,7 L7,5 A3,3 0 0 1 13,5 L13,7"
+                                                          Fill="Transparent"
+                                                          Stroke="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}"
+                                                          StrokeStartLineCap="Round"
+                                                          StrokeEndLineCap="Round"
+                                                          StrokeLineJoin="Round"
+                                                          StrokeThickness="1.4"
+                                                          Stretch="Uniform" />
+                                                    <TextBlock x:Name="SupportProButtonText"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}"
+                                                               FontSize="13.5"
+                                                               FontWeight="SemiBold"
+                                                                Text="升级 Pro · ¥7" />
+                                                </StackPanel>
+                                             </Button>
+                                            <Grid x:Name="SupporterIdentityInputHost"
+                                                  Grid.Column="6"
+                                                  Width="248"
+                                                  Height="46"
+                                                  VerticalAlignment="Center"
+                                                  Visibility="Collapsed">
+                                                <Border Background="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"
+                                                        BorderBrush="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="9">
+                                                    <TextBox x:Name="SupporterNicknameTextBox"
+                                                             Padding="16,0"
+                                                             VerticalContentAlignment="Center"
+                                                             HorizontalContentAlignment="Center"
+                                                             Background="Transparent"
+                                                             BorderThickness="0"
+                                                             CaretBrush="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}"
+                                                             Foreground="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}"
+                                                             FontSize="13.5"
+                                                             FontWeight="SemiBold"
+                                                             MaxLength="18"
+                                                             ToolTip="2–18 个字符；输入后按 Enter 确认，提交后不可修改"
+                                                             KeyDown="SupporterNicknameTextBox_KeyDown"
+                                                             TextChanged="SupporterNicknameTextBox_TextChanged" />
+                                                </Border>
+                                                <TextBlock x:Name="SupporterNicknamePlaceholderText"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="#CCFFFFFF"
+                                                           FontSize="13.5"
+                                                           FontWeight="SemiBold"
+                                                           IsHitTestVisible="False"
+                                                           Text="输入徽章署名后按 Enter" />
+                                            </Grid>
+                                        </Grid>
+                                     </Grid>
+                                    <Image x:Name="SupportProEmblem"
+                                           Panel.ZIndex="1"
+                                           Width="64"
+                                           Height="64"
+                                           Margin="0,0,8,0"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Top"
+                                           AutomationProperties.Name="LyricHover + Pro + LyricHover + Pro"
+                                           Focusable="False"
+                                           IsHitTestVisible="False"
+                                           SnapsToDevicePixels="True"
+                                           Source="Assets/pro-support-badge.png"
+                                           Stretch="Uniform" />
+                                    </Grid>
+                                 </Border>
+                            </Grid>
+                        </Grid>
+
+                        <Grid x:Name="AboutSettingsPanel"
+                              ClipToBounds="True"
+                              Visibility="Collapsed">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0"
+                                       Margin="0,0,0,14"
+                                       FontSize="28"
+                                       FontWeight="SemiBold"
+                                       Text="关于" />
+
+                            <Grid x:Name="AboutPageBody"
+                                  Grid.Row="1"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Stretch">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                    <Grid x:Name="AboutAppIdentity">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="72" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border x:Name="AboutAppLogoContainer"
+                                                Width="56"
+                                                Height="56"
+                                                VerticalAlignment="Center"
+                                                CornerRadius="10"
+                                                ClipToBounds="True">
+                                            <Border.Effect>
+                                                <DropShadowEffect BlurRadius="14"
+                                                                  Color="#B3000000"
+                                                                  Direction="270"
+                                                                  Opacity="0.28"
+                                                                  ShadowDepth="3" />
+                                            </Border.Effect>
+                                            <Image Source="Assets/app-logo.png" Stretch="UniformToFill" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock FontSize="21"
+                                                       FontWeight="SemiBold"
+                                                       Text="LyricHover" />
+                                            <TextBlock Margin="0,2,0,0"
+                                                       Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                                       FontSize="13"
+                                                       Text="桌面同步歌词与模块化媒体控制" />
+                                            <WrapPanel Margin="0,5,0,0">
+                                                <TextBlock Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                                           FontSize="12"
+                                                           Text="作者：" />
+                                                <TextBlock Margin="2,0,28,0"
+                                                           FontSize="12"
+                                                           FontWeight="SemiBold"
+                                                           Text="大丞子" />
+                                                <TextBlock Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                                           FontSize="12"
+                                                           Text="版本号：" />
+                                                <TextBlock Margin="2,0,0,0"
+                                                           FontSize="12"
+                                                           FontWeight="SemiBold"
+                                                           Text="{x:Static core:ProductVersion.DisplayVersionNumber}" />
+                                            </WrapPanel>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <Border x:Name="AboutTopDivider"
+                                             Grid.Row="1"
+                                             Margin="0,14,0,0"
+                                             Style="{StaticResource AboutDividerStyle}" />
+
+                                    <Grid x:Name="AboutSettingsList"
+                                          Grid.Row="2"
+                                          HorizontalAlignment="Stretch">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="56" />
+                                            <RowDefinition Height="1" />
+                                            <RowDefinition Height="56" />
+                                            <RowDefinition Height="1" />
+                                            <RowDefinition Height="56" />
+                                            <RowDefinition Height="1" />
+                                        </Grid.RowDefinitions>
+
+                                        <Grid x:Name="AboutWebsiteRow"
+                                              Grid.Row="0"
+                                              Margin="10,0,8,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="46" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="18" />
+                                            </Grid.ColumnDefinitions>
+                                            <Viewbox Width="22"
+                                                     Height="22"
+                                                     HorizontalAlignment="Left"
+                                                     VerticalAlignment="Center">
+                                                <Path Data="M12,1 A11,11 0 1 1 12,23 A11,11 0 1 1 12,1 M1,12 H23 M12,1 C16,5 16,19 12,23 M12,1 C8,5 8,19 12,23"
+                                                      Fill="Transparent"
+                                                      Stroke="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                                      StrokeThickness="1.5"
+                                                      StrokeStartLineCap="Round"
+                                                      StrokeEndLineCap="Round"
+                                                      StrokeLineJoin="Round" />
+                                            </Viewbox>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Style="{StaticResource AboutActionTitleStyle}" Text="官方网站" />
+                                                <TextBlock Style="{StaticResource AboutActionDescriptionStyle}" Text="访问LyricHover官方网站" />
+                                            </StackPanel>
+                                            <Button Grid.Column="2"
+                                                    Grid.ColumnSpan="2"
+                                                    VerticalAlignment="Center"
+                                                    Style="{StaticResource TextLinkButtonStyle}"
+                                                    Click="OpenWebsiteAboutRow_Click">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                               FontSize="13"
+                                                               Text="打开官网" />
+                                                    <Path Width="12"
+                                                          Height="12"
+                                                          Margin="7,1,0,0"
+                                                          Data="M1,11 L11,1 M4,1 H11 V8"
+                                                          Stretch="Uniform"
+                                                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                          StrokeThickness="1.7"
+                                                          StrokeStartLineCap="Square"
+                                                          StrokeEndLineCap="Square"
+                                                          StrokeLineJoin="Miter" />
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
+                                        <Border Grid.Row="1" Style="{StaticResource AboutDividerStyle}" />
+
+                                        <Grid x:Name="AboutGitHubRow"
+                                              Grid.Row="2"
+                                              Margin="10,0,8,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="46" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Viewbox Width="22"
+                                                         Height="22"
+                                                         HorizontalAlignment="Left"
+                                                         VerticalAlignment="Center">
+                                                    <Path Data="M12,.7 A11.3,11.3 0 0 0 8.4,22.7 C9,22.8 9.2,22.4 9.2,22.1 V19.9 C5.9,20.6 5.2,18.5 5.2,18.5 C4.7,17.2 4,16.9 4,16.9 C3,16.2 4.1,16.2 4.1,16.2 C5.2,16.3 5.8,17.4 5.8,17.4 C6.8,19.1 8.5,18.6 9.2,18.3 C9.3,17.6 9.6,17.1 9.9,16.8 C7.2,16.5 4.4,15.5 4.4,11 C4.4,9.7 4.9,8.7 5.6,7.9 C5.5,7.6 5.1,6.3 5.7,4.8 C5.7,4.8 6.7,4.5 8.9,6 C9.8,5.7 10.8,5.6 12,5.6 C13.1,5.6 14.2,5.7 15.1,6 C17.3,4.5 18.3,4.8 18.3,4.8 C18.9,6.3 18.5,7.6 18.4,7.9 C19.1,8.7 19.6,9.7 19.6,11 C19.6,15.5 16.8,16.5 14.1,16.8 C14.5,17.2 14.8,17.8 14.8,18.8 V22.1 C14.8,22.5 15,22.8 15.6,22.7 A11.3,11.3 0 0 0 12,.7"
+                                                          Fill="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                                          Stretch="Uniform" />
+                                                </Viewbox>
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <TextBlock Style="{StaticResource AboutActionTitleStyle}" Text="GitHub 项目主页" />
+                                                    <TextBlock Style="{StaticResource AboutActionDescriptionStyle}" Text="查看源代码、版本记录和问题反馈" />
+                                                </StackPanel>
+                                                <Button Grid.Column="2"
+                                                        VerticalAlignment="Center"
+                                                        Style="{StaticResource TextLinkButtonStyle}"
+                                                        Click="OpenGitHubAboutRow_Click">
+                                                    <StackPanel Orientation="Horizontal">
+                                                    <TextBlock x:Name="OpenGitHubLinkText"
+                                                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                               FontSize="13"
+                                                               Text="打开 GitHub" />
+                                                    <Path x:Name="OpenGitHubLinkArrow"
+                                                          Width="12"
+                                                          Height="12"
+                                                          Margin="7,1,0,0"
+                                                          Data="M1,11 L11,1 M4,1 H11 V8"
+                                                          Stretch="Uniform"
+                                                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                          StrokeThickness="1.7"
+                                                          StrokeStartLineCap="Square"
+                                                          StrokeEndLineCap="Square"
+                                                          StrokeLineJoin="Miter" />
+                                                    </StackPanel>
+                                                </Button>
+                                        </Grid>
+                                        <Border Grid.Row="3" Style="{StaticResource AboutDividerStyle}" />
+
+                                        <Grid x:Name="AboutTutorialRow"
+                                              Grid.Row="4"
+                                              Margin="10,0,8,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="46" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Viewbox Width="22"
+                                                         Height="22"
+                                                         HorizontalAlignment="Left"
+                                                         VerticalAlignment="Center">
+                                                    <Path Data="M1,8 L12,2 L23,8 L12,14 Z M5,10 V16 C9,20 15,20 19,16 V10 M23,8 V15"
+                                                          Fill="Transparent"
+                                                          Stroke="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                                          StrokeThickness="1.5"
+                                                          StrokeStartLineCap="Round"
+                                                          StrokeEndLineCap="Round"
+                                                          StrokeLineJoin="Round" />
+                                                </Viewbox>
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <TextBlock Style="{StaticResource AboutActionTitleStyle}" Text="教学模式" />
+                                                    <TextBlock Style="{StaticResource AboutActionDescriptionStyle}" Text="重新显示首次使用教学流程" />
+                                                </StackPanel>
+                                                <Button Grid.Column="2"
+                                                        VerticalAlignment="Center"
+                                                        Style="{StaticResource TextLinkButtonStyle}"
+                                                        Click="RestartTutorialAboutRow_Click">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                                   FontSize="13"
+                                                                   Text="重新开始教学" />
+                                                        <Path Width="7"
+                                                              Height="12"
+                                                              Margin="8,0,0,0"
+                                                              VerticalAlignment="Center"
+                                                              Data="M1,1 L6,6 L1,11"
+                                                              Stretch="Uniform"
+                                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                              StrokeThickness="1.6"
+                                                              StrokeStartLineCap="Round"
+                                                              StrokeEndLineCap="Round"
+                                                              StrokeLineJoin="Round" />
+                                                    </StackPanel>
+                                                </Button>
+                                        </Grid>
+                                        <Border Grid.Row="5" Style="{StaticResource AboutDividerStyle}" />
+                                    </Grid>
+
+                                    <StackPanel x:Name="AboutUpdateSection"
+                                                Grid.Row="4"
+                                                MaxWidth="680"
+                                                Margin="2,0,0,0"
+                                                HorizontalAlignment="Left">
+                                        <TextBlock FontSize="18"
+                                                   FontWeight="SemiBold"
+                                                   Text="v2.0 更新内容" />
+                                        <StackPanel Margin="0,8,0,0">
+                                            <Grid Margin="0,0,0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="16" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Foreground="{DynamicResource SettingsControlMutedForegroundBrush}" FontSize="13" Text="•" />
+                                                <TextBlock Grid.Column="1" Foreground="{DynamicResource SettingsControlMutedForegroundBrush}" FontSize="13" TextWrapping="Wrap" Text="新增水平积木与自动折叠两种LyricHover布局" />
+                                            </Grid>
+                                            <Grid Margin="0,0,0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="16" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Foreground="{DynamicResource SettingsControlMutedForegroundBrush}" FontSize="13" Text="•" />
+                                                <TextBlock Grid.Column="1" Foreground="{DynamicResource SettingsControlMutedForegroundBrush}" FontSize="13" TextWrapping="Wrap" Text="支持拖动添加、排序与删除封面、歌词、控制、信息、进度和分割线模块" />
+                                            </Grid>
+                                            <Grid Margin="0,0,0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="16" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Foreground="{DynamicResource SettingsControlMutedForegroundBrush}" FontSize="13" Text="•" />
+                                                <TextBlock Grid.Column="1" Foreground="{DynamicResource SettingsControlMutedForegroundBrush}" FontSize="13" TextWrapping="Wrap" Text="支持 Apple Music、QQ 音乐、网易云、酷狗、酷我、Spotify 等 SMTC 播放器" />
+                                            </Grid>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="16" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Foreground="{DynamicResource SettingsControlMutedForegroundBrush}" FontSize="13" Text="•" />
+                                                <TextBlock Grid.Column="1" Foreground="{DynamicResource SettingsControlMutedForegroundBrush}" FontSize="13" TextWrapping="Wrap" Text="新增同步歌词缓存、播放器锁定、鼠标避让、快捷键和主题设置" />
+                                            </Grid>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <Border x:Name="AboutBottomDivider"
+                                             Grid.Row="5"
+                                             Margin="0,14,0,0"
+                                             Style="{StaticResource AboutDividerStyle}" />
+                                    <TextBlock Grid.Row="6"
+                                               Margin="0,10,0,4"
+                                               Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                               FontSize="12"
+                                               Text="© 2026 大丞子 · 感谢参与 v2.0 测试" />
+                                    <TextBlock Grid.Row="6" Text="软件著作权" Visibility="Collapsed" />
+                                    <TextBlock Grid.Row="6" Text="申请中" Visibility="Collapsed" />
+                            </Grid>
+                        </Grid>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <StackPanel Grid.Row="2"
+                        Panel.ZIndex="2"
+                        HorizontalAlignment="Right"
+                        Orientation="Horizontal">
+                <Button Margin="0,0,8,0"
+                        Click="CancelButton_Click"
+                        IsCancel="True"
+                        Content="取消" />
+                <Button x:Name="ApplyButton"
+                        Margin="0,0,8,0"
+                        Style="{StaticResource ActionButtonStyle}"
+                        Click="ApplyButton_Click"
+                        Content="应用" />
+                <Button x:Name="SaveButton"
+                        IsDefault="True"
+                        Style="{StaticResource ActionButtonStyle}"
+                        Click="SaveButton_Click"
+                        Content="保存" />
+            </StackPanel>
+
+        </Grid>
+    </Border>
+
+</Window>

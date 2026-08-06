@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DatabasePreload } from "@/components/DatabasePreload";
 import { ExternalArrow } from "@/components/ExternalArrow";
 import { ManagedFeatureContent } from "@/components/ManagedFeatureContent";
 import { Eyebrow, LogoLockup, PrimaryNavigation } from "@/components/SitePage";
@@ -21,6 +22,7 @@ export function UpdatesPage({ locale }: Props) {
 
   return (
     <>
+      <DatabasePreload href="/api/features" />
       <a className="skipLink" href="#updates-main">
         {locale === "zh" ? "跳到更新内容" : "Skip to updates"}
       </a>
@@ -30,7 +32,14 @@ export function UpdatesPage({ locale }: Props) {
       <main id="updates-main" className="updatesMain">
         <section className="updatesHero sectionContainer">
           <Eyebrow reveal>{copy.eyebrow}</Eyebrow>
-          <h1 data-text-reveal="title">{copy.title}</h1>
+          <h1 data-text-reveal="title" style={{ whiteSpace: "pre-wrap" }}>
+            {copy.title.split("\n").map((line, idx, arr) => (
+              <span key={idx}>
+                {line}
+                {idx < arr.length - 1 && <br />}
+              </span>
+            ))}
+          </h1>
           <p className="updatesLead">{copy.intro}</p>
           <div className="releaseMeta">
             <span>{copy.version}</span>
@@ -64,7 +73,7 @@ export function UpdatesPage({ locale }: Props) {
           <p>{copy.footerNote}</p>
           <div>
             <Link href={home}>{copy.backLabel}</Link>
-            <span>© 2026 Lyric Island</span>
+            <span>© 2026 LyricHover</span>
           </div>
         </div>
       </footer>

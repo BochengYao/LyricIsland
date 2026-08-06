@@ -1,4 +1,4 @@
-# Lyric Island v2.0 Beta 1 Player Matrix
+# LyricHover v2.0 Beta 1 Player Matrix
 
 This matrix records observed behavior only. Empty IDs or `Not verified` entries mean the player was not available or not exercised in the current validation pass.
 
@@ -27,7 +27,7 @@ Use:
 ```powershell
 $env:TargetPlatformSdkPath='C:\Program Files (x86)\Windows Kits\10\'
 $env:TargetPlatformDisplayName='Windows'
-dotnet run --no-restore --project LyricsIsland.Tests
-dotnet build LyricsIsland.sln -c Release --no-restore
+dotnet run --no-restore --project LyricHover.Tests
+dotnet build LyricHover.sln -c Release --no-restore
 git diff --check
 ```

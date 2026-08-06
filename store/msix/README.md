@@ -1,6 +1,6 @@
 # Microsoft Store MSIX
 
-`build-msix.ps1` 使用 Partner Center 为 Lyric Island 分配的正式包身份，
+`build-msix.ps1` 使用 Partner Center 为 LyricHover 分配的正式包身份，
 在独立临时目录生成自包含的 x64 应用并封装为 MSIX。它不会读取或修改
 `publish/current`。包版本自动取自 `Directory.Build.props`，并转换为商店
 要求的四段版本号。

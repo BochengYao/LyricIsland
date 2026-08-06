@@ -1,0 +1,94 @@
+<Window x:Class="LyricHover.App.SupporterBadgePreviewWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="LyricHover Pro 支持者徽章"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        WindowStartupLocation="Manual"
+        AllowsTransparency="True"
+        Background="#F2000000"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="Grayscale"
+        RenderOptions.BitmapScalingMode="HighQuality"
+        ShowInTaskbar="False"
+        Topmost="True"
+        Loaded="Window_Loaded"
+        Closed="Window_Closed"
+        PreviewKeyDown="Window_PreviewKeyDown">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="96" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="120" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0"
+                    Margin="28,30,28,0"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Top"
+                    TextElement.Foreground="White">
+            <TextBlock HorizontalAlignment="Center"
+                       FontFamily="Microsoft YaHei UI"
+                       FontSize="20"
+                       FontWeight="SemiBold"
+                       Text="通过拖拽旋转徽章" />
+            <TextBlock Margin="0,6,0,0"
+                       HorizontalAlignment="Center"
+                       Foreground="#A8FFFFFF"
+                       FontFamily="Microsoft YaHei UI"
+                       FontSize="13"
+                       Text="按下 Esc 键关闭" />
+        </StackPanel>
+
+        <Viewbox Grid.Row="1"
+                 Margin="36,0"
+                 Stretch="Uniform"
+                 StretchDirection="DownOnly">
+            <Border x:Name="BadgeInteractionSurface"
+                    Width="720"
+                    Height="720"
+                    Background="Transparent"
+                    AutomationProperties.Name="可拖拽旋转的LyricHover Pro 支持者徽章"
+                    MouseLeftButtonDown="BadgeInteractionSurface_MouseLeftButtonDown"
+                    MouseMove="BadgeInteractionSurface_MouseMove"
+                    MouseLeftButtonUp="BadgeInteractionSurface_MouseLeftButtonUp"
+                    LostMouseCapture="BadgeInteractionSurface_LostMouseCapture"
+                    TouchDown="BadgeInteractionSurface_TouchDown"
+                    TouchMove="BadgeInteractionSurface_TouchMove"
+                    TouchUp="BadgeInteractionSurface_TouchUp"
+                    LostTouchCapture="BadgeInteractionSurface_LostTouchCapture">
+                <Viewport3D x:Name="BadgeViewport"
+                            ClipToBounds="False"
+                            IsHitTestVisible="False"
+                            SnapsToDevicePixels="True">
+                    <Viewport3D.Camera>
+                        <OrthographicCamera Position="0,0,7"
+                                            LookDirection="0,0,-7"
+                                            UpDirection="0,1,0"
+                                            Width="4.72" />
+                    </Viewport3D.Camera>
+                </Viewport3D>
+            </Border>
+        </Viewbox>
+
+        <StackPanel Grid.Row="2"
+                    Margin="24,8,24,20"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Top">
+            <TextBlock HorizontalAlignment="Center"
+                       Foreground="White"
+                       FontFamily="Microsoft YaHei UI"
+                       FontSize="28"
+                       FontWeight="Bold"
+                       Text="LyricHover Pro 支持计划" />
+            <TextBlock Margin="0,8,0,0"
+                       HorizontalAlignment="Center"
+                       Foreground="#8FFFFFFF"
+                       FontFamily="Microsoft YaHei UI"
+                       FontSize="14"
+                       Text="感谢你支持LyricHover，你已获得专属支持者徽章。" />
+        </StackPanel>
+    </Grid>
+</Window>
