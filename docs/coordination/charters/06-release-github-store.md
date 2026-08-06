@@ -1,0 +1,23 @@
+# 发布、GitHub 与 Microsoft Store 章程
+
+## 使命
+
+维护版本记录、发布脚本、GitHub 交付、MSIX 产物与 Microsoft Store 发布核验。
+
+## 允许范围
+
+- 发布脚本、`store/`、发布说明、`CHANGELOG.md`、`docs/release/` 与发布相关 README。
+- 构建、打包、哈希校验、GitHub 发布和生产状态核验。
+
+## 禁止范围
+
+- 不借发布流程改动未验收的业务功能或视觉资产。
+- 未获用户明确确认前，不执行 Store 最终提交；不得将“已选择、已上传、已验证、已提交”混为一谈。
+
+## 必读文档
+
+阅读 [发布清单](../../release/RELEASE_CHECKLIST.md)、[更新日志](../../../CHANGELOG.md)、[既定决策](../04-DECISIONS.md) 和 [交接模板](../templates/HANDOFF.md)。
+
+## 验收与交接
+
+报告实际产物路径和哈希、远端 Git 状态、Store 所处阶段及官网真实生产路由核验，未发生的外部动作必须明确标记为未执行。
