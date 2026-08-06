@@ -1,3 +1,5 @@
+import { normalizeBrandCopy } from "@/lib/brand";
+
 export type Locale = "zh" | "en";
 
 export type SiteCopy = {
@@ -108,7 +110,7 @@ const sharedPlayers = [
 export const microsoftStoreUrl =
   "https://apps.microsoft.com/detail/9nrxzp5hmxk2?hl=zh-CN&gl=CN";
 
-export const copyByLocale: Record<Locale, SiteCopy> = {
+const rawCopyByLocale: Record<Locale, SiteCopy> = {
   zh: {
     languageName: "EN",
     languageHref: "/en",
@@ -427,4 +429,9 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       copyright: "© 2026 LyricHover"
     }
   }
+};
+
+export const copyByLocale: Record<Locale, SiteCopy> = {
+  zh: normalizeBrandCopy(rawCopyByLocale.zh, "zh"),
+  en: normalizeBrandCopy(rawCopyByLocale.en, "en")
 };

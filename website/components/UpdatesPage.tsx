@@ -5,6 +5,7 @@ import { ManagedFeatureContent } from "@/components/ManagedFeatureContent";
 import { Eyebrow, LogoLockup, PrimaryNavigation } from "@/components/SitePage";
 import { SelectiveTextReveal } from "@/components/SelectiveTextReveal";
 import { SmoothSectionScroll } from "@/components/SmoothSectionScroll";
+import { displayBrand } from "@/lib/brand";
 import { VersionPreviewSection } from "@/components/VersionPreviewSection";
 import {
   copyByLocale,
@@ -80,11 +81,11 @@ export function UpdatesPage({ locale }: Props) {
 
         <footer className="updatesFooter">
           <div className="sectionContainer">
-            <LogoLockup />
+            <LogoLockup locale={locale} />
             <p>{copy.footerNote}</p>
             <div>
               <Link href={home}>{copy.backLabel}</Link>
-              <span>© 2026 LyricHover</span>
+              <span>© 2026 {displayBrand(locale)}</span>
             </div>
           </div>
         </footer>

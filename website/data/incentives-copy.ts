@@ -1,4 +1,5 @@
 import type { Locale } from "@/data/site-copy";
+import { normalizeBrandCopy } from "@/lib/brand";
 
 export type IncentivesCopy = {
   pageTitle: string;
@@ -56,7 +57,7 @@ export type IncentivesCopy = {
   footerNote: string;
 };
 
-export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
+const rawIncentivesByLocale: Record<Locale, IncentivesCopy> = {
   zh: {
     pageTitle: "用户激励计划",
     pageDescription: "向LyricHover提交新功能建议或 Bug，查看已采纳建议与版本预告。",
@@ -169,4 +170,9 @@ export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
     },
     footerNote: "Rewards are reviewed and issued manually. Duplicate, non-reproducible, or previously reported items may not receive another reward."
   }
+};
+
+export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
+  zh: normalizeBrandCopy(rawIncentivesByLocale.zh, "zh"),
+  en: normalizeBrandCopy(rawIncentivesByLocale.en, "en")
 };

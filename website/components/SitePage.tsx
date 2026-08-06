@@ -7,6 +7,7 @@ import { ModuleComposer } from "@/components/ModuleComposer";
 import { PlayerOrbit } from "@/components/PlayerOrbit";
 import { SelectiveTextReveal } from "@/components/SelectiveTextReveal";
 import { SmoothSectionScroll } from "@/components/SmoothSectionScroll";
+import { displayBrand } from "@/lib/brand";
 import {
   copyByLocale,
   microsoftStoreUrl,
@@ -34,7 +35,7 @@ export function Eyebrow({
   );
 }
 
-export function LogoLockup() {
+export function LogoLockup({ locale = "zh" }: { locale?: Locale }) {
   return (
     <span className="logoLockup">
       <Image
@@ -46,8 +47,8 @@ export function LogoLockup() {
         priority
       />
       <span>
-        <strong>LyricHover</strong>
-        <small>LyricHover</small>
+        <strong>{displayBrand(locale)}</strong>
+        <small>Lyric Hover</small>
       </span>
     </span>
   );
@@ -85,7 +86,7 @@ export function PrimaryNavigation({
     <header className="siteHeader">
       <nav className="floatingNav" aria-label={copy.navLabel}>
         <Link href={locale === "zh" ? "/" : "/en"} className="brandLink">
-          <LogoLockup />
+          <LogoLockup locale={locale} />
         </Link>
 
         <div className="desktopNavLinks">
@@ -379,7 +380,7 @@ export function SitePage({ locale }: Props) {
         <div className="sectionContainer">
           <div className="footerTop">
             <div>
-              <LogoLockup />
+              <LogoLockup locale={locale} />
               <h2>{copy.footer.title}</h2>
             </div>
             <div className="footerColumn">

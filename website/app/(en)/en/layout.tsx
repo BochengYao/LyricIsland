@@ -7,30 +7,30 @@ import { SiteStructuredData } from "@/components/SiteStructuredData";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://lyric-island.top"),
-  title: "Windows desktop lyrics, quietly above your work | LyricHover",
+  title: "Windows desktop lyrics, quietly above your work | Lyric Hover",
   description:
-    "LyricHover is a top-edge Windows lyrics companion with multi-player support, synced lyrics, modular layouts, and mouse-aware transparency.",
-  applicationName: "LyricHover",
+    "Lyric Hover is a top-edge Windows lyrics companion with multi-player support, synced lyrics, modular layouts, and mouse-aware transparency.",
+  applicationName: "Lyric Hover",
   icons: {
     icon: "/images/app-logo.png",
     apple: "/images/app-logo.png"
   },
   openGraph: {
     type: "website",
-    title: "LyricHover",
+    title: "Lyric Hover",
     description: "Windows desktop lyrics, quietly above your work.",
     images: [
       {
         url: "/images/product-hero.png",
         width: 1600,
         height: 900,
-        alt: "LyricHover at the top of a Windows desktop"
+        alt: "Lyric Hover at the top of a Windows desktop"
       }
     ]
   },
   twitter: {
     card: "summary_large_image",
-    title: "LyricHover",
+    title: "Lyric Hover",
     description: "Windows desktop lyrics, quietly above your work.",
     images: ["/images/product-hero.png"]
   }
@@ -44,7 +44,7 @@ export default function EnglishRootLayout({
   return (
     <html lang="en">
       <head>
-        <SiteStructuredData />
+        <SiteStructuredData locale="en" />
         <link
           rel="preload"
           href="/fonts/xiaolai-nav-v2.woff2"

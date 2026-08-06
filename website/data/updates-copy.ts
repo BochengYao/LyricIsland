@@ -1,4 +1,5 @@
 import type { Locale } from "@/data/site-copy";
+import { normalizeBrandCopy } from "@/lib/brand";
 
 export type UpdatesCopy = {
   backLabel: string;
@@ -24,7 +25,7 @@ export type UpdatesCopy = {
   footerNote: string;
 };
 
-export const updatesByLocale: Record<Locale, UpdatesCopy> = {
+const rawUpdatesByLocale: Record<Locale, UpdatesCopy> = {
   zh: {
     backLabel: "返回官网",
     menuLabel: "更新页导航",
@@ -222,4 +223,9 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
     footerNote:
       "Player and music-service names and trademarks belong to their respective owners."
   }
+};
+
+export const updatesByLocale: Record<Locale, UpdatesCopy> = {
+  zh: normalizeBrandCopy(rawUpdatesByLocale.zh, "zh"),
+  en: normalizeBrandCopy(rawUpdatesByLocale.en, "en")
 };
