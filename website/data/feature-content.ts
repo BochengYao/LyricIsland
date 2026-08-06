@@ -1,6 +1,5 @@
 import defaultContentJson from "@/data/feature-content-default.json";
 import type { FeatureContent, FeatureContentSection } from "@/data/incentives-types";
-import { normalizeBrandText } from "@/lib/brand";
 
 export const defaultFeatureContent = defaultContentJson as FeatureContent;
 
@@ -61,10 +60,7 @@ function normalizeEnglishPlayerNames(value: string) {
 
 export function localizedFeatureContent(content: FeatureContent, locale: "zh" | "en") {
   const suffix = locale === "zh" ? "zh" : "en";
-  const localizeText = (value: string) => normalizeBrandText(
-    locale === "en" ? normalizeEnglishPlayerNames(value) : value,
-    locale
-  );
+  const localizeText = locale === "en" ? normalizeEnglishPlayerNames : (value: string) => value;
   return {
     summaryLabel: localizeText(content.summary[`label_${suffix}`]),
     summary: content.summary[`items_${suffix}`].map(localizeText),

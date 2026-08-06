@@ -17,7 +17,7 @@ import type {
 import { incentivesByLocale } from "@/data/incentives-copy";
 import type { Locale } from "@/data/site-copy";
 import { preloadClientJson } from "@/lib/client-data";
-import { displayBrand, normalizeBrandText } from "@/lib/brand";
+import { displayBrand } from "@/lib/brand";
 
 const IDENTITY_COOKIE = "lyric_island_contributor";
 const LOCAL_LIKES_KEY = "lyric_island_preview_likes";
@@ -390,28 +390,6 @@ type PublicIncentivesResponse = {
 
 const publicIncentivesPreload = preloadClientJson<PublicIncentivesResponse>("/api/incentives/public");
 
-function normalizePublicSuggestion(item: PublicSuggestion, locale: Locale): PublicSuggestion {
-  return {
-    ...item,
-    nickname: normalizeBrandText(item.nickname, locale),
-    title: normalizeBrandText(item.title, locale),
-    body: normalizeBrandText(item.body, locale),
-    developer_reply: item.developer_reply ? normalizeBrandText(item.developer_reply, locale) : null
-  };
-}
-
-function normalizeReleasePreview(preview: ReleasePreview, locale: Locale): ReleasePreview {
-  return {
-    ...preview,
-    title_zh: normalizeBrandText(preview.title_zh, "zh"),
-    title_en: normalizeBrandText(preview.title_en, "en"),
-    body_zh: normalizeBrandText(preview.body_zh, "zh"),
-    body_en: normalizeBrandText(preview.body_en, "en"),
-    highlights_zh: preview.highlights_zh.map((item) => normalizeBrandText(item, "zh")),
-    highlights_en: preview.highlights_en.map((item) => normalizeBrandText(item, "en"))
-  };
-}
-
 export function IncentivePage({ locale }: { locale: Locale }) {
   const copy = incentivesByLocale[locale];
   const home = locale === "zh" ? "/" : "/en";
@@ -445,10 +423,10 @@ export function IncentivePage({ locale }: { locale: Locale }) {
           ...item,
           liked: true,
           like_count: Math.max(1, item.like_count)
-        } : item).map((item) => normalizePublicSuggestion(item, locale));
+        } : item);
         setStorageConfigured(configured);
         setSuggestions(withLocalLikes);
-        setPreviews((data.previews ?? []).map((preview) => normalizeReleasePreview(preview, locale)));
+        setPreviews(data.previews ?? []);
         setPublicDataState("ready");
       })
       .catch(() => {
