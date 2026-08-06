@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "vinext build && node scripts/prepare-sites.mjs",
+    "build": "npm run build:esa",
     "build:esa": "node scripts/build-esa-static.mjs",
+    "build:vinext": "vinext build && node scripts/prepare-sites.mjs",
     "build:next": "next build",
     "start": "vinext start",
     "typecheck": "tsc --noEmit",
