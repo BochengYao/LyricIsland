@@ -543,7 +543,7 @@ async function getPublicIncentives(voterHash) {
       )
     : Promise.resolve([]);
   const previewRequest = supabase(
-    "/rest/v1/release_previews?select=*&status=eq.published&order=published_at.desc&limit=6"
+    "/rest/v1/release_previews?select=*&status=eq.published&order=published_at.desc&limit=20"
   );
   const [rows, likedRows, previews] = await Promise.all([
     suggestionRequest,
@@ -1421,7 +1421,11 @@ async function handleAdminPreviews(request) {
   if (!(await isAdminRequest(request))) return jsonError("Unauthorized", 401);
   if (request.method === "GET") {
     try {
-      return json({ previews: await listReleasePreviews() });
+      const records = await listReleasePreviews();
+      return json({
+        previews: records.filter((preview) => preview.status === "published"),
+        drafts: records.filter((preview) => preview.status === "draft")
+      });
     } catch {
       return jsonError("无法读取版本预告", 500);
     }

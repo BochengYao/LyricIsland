@@ -632,6 +632,32 @@ try {
   assert.equal(previewData.preview.body_en, "English release notes.");
   assert.equal(previewData.preview.target_date, null);
 
+  const publishedOnlyResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/previews", {
+      headers: { cookie: adminCookie.split(";")[0] }
+    })
+  );
+  const publishedOnlyData = await publishedOnlyResponse.json();
+  assert.equal(publishedOnlyData.previews.length, 1, "the admin history must only list previews published to the public site");
+  assert.equal(publishedOnlyData.drafts.length, 1, "saved drafts remain available through the compact draft controls");
+
+  const publishSecondPreviewResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/previews", {
+      method: "PATCH",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({ id: previewData.preview.id, status: "published" })
+    })
+  );
+  assert.equal(publishSecondPreviewResponse.status, 200);
+  const multiplePublicPreviews = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/public")
+  );
+  assert.equal((await multiplePublicPreviews.json()).previews.length, 2, "every published preview must be returned to the public page");
+
   const form = new FormData();
   form.set("kind", "feature");
   form.set("nickname", "Tester");
