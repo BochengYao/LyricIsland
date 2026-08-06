@@ -326,9 +326,9 @@ const rawCopyByLocale: Record<Locale, SiteCopy> = {
     },
     demo: {
       eyebrow: "Try it yourself",
-      title: "Move. Switch. Play.\nWatch the island sway.",
+      title: "Move. Switch. Play.\nWatch hover sway.",
       body:
-        "Switch between states and layouts to experience how LyricHover surfaces, retreats, and moves out of your way. Everything here runs as a browser demo and never connects to your player.",
+        "Switch between states and layouts to experience how lyrics surface, retreat, and move out of your way. Everything here runs as a browser demo and never connects to your player.",
       playbackLabel: "Playback state",
       layoutLabel: "Layout mode",
       playing: "Playing",
@@ -341,8 +341,8 @@ const rawCopyByLocale: Record<Locale, SiteCopy> = {
       artist: "LyricHover",
       lyric: "City lights rest above the screen",
       translation: "城市灯光停在屏幕边缘",
-      statusPlaying: "The island is in view",
-      statusIdle: "The island has retracted",
+      statusPlaying: "Lyrics are in view",
+      statusIdle: "Lyrics have retracted",
       statusNear: "Mouse-aware transparency is on",
       statusA: "Layout A horizontal blocks is active",
       statusC: "Layout C auto-collapse is active"

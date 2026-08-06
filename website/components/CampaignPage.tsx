@@ -255,7 +255,7 @@ export function CampaignPage({ locale }: { locale: Locale }) {
           <a className={styles.brand} href="#hero" aria-label={locale === "zh" ? "返回主视觉" : "Back to opening"}>
             <Image src="/images/app-logo.png" alt="" width={42} height={42} />
             <span>
-              <strong>{locale === "zh" ? "歌词岛" : "Lyric Hover"}</strong>
+              <strong>歌词岛</strong>
               <small>Lyric Hover</small>
             </span>
           </a>

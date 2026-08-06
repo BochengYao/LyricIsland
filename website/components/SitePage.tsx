@@ -7,7 +7,6 @@ import { ModuleComposer } from "@/components/ModuleComposer";
 import { PlayerOrbit } from "@/components/PlayerOrbit";
 import { SelectiveTextReveal } from "@/components/SelectiveTextReveal";
 import { SmoothSectionScroll } from "@/components/SmoothSectionScroll";
-import { displayBrand } from "@/lib/brand";
 import {
   copyByLocale,
   microsoftStoreUrl,
@@ -47,7 +46,7 @@ export function LogoLockup({ locale = "zh" }: { locale?: Locale }) {
         priority
       />
       <span>
-        <strong>{displayBrand(locale)}</strong>
+        <strong>歌词岛</strong>
         <small>Lyric Hover</small>
       </span>
     </span>
