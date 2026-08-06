@@ -1,10 +1,11 @@
 bin/
 obj/
 publish/
+evidence/
 store/package/msix/
 store/msix/.packages/
 store/msix/.staging/
-tools/
+tools/__pycache__/
 .vs/
 .worktrees/
 *.user
