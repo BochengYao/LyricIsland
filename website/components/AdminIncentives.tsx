@@ -342,6 +342,7 @@ export function AdminIncentives() {
   const [previewDateTbd, setPreviewDateTbd] = useState(false);
   const [previewDraft, setPreviewDraft] = useState<PreviewDraft>(emptyPreviewDraft);
   const [previewSaving, setPreviewSaving] = useState(false);
+  const [draftMenuOpen, setDraftMenuOpen] = useState(false);
   const [translationSaving, setTranslationSaving] = useState<"features" | "preview" | null>(null);
 
   async function loadData() {
@@ -784,12 +785,14 @@ export function AdminIncentives() {
   function editPreview(preview: ReleasePreview) {
     setPreviewDraft(previewToDraft(preview));
     setPreviewDateTbd(!preview.target_date);
+    setDraftMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function newPreview() {
     setPreviewDraft(emptyPreviewDraft);
     setPreviewDateTbd(true);
+    setDraftMenuOpen(false);
   }
 
   async function togglePreview(preview: ReleasePreview) {
@@ -1098,7 +1101,7 @@ export function AdminIncentives() {
 
         {panel === "previews" && (
           <>
-            <header className="adminPageHeader"><div><p>RELEASE PREVIEW</p><h2>发布版本预告</h2></div><div className="featureAdminActions">{draftPreviews.map((preview) => <button className="button buttonSecondary" type="button" onClick={() => editPreview(preview)} key={preview.id}>编辑草稿 · {preview.version}</button>)}<button className="button buttonSecondary" type="button" onClick={newPreview}>新建预告</button></div></header>
+            <header className="adminPageHeader"><div><p>RELEASE PREVIEW</p><h2>发布版本预告</h2></div><div className="featureAdminActions">{draftPreviews.length > 0 && <div className="previewDraftMenu"><button className="button buttonSecondary" type="button" aria-expanded={draftMenuOpen} onClick={() => setDraftMenuOpen((open) => !open)}>草稿箱（{draftPreviews.length}）</button>{draftMenuOpen && <div className="previewDraftMenuPanel">{draftPreviews.map((preview) => <button type="button" onClick={() => editPreview(preview)} key={preview.id}>{preview.version} · {preview.target_date ?? "待定"}</button>)}</div>}</div>}<button className="button buttonSecondary" type="button" onClick={newPreview}>新建预告</button></div></header>
             <form className="previewEditor" onSubmit={savePreview}>
               <div className="previewEditorMeta"><label><span>版本号</span><input name="version" placeholder="例如：v2.1 Beta" value={previewDraft.version} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, version: event.target.value }))} required /></label><label><span>预计上线时间</span><input name="target_date" type="date" value={previewDraft.target_date} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, target_date: event.target.value }))} disabled={previewDateTbd} /></label><button className={`previewDateTbdButton ${previewDateTbd ? "isActive" : ""}`} type="button" aria-pressed={previewDateTbd} onClick={() => setPreviewDateTbd((current) => !current)}>上线时间待定</button></div>
               <div className="previewEditorLanguages"><label><span>更新内容（中文）</span><textarea name="body_zh" rows={9} value={previewDraft.body_zh} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, body_zh: event.target.value }))} required /></label><label><span>Update content (English)</span><textarea name="body_en" rows={9} value={previewDraft.body_en} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, body_en: event.target.value }))} required /></label></div>
