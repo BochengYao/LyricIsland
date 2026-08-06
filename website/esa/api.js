@@ -5,7 +5,10 @@ const CONFIG = Object.freeze({
   supabaseKey: "__ESA_SUPABASE_SERVICE_ROLE_KEY__",
   storageBucket: "__ESA_SUPABASE_STORAGE_BUCKET__",
   adminPassword: "__ESA_ADMIN_PASSWORD__",
-  adminSessionSecret: "__ESA_ADMIN_SESSION_SECRET__"
+  adminSessionSecret: "__ESA_ADMIN_SESSION_SECRET__",
+  deepseekApiKey: "__ESA_DEEPSEEK_API_KEY__",
+  deepseekBaseUrl: "__ESA_DEEPSEEK_BASE_URL__",
+  deepseekModel: "__ESA_DEEPSEEK_MODEL__"
 });
 
 const ADMIN_COOKIE = "lyric_island_admin";
@@ -540,7 +543,7 @@ async function getPublicIncentives(voterHash) {
       )
     : Promise.resolve([]);
   const previewRequest = supabase(
-    "/rest/v1/release_previews?select=*&status=eq.published&order=published_at.desc&limit=6"
+    "/rest/v1/release_previews?select=*&status=eq.published&order=published_at.desc&limit=20"
   );
   const [rows, likedRows, previews] = await Promise.all([
     suggestionRequest,
@@ -590,26 +593,21 @@ async function toggleSuggestionLike(submissionId, voterTokenHash) {
   const existing = await supabase(
     `/rest/v1/incentive_likes?select=submission_id&submission_id=eq.${encodeURIComponent(submissionId)}&voter_token_hash=eq.${encodeURIComponent(voterTokenHash)}&limit=1`
   );
-  const liked = existing.length === 0;
-  if (liked) {
-    await supabase("/rest/v1/incentive_likes", {
-      method: "POST",
-      headers: supabaseHeaders("return=representation"),
-      body: JSON.stringify({ submission_id: submissionId, voter_token_hash: voterTokenHash })
-    });
-  } else {
-    await supabase(
-      `/rest/v1/incentive_likes?submission_id=eq.${encodeURIComponent(submissionId)}&voter_token_hash=eq.${encodeURIComponent(voterTokenHash)}`,
-      { method: "DELETE", headers: supabaseHeaders("return=representation") }
-    );
+  if (existing.length > 0) {
+    return { liked: true, like_count: submission.like_count, already_liked: true };
   }
-  const likeCount = Math.max(0, submission.like_count + (liked ? 1 : -1));
+  await supabase("/rest/v1/incentive_likes", {
+    method: "POST",
+    headers: supabaseHeaders("return=representation"),
+    body: JSON.stringify({ submission_id: submissionId, voter_token_hash: voterTokenHash })
+  });
+  const likeCount = submission.like_count + 1;
   await supabase(`/rest/v1/incentive_submissions?id=eq.${encodeURIComponent(submissionId)}`, {
     method: "PATCH",
     headers: supabaseHeaders("return=representation"),
     body: JSON.stringify({ like_count: likeCount })
   });
-  return { liked, like_count: likeCount };
+  return { liked: true, like_count: likeCount, already_liked: false };
 }
 
 async function listSubmissions() {
@@ -1318,11 +1316,116 @@ async function handleAdminAccessLogs(request) {
   return jsonError("Unauthorized", 401);
 }
 
+function cleanTranslationEntries(value) {
+  if (!Array.isArray(value)) return [];
+  const usedKeys = new Set();
+  return value
+    .filter((item) => item && typeof item === "object")
+    .map((item) => ({
+      key: typeof item.key === "string" ? item.key.trim().slice(0, 120) : "",
+      text: typeof item.text === "string" ? item.text.trim().slice(0, 2400) : ""
+    }))
+    .filter((item) => item.key && item.text && !usedKeys.has(item.key) && (usedKeys.add(item.key), true))
+    .slice(0, 80);
+}
+
+function cleanTranslationTargets(value) {
+  if (!Array.isArray(value)) return [];
+  const usedLocales = new Set();
+  return value
+    .filter((item) => typeof item === "string")
+    .map((item) => item.trim().toLowerCase().slice(0, 16))
+    .filter((item) => /^[a-z]{2,3}(?:-[a-z0-9]{2,8})?$/.test(item) && !usedLocales.has(item) && (usedLocales.add(item), true))
+    .slice(0, 8);
+}
+
+function parseTranslations(value, targets, entries) {
+  const source = value && typeof value === "object" ? value : {};
+  const translations = source.translations && typeof source.translations === "object"
+    ? source.translations
+    : source;
+  const result = {};
+  for (const locale of targets) {
+    const language = translations[locale];
+    if (!language || typeof language !== "object") throw new Error(`Translation response is missing ${locale}`);
+    result[locale] = {};
+    for (const entry of entries) {
+      const translated = language[entry.key];
+      if (typeof translated !== "string" || !translated.trim()) {
+        throw new Error(`Translation response is missing ${locale}.${entry.key}`);
+      }
+      result[locale][entry.key] = translated.trim().slice(0, 2400);
+    }
+  }
+  return result;
+}
+
+async function translateChineseContent(input) {
+  const entries = cleanTranslationEntries(input.entries);
+  const targetLocales = cleanTranslationTargets(input.targetLocales);
+  if (!entries.length) throw new Error("请先填写中文内容");
+  if (!targetLocales.length) throw new Error("请至少选择一种目标语言");
+  if (!CONFIG.deepseekApiKey) throw new Error("DEEPSEEK_API_KEY is not configured");
+
+  const response = await fetch(`${(CONFIG.deepseekBaseUrl || "https://api.deepseek.com").replace(/\/$/, "")}/chat/completions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${CONFIG.deepseekApiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: CONFIG.deepseekModel || "deepseek-v4-flash",
+      messages: [
+        {
+          role: "system",
+          content: "You are a localization translator for a software product. Translate Chinese source strings into every requested target locale. Preserve line breaks, list structure, markdown, URLs, code, version numbers, product names, and placeholders exactly when appropriate. Do not add commentary. Return only JSON in this exact shape: {\"translations\": {\"<locale>\": {\"<key>\": \"translated text\"}}}. Every requested locale must contain every input key."
+        },
+        {
+          role: "user",
+          content: JSON.stringify({ source_locale: "zh-CN", target_locales: targetLocales, entries })
+        }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.2,
+      max_tokens: 8192,
+      stream: false,
+      thinking: { type: "disabled" }
+    })
+  });
+  if (!response.ok) throw new Error(`翻译服务暂时不可用（HTTP ${response.status}）`);
+  const data = await response.json();
+  const content = data && data.choices && data.choices[0] && data.choices[0].message
+    ? data.choices[0].message.content
+    : "";
+  if (!content) throw new Error("翻译服务未返回内容");
+  try {
+    return { translations: parseTranslations(JSON.parse(content), targetLocales, entries) };
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("Translation response")) throw error;
+    throw new Error("翻译结果格式异常，请重试");
+  }
+}
+
+async function handleAdminTranslation(request) {
+  if (!isSameOrigin(request) || !(await isAdminRequest(request))) return jsonError("Unauthorized", 401);
+  if (request.method !== "POST") return jsonError("Method not allowed", 405);
+  try {
+    return json(await translateChineseContent(await request.json()));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "翻译失败";
+    return jsonError(message, message.includes("not configured") ? 503 : 400);
+  }
+}
+
 async function handleAdminPreviews(request) {
   if (!(await isAdminRequest(request))) return jsonError("Unauthorized", 401);
   if (request.method === "GET") {
     try {
-      return json({ previews: await listReleasePreviews() });
+      const records = await listReleasePreviews();
+      return json({
+        previews: records.filter((preview) => preview.status === "published"),
+        drafts: records.filter((preview) => preview.status === "draft")
+      });
     } catch {
       return jsonError("无法读取版本预告", 500);
     }
@@ -1418,6 +1521,9 @@ async function handleRequest(request) {
   }
   if (path === "/api/incentives/admin/features") {
     return handleAdminFeatures(request);
+  }
+  if (path === "/api/incentives/admin/translate") {
+    return handleAdminTranslation(request);
   }
   if (path === "/api/incentives/admin/access-logs") {
     return handleAdminAccessLogs(request);

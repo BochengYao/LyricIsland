@@ -24,7 +24,7 @@ const scenesByLocale: Record<Locale, Scene[]> = {
       title: ["这一句，", "值得被看见。"],
       subtitle: "在屏幕顶部，遇见音乐。",
       image: "/images/campaign/hero.png",
-      imageAlt: "LyricHover显示在 Windows 桌面顶部",
+      imageAlt: "歌词岛显示在 Windows 桌面顶部",
       watermark: "BE SEEN",
       variant: "hero"
     },
@@ -35,7 +35,7 @@ const scenesByLocale: Record<Locale, Scene[]> = {
       title: ["鼠标靠近，", "内容仍是主角。"],
       subtitle: "鼠标经过的地方，歌词会自然变淡，让下方内容保持可读、可操作。",
       image: "/images/campaign/mouse.png",
-      imageAlt: "鼠标靠近时LyricHover局部变淡",
+      imageAlt: "鼠标靠近时歌词岛局部变淡",
       watermark: "MAKE ROOM",
       variant: "mouse"
     },
@@ -44,9 +44,9 @@ const scenesByLocale: Record<Locale, Scene[]> = {
       number: "03",
       label: "模块化布局",
       title: ["想怎么展开，", "就怎么呈现。"],
-      subtitle: "水平排列，简洁舒展；自动折叠，节省空间。LyricHover会随你的布局自然变化。",
+      subtitle: "水平排列，简洁舒展；自动折叠，节省空间。歌词岛会随你的布局自然变化。",
       image: "/images/campaign/modular.png",
-      imageAlt: "LyricHover的多种模块化布局",
+      imageAlt: "歌词岛的多种模块化布局",
       watermark: "YOUR SHAPE",
       variant: "modules"
     },
@@ -57,7 +57,7 @@ const scenesByLocale: Record<Locale, Scene[]> = {
       title: ["一开场，", "就在场。"],
       subtitle: "音乐响起，歌词自然浮现；播放停止，便悄然收起。",
       image: "/images/campaign/collapse.png",
-      imageAlt: "LyricHover停止播放后收回屏幕顶部",
+      imageAlt: "歌词岛停止播放后收回屏幕顶部",
       watermark: "ON CUE",
       variant: "collapse"
     },
@@ -68,7 +68,7 @@ const scenesByLocale: Record<Locale, Scene[]> = {
       title: ["听见原文。", "也读懂它。"],
       subtitle: "歌词与翻译，同步呈现。",
       image: "/images/campaign/translation.png",
-      imageAlt: "LyricHover同时显示原文歌词和中文翻译",
+      imageAlt: "歌词岛同时显示原文歌词和中文翻译",
       watermark: "UNDERSTAND",
       variant: "translation"
     },
@@ -77,7 +77,7 @@ const scenesByLocale: Record<Locale, Scene[]> = {
       number: "06",
       label: "多播放器支持",
       title: ["换个播放器，", "歌词照常在场。"],
-      subtitle: "熟悉的LyricHover，连接你常用的音乐应用。",
+      subtitle: "熟悉的歌词岛，连接你常用的音乐应用。",
       image: "/images/campaign/players.png",
       imageAlt: "多播放器连接的抽象轨道背景",
       watermark: "STAY CONNECTED",
@@ -92,7 +92,7 @@ const scenesByLocale: Record<Locale, Scene[]> = {
       title: ["This line,", "deserves to be seen."],
       subtitle: "Meet the music at the top of your screen.",
       image: "/images/campaign/hero.png",
-      imageAlt: "LyricHover at the top of a Windows desktop",
+      imageAlt: "Lyric Hover at the top of a Windows desktop",
       watermark: "BE SEEN",
       variant: "hero"
     },
@@ -103,7 +103,7 @@ const scenesByLocale: Record<Locale, Scene[]> = {
       title: ["When the pointer comes close,", "your content stays in focus."],
       subtitle: "Lyrics soften naturally beneath the pointer, keeping everything below readable and ready to use.",
       image: "/images/campaign/mouse.png",
-      imageAlt: "LyricHover softening around the pointer",
+      imageAlt: "Lyric Hover softening around the pointer",
       watermark: "MAKE ROOM",
       variant: "mouse"
     },
@@ -112,9 +112,9 @@ const scenesByLocale: Record<Locale, Scene[]> = {
       number: "03",
       label: "Modular layouts",
       title: ["Expand it your way,", "show it your way."],
-      subtitle: "Stretch into a clean horizontal layout or fold away to save space. LyricHover follows the shape you choose.",
+      subtitle: "Stretch into a clean horizontal layout or fold away to save space. Lyric Hover follows the shape you choose.",
       image: "/images/campaign/modular.png",
-      imageAlt: "Several modular LyricHover layouts",
+      imageAlt: "Several modular Lyric Hover layouts",
       watermark: "YOUR SHAPE",
       variant: "modules"
     },
@@ -125,7 +125,7 @@ const scenesByLocale: Record<Locale, Scene[]> = {
       title: ["The moment music starts,", "it is already there."],
       subtitle: "Lyrics surface as the music begins, then quietly retreat when playback stops.",
       image: "/images/campaign/collapse.png",
-      imageAlt: "LyricHover retracted above the screen",
+      imageAlt: "Lyric Hover retracted above the screen",
       watermark: "ON CUE",
       variant: "collapse"
     },
@@ -145,7 +145,7 @@ const scenesByLocale: Record<Locale, Scene[]> = {
       number: "06",
       label: "Player support",
       title: ["Switch players,", "the lyrics stay with you."],
-      subtitle: "The LyricHover you know, connected to the music apps you use.",
+      subtitle: "The Lyric Hover you know, connected to the music apps you use.",
       image: "/images/campaign/players.png",
       imageAlt: "An orbital visual representing several connected music players",
       watermark: "STAY CONNECTED",
@@ -208,7 +208,7 @@ function SceneVisual({
         <div className={styles.playerConstellation} aria-label={scene.label}>
           <div className={styles.playerCore}>
             <Image src="/images/app-logo.png" alt="" width={52} height={52} />
-            <span>LyricHover</span>
+            <span>{locale === "zh" ? "歌词岛" : "Lyric Hover"}</span>
           </div>
           {playersByLocale[locale].map((player, index) => (
             <span className={styles[`player${index + 1}`]} key={player}>
@@ -255,8 +255,8 @@ export function CampaignPage({ locale }: { locale: Locale }) {
           <a className={styles.brand} href="#hero" aria-label={locale === "zh" ? "返回主视觉" : "Back to opening"}>
             <Image src="/images/app-logo.png" alt="" width={42} height={42} />
             <span>
-              <strong>LyricHover</strong>
-              <small>LyricHover</small>
+              <strong>歌词岛</strong>
+              <small>Lyric Hover</small>
             </span>
           </a>
 
@@ -317,7 +317,7 @@ export function CampaignPage({ locale }: { locale: Locale }) {
               </div>
               {index === scenes.length - 1 ? (
                 <p className={styles.legal}>
-                  © 2026 LyricHover · {locale === "zh"
+                  © 2026 {locale === "zh" ? "歌词岛" : "Lyric Hover"} · {locale === "zh"
                     ? "播放器名称及商标归各自权利人所有。"
                     : "Player names and trademarks belong to their respective owners."}
                 </p>

@@ -8,15 +8,15 @@ import { SiteStructuredData } from "@/components/SiteStructuredData";
 export const metadata: Metadata = {
   metadataBase: new URL("https://lyric-island.top"),
   title: {
-    default: "LyricHover | LyricHover",
-    template: "%s | LyricHover"
+    default: "歌词岛 | Lyric Hover",
+    template: "%s | 歌词岛 | Lyric Hover"
   },
   description:
-    "在屏幕顶部遇见音乐。LyricHover支持鼠标避让、模块化布局、自动折叠、歌词翻译与多播放器连接。",
-  applicationName: "LyricHover",
+    "歌词岛是一款面向 Windows 的顶部桌面歌词伴侣，支持多播放器、同步歌词、模块化布局和鼠标避让。",
+  applicationName: "歌词岛",
   keywords: [
-    "LyricHover",
-    "LyricHover",
+    "歌词岛",
+    "Lyric Hover",
     "Windows desktop lyrics",
     "multi-player desktop lyrics",
     "SMTC"
@@ -27,22 +27,22 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    title: "LyricHover | LyricHover",
-    description: "这一句，值得被看见。在屏幕顶部，遇见音乐。",
+    title: "歌词岛 | Lyric Hover",
+    description: "让桌面歌词安静停在屏幕顶部。",
     images: [
       {
-        url: "/images/campaign/hero.png",
-        width: 1998,
-        height: 1125,
-        alt: "LyricHover停靠在 Windows 桌面顶部"
+        url: "/images/product-hero.png",
+        width: 1600,
+        height: 900,
+        alt: "歌词岛停靠在 Windows 桌面顶部"
       }
     ]
   },
   twitter: {
     card: "summary_large_image",
-    title: "LyricHover | LyricHover",
-    description: "这一句，值得被看见。在屏幕顶部，遇见音乐。",
-    images: ["/images/campaign/hero.png"]
+    title: "歌词岛 | Lyric Hover",
+    description: "让桌面歌词安静停在屏幕顶部。",
+    images: ["/images/product-hero.png"]
   }
 };
 
@@ -54,11 +54,11 @@ export default function ChineseRootLayout({
   return (
     <html lang="zh-CN">
       <head>
-        <SiteStructuredData />
+        <SiteStructuredData locale="zh" />
         <meta name="baidu-site-verification" content="codeva-x0GnwjHSeW" />
         <link
           rel="preload"
-          href="/fonts/xiaolai-nav.woff2"
+          href="/fonts/xiaolai-nav-v2.woff2"
           as="font"
           type="font/woff2"
           crossOrigin="anonymous"

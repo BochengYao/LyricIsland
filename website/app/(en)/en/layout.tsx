@@ -7,32 +7,32 @@ import { SiteStructuredData } from "@/components/SiteStructuredData";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://lyric-island.top"),
-  title: "This line deserves to be seen | LyricHover",
+  title: "Windows desktop lyrics, quietly above your work | Lyric Hover",
   description:
-    "Meet music at the top of your screen with mouse-aware transparency, modular layouts, auto collapse, translation, and multi-player support.",
-  applicationName: "LyricHover",
+    "Lyric Hover is a top-edge Windows lyrics companion with multi-player support, synced lyrics, modular layouts, and mouse-aware transparency.",
+  applicationName: "Lyric Hover",
   icons: {
     icon: "/images/app-logo.png",
     apple: "/images/app-logo.png"
   },
   openGraph: {
     type: "website",
-    title: "LyricHover",
-    description: "This line deserves to be seen. Meet the music at the top of your screen.",
+    title: "Lyric Hover",
+    description: "Windows desktop lyrics, quietly above your work.",
     images: [
       {
-        url: "/images/campaign/hero.png",
-        width: 1998,
-        height: 1125,
-        alt: "LyricHover at the top of a Windows desktop"
+        url: "/images/product-hero.png",
+        width: 1600,
+        height: 900,
+        alt: "Lyric Hover at the top of a Windows desktop"
       }
     ]
   },
   twitter: {
     card: "summary_large_image",
-    title: "LyricHover",
-    description: "This line deserves to be seen. Meet the music at the top of your screen.",
-    images: ["/images/campaign/hero.png"]
+    title: "Lyric Hover",
+    description: "Windows desktop lyrics, quietly above your work.",
+    images: ["/images/product-hero.png"]
   }
 };
 
@@ -44,10 +44,10 @@ export default function EnglishRootLayout({
   return (
     <html lang="en">
       <head>
-        <SiteStructuredData />
+        <SiteStructuredData locale="en" />
         <link
           rel="preload"
-          href="/fonts/xiaolai-nav.woff2"
+          href="/fonts/xiaolai-nav-v2.woff2"
           as="font"
           type="font/woff2"
           crossOrigin="anonymous"

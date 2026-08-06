@@ -17,6 +17,7 @@ import type {
 import { incentivesByLocale } from "@/data/incentives-copy";
 import type { Locale } from "@/data/site-copy";
 import { preloadClientJson } from "@/lib/client-data";
+import { displayBrand } from "@/lib/brand";
 
 const IDENTITY_COOKIE = "lyric_island_contributor";
 const LOCAL_LIKES_KEY = "lyric_island_preview_likes";
@@ -316,14 +317,11 @@ function AcceptedRail({
               <div className="acceptedWaterfallTrack">
                 {[...cycle, ...cycle].map((item, index) => {
                   const duplicate = index >= cycle.length;
-                  const cycleIndex = index % cycle.length;
-                  const tone = ["tonePaper", "toneYellow", "toneBlue"][cycleIndex % 3];
                   const accessible = columnIndex === 0 && !duplicate && index < suggestions.length;
                   return (
                     <article
-                      className={`acceptedCardFrame ${tone}`}
+                      className="acceptedCardFrame"
                       data-duplicate={duplicate ? "true" : "false"}
-                      data-cycle-index={cycleIndex}
                       key={`${item.id}-${columnIndex}-${index}`}
                       aria-hidden={!accessible}
                     >
@@ -361,8 +359,9 @@ function AcceptedRail({
                           <button
                             className={`acceptedLikeButton ${item.liked ? "isLiked" : ""} ${poppingId === item.id ? "isPopping" : ""}`}
                             type="button"
-                            aria-label={`${locale === "zh" ? "点赞" : "Like"}：${item.title}`}
+                            aria-label={`${item.liked ? (locale === "zh" ? "本设备已点赞" : "Liked on this device") : (locale === "zh" ? "点赞" : "Like")}：${item.title}`}
                             aria-pressed={item.liked}
+                            disabled={item.liked}
                             tabIndex={accessible ? 0 : -1}
                             onClick={() => onLike(item.id)}
                           >
@@ -420,13 +419,13 @@ export function IncentivePage({ locale }: { locale: Locale }) {
       ?.then((data) => {
         if (!active) return;
         const configured = Boolean(data.configured);
-        setStorageConfigured(configured);
-        const nextSuggestions = data.suggestions ?? [];
-        setSuggestions(configured ? nextSuggestions : nextSuggestions.map((item) => localLikes.has(item.id) ? {
+        const withLocalLikes = (data.suggestions ?? []).map((item) => localLikes.has(item.id) ? {
           ...item,
           liked: true,
           like_count: Math.max(1, item.like_count)
-        } : item));
+        } : item);
+        setStorageConfigured(configured);
+        setSuggestions(withLocalLikes);
         setPreviews(data.previews ?? []);
         setPublicDataState("ready");
       })
@@ -442,32 +441,27 @@ export function IncentivePage({ locale }: { locale: Locale }) {
   function selectTab(next: SubmissionKind) {
     setTab(next);
     history.replaceState(null, "", next === "bug" ? "#bugs" : "#features");
-    document.getElementById("submission-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   async function toggleLike(id: string) {
     const current = suggestions.find((suggestion) => suggestion.id === id);
-    if (!current) return;
-    const optimisticLiked = !current.liked;
+    if (!current || current.liked) return;
     setSuggestions((items) => items.map((item) => item.id === id ? {
       ...item,
-      liked: optimisticLiked,
-      like_count: Math.max(0, item.like_count + (optimisticLiked ? 1 : -1))
+      liked: true,
+      like_count: item.like_count + 1
     } : item));
     setPoppingId(id);
     setTimeout(() => setPoppingId((value) => value === id ? null : value), 560);
 
-    if (!storageConfigured) {
-      try {
-        const localLikes = new Set(JSON.parse(localStorage.getItem(LOCAL_LIKES_KEY) ?? "[]") as string[]);
-        if (optimisticLiked) localLikes.add(id);
-        else localLikes.delete(id);
-        localStorage.setItem(LOCAL_LIKES_KEY, JSON.stringify([...localLikes]));
-      } catch {
-        // The visual state still works when browser storage is unavailable.
-      }
-      return;
+    try {
+      const localLikes = new Set(JSON.parse(localStorage.getItem(LOCAL_LIKES_KEY) ?? "[]") as string[]);
+      localLikes.add(id);
+      localStorage.setItem(LOCAL_LIKES_KEY, JSON.stringify([...localLikes]));
+    } catch {
+      // The server cookie remains authoritative when browser storage is unavailable.
     }
+    if (!storageConfigured) return;
 
     try {
       const response = await fetch("/api/incentives/likes", {
@@ -485,6 +479,13 @@ export function IncentivePage({ locale }: { locale: Locale }) {
         like_count: result.like_count!
       } : item));
     } catch {
+      try {
+        const localLikes = new Set(JSON.parse(localStorage.getItem(LOCAL_LIKES_KEY) ?? "[]") as string[]);
+        localLikes.delete(id);
+        localStorage.setItem(LOCAL_LIKES_KEY, JSON.stringify([...localLikes]));
+      } catch {
+        // Ignore storage rollback failures.
+      }
       setSuggestions((items) => items.map((item) => item.id === id ? current : item));
     }
   }
@@ -503,13 +504,8 @@ export function IncentivePage({ locale }: { locale: Locale }) {
           <Eyebrow reveal>{copy.eyebrow}</Eyebrow>
           <div className="incentivesHeroGrid">
             <div className="incentivesHeroTitle">
-              <h1 data-text-reveal="title" style={{ whiteSpace: "pre-wrap" }}>
-                {copy.title.split("\n").map((line, idx, arr) => (
-                  <span key={idx}>
-                    {line}
-                    {idx < arr.length - 1 && <br />}
-                  </span>
-                ))}
+              <h1 data-text-reveal="title" style={{ whiteSpace: "pre-line" }}>
+                {copy.title}
               </h1>
               <div className={`incentiveTabs ${tab === "bug" ? "isBug" : ""}`} role="tablist" aria-label={copy.navLabel}>
                 <button role="tab" aria-selected={tab === "feature"} onClick={() => selectTab("feature")}>{copy.tabs.feature}</button>
@@ -599,9 +595,9 @@ export function IncentivePage({ locale }: { locale: Locale }) {
 
       <footer className="updatesFooter incentivesFooter">
         <div className="sectionContainer">
-          <LogoLockup />
+          <LogoLockup locale={locale} />
           <p>{copy.footerNote}</p>
-          <div><Link href={home}>{copy.backLabel}</Link><span>© 2026 LyricHover</span></div>
+          <div><Link href={home}>{copy.backLabel}</Link><span>© 2026 {displayBrand(locale)}</span></div>
         </div>
       </footer>
       {receipt && <SubmissionTicket receipt={receipt} locale={locale} onClose={() => setReceipt(null)} />}

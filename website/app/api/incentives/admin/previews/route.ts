@@ -30,7 +30,11 @@ export async function GET(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
   try {
-    return Response.json({ previews: await listReleasePreviews() });
+    const records = await listReleasePreviews();
+    return Response.json({
+      previews: records.filter((preview) => preview.status === "published"),
+      drafts: records.filter((preview) => preview.status === "draft")
+    });
   } catch {
     return Response.json({ error: "无法读取版本预告" }, { status: 500 });
   }

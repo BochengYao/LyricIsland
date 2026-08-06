@@ -9,6 +9,7 @@ type Props = {
 
 type OrbitGeometry = {
   width: number;
+  height: number;
   centerX: number;
   centerY: number;
   outerRadiusX: number;
@@ -29,6 +30,7 @@ const SAMPLE_COUNT = 720;
 
 const initialGeometry: OrbitGeometry = {
   width: 1000,
+  height: ORBIT_HEIGHT,
   centerX: 500,
   centerY: ORBIT_CENTER_Y,
   outerRadiusX: 390,
@@ -104,14 +106,17 @@ export function PlayerOrbit({ label, players }: Props) {
     const measure = () => {
       const pills = pillRefs.current.filter((pill): pill is HTMLSpanElement => Boolean(pill));
       const width = shell.clientWidth;
+      const height = Math.max(ORBIT_HEIGHT, shell.clientHeight);
       const halfWidth = Math.max(72, ...pills.map((pill) => pill.offsetWidth / 2));
       const halfHeight = Math.max(26, ...pills.map((pill) => pill.offsetHeight / 2));
+      const centerY = Math.max(ORBIT_CENTER_Y, height - 80);
       const nextGeometry: OrbitGeometry = {
         width,
+        height,
         centerX: width / 2,
-        centerY: ORBIT_CENTER_Y,
+        centerY,
         outerRadiusX: Math.max(width * 0.28, width / 2 - halfWidth - 14),
-        outerRadiusY: ORBIT_CENTER_Y - halfHeight - 12,
+        outerRadiusY: centerY - halfHeight - 12,
         innerRadiusX: 0,
         innerRadiusY: 0
       };
@@ -188,7 +193,7 @@ export function PlayerOrbit({ label, players }: Props) {
     <div className="playerOrbit" aria-label={label} ref={shellRef}>
       <svg
         className="playerArcLines"
-        viewBox={`0 0 ${geometry.width} ${ORBIT_HEIGHT}`}
+        viewBox={`0 0 ${geometry.width} ${geometry.height}`}
         preserveAspectRatio="none"
         aria-hidden="true"
       >
@@ -200,7 +205,7 @@ export function PlayerOrbit({ label, players }: Props) {
         />
         <ellipse
           cx={geometry.centerX}
-          cy={280}
+          cy={geometry.centerY + 20}
           rx={geometry.innerRadiusX}
           ry={geometry.innerRadiusY}
         />

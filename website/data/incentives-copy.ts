@@ -1,4 +1,5 @@
 import type { Locale } from "@/data/site-copy";
+import { normalizeBrandCopy } from "@/lib/brand";
 
 export type IncentivesCopy = {
   pageTitle: string;
@@ -56,7 +57,7 @@ export type IncentivesCopy = {
   footerNote: string;
 };
 
-export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
+const rawIncentivesByLocale: Record<Locale, IncentivesCopy> = {
   zh: {
     pageTitle: "用户激励计划",
     pageDescription: "向LyricHover提交新功能建议或 Bug，查看已采纳建议与版本预告。",
@@ -81,7 +82,7 @@ export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
     },
     bug: {
       eyebrow: "Bug 提交",
-      title: "发现问题，告诉我们。",
+      title: "发现问题，\n告诉我们。",
       body: "请写下问题出现前的操作、实际结果和预期结果。附上截图或短视频，能帮助我们更快定位并修复。",
       reward: "问题确认有效后，赠送软件礼品码"
     },
@@ -106,8 +107,8 @@ export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
     },
     preview: {
       eyebrow: "版本预告",
-      title: "接下来，LyricHover准备往哪里走",
-      body: "这里只展示已经由维护者发布的开发预告；内容仍可能根据测试结果调整。",
+      title: "下一版，\n先见一面。",
+      body: "正在开发中的新功能，会在这里提前亮相。正式发布前，设计与功能仍可能随测试继续调整。",
       empty: "新的版本预告正在准备中。",
       target: "预计发布时间"
     },
@@ -120,16 +121,16 @@ export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
     backLabel: "Back to the site",
     languageName: "中文",
     languageHref: "/incentives",
-    eyebrow: "Help shape LyricHover",
-    title: "Your idea\ndeserves to be heard",
+    eyebrow: "Shape LyricHover with us",
+    title: "Your feedback,\ncould shape the next update.",
     intro:
-      "Suggest a feature or report a bug here. We review every submission; if accepted, we will contact you by email and issue the corresponding reward.",
-    privacyNote: "Your nickname and email are used only to confirm submissions and issue rewards.",
+      "Suggest a feature, or tell us what could be better. We read every submission; if your idea is accepted, we will contact you by email and send the corresponding reward.",
+    privacyNote: "Your nickname and email are used only to verify your submission and issue rewards.",
     tabs: { feature: "Feature ideas", bug: "Bug reports" },
     feature: {
       eyebrow: "Feature ideas",
-      title: "If it makes LyricHover better, we will send a small ¥3 red-packet reward.",
-      body: "Describe the situation, what feels difficult today, and how you would like LyricHover to respond. Specific ideas are easier to evaluate.",
+      title: "Make your idea\nclear and concrete.",
+      body: "Tell us where you would use it, what feels awkward today, and how you expect it to work. The more specific the details, the easier it is for us to evaluate and build.",
       reward: "Accepted ideas receive a ¥3 red-packet reward",
       acceptedTitle: "Already heard...",
       acceptedSubtitle: "Like the ideas you believe in, and the developer will prioritize them.",
@@ -137,9 +138,9 @@ export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
     },
     bug: {
       eyebrow: "Bug reports",
-      title: "Help us find the issue and receive a software gift code when it is accepted.",
-      body: "Tell us what you did, what happened, and what you expected. A screenshot or short video can make diagnosis much faster.",
-      reward: "Confirmed and accepted reports receive a software gift code"
+      title: "Found a problem? Tell us.",
+      body: "Tell us what you did before the issue appeared, what happened, and what you expected. A screenshot or short video helps us diagnose and fix it faster.",
+      reward: "Verified reports receive a software gift code"
     },
     form: {
       nickname: "Nickname",
@@ -152,7 +153,7 @@ export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
       bugDescriptionPlaceholder: "Steps, actual result, expected result, Windows and player version…",
       attachments: "Images or video",
       attachmentHint: "Up to 3 files; 15 MB each and 30 MB total.",
-      identityHint: "Fill this in once and the other form will reuse it on this device.",
+      identityHint: "",
       submitFeature: "Submit feature idea",
       submitBug: "Submit bug",
       submitting: "Submitting…",
@@ -162,11 +163,16 @@ export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
     },
     preview: {
       eyebrow: "Release preview",
-      title: "Where LyricHover is heading next",
-      body: "Only previews published by the maintainer appear here. Details may still change after testing.",
+      title: "Next up.\nFirst look.",
+      body: "Features now in development make an early appearance here. Before release, the design and functionality may continue to evolve through testing.",
       empty: "The next release preview is being prepared.",
-      target: "Target"
+      target: "Expected release date"
     },
     footerNote: "Rewards are reviewed and issued manually. Duplicate, non-reproducible, or previously reported items may not receive another reward."
   }
+};
+
+export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
+  zh: normalizeBrandCopy(rawIncentivesByLocale.zh, "zh"),
+  en: normalizeBrandCopy(rawIncentivesByLocale.en, "en")
 };

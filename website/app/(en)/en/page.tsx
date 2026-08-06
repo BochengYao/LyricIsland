@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { CampaignPage } from "@/components/CampaignPage";
+import { SitePage } from "@/components/SitePage";
 
 export const metadata: Metadata = {
   alternates: {
@@ -13,5 +13,5 @@ export const metadata: Metadata = {
 };
 
 export default function EnglishHomePage() {
-  return <CampaignPage locale="en" />;
+  return <SitePage locale="en" />;
 }

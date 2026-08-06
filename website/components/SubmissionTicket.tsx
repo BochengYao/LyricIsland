@@ -149,7 +149,7 @@ export function SubmissionTicket({
       const fontFamily = '"Microsoft YaHei", "PingFang SC", "Arial", sans-serif';
       context.fillStyle = "#141413";
       context.font = `600 28px ${fontFamily}`;
-      context.fillText("LYRICHOVER", 92, 118);
+      context.fillText("LYRIC HOVER", 92, 118);
       context.font = `700 56px ${fontFamily}`;
       context.fillText(isZh ? "提交存根" : "SUBMISSION", 92, 210);
       context.font = `500 24px ${fontFamily}`;
@@ -217,7 +217,7 @@ export function SubmissionTicket({
           <div className="ticketFeedWindow">
             <article className="submissionTicket" aria-label={isZh ? "提交存根" : "Submission ticket"}>
               <div className="ticketStub">
-                <span>LYRICHOVER</span>
+                <span>LYRIC HOVER</span>
                 <strong>{isZh ? "提交存根" : "SUBMISSION"}</strong>
                 <small>{receipt.kind === "feature" ? (isZh ? "新功能提议" : "FEATURE IDEA") : (isZh ? "BUG 提交" : "BUG REPORT")}</small>
               </div>
