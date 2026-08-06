@@ -43,7 +43,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_liked boolean;
+  v_inserted integer;
 begin
   if char_length(p_voter_token_hash) <> 64 then
     raise exception 'Invalid voter token';
@@ -53,40 +53,25 @@ begin
     select 1
     from public.incentive_submissions s
     where s.id = p_submission_id
-      and s.kind = 'feature'
       and s.status = 'accepted'
   ) then
     raise exception 'Suggestion is not available for likes';
   end if;
 
-  if exists (
-    select 1
-    from public.incentive_likes l
-    where l.submission_id = p_submission_id
-      and l.voter_token_hash = p_voter_token_hash
-  ) then
-    delete from public.incentive_likes l
-    where l.submission_id = p_submission_id
-      and l.voter_token_hash = p_voter_token_hash;
+  insert into public.incentive_likes(submission_id, voter_token_hash)
+  values (p_submission_id, p_voter_token_hash)
+  on conflict (submission_id, voter_token_hash) do nothing;
+  get diagnostics v_inserted = row_count;
 
-    update public.incentive_submissions s
-    set like_count = greatest(0, s.like_count - 1),
-        updated_at = now()
-    where s.id = p_submission_id;
-    v_liked := false;
-  else
-    insert into public.incentive_likes(submission_id, voter_token_hash)
-    values (p_submission_id, p_voter_token_hash);
-
+  if v_inserted = 1 then
     update public.incentive_submissions s
     set like_count = s.like_count + 1,
         updated_at = now()
     where s.id = p_submission_id;
-    v_liked := true;
   end if;
 
   return query
-  select v_liked, s.like_count
+  select true, s.like_count
   from public.incentive_submissions s
   where s.id = p_submission_id;
 end;

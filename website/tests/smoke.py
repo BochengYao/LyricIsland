@@ -75,27 +75,233 @@ def assert_page_health(page: Page, path: str, expected_lang: str) -> None:
 def test_interactions(page: Page, locale: str) -> None:
     labels = (
         {
+            "playing": "播放",
             "idle": "空闲",
             "near": "鼠标靠近",
-            "layout_c": "C 双态展开",
         }
         if locale == "zh"
         else {
+            "playing": "Playing",
             "idle": "Idle",
             "near": "Pointer nearby",
-            "layout_c": "C dual-state",
         }
     )
 
+    demo_controls = page.locator(".demoControls")
+    expect(demo_controls.get_by_role("button")).to_have_count(2)
+    expect(
+        demo_controls.get_by_role("button", name=labels["near"], exact=True)
+    ).to_have_count(0)
+    control_metrics = demo_controls.evaluate(
+        """(controls) => {
+          const buttons = [...controls.querySelectorAll("button")];
+          const rects = buttons.map((button) => button.getBoundingClientRect());
+          return {
+            height: controls.getBoundingClientRect().height,
+            buttonTops: rects.map((rect) => Math.round(rect.top)),
+            buttonHeights: rects.map((rect) => rect.height)
+          };
+        }"""
+    )
+    assert control_metrics["height"] <= 64, "Demo controls should use a low single row"
+    assert len(set(control_metrics["buttonTops"])) == 1, (
+        "Playback controls should remain on one line"
+    )
+    assert all(height <= 36 for height in control_metrics["buttonHeights"])
+
     island = page.get_by_test_id("demo-island")
+    island_path = island.locator(".demoIslandShape path")
+    expect(island_path).to_have_attribute(
+        "d",
+        "M 0,0 L 560,0 C 532,0 522,5 516,15 C 512,22 512,34 512,40 "
+        "C 512,49 504,55 491,55 L 69,55 C 56,55 48,49 48,40 "
+        "C 48,34 48,22 44,15 C 38,5 28,0 0,0 Z",
+    )
+
     page.get_by_role("button", name=labels["idle"], exact=True).click()
     expect(island).to_have_class(re.compile(r"\bisIdle\b"))
+    page.wait_for_timeout(560)
+    idle_metrics = island.evaluate(
+        """(node) => {
+          const desktop = node.closest(".demoDesktop").getBoundingClientRect();
+          const rect = node.getBoundingClientRect();
+          return {
+            islandBottom: rect.bottom,
+            desktopTop: desktop.top
+          };
+        }"""
+    )
+    assert idle_metrics["islandBottom"] <= idle_metrics["desktopTop"] + 1, (
+        "Idle state should retract the whole island beyond the desktop edge"
+    )
 
-    page.get_by_role("button", name=labels["layout_c"], exact=True).click()
-    expect(island).to_have_class(re.compile(r"\bisLayoutC\b"))
-
-    page.get_by_role("button", name=labels["near"], exact=True).click()
+    page.get_by_role("button", name=labels["playing"], exact=True).click()
+    expect(island).to_have_class(re.compile(r"\bisPlaying\b"))
+    page.wait_for_timeout(560)
+    island_box = island.bounding_box()
+    assert island_box is not None
+    page.mouse.move(
+        island_box["x"] + island_box["width"] * 0.55,
+        island_box["y"] + island_box["height"] * 0.5,
+    )
     expect(island).to_have_class(re.compile(r"\bisNear\b"))
+    page.wait_for_timeout(240)
+    avoidance_metrics = island.evaluate(
+        """(node) => ({
+          mask: getComputedStyle(node.querySelector(".demoIslandSurface")).maskImage,
+          webkitMask: getComputedStyle(
+            node.querySelector(".demoIslandSurface")
+          ).webkitMaskImage,
+          glowCount: node.querySelectorAll(".demoAvoidanceGlow").length
+        })"""
+    )
+    assert (
+        avoidance_metrics["mask"] != "none"
+        or avoidance_metrics["webkitMask"] != "none"
+    ), "Pointer proximity should create a radial avoidance mask"
+    assert avoidance_metrics["glowCount"] == 0, (
+        "Pointer avoidance must reveal the desktop through the island, "
+        "not paint a separate glow above the pointer"
+    )
+    near_radius = island.evaluate(
+        "(node) => parseFloat(node.style.getPropertyValue('--avoid-radius-x'))"
+    )
+    near_radius_y = island.evaluate(
+        "(node) => parseFloat(node.style.getPropertyValue('--avoid-radius-y'))"
+    )
+    near_opacity = island.evaluate(
+        "(node) => parseFloat(node.style.getPropertyValue('--avoid-center-opacity'))"
+    )
+    near_transition_opacity = island.evaluate(
+        "(node) => parseFloat(node.style.getPropertyValue('--avoid-transition-opacity'))"
+    )
+    assert abs(near_radius - 86 * (1.27 ** 0.5)) <= 0.1, (
+        "Pointer avoidance should use the configured 86px aura size and "
+        f"1.27:1 aspect ratio, got radiusX={near_radius}"
+    )
+    assert abs(near_radius / near_radius_y - 1.27) <= 0.01
+    assert abs(near_opacity - 0.02) <= 0.001, (
+        "Pointer avoidance should use 98% center transparency"
+    )
+    assert abs(near_transition_opacity - 0.03) <= 0.001, (
+        "Pointer avoidance should use 97% transition transparency"
+    )
+    active_mask = avoidance_metrics["mask"] or avoidance_metrics["webkitMask"]
+    assert "50.4%" in active_mask and "90%" in active_mask, (
+        "The 56% transition and 0% edge transparency should match the "
+        "desktop app's 0.9 radial-gradient mapping"
+    )
+    page.mouse.move(
+        island_box["x"] + island_box["width"] * 0.55,
+        island_box["y"] + island_box["height"] + 40,
+    )
+    expect(island).to_have_class(re.compile(r"\bisNear\b"))
+    far_radius = island.evaluate(
+        "(node) => parseFloat(node.style.getPropertyValue('--avoid-radius-x'))"
+    )
+    far_opacity = island.evaluate(
+        "(node) => parseFloat(node.style.getPropertyValue('--avoid-center-opacity'))"
+    )
+    assert 0 < far_radius < near_radius, (
+        "Pointer avoidance should shrink continuously as the pointer moves "
+        f"away from the island, got near={near_radius}, far={far_radius}"
+    )
+    assert near_opacity < far_opacity < 1, (
+        "Pointer avoidance should become less transparent with distance"
+    )
+    page.mouse.move(
+        island_box["x"] + island_box["width"] * 0.55,
+        island_box["y"] + island_box["height"] + 65,
+    )
+    expect(island).not_to_have_class(re.compile(r"\bisNear\b"))
+    ended_radius = island.evaluate(
+        "(node) => parseFloat(node.style.getPropertyValue('--avoid-radius-x'))"
+    )
+    assert ended_radius == 0, (
+        "Pointer avoidance should reach zero before its mask is removed"
+    )
+
+    modules_section = page.locator("#modules")
+    module_image = modules_section.locator(".moduleComposerImage")
+    module_content = modules_section.locator(".moduleComposerContent")
+    page.evaluate(
+        "(section) => window.scrollTo(0, section.offsetTop)",
+        modules_section.element_handle(),
+    )
+    page.wait_for_timeout(120)
+    module_intro_metrics = modules_section.evaluate(
+        """(section) => {
+          const image = section.querySelector(".moduleComposerImage img");
+          return {
+            sectionHeight: section.offsetHeight,
+            viewportHeight: window.innerHeight,
+            imageFile: new URL(image.currentSrc).pathname.split("/").pop(),
+            naturalWidth: image.naturalWidth,
+            naturalHeight: image.naturalHeight,
+            imageOpacity: Number(
+              getComputedStyle(section.querySelector(".moduleComposerImage")).opacity
+            ),
+            contentOpacity: Number(
+              getComputedStyle(section.querySelector(".moduleComposerContent")).opacity
+            )
+          };
+        }"""
+    )
+    assert module_intro_metrics["sectionHeight"] > (
+        module_intro_metrics["viewportHeight"] * 1.35
+    ), "The modules anchor should provide in-section scroll distance"
+    assert module_intro_metrics["imageFile"] == "module-layout-intro.png"
+    assert module_intro_metrics["naturalWidth"] == 2560
+    assert module_intro_metrics["naturalHeight"] == 1442
+    assert module_intro_metrics["imageOpacity"] > 0.95
+    assert module_intro_metrics["contentOpacity"] < 0.05
+    module_frame_metrics = modules_section.locator(".moduleComposer").evaluate(
+        """(composer) => {
+          const outer = composer.getBoundingClientRect();
+          const inner = composer.querySelector(".moduleComposerImage")
+            .getBoundingClientRect();
+          return {
+            top: inner.top - outer.top,
+            right: outer.right - inner.right,
+            bottom: outer.bottom - inner.bottom,
+            left: inner.left - outer.left,
+            outerRadius: getComputedStyle(composer).borderRadius,
+            innerRadius: getComputedStyle(
+              composer.querySelector(".moduleComposerImage")
+            ).borderRadius
+          };
+        }"""
+    )
+    assert all(
+        abs(module_frame_metrics[edge] - 8) <= 0.5
+        for edge in ["top", "right", "bottom", "left"]
+    ), "The module image should have an even black frame on all four sides"
+    assert module_frame_metrics["outerRadius"] == "32px"
+    assert module_frame_metrics["innerRadius"] == "24px"
+
+    page.evaluate(
+        """(section) => {
+          const range = section.offsetHeight - window.innerHeight;
+          window.scrollTo(0, section.offsetTop + range * 0.72);
+        }""",
+        modules_section.element_handle(),
+    )
+    page.wait_for_timeout(180)
+    module_reveal_metrics = modules_section.evaluate(
+        """(section) => ({
+          imageOpacity: Number(
+            getComputedStyle(section.querySelector(".moduleComposerImage")).opacity
+          ),
+          contentOpacity: Number(
+            getComputedStyle(section.querySelector(".moduleComposerContent")).opacity
+          ),
+          contentVisible:
+            section.querySelector(".moduleComposer").dataset.contentVisible
+        })"""
+    )
+    assert module_reveal_metrics["imageOpacity"] < 0.1
+    assert module_reveal_metrics["contentOpacity"] > 0.9
+    assert module_reveal_metrics["contentVisible"] == "true"
 
     faq = page.locator(".faqItem").first
     faq_button = faq.get_by_role("button")
@@ -143,6 +349,173 @@ def test_smooth_section_snap(page: Page) -> None:
 
     sections = page.locator("[data-snap-section]")
     assert sections.count() >= 8, "The home page should expose major scroll anchors"
+    expect(page.locator(".heroIsland")).to_have_count(0)
+    expect(page.locator(".hero .eyebrow")).to_have_count(0)
+    expect(page.locator("#experience > .experienceIntro > .eyebrow")).to_have_count(0)
+    expect(page.locator("h1")).to_have_text("这一句，\n值得被看见。")
+    expect(page.locator(".heroBadge")).to_have_count(0)
+    assert "v2.0 Beta 3" not in page.locator("body").inner_text()
+
+    hero_image = page.locator(".heroMediaImage")
+    image_metrics = hero_image.evaluate(
+        """(image) => ({
+          naturalWidth: image.naturalWidth,
+          naturalHeight: image.naturalHeight,
+          width: image.getBoundingClientRect().width,
+          height: image.getBoundingClientRect().height
+        })"""
+    )
+    assert image_metrics["naturalWidth"] == 4000
+    assert image_metrics["naturalHeight"] == 1334
+    natural_ratio = image_metrics["naturalWidth"] / image_metrics["naturalHeight"]
+    rendered_ratio = image_metrics["width"] / image_metrics["height"]
+    assert abs(natural_ratio - rendered_ratio) < 0.02, (
+        "The hero image must retain its original aspect ratio"
+    )
+
+    page.set_viewport_size({"width": 2048, "height": 1089})
+    page.reload(wait_until="networkidle")
+    page.locator("#players").evaluate(
+        "(section) => window.scrollTo(0, section.offsetTop)"
+    )
+    page.wait_for_timeout(120)
+    orbit_alignment = page.locator("#players").evaluate(
+        """(section) => {
+          const orbit = section.querySelector(".playerOrbit");
+          return {
+            sectionTop: section.getBoundingClientRect().top,
+            sectionHeight: section.offsetHeight,
+            orbitBottom: orbit.getBoundingClientRect().bottom,
+            viewportHeight: window.innerHeight
+          };
+        }"""
+    )
+    assert abs(orbit_alignment["sectionTop"]) <= 2
+    assert orbit_alignment["sectionHeight"] >= orbit_alignment["viewportHeight"]
+    assert abs(orbit_alignment["orbitBottom"] - orbit_alignment["viewportHeight"]) <= 2, (
+        "The player orbit should stay attached to the viewport bottom when zoomed out"
+    )
+
+    page.set_viewport_size({"width": 1440, "height": 900})
+    page.reload(wait_until="networkidle")
+
+    modules = page.locator("#modules")
+    module_metrics = modules.evaluate(
+        """(section) => ({
+          top: section.offsetTop,
+          height: section.offsetHeight,
+          viewportHeight: window.innerHeight
+        })"""
+    )
+    modules.evaluate("(section) => window.scrollTo(0, section.offsetTop)")
+    page.wait_for_timeout(120)
+    page.mouse.wheel(0, 18)
+    page.wait_for_timeout(1800)
+    expected_module_stage = (
+        module_metrics["top"]
+        + module_metrics["height"]
+        - module_metrics["viewportHeight"]
+    )
+    assert abs(page.evaluate("window.scrollY") - expected_module_stage) <= 3, (
+        "One wheel step should advance the staged module image completely"
+    )
+    assert modules.locator(".moduleComposerContent").evaluate(
+        "(node) => Number(getComputedStyle(node).opacity)"
+    ) > 0.95
+
+    page.locator("#players").evaluate(
+        "(section) => window.scrollTo(0, section.offsetTop)"
+    )
+    expect(page.locator("#players")).to_have_attribute("data-wheel-snap", "direct")
+    page.locator("#players").evaluate(
+        """(section) => {
+          section.style.blockSize = "calc(100vh + 24px)";
+          section.style.maxBlockSize = "none";
+        }"""
+    )
+    page.locator("#players").evaluate(
+        "(section) => window.scrollTo(0, section.offsetTop)"
+    )
+    sources = page.locator(".sourcesSection")
+    sources_top = sources.evaluate("(section) => section.offsetTop")
+    page.mouse.wheel(0, 18)
+    page.wait_for_timeout(1800)
+    assert abs(page.evaluate("window.scrollY") - sources_top) <= 3, (
+        "One ordinary mouse-wheel step should advance to the next anchor "
+        "even when viewport rounding makes the player section slightly taller"
+    )
+    sources_center = page.locator(".sourcesPanel").evaluate(
+        "(panel) => (panel.getBoundingClientRect().top + panel.getBoundingClientRect().bottom) / 2"
+    )
+    available_center = page.evaluate(
+        """() => (
+          document.querySelector(".floatingNav").getBoundingClientRect().bottom
+          + window.innerHeight
+        ) / 2"""
+    )
+    assert abs(sources_center - available_center) <= 3
+
+    page.evaluate("(top) => window.scrollTo(0, top + 48)", sources_top)
+    page.wait_for_timeout(1800)
+    assert abs(page.evaluate("window.scrollY") - sources_top) <= 3, (
+        "A one-screen section must settle back onto its nearest anchor "
+        "after native scrolling stops"
+    )
+
+    closing = page.locator(".closingSection")
+    closing_top = closing.evaluate("(section) => section.offsetTop")
+    closing.evaluate("(section) => window.scrollTo(0, section.offsetTop)")
+    page.wait_for_timeout(120)
+    assert abs(page.evaluate("window.scrollY") - closing_top) <= 3
+    closing_center = page.locator(".closingPanel").evaluate(
+        "(panel) => (panel.getBoundingClientRect().top + panel.getBoundingClientRect().bottom) / 2"
+    )
+    assert abs(closing_center - available_center) <= 3
+    closing_buttons = closing.locator(".buttonRow .button")
+    expect(closing_buttons).to_have_text(["GitHub", "Microsoft Store"])
+    closing_button_sizes = closing_buttons.evaluate_all(
+        """(buttons) => buttons.map((button) => ({
+          width: button.getBoundingClientRect().width,
+          height: button.getBoundingClientRect().height
+        }))"""
+    )
+    assert closing_button_sizes[0] == closing_button_sizes[1]
+    expect(closing_buttons.nth(0)).to_have_class(re.compile(r"\bbuttonPrimary\b"))
+    expect(closing_buttons.nth(0)).to_have_attribute("href", re.compile(r"github\.com"))
+    expect(closing_buttons.nth(1)).to_have_class(re.compile(r"\bbuttonSecondary\b"))
+    expect(closing_buttons.nth(1)).to_have_attribute(
+        "href", re.compile(r"apps\.microsoft\.com")
+    )
+
+    footer = page.locator(".siteFooter")
+    footer_height = footer.evaluate("(node) => node.offsetHeight")
+    assert footer_height >= page.evaluate("window.innerHeight")
+    footer.evaluate("(node) => window.scrollTo(0, node.offsetTop)")
+    page.wait_for_timeout(120)
+    footer_panel_rect = footer.locator(":scope > .sectionContainer").evaluate(
+        """(node) => {
+          const rect = node.getBoundingClientRect();
+          return { top: rect.top, bottom: rect.bottom };
+        }"""
+    )
+    assert footer_panel_rect["top"] > 0, (
+        "The final viewport should keep a white strip above the black footer panel"
+    )
+    assert footer_panel_rect["bottom"] >= page.evaluate("window.innerHeight - 1")
+
+    page.goto(BASE_URL + "/updates", wait_until="networkidle")
+    page.evaluate("window.scrollTo(0, document.documentElement.scrollHeight)")
+    page.wait_for_timeout(100)
+    updates_footer_bottom = page.locator(".updatesFooter").evaluate(
+        "(footer) => footer.getBoundingClientRect().bottom"
+    )
+    assert updates_footer_bottom >= page.evaluate("window.innerHeight - 1")
+    updates_footer_shadow = page.locator(".updatesFooter").evaluate(
+        "(footer) => getComputedStyle(footer).boxShadow"
+    )
+    assert "64px" in updates_footer_shadow and "rgb(20, 20, 19)" in updates_footer_shadow
+
+    page.goto(BASE_URL + "/", wait_until="networkidle")
     first_metrics = sections.nth(0).evaluate(
         "(section) => ({ top: section.offsetTop, height: section.offsetHeight })"
     )
@@ -168,7 +541,7 @@ def test_smooth_section_snap(page: Page) -> None:
     start_top = max(0, first_metrics["top"] + first_metrics["height"] - viewport_height)
     progress = (early_scroll_top - start_top) / max(1, next_top - start_top)
     assert 0 < progress < 0.22, (
-        "The longer easing should begin more slowly than a linear transition"
+        "The original easing should begin more slowly than a linear transition"
     )
 
     page.wait_for_timeout(1600)
@@ -182,10 +555,35 @@ def test_smooth_section_snap(page: Page) -> None:
     page.wait_for_timeout(420)
     nav_progress_top = page.evaluate("window.scrollY")
     assert 0 < nav_progress_top < scroll_top, (
-        "Navigation clicks should use the nonlinear page animation"
+        "Navigation clicks should use the original nonlinear page animation"
     )
     page.wait_for_timeout(1800)
     assert abs(page.evaluate("window.scrollY")) <= 3
+
+    faq = page.locator("#faq")
+    faq.evaluate("(section) => window.scrollTo(0, section.offsetTop)")
+    faq.locator(".faqQuestion button").evaluate_all(
+        "(buttons) => buttons.forEach((button) => button.click())"
+    )
+    page.wait_for_timeout(700)
+    expanded_faq = faq.evaluate(
+        """(section) => ({
+          top: section.offsetTop,
+          height: section.offsetHeight,
+          closingTop: document.querySelector(".closingSection").offsetTop,
+          viewportHeight: window.innerHeight
+        })"""
+    )
+    assert expanded_faq["height"] > expanded_faq["viewportHeight"], (
+        "An expanded FAQ should grow beyond one viewport"
+    )
+    faq.evaluate("(section) => window.scrollTo(0, section.offsetTop)")
+    page.mouse.wheel(0, 240)
+    page.wait_for_timeout(180)
+    faq_inner_scroll = page.evaluate("window.scrollY")
+    assert expanded_faq["top"] < faq_inner_scroll < expanded_faq["closingTop"], (
+        "Expanded FAQ content must scroll inside its own anchor before advancing"
+    )
 
     for selector, next_selector in [
         ("#faq", ".closingSection"),
@@ -221,6 +619,176 @@ def test_smooth_section_snap(page: Page) -> None:
 
 def test_navigation_and_orbit(page: Page) -> None:
     page.goto(BASE_URL + "/", wait_until="networkidle")
+    experience_images = page.locator("#experience .portraitImage")
+    expect(experience_images).to_have_count(3)
+    expect(page.locator("#experience .satelliteButton")).to_have_count(0)
+    experience_image_metrics = experience_images.evaluate_all(
+        """(images) => images.map((image) => ({
+          file: new URL(image.currentSrc).pathname.split("/").pop(),
+          naturalWidth: image.naturalWidth,
+          naturalHeight: image.naturalHeight,
+          objectFit: getComputedStyle(image).objectFit
+        }))"""
+    )
+    assert experience_image_metrics == [
+        {
+            "file": "experience-playback.jpg",
+            "naturalWidth": 1442,
+            "naturalHeight": 1418,
+            "objectFit": "cover",
+        },
+        {
+            "file": "experience-idle.png",
+            "naturalWidth": 2560,
+            "naturalHeight": 1437,
+            "objectFit": "cover",
+        },
+        {
+            "file": "experience-pointer.png",
+            "naturalWidth": 1638,
+            "naturalHeight": 1638,
+            "objectFit": "cover",
+        },
+    ]
+    experience_frame_metrics = page.locator(
+        "#experience .portraitWrap"
+    ).evaluate_all(
+        """(frames) => frames.map((frame) => {
+          const rect = frame.getBoundingClientRect();
+          const image = frame.querySelector(".portraitImage");
+          return {
+            width: rect.width,
+            height: rect.height,
+            borderRadius: getComputedStyle(frame).borderRadius,
+            overflow: getComputedStyle(frame).overflow,
+            imageShadow: getComputedStyle(image).boxShadow,
+            backdrop: getComputedStyle(frame, "::before").content
+          };
+        })"""
+    )
+    assert all(
+        abs(frame["width"] / frame["height"] - 1) <= 0.01
+        and frame["borderRadius"] == "40px"
+        and frame["overflow"] == "hidden"
+        and frame["imageShadow"] == "none"
+        and frame["backdrop"] == "none"
+        for frame in experience_frame_metrics
+    )
+    if page.evaluate("window.innerWidth") >= 1024:
+        experience_layout = page.locator("#experience").evaluate(
+            """(section) => {
+              const cards = [...section.querySelectorAll(".orbitCard")];
+              const rect = (node) => {
+                const box = node.getBoundingClientRect();
+                return {
+                  top: box.top,
+                  right: box.right,
+                  bottom: box.bottom,
+                  left: box.left
+                };
+              };
+              const canvas = section.querySelector(".orbitCanvas");
+              const canvasRect = canvas.getBoundingClientRect();
+              const cardsRect = section.querySelector(".orbitCards")
+                .getBoundingClientRect();
+              const introTitle = section.querySelector(".experienceIntro h2")
+                .getBoundingClientRect();
+              const introBody = section.querySelector(
+                ".experienceIntro .sectionTitleGrid > p"
+              ).getBoundingClientRect();
+              return {
+                canvas: {
+                  top: canvasRect.top,
+                  bottom: canvasRect.bottom,
+                  height: canvasRect.height,
+                  overflow: getComputedStyle(canvas).overflow
+                },
+                images: cards.map((card) => rect(card.querySelector(".portraitWrap"))),
+                copies: cards.map((card) => rect(card.querySelector(".orbitCopy"))),
+                imageOffsets: cards.map((card) => {
+                  const image = card.querySelector(".portraitWrap")
+                    .getBoundingClientRect();
+                  return {
+                    top: image.top - cardsRect.top,
+                    left: image.left - cardsRect.left,
+                    right: cardsRect.right - image.right
+                  };
+                }),
+                cardsWidth: cardsRect.width,
+                introBottoms: {
+                  title:
+                    section.querySelector(".experienceIntro h2").offsetTop
+                    + section.querySelector(".experienceIntro h2").offsetHeight,
+                  body:
+                    section.querySelector(
+                      ".experienceIntro .sectionTitleGrid > p"
+                    ).offsetTop
+                    + section.querySelector(
+                      ".experienceIntro .sectionTitleGrid > p"
+                    ).offsetHeight
+                },
+                cardBottoms: cards.map(
+                  (card) => card.getBoundingClientRect().bottom
+                )
+              };
+            }"""
+        )
+        assert experience_layout["copies"][0]["left"] >= (
+            experience_layout["images"][0]["right"] + 24
+        ), "Playback copy should sit to the right of the first image"
+        assert experience_layout["copies"][1]["right"] <= (
+            experience_layout["images"][1]["left"] - 24
+        ), "Idle copy should sit to the left of the second image"
+        assert experience_layout["copies"][2]["top"] >= (
+            experience_layout["images"][2]["bottom"] + 24
+        ), "Avoidance copy should remain below the third image"
+        assert abs(experience_layout["imageOffsets"][0]["top"] - 120) <= 1
+        assert abs(experience_layout["imageOffsets"][1]["top"] - 420) <= 1
+        assert abs(experience_layout["imageOffsets"][2]["top"] - 150) <= 1
+        assert abs(
+            experience_layout["imageOffsets"][0]["left"]
+            - experience_layout["cardsWidth"] * 0.02
+        ) <= 1
+        assert abs(
+            experience_layout["imageOffsets"][1]["left"]
+            - experience_layout["cardsWidth"] * 0.38
+        ) <= 1
+        assert abs(
+            experience_layout["imageOffsets"][2]["right"]
+            - experience_layout["cardsWidth"] * 0.01
+        ) <= 1
+        assert abs(
+            experience_layout["introBottoms"]["title"]
+            - experience_layout["introBottoms"]["body"]
+        ) <= 2, (
+            "The taskbar paragraph should align with the bottom of the main title; "
+            f"titleBottom={experience_layout['introBottoms']['title']}, "
+            f"bodyBottom={experience_layout['introBottoms']['body']}"
+        )
+        assert experience_layout["canvas"]["height"] <= 861
+        assert experience_layout["canvas"]["overflow"] == "hidden"
+        assert max(experience_layout["cardBottoms"]) <= (
+            experience_layout["canvas"]["bottom"] + 1
+        ), "The cropped experience canvas should still contain every card"
+
+    first_experience_image = experience_images.first
+    initial_experience_transform = first_experience_image.evaluate(
+        "(image) => getComputedStyle(image).transform"
+    )
+    first_experience_image.hover()
+    page.wait_for_timeout(240)
+    hovered_experience_transform = first_experience_image.evaluate(
+        "(image) => getComputedStyle(image).transform"
+    )
+    assert initial_experience_transform != hovered_experience_transform
+    assert hovered_experience_transform.startswith("matrix(1.06")
+    expect(page.locator(".factList article strong")).to_have_text(["4+", "6+", "0"])
+    expect(page.locator(".factList article h3")).to_have_text(
+        ["歌词来源", "主流播放器", "广告打扰"]
+    )
+    expect(page.locator(".sourcesNote")).to_have_text(
+        "*受接口限制，网易云音乐暂不支持进度条同步与拖动进度条后的实时歌词同步。"
+    )
     expect(page.locator(".heroSupport .buttonRow .button")).to_have_count(1)
     expect(page.locator(".heroSupport a[href*='apps.microsoft.com']")).to_have_count(1)
     expect(page.locator(".heroSupport a[href*='github.com']")).to_have_count(0)
@@ -243,6 +811,15 @@ def test_navigation_and_orbit(page: Page) -> None:
     assert store_arrow_stroke == "rgb(20, 20, 19)"
 
     page.goto(BASE_URL + "/en", wait_until="networkidle")
+    expect(page.locator(".factList article strong")).to_have_text(["4+", "6+", "0"])
+    expect(page.locator(".factList article h3")).to_have_text(
+        ["lyric sources", "popular players", "ad interruptions"]
+    )
+    expect(page.locator(".sourcesNote")).to_have_text(
+        "*Due to API limitations, NetEase Cloud Music currently does not support "
+        "progress-bar synchronization or real-time lyric synchronization after you "
+        "drag the progress bar."
+    )
     assert page.locator(".desktopNavLinks a").all_text_contents() == [
         "Home",
         "What's new",
@@ -756,6 +1333,20 @@ def main() -> None:
             if name == "mobile":
                 assert page.locator("html").get_attribute("data-snap-scroll") is None, (
                     "Reduced-motion mobile contexts must keep native scrolling"
+                )
+                mobile_experience_image = page.locator(
+                    "#experience .portraitImage"
+                ).first
+                mobile_transform_before_hover = mobile_experience_image.evaluate(
+                    "(image) => getComputedStyle(image).transform"
+                )
+                mobile_experience_image.hover()
+                page.wait_for_timeout(240)
+                mobile_transform_after_hover = mobile_experience_image.evaluate(
+                    "(image) => getComputedStyle(image).transform"
+                )
+                assert mobile_transform_after_hover == mobile_transform_before_hover, (
+                    "Mobile experience images must not gain a hover zoom"
                 )
                 test_selective_text_reveal(page, reduced_motion=True)
             page.goto(BASE_URL + "/", wait_until="networkidle")

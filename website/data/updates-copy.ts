@@ -9,7 +9,6 @@ export type UpdatesCopy = {
   title: string;
   intro: string;
   version: string;
-  status: string;
   summaryLabel: string;
   summary: string[];
   sections: Array<{
@@ -32,11 +31,10 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
     languageName: "EN",
     languageHref: "/en/updates",
     eyebrow: "版本说明",
-    title: "LyricHover v2.0 Beta 1\n一次更完整的重做",
+    title: "LyricHover V2.0\n一次更完整的重做",
     intro:
-      "LyricHover v2.0 支持更多 Windows 播放器与自由组合模块，并进一步优化歌词匹配、展开收起、快捷键、鼠标避让和运行稳定性，让整体体验更完整、更自然。",
-    version: "v2.0.0-beta.1",
-    status: "公开测试版",
+      "LyricHover V2.0 支持更多 Windows 播放器与自由组合模块，并进一步优化歌词匹配、展开收起、快捷键、鼠标避让和运行稳定性，让整体体验更完整、更自然。",
+    version: "V 2.0.36",
     summaryLabel: "本次重点",
     summary: [
       "A / C 两套独立模块布局",
@@ -85,7 +83,7 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
         number: "04",
         title: "时间轴不可靠时仍尽量保持同步",
         body:
-          "不同播放器提供的时间轴质量并不一致。v2.0 Beta 1 把差异收敛在统一策略层，并在必要时使用内部单调时钟继续推进歌词。",
+          "不同播放器提供的时间轴质量并不一致。V2.0 把差异收敛在统一策略层，并在必要时使用内部单调时钟继续推进歌词。",
         items: [
           "可靠时间轴直接跟随播放器位置。",
           "时间轴缺失或短暂冻结时，使用内部计时补偿。",
@@ -122,7 +120,7 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
     downloadsTitle: "LyricHover，现已登陆 Microsoft Store。",
     downloadsBody:
       "在 Microsoft Store 下载并获取后续更新。源代码可在 GitHub 查看。",
-    storeLabel: "打开 Microsoft Store",
+    storeLabel: "Microsoft Store",
     footerNote: "播放器与音乐服务名称及商标归各自权利人所有。"
   },
   en: {
@@ -131,11 +129,10 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
     languageName: "中文",
     languageHref: "/updates",
     eyebrow: "Release notes",
-    title: "What changed in LyricHover v2.0 Beta 1?",
+    title: "LyricHover V2.0\nA more complete rebuild",
     intro:
-      "This release moves LyricHover beyond a fixed single-player companion into a modular top-edge music HUD for multiple Windows players.",
-    version: "v2.0.0-beta.1",
-    status: "Public beta",
+      "LyricHover V2.0 supports more Windows players and freely configurable modules, with further improvements to lyric matching, expand-and-collapse behavior, shortcuts, mouse avoidance, and runtime stability for a more complete, more natural experience.",
+    version: "V 2.0.36",
     summaryLabel: "Release focus",
     summary: [
       "Independent A and C module layouts",
@@ -184,7 +181,7 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
         number: "04",
         title: "Lyrics keep moving when timelines are unreliable",
         body:
-          "Timeline quality varies by player. Beta 1 contains those differences in one policy layer and uses an internal monotonic clock when necessary.",
+          "Timeline quality varies by player. V2.0 contains those differences in one policy layer and uses an internal monotonic clock when necessary.",
         items: [
           "Reliable timelines follow the player position directly.",
           "Missing or briefly frozen timelines use internal time compensation.",
@@ -218,10 +215,10 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
       }
     ],
     downloadsEyebrow: "Get LyricHover",
-    downloadsTitle: "Download only from Microsoft Store.",
+    downloadsTitle: "LyricHover is now on Microsoft Store.",
     downloadsBody:
-      "Microsoft Store is the only software download channel. GitHub is only for viewing v1.0 and the source code.",
-    storeLabel: "Open Microsoft Store",
+      "Download LyricHover from Microsoft Store and get future updates there. Source code is available on GitHub.",
+    storeLabel: "Microsoft Store",
     footerNote:
       "Player and music-service names and trademarks belong to their respective owners."
   }

@@ -40,6 +40,8 @@ const calls = [];
 let reviewerNote = '[[lyric-island-review:v1]]{"reply":"Planned for the next version.","flagged":false,"public":true}';
 let submissionStatus = "accepted";
 let rewardStatus = "not_eligible";
+let hasLike = true;
+let likeCount = 1;
 let auditRows = [];
 let insertedSubmissions = [];
 let featureRow = null;
@@ -61,7 +63,7 @@ function storedSubmission() {
         size: 1
       }
     ],
-    like_count: 1,
+    like_count: likeCount,
     status: submissionStatus,
     reward_status: rewardStatus,
     reviewer_note: reviewerNote,
@@ -80,8 +82,15 @@ function response(data, status = 200) {
 globalThis.fetch = async (input, init = {}) => {
   const url = String(input);
   calls.push({ url, init });
+  if (url.endsWith("/rest/v1/incentive_likes") && init.method === "POST") {
+    hasLike = true;
+    return response([JSON.parse(init.body)], 201);
+  }
   if (url.includes("/rest/v1/incentive_likes?")) {
-    return response([{ submission_id: "11111111-1111-4111-8111-111111111111" }]);
+    return response(hasLike ? [{ submission_id: "11111111-1111-4111-8111-111111111111" }] : []);
+  }
+  if (url.includes("incentive_submissions?select=id,like_count,reviewer_note,status")) {
+    return response([storedSubmission()]);
   }
   if (url.includes("incentive_submissions?select=id,kind,nickname,title,body,created_at,like_count,attachments,reviewer_note,status")) {
     return response([
@@ -92,7 +101,7 @@ globalThis.fetch = async (input, init = {}) => {
         title: "A useful suggestion",
         body: "This is a sufficiently detailed public suggestion.",
         created_at: "2026-07-18T00:00:00.000Z",
-        like_count: 1,
+        like_count: likeCount,
         reviewer_note: reviewerNote,
         status: submissionStatus,
         attachments: [
@@ -138,9 +147,10 @@ globalThis.fetch = async (input, init = {}) => {
   }
   if (url.includes("/rest/v1/incentive_submissions?id=eq.") && init.method === "PATCH") {
     const body = JSON.parse(init.body);
-    reviewerNote = body.reviewer_note;
+    if ("reviewer_note" in body) reviewerNote = body.reviewer_note;
     submissionStatus = body.status ?? submissionStatus;
     rewardStatus = body.reward_status ?? rewardStatus;
+    likeCount = body.like_count ?? likeCount;
     return response([{ ...storedSubmission(), ...body }]);
   }
   if (url.includes("/rest/v1/incentive_submissions?id=eq.") && init.method === "DELETE") {
@@ -225,7 +235,7 @@ try {
   assert.equal(publicData.previews[0].version, "v2.1");
   assert.equal(publicData.previews[0].target_date, null);
   assert.deepEqual(publicData.previews[0].highlights_zh, [
-    "自定义歌词岛形状",
+    "自定义LyricHover形状",
     "自定义字体、颜色",
     "自定义各模块颜色"
   ]);
@@ -238,6 +248,69 @@ try {
     calls.every((call) => !("Authorization" in call.init.headers)),
     "opaque sb_secret_ keys must not be sent as bearer JWTs"
   );
+
+  calls.length = 0;
+  const duplicateLikeResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/likes", {
+      method: "POST",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: "lyric_island_voter=test-voter"
+      },
+      body: JSON.stringify({ submissionId: "11111111-1111-4111-8111-111111111111" })
+    })
+  );
+  assert.equal(duplicateLikeResponse.status, 200);
+  const duplicateLikeData = await duplicateLikeResponse.json();
+  assert.equal(duplicateLikeData.liked, true);
+  assert.equal(duplicateLikeData.like_count, 1);
+  assert.equal(duplicateLikeData.already_liked, true);
+  assert.equal(calls.length, 2, "a repeated device like must only verify the card and existing vote");
+  assert.ok(
+    calls.every((call) => !["POST", "PATCH", "DELETE"].includes(call.init.method)),
+    "a repeated device like must not mutate either the vote or the count"
+  );
+
+  hasLike = false;
+  likeCount = 1;
+  calls.length = 0;
+  const firstLikeResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/likes", {
+      method: "POST",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ submissionId: "11111111-1111-4111-8111-111111111111" })
+    })
+  );
+  assert.equal(firstLikeResponse.status, 200);
+  const firstLikeData = await firstLikeResponse.json();
+  assert.equal(firstLikeData.liked, true);
+  assert.equal(firstLikeData.like_count, 2);
+  assert.equal(firstLikeData.already_liked, false);
+  const voterCookie = firstLikeResponse.headers.get("set-cookie");
+  assert.match(voterCookie, /lyric_island_voter=.*HttpOnly/);
+  assert.equal(calls.length, 4, "a first device like must create one vote and update the aggregate count");
+
+  calls.length = 0;
+  const repeatedLikeResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/likes", {
+      method: "POST",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: voterCookie.split(";")[0]
+      },
+      body: JSON.stringify({ submissionId: "11111111-1111-4111-8111-111111111111" })
+    })
+  );
+  const repeatedLikeData = await repeatedLikeResponse.json();
+  assert.equal(repeatedLikeData.liked, true);
+  assert.equal(repeatedLikeData.like_count, 2);
+  assert.equal(repeatedLikeData.already_liked, true);
+  assert.equal(calls.length, 2, "the same device cannot increment the same card twice");
 
   calls.length = 0;
   const publicFeaturesResponse = await api.fetch(

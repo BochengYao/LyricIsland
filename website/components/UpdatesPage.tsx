@@ -4,6 +4,8 @@ import { ExternalArrow } from "@/components/ExternalArrow";
 import { ManagedFeatureContent } from "@/components/ManagedFeatureContent";
 import { Eyebrow, LogoLockup, PrimaryNavigation } from "@/components/SitePage";
 import { SelectiveTextReveal } from "@/components/SelectiveTextReveal";
+import { SmoothSectionScroll } from "@/components/SmoothSectionScroll";
+import { VersionPreviewSection } from "@/components/VersionPreviewSection";
 import {
   copyByLocale,
   microsoftStoreUrl,
@@ -15,6 +17,8 @@ type Props = {
   locale: Locale;
 };
 
+const githubUrl = "https://github.com/BochengYao/LyricHover";
+
 export function UpdatesPage({ locale }: Props) {
   const siteCopy = copyByLocale[locale];
   const copy = updatesByLocale[locale];
@@ -23,33 +27,32 @@ export function UpdatesPage({ locale }: Props) {
   return (
     <>
       <DatabasePreload href="/api/features" />
+      <DatabasePreload href="/api/incentives/public" />
       <a className="skipLink" href="#updates-main">
         {locale === "zh" ? "跳到更新内容" : "Skip to updates"}
       </a>
+      <SmoothSectionScroll />
       <SelectiveTextReveal />
       <PrimaryNavigation locale={locale} homeHref={home} languageHref={copy.languageHref} />
 
       <main id="updates-main" className="updatesMain">
-        <section className="updatesHero sectionContainer">
-          <Eyebrow reveal>{copy.eyebrow}</Eyebrow>
-          <h1 data-text-reveal="title" style={{ whiteSpace: "pre-wrap" }}>
-            {copy.title.split("\n").map((line, idx, arr) => (
-              <span key={idx}>
-                {line}
-                {idx < arr.length - 1 && <br />}
-              </span>
-            ))}
-          </h1>
-          <p className="updatesLead">{copy.intro}</p>
-          <div className="releaseMeta">
-            <span>{copy.version}</span>
-            <span>{copy.status}</span>
-          </div>
-        </section>
+        <ManagedFeatureContent
+          locale={locale}
+          heroEyebrow={copy.eyebrow}
+          heroTitle={copy.title}
+          heroIntro={copy.intro}
+          releaseLabel={copy.version}
+        />
 
-        <ManagedFeatureContent locale={locale} />
+        <VersionPreviewSection locale={locale} />
+      </main>
 
-        <section className="updatesDownloads sectionContainer">
+      <section
+        className="updatesClosingSnap"
+        id="updates-download"
+        data-snap-section
+      >
+        <div className="updatesDownloads sectionContainer">
           <Eyebrow reveal>{copy.downloadsEyebrow}</Eyebrow>
           <h2 data-text-reveal="title">{copy.downloadsTitle}</h2>
           <p>{copy.downloadsBody}</p>
@@ -63,20 +66,29 @@ export function UpdatesPage({ locale }: Props) {
               {copy.storeLabel}
               <ExternalArrow />
             </a>
-          </div>
-        </section>
-      </main>
-
-      <footer className="updatesFooter">
-        <div className="sectionContainer">
-          <LogoLockup />
-          <p>{copy.footerNote}</p>
-          <div>
-            <Link href={home}>{copy.backLabel}</Link>
-            <span>© 2026 LyricHover</span>
+            <a
+              className="button buttonSecondary"
+              href={githubUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              GitHub
+              <ExternalArrow />
+            </a>
           </div>
         </div>
-      </footer>
+
+        <footer className="updatesFooter">
+          <div className="sectionContainer">
+            <LogoLockup />
+            <p>{copy.footerNote}</p>
+            <div>
+              <Link href={home}>{copy.backLabel}</Link>
+              <span>© 2026 LyricHover</span>
+            </div>
+          </div>
+        </footer>
+      </section>
     </>
   );
 }

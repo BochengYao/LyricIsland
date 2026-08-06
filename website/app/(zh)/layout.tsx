@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     template: "%s | LyricHover"
   },
   description:
-    "在屏幕顶部遇见音乐。LyricHover支持鼠标避让、模块化布局、自动折叠、歌词翻译与多播放器连接。",
+    "LyricHover是一款面向 Windows 的顶部桌面歌词伴侣，支持多播放器、同步歌词、模块化布局和鼠标避让。",
   applicationName: "LyricHover",
   keywords: [
     "LyricHover",
@@ -28,12 +28,12 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     title: "LyricHover | LyricHover",
-    description: "这一句，值得被看见。在屏幕顶部，遇见音乐。",
+    description: "让桌面歌词安静停在屏幕顶部。",
     images: [
       {
-        url: "/images/campaign/hero.png",
-        width: 1998,
-        height: 1125,
+        url: "/images/product-hero.png",
+        width: 1600,
+        height: 900,
         alt: "LyricHover停靠在 Windows 桌面顶部"
       }
     ]
@@ -41,8 +41,8 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "LyricHover | LyricHover",
-    description: "这一句，值得被看见。在屏幕顶部，遇见音乐。",
-    images: ["/images/campaign/hero.png"]
+    description: "让桌面歌词安静停在屏幕顶部。",
+    images: ["/images/product-hero.png"]
   }
 };
 
@@ -58,7 +58,7 @@ export default function ChineseRootLayout({
         <meta name="baidu-site-verification" content="codeva-x0GnwjHSeW" />
         <link
           rel="preload"
-          href="/fonts/xiaolai-nav.woff2"
+          href="/fonts/xiaolai-nav-v2.woff2"
           as="font"
           type="font/woff2"
           crossOrigin="anonymous"

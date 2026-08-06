@@ -11,15 +11,11 @@ export type SiteCopy = {
     external?: boolean;
     kind?: "feature" | "store";
   }>;
-  eyebrow: string;
   heroTitle: string;
   heroBody: string;
   storeLabel: string;
   exploreLabel: string;
   heroImageAlt: string;
-  heroBadge: string;
-  heroIslandTitle: string;
-  heroIslandSub: string;
   experience: {
     eyebrow: string;
     title: string;
@@ -61,6 +57,7 @@ export type SiteCopy = {
     title: string;
     body: string;
     names: string[];
+    imageAlt: string;
   };
   compatibility: {
     title: string;
@@ -68,11 +65,12 @@ export type SiteCopy = {
     note: string;
     players: string[];
   };
-  sources: {
-    eyebrow: string;
-    title: string;
-    body: string;
-    facts: Array<{ value: string; label: string; detail: string }>;
+    sources: {
+      eyebrow: string;
+      title: string;
+      body: string;
+      facts: Array<{ value: string; label: string; detail: string }>;
+      note: string;
   };
   faq: {
     eyebrow: string;
@@ -84,7 +82,7 @@ export type SiteCopy = {
     title: string;
     body: string;
     button: string;
-    communityButton: string;
+    storeButton: string;
   };
   footer: {
     title: string;
@@ -100,7 +98,7 @@ export type SiteCopy = {
 const sharedPlayers = [
   "Apple Music",
   "QQ Music",
-  "NetEase Cloud Music",
+  "NetEase Cloud Music*",
   "Kugou Music",
   "Spotify",
   "Kuwo Music",
@@ -118,8 +116,8 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
     menuLabel: "打开导航",
     nav: [
       { label: "主页", href: "#main" },
-      { label: "新功能", href: "/updates", kind: "feature" },
-      { label: "用户激励计划", href: "/incentives" },
+      { label: "新功能", href: "/updates" },
+      { label: "用户激励计划", href: "/incentives", kind: "feature" },
       {
         label: "Microsoft Store",
         href: microsoftStoreUrl,
@@ -127,61 +125,57 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
         kind: "store"
       }
     ],
-    eyebrow: "Windows 桌面歌词伴侣",
-    heroTitle: "歌词，停在工作上方。",
+    heroTitle: "这一句，\n值得被看见。",
     heroBody:
-      "播放时从屏幕顶端轻轻滑入，空闲时完整收起。LyricHover把同步歌词留在视线边缘，让音乐陪伴工作，却不打断工作。",
-    storeLabel: "Microsoft Store 稳定版",
+      "音乐响起，歌词从屏幕顶端自然浮现；播放结束，便完整收起。始终停在视线边缘，不打断眼前的工作。",
+    storeLabel: "去 Microsoft Store 下载",
     exploreLabel: "看看它如何工作",
     heroImageAlt: "LyricHover显示在 Windows 桌面顶部",
-    heroBadge: "v2.0 Beta 1",
-    heroIslandTitle: "City lights above the screen",
-    heroIslandSub: "城市光停在屏幕边缘",
     experience: {
-      eyebrow: "出现得刚刚好",
-      title: "像一座岛，知道什么时候靠岸。",
+      eyebrow: "",
+      title: "像一座岛, 随音乐浮现,\n 也随安静隐去。",
       body:
-        "LyricHover不占据任务栏，也不制造新的窗口负担。它跟随播放状态行动，并在鼠标靠近时主动让出屏幕内容。",
-      watermark: "QUIETLY ABOVE",
+        "不占任务栏，也不带来多余窗口。音乐响起，它自然浮现；播放暂停，它悄然收起。鼠标靠近时，又会轻轻淡开，把屏幕还给眼前的内容。",
+      watermark: "LYRIC HOVER",
       items: [
         {
           tag: "播放",
-          title: "开始播放，歌词自然滑入",
-          body: "读取 Windows 当前媒体会话，让歌词从顶部边缘进入视线。",
-          image: "/images/product-hero.png",
-          imageAlt: "LyricHover在播放时显示于屏幕顶部",
-          imagePosition: "72% 8%"
+          title: "一开场，就在场",
+          body: "音乐响起，歌词随即从屏幕顶部自然浮现。",
+          image: "/images/experience-playback.jpg",
+          imageAlt: "音乐播放时浮现在屏幕顶部的LyricHover",
+          imagePosition: "50% 50%"
         },
         {
           tag: "空闲",
-          title: "暂停之后，完整收回屏幕外",
-          body: "没有正在播放的内容时，桌面恢复安静，不留下悬浮占位。",
-          image: "/images/product-focus.png",
-          imageAlt: "工作界面中的顶部LyricHover",
-          imagePosition: "50% 5%"
+          title: "不播放，不打扰",
+          body: "没有内容正在播放时，歌词自动收回屏幕之外，让桌面恢复原本的安静。",
+          image: "/images/experience-idle.png",
+          imageAlt: "没有播放内容时收回屏幕外的LyricHover",
+          imagePosition: "50% 50%"
         },
         {
           tag: "避让",
-          title: "鼠标靠近，只让附近变轻",
-          body: "按光晕范围降低局部背景和文字不透明度，下面的内容仍然可读、可点。",
-          image: "/images/product-modules.png",
-          imageAlt: "LyricHover与 Windows 桌面共存",
-          imagePosition: "12% 52%"
+          title: "鼠标靠近，内容仍是主角",
+          body: "鼠标经过的地方，歌词会自然变淡，让下方内容保持可读、可操作。",
+          image: "/images/experience-pointer.png",
+          imageAlt: "鼠标靠近时淡化避让的LyricHover",
+          imagePosition: "50% 50%"
         }
       ]
     },
     demo: {
-      eyebrow: "亲手感受",
-      title: "让LyricHover跟着你的状态变化。",
+      eyebrow: "亲手体验",
+      title: "动一动鼠标，\n看这座岛如何回应。",
       body:
-        "切换播放、空闲、鼠标靠近和布局模式。这里的示例完全在浏览器中运行，不会连接你的播放器。",
+        "切换不同状态与布局，体验LyricHover的浮现、收起与主动避让。所有操作均为浏览器演示，不会连接你的播放器。",
       playbackLabel: "播放状态",
       layoutLabel: "布局模式",
       playing: "播放",
       idle: "空闲",
       near: "鼠标靠近",
-      layoutA: "A 横向积木",
-      layoutC: "C 双态展开",
+      layoutA: "水平积木",
+      layoutC: "自动折叠",
       nowPlaying: "正在播放",
       track: "Quiet Orbit",
       artist: "LyricHover",
@@ -191,69 +185,71 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       statusIdle: "LyricHover已收起",
       statusNear: "鼠标避让已开启",
       statusA: "当前为 A 横向积木布局",
-      statusC: "当前为 C 双态展开布局"
+      statusC: "当前为 C 自动折叠布局"
     },
     modules: {
       eyebrow: "由你组合",
-      title: "不只是歌词\n而是你的音乐 HUD",
+      title: "想怎么展开，\n就怎么呈现。",
       body:
-        "v2 把LyricHover拆成可组合模块。新增水平积木与自动折叠两种布局，适配你的各种需求。",
-      names: ["专辑封面", "同步歌词", "播放控制", "歌曲信息", "播放进度", "分割线"]
+        "水平排列，简洁舒展；自动折叠，节省空间。LyricHover会随你的布局自然变化。",
+      names: ["专辑封面", "同步歌词", "播放控制", "歌曲信息", "播放进度", "分割线"],
+      imageAlt: "LyricHover在三种桌面场景中的布局效果"
     },
     compatibility: {
-      title: "一个LyricHover，适配多种播放器",
+      title: "换个播放器，\n歌词照常在场。",
       body:
-        "通过 Windows SMTC 读取当前媒体会话。可以跟随最近活跃的播放器，也允许在设置里锁定指定播放器。",
-      note: "*网易云音乐由于接口限制无法实时同步歌曲进度（播放器内拖动进度条无法同步）。",
-      players: ["Apple Music", "QQ 音乐", "网易云音乐", "酷狗音乐", "Spotify", "酷我音乐", "通用 SMTC"]
+        "LyricHover会自动识别当前正在使用的播放器，并随播放状态切换。你也可以在设置中锁定常用播放器，让每次播放都保持一致。",
+      note: "*受接口限制，网易云音乐暂不支持进度条同步与拖动进度条后的实时歌词同步。",
+      players: ["Apple Music", "QQ 音乐", "网易云音乐*", "酷狗音乐", "Spotify", "酷我音乐", "通用 SMTC"]
     },
     sources: {
       eyebrow: "歌词来自哪里",
-      title: "多来源匹配，歌词与翻译保持原样。",
+      title: "多个来源，\n一次匹配。",
       body:
-        "支持 LRCLIB、QQ 音乐、酷狗和网易云等来源。优先使用歌词库已有的同步歌词和中文翻译，不自行生成机器翻译。",
-      facts: [
-        { value: "4+", label: "歌词来源", detail: "首选源不匹配时自动尝试其他来源" },
-        { value: "LRU", label: "本地缓存", detail: "按歌曲维度维护缓存容量" },
-        { value: "1", label: "运行实例", detail: "重复启动会回到现有实例" }
-      ]
+        "支持 LRCLIB、腾讯音乐和网易云音乐等歌词来源，自动为正在播放的歌曲寻找同步歌词与翻译。",
+        facts: [
+          { value: "4+", label: "歌词来源", detail: "多个来源自动匹配，减少歌词缺失。" },
+          { value: "6+", label: "主流播放器", detail: "兼容 Apple Music、QQ 音乐、网易云音乐*等。" },
+          { value: "0", label: "广告打扰", detail: "无广告，使用更纯粹" }
+        ],
+        note: "*受接口限制，网易云音乐暂不支持进度条同步与拖动进度条后的实时歌词同步。"
     },
     faq: {
       eyebrow: "常见问题",
-      title: "开始之前，你可能想知道。",
+      title: "开始之前\n你可能想知道",
       items: [
         {
-          question: "LyricHover支持哪些播放器？",
+          question: "LyricHover支持哪些音乐播放器？",
           answer:
-            "v2.0 Beta 1 通过 Windows SMTC 支持 Apple Music、QQ 音乐、网易云音乐、酷狗、Spotify、酷我以及通用兼容播放器。"
+            "LyricHover支持 Apple Music、网易云音乐、QQ 音乐、酷狗音乐、酷我音乐等常见播放器。只要播放器接入了 Windows SMTC 媒体控制协议，LyricHover通常都能自动识别正在播放的歌曲。\n需要注意的是，网易云音乐对 Windows SMTC 的支持并不完整。在播放器中手动拖动播放进度时，歌词进度可能无法立即同步。"
         },
         {
-          question: "歌词和翻译会上传到云端吗？",
+          question: "LyricHover免费吗？需要登录或订阅吗？",
           answer:
-            "应用会从已支持的歌词服务检索内容，并在本机按歌曲维度缓存。LyricHover本身不提供账号或云端布局同步。"
+            "LyricHover的主体功能永久免费，无需登录LyricHover账号，也不要求订阅。\n你可以自愿加入 Pro 支持计划，支持软件继续开发，并抢先体验部分新功能。参与用户激励计划、提交有效问题或 Bug，也有机会获得 Pro 支持计划礼品码。\n Pro 权益与下载LyricHover时使用的 Microsoft Store 账户绑定。"
         },
         {
-          question: "它会自己翻译歌词吗？",
+          question: "安装后如何开始使用？需要手动连接播放器吗？",
           answer:
-            "不会。LyricHover只显示歌词来源已经提供的同步歌词和翻译，不自行生成机器翻译。"
+            "不需要手动连接。\n首次打开LyricHover时，教学模式会引导你完成基本设置。之后只需打开LyricHover并播放音乐，它便会自动识别当前播放器并开始匹配歌词。"
         },
         {
-          question: "如何打开设置？",
+          question: "播放音乐后没有显示歌词，或歌词匹配错误怎么办？",
           answer:
-            "右键单击LyricHover即可打开偏好设置，调整显示、屏幕位置、播放器锁定、模块布局和鼠标避让效果。"
+            "LyricHover会从多个歌词来源中自动查找并匹配歌词，以尽可能减少歌词缺失或匹配错误的情况。后续版本也会继续接入更多歌词来源，进一步提升匹配范围和准确性。"
         }
       ]
     },
     closing: {
-      eyebrow: "v2.0 Beta 1",
-      title: "让音乐在边缘陪伴，而不是占据注意力。",
-      body: "在 GitHub 查看 v1.0 与源码；软件下载请前往 Microsoft Store。",
-      button: "查看 v1.0 与源码",
-      communityButton: "参加用户激励计划"
+      eyebrow: "LyricHover V2.0",
+      title: "每一句,  都刚好在场｡",
+      body: "在 GitHub 查看 v1.0 与源码；软件下载请前往 Microsoft Store｡",
+      button: "GitHub",
+      storeButton: "Microsoft Store"
     },
     footer: {
-      title: "歌词一直在，桌面依然属于你。",
-      product: "产品",
+      title: "音乐响起\n歌词自然浮现",
+      product: "回看",
       productLinks: [
         { label: "核心体验", href: "#experience" },
         { label: "模块化布局", href: "#modules" },
@@ -262,10 +258,10 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       resources: "资源",
       resourceLinks: [
         { label: "Microsoft Store", href: microsoftStoreUrl },
-        { label: "GitHub：v1.0 与源码", href: "https://github.com/BochengYao/LyricIsland" },
+        { label: "GitHub：v1.0 与源码", href: "https://github.com/BochengYao/LyricHover" },
         { label: "更新内容", href: "/updates" },
         { label: "用户激励计划", href: "/incentives" },
-        { label: "English", href: "/en" }
+        //{ label: "English", href: "/en" }
       ],
       note: "播放器与音乐服务名称及商标归各自权利人所有。",
       copyright: "© 2026 LyricHover"
@@ -278,8 +274,8 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
     menuLabel: "Open navigation",
     nav: [
       { label: "Home", href: "#main" },
-      { label: "What's new", href: "/en/updates", kind: "feature" },
-      { label: "Community rewards", href: "/en/incentives" },
+      { label: "What's new", href: "/en/updates" },
+      { label: "Community rewards", href: "/en/incentives", kind: "feature" },
       {
         label: "Microsoft Store",
         href: microsoftStoreUrl,
@@ -287,61 +283,57 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
         kind: "store"
       }
     ],
-    eyebrow: "Windows desktop lyrics companion",
-    heroTitle: "Lyrics, quietly above your work.",
+    heroTitle: "This line\ndeserves to be seen.",
     heroBody:
-      "It glides in from the top edge when music plays and fully retreats when the room goes quiet. LyricHover keeps synced lyrics within sight, without pulling focus away from your work.",
-    storeLabel: "Microsoft Store stable",
+      "When music starts, lyrics naturally surface from the top of your screen. When playback ends, they fully retreat—always at the edge of your vision, never in the way of your work.",
+    storeLabel: "Get it from Microsoft Store",
     exploreLabel: "See how it works",
     heroImageAlt: "LyricHover shown at the top of a Windows desktop",
-    heroBadge: "v2.0 Beta 1",
-    heroIslandTitle: "City lights above the screen",
-    heroIslandSub: "城市光停在屏幕边缘",
     experience: {
-      eyebrow: "There when it matters",
-      title: "An island that knows when to surface.",
+      eyebrow: "",
+      title: "With music, it appears.\nWith silence, it disappears.",
       body:
-        "LyricHover does not claim the taskbar or add another window to manage. It follows playback and softly yields nearby content when your pointer approaches.",
-      watermark: "QUIETLY ABOVE",
+        "No taskbar space. No extra window. It surfaces when music starts, retreats when playback pauses, and gently fades as your pointer approaches—giving the screen back to what matters.",
+      watermark: "LYRIC HOVER",
       items: [
         {
           tag: "Playback",
-          title: "Music starts. Lyrics glide into view.",
-          body: "It reads the current Windows media session and enters from the top edge.",
-          image: "/images/product-hero.png",
-          imageAlt: "LyricHover visible while music is playing",
-          imagePosition: "72% 8%"
+          title: "Music plays. Lyrics stay.",
+          body: "As the music begins, lyrics naturally surface from the top of the screen.",
+          image: "/images/experience-playback.jpg",
+          imageAlt: "LyricHover visible at the top while music is playing",
+          imagePosition: "50% 50%"
         },
         {
           tag: "Idle",
-          title: "Playback stops. The island leaves no trace.",
-          body: "With nothing playing, the desktop returns to its quiet, uninterrupted state.",
-          image: "/images/product-focus.png",
-          imageAlt: "LyricHover above a focused workspace",
-          imagePosition: "50% 5%"
+          title: "No sound. Not around.",
+          body: "When nothing is playing, the lyrics retreat beyond the screen and your desktop returns to quiet.",
+          image: "/images/experience-idle.png",
+          imageAlt: "LyricHover retracted while nothing is playing",
+          imagePosition: "50% 50%"
         },
         {
           tag: "Awareness",
-          title: "Move closer. Only the nearby area softens.",
-          body: "Local background and text opacity fall around the pointer, keeping content underneath readable and clickable.",
-          image: "/images/product-modules.png",
-          imageAlt: "LyricHover coexisting with a Windows desktop",
-          imagePosition: "12% 52%"
+          title: "Move near. Work stays clear.",
+          body: "Wherever your pointer passes, the lyrics gently fade so the content beneath stays readable and clickable.",
+          image: "/images/experience-pointer.png",
+          imageAlt: "LyricHover fading as the pointer approaches",
+          imagePosition: "50% 50%"
         }
       ]
     },
     demo: {
-      eyebrow: "Try the behavior",
-      title: "Let the island respond to your state.",
+      eyebrow: "Try it yourself",
+      title: "Move. Switch. Play.\nWatch the island sway.",
       body:
-        "Switch playback, idle, pointer proximity, and layout modes. This browser-only demo never connects to your player.",
+        "Switch between states and layouts to experience how LyricHover surfaces, retreats, and moves out of your way. Everything here runs as a browser demo and never connects to your player.",
       playbackLabel: "Playback state",
       layoutLabel: "Layout mode",
       playing: "Playing",
       idle: "Idle",
       near: "Pointer nearby",
-      layoutA: "A horizontal blocks",
-      layoutC: "C dual-state",
+      layoutA: "Horizontal blocks",
+      layoutC: "Auto-collapse",
       nowPlaying: "Now playing",
       track: "Quiet Orbit",
       artist: "LyricHover",
@@ -351,70 +343,73 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       statusIdle: "The island has retracted",
       statusNear: "Mouse-aware transparency is on",
       statusA: "Layout A horizontal blocks is active",
-      statusC: "Layout C dual-state is active"
+      statusC: "Layout C auto-collapse is active"
     },
     modules: {
       eyebrow: "Compose your own",
-      title: "More than lyrics\nYour music HUD, built around you",
+      title: "How it unfolds\nis yours to mold.",
       body:
-        "v2 turns LyricHover into reusable modules. New horizontal blocks and auto-collapse layouts adapt to whatever you need.",
-      names: ["Album art", "Synced lyrics", "Playback controls", "Track info", "Progress", "Divider"]
+        "Horizontal when you want room to breathe. Auto-collapsed when space matters. LyricHover naturally adapts to the layout you choose.",
+      names: ["Album art", "Synced lyrics", "Playback controls", "Track info", "Progress", "Divider"],
+      imageAlt: "LyricHover layouts shown across three desktop scenes"
     },
     compatibility: {
-      title: "One island, made for many players",
+      title: "Players may change.\nLyrics stay the same.",
       body:
-        "LyricHover reads the current media session through Windows SMTC. It can follow the most recently active player and also lets you lock a specific player in Settings.",
+        "LyricHover automatically recognizes the player in use and follows its playback state. You can also lock in a favorite player from Settings for a consistent experience every time.",
       note:
-        "*NetEase Cloud Music cannot synchronize song progress in real time due to API limitations (seeking in the player will not synchronize).",
+        "*Due to interface limitations, NetEase Cloud Music does not currently support progress-bar sync or real-time lyric resync after seeking.",
       players: sharedPlayers
     },
     sources: {
       eyebrow: "Where lyrics come from",
-      title: "Multiple providers, with lyrics and translations left intact.",
+      title: "Many sources.\nOne perfect match.",
       body:
-        "Supports LRCLIB, QQ Music, Kugou Music, NetEase, and fallback matching. It prefers source-provided synced lyrics and translations and does not generate machine translations.",
-      facts: [
-        { value: "4+", label: "lyric providers", detail: "Fallback matching when a preferred source does not fit" },
-        { value: "LRU", label: "local cache", detail: "A configurable song-level cache" },
-        { value: "1", label: "running instance", detail: "Repeat launches return to the existing app" }
-      ]
+        "LyricHover searches providers including LRCLIB, Tencent Music, and NetEase Cloud Music to find synced lyrics and available translations for the song playing now.",
+        facts: [
+          { value: "4+", label: "lyric sources", detail: "Multiple sources match automatically, so fewer songs go without lyrics." },
+          { value: "6+", label: "popular players", detail: "Works with Apple Music, QQ Music, NetEase Cloud Music*, and more." },
+          { value: "0", label: "ad interruptions", detail: "No ads. Nothing between you and the lyrics." }
+        ],
+        note:
+          "*Due to API limitations, NetEase Cloud Music currently does not support progress-bar synchronization or real-time lyric synchronization after you drag the progress bar."
     },
     faq: {
       eyebrow: "Frequently asked",
-      title: "A few things to know before you begin.",
+      title: "Before you begin,\nhere's what you may want to know.",
       items: [
         {
-          question: "Which players does LyricHover support?",
+          question: "Which music players does LyricHover support?",
           answer:
-            "v2.0 Beta 1 uses Windows SMTC with Apple Music, QQ Music, NetEase, Kugou Music, Spotify, Kuwo Music, and generic compatible players."
+            "LyricHover supports popular players including Apple Music, NetEase Cloud Music, QQ Music, Kugou Music, and Kuwo Music. If a player connects to the Windows SMTC media-control protocol, LyricHover can usually recognize the song automatically.\nPlease note that NetEase Cloud Music has incomplete Windows SMTC support. If you seek manually within the player, lyric progress may not update immediately."
         },
         {
-          question: "Are lyrics and translations uploaded to the cloud?",
+          question: "Is LyricHover free? Do I need an account or subscription?",
           answer:
-            "The app retrieves content from supported lyric services and keeps a song-level cache on your device. LyricHover does not provide accounts or cloud layout sync."
+            "LyricHover's core features are free forever. No LyricHover account or subscription is required.\nYou can optionally join the Pro Support Plan to help fund continued development and get early access to selected new features. You may also earn a Pro Support Plan gift code by joining the Community Rewards Program and submitting a valid issue or bug report.\nPro benefits are linked to the Microsoft Store account used to download LyricHover."
         },
         {
-          question: "Does it translate lyrics on its own?",
+          question: "How do I get started after installing? Do I need to connect a player?",
           answer:
-            "No. LyricHover displays synced lyrics and translations already provided by a source. It does not generate machine translations."
+            "No manual connection is needed.\nThe first time you open LyricHover, a guided tutorial walks you through the essentials. After that, simply keep LyricHover open and play some music—it will recognize the current player and start matching lyrics automatically."
         },
         {
-          question: "How do I open Settings?",
+          question: "What if lyrics do not appear, or the wrong lyrics are matched?",
           answer:
-            "Right-click the island to adjust display, monitor placement, player lock, module layout, and mouse-aware transparency."
+            "LyricHover searches and matches across multiple lyric sources to reduce missing or incorrect results. Future releases will continue adding sources to improve both coverage and accuracy."
         }
       ]
     },
     closing: {
-      eyebrow: "v2.0 Beta 1",
-      title: "Let music stay at the edge, not at the center of your attention.",
+      eyebrow: "LyricHover V2.0",
+      title: "Every line.\nRight on time.",
       body: "View v1.0 and the source code on GitHub. Download the app from Microsoft Store.",
-      button: "View v1.0 & source",
-      communityButton: "Join community rewards"
+      button: "GitHub",
+      storeButton: "Microsoft Store"
     },
     footer: {
-      title: "The lyrics stay. Your desktop remains yours.",
-      product: "Product",
+      title: "Music plays.\nLyrics stay.",
+      product: "Look back",
       productLinks: [
         { label: "Experience", href: "#experience" },
         { label: "Modular layouts", href: "#modules" },
@@ -423,10 +418,10 @@ export const copyByLocale: Record<Locale, SiteCopy> = {
       resources: "Resources",
       resourceLinks: [
         { label: "Microsoft Store", href: microsoftStoreUrl },
-        { label: "GitHub: v1.0 & source", href: "https://github.com/BochengYao/LyricIsland" },
+        { label: "GitHub: v1.0 & source", href: "https://github.com/BochengYao/LyricHover" },
         { label: "Updates", href: "/en/updates" },
         { label: "Community rewards", href: "/en/incentives" },
-        { label: "中文", href: "/" }
+        // { label: "中文", href: "/" }
       ],
       note: "Player and music-service names and trademarks belong to their respective owners.",
       copyright: "© 2026 LyricHover"
