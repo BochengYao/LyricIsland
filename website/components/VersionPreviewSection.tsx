@@ -14,6 +14,17 @@ function splitPreviewItems(value: string): string[] {
     .filter(Boolean);
 }
 
+function comparePreviewVersions(left: ReleasePreview, right: ReleasePreview) {
+  const leftParts = left.version.match(/\d+/g)?.map(Number) ?? [];
+  const rightParts = right.version.match(/\d+/g)?.map(Number) ?? [];
+  const length = Math.max(leftParts.length, rightParts.length);
+  for (let index = 0; index < length; index += 1) {
+    const difference = (leftParts[index] ?? 0) - (rightParts[index] ?? 0);
+    if (difference) return difference;
+  }
+  return left.version.localeCompare(right.version, undefined, { numeric: true, sensitivity: "base" });
+}
+
 type PublicIncentivesResponse = { previews?: ReleasePreview[] };
 
 const publicIncentivesPreload = preloadClientJson<PublicIncentivesResponse>("/api/incentives/public");
@@ -55,7 +66,7 @@ export function VersionPreviewSection({ locale }: { locale: Locale }) {
         <p>{copy.body}</p>
       </div>
       <div className={`previewList${loading ? "" : " databaseContentReveal"}`} aria-live="polite">
-        {previews.length ? previews.map((preview) => {
+        {previews.length ? [...previews].sort(comparePreviewVersions).map((preview) => {
           const title = locale === "zh" ? preview.title_zh : preview.title_en || preview.title_zh;
           const body = locale === "zh" ? preview.body_zh : preview.body_en || preview.body_zh;
           const highlights = locale === "zh"
@@ -67,7 +78,8 @@ export function VersionPreviewSection({ locale }: { locale: Locale }) {
           return (
             <article className="previewCard" key={preview.id}>
               <div className="previewCardMeta">
-                <small>{preview.version} · {copy.target} {preview.target_date ?? (locale === "zh" ? "待定" : "TBD")}</small>
+                <strong>{preview.version}</strong>
+                <small>{copy.target} {preview.target_date ?? (locale === "zh" ? "待定" : "TBD")}</small>
               </div>
               <div className="previewCardContent">
                 {title !== preview.version && <h3>{title}</h3>}

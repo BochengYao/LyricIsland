@@ -3548,6 +3548,17 @@ html[lang="en"] :where(
   border-bottom: 1px solid var(--line);
 }
 
+.previewCardMeta {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+}
+
+.previewCardMeta strong {
+  font-size: 22px;
+  line-height: 1.1;
+}
+
 .previewCard small {
   color: var(--muted);
   font-size: 12px;
