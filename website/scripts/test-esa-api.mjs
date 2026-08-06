@@ -15,6 +15,9 @@ const values = {
   "__ESA_SUPABASE_STORAGE_BUCKET__": "lyric-island-submissions",
   "__ESA_ADMIN_PASSWORD__": "correct horse battery staple",
   "__ESA_ADMIN_SESSION_SECRET__": "test-session-secret-with-at-least-32-characters",
+  "__ESA_DEEPSEEK_API_KEY__": "deepseek-test-key",
+  "__ESA_DEEPSEEK_BASE_URL__": "https://api.deepseek.com",
+  "__ESA_DEEPSEEK_MODEL__": "deepseek-v4-flash",
   "__ESA_FEATURE_CONTENT_JSON__": await readFile(
     resolve(root, "data", "feature-content-default.json"),
     "utf8"
@@ -82,6 +85,18 @@ function response(data, status = 200) {
 globalThis.fetch = async (input, init = {}) => {
   const url = String(input);
   calls.push({ url, init });
+  if (url === "https://api.deepseek.com/chat/completions") {
+    assert.equal(init.headers.Authorization, "Bearer deepseek-test-key");
+    const requestBody = JSON.parse(init.body);
+    assert.equal(requestBody.model, "deepseek-v4-flash");
+    assert.equal(requestBody.response_format.type, "json_object");
+    const translationInput = JSON.parse(requestBody.messages.at(-1).content);
+    const translations = Object.fromEntries(translationInput.target_locales.map((locale) => [
+      locale,
+      Object.fromEntries(translationInput.entries.map((entry) => [entry.key, `${locale}:${entry.text}`]))
+    ]));
+    return response({ choices: [{ message: { content: JSON.stringify({ translations }) } }] });
+  }
   if (url.endsWith("/rest/v1/incentive_likes") && init.method === "POST") {
     hasLike = true;
     return response([JSON.parse(init.body)], 201);
@@ -336,6 +351,27 @@ try {
   assert.equal(loginResponse.status, 200);
   const adminCookie = loginResponse.headers.get("set-cookie");
   assert.match(adminCookie, /HttpOnly; Secure; SameSite=Strict/);
+
+  calls.length = 0;
+  const translationResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/translate", {
+      method: "POST",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({
+        targetLocales: ["en", "ja"],
+        entries: [{ key: "preview.body", text: "支持自定义歌词岛形状" }]
+      })
+    })
+  );
+  assert.equal(translationResponse.status, 200);
+  const translationData = await translationResponse.json();
+  assert.equal(translationData.translations.en["preview.body"], "en:支持自定义歌词岛形状");
+  assert.equal(translationData.translations.ja["preview.body"], "ja:支持自定义歌词岛形状");
+  assert.equal(calls.length, 1, "translation must make exactly one server-side DeepSeek request");
 
   const managedFeatures = structuredClone(publicFeaturesData.content);
   managedFeatures.sections[0].title_zh = "后台修改后的标题";

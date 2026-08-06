@@ -341,6 +341,7 @@ export function AdminIncentives() {
   const [previewDateTbd, setPreviewDateTbd] = useState(false);
   const [previewDraft, setPreviewDraft] = useState<PreviewDraft>(emptyPreviewDraft);
   const [previewSaving, setPreviewSaving] = useState(false);
+  const [translationSaving, setTranslationSaving] = useState<"features" | "preview" | null>(null);
 
   async function loadData() {
     const [submissionResponse, featureResponse, previewResponse, logResponse] = await Promise.all([
@@ -640,6 +641,92 @@ export function AdminIncentives() {
     setUnreadAlerts(0);
   }
 
+  async function requestTranslation(entries: Array<{ key: string; text: string }>) {
+    const response = await fetch("/api/incentives/admin/translate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entries, targetLocales: ["en"] })
+    });
+    const result = await response.json().catch(() => ({})) as {
+      error?: string;
+      translations?: Record<string, Record<string, string>>;
+    };
+    if (response.status === 401) {
+      setAuth("login");
+      throw new Error("登录已过期");
+    }
+    if (!response.ok || !result.translations?.en) {
+      throw new Error(result.error ?? `翻译失败（HTTP ${response.status}）`);
+    }
+    return result.translations.en;
+  }
+
+  function nonEmptyLines(lines: string[]) {
+    return lines.map((line) => line.trim()).filter(Boolean);
+  }
+
+  async function translateManagedFeatures() {
+    const entries: Array<{ key: string; text: string }> = [];
+    if (featureContent.summary.label_zh.trim()) entries.push({ key: "summary.label_en", text: featureContent.summary.label_zh });
+    nonEmptyLines(featureContent.summary.items_zh).forEach((text, index) => entries.push({ key: `summary.items_en.${index}`, text }));
+    featureContent.sections.forEach((section) => {
+      const prefix = `section.${section.id}`;
+      if (section.title_zh.trim()) entries.push({ key: `${prefix}.title_en`, text: section.title_zh });
+      if (section.body_zh.trim()) entries.push({ key: `${prefix}.body_en`, text: section.body_zh });
+      nonEmptyLines(section.items_zh).forEach((text, index) => entries.push({ key: `${prefix}.items_en.${index}`, text }));
+    });
+    if (!entries.length) {
+      setFeatureMessage("请先填写需要翻译的中文内容");
+      return;
+    }
+    setTranslationSaving("features");
+    setError("");
+    try {
+      const translations = await requestTranslation(entries);
+      setFeatureContent((content) => ({
+        ...content,
+        summary: {
+          ...content.summary,
+          label_en: translations["summary.label_en"] ?? content.summary.label_en,
+          items_en: nonEmptyLines(content.summary.items_zh).map((_, index) => translations[`summary.items_en.${index}`] ?? content.summary.items_en[index] ?? "")
+        },
+        sections: content.sections.map((section) => {
+          const prefix = `section.${section.id}`;
+          return {
+            ...section,
+            title_en: translations[`${prefix}.title_en`] ?? section.title_en,
+            body_en: translations[`${prefix}.body_en`] ?? section.body_en,
+            items_en: nonEmptyLines(section.items_zh).map((_, index) => translations[`${prefix}.items_en.${index}`] ?? section.items_en[index] ?? "")
+          };
+        })
+      }));
+      setFeatureMessage("英文内容已自动生成，请确认后保存并同步前台");
+    } catch (translationError) {
+      const message = translationError instanceof Error ? translationError.message : "翻译失败";
+      setFeatureMessage(`自动翻译未完成：${message}`);
+      setError(message);
+    } finally {
+      setTranslationSaving(null);
+    }
+  }
+
+  async function translatePreview() {
+    if (!previewDraft.body_zh.trim()) {
+      setError("请先填写中文更新内容");
+      return;
+    }
+    setTranslationSaving("preview");
+    setError("");
+    try {
+      const translations = await requestTranslation([{ key: "body_en", text: previewDraft.body_zh }]);
+      setPreviewDraft((draft) => ({ ...draft, body_en: translations.body_en ?? draft.body_en }));
+    } catch (translationError) {
+      setError(translationError instanceof Error ? translationError.message : "翻译失败");
+    } finally {
+      setTranslationSaving(null);
+    }
+  }
+
   async function savePreview(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -927,6 +1014,7 @@ export function AdminIncentives() {
               <div><p>FEATURE PAGE CONTENT</p><h2>新功能页内容</h2></div>
               <div className="featureAdminActions">
                 <span role="status">{featureMessage || "现有中英文内容已导入，可直接修改"}</span>
+                <button className="button buttonSecondary" type="button" disabled={featureSaving || translationSaving === "features"} onClick={() => void translateManagedFeatures()}>{translationSaving === "features" ? "正在翻译…" : "从中文自动翻译英文"}</button>
                 <button className="button buttonSecondary" type="button" onClick={addFeatureSection}>新增功能条目</button>
                 <button className="button buttonPrimary" type="button" disabled={featureSaving} onClick={() => void saveManagedFeatures()}>{featureSaving ? "保存中…" : "保存并同步前台"}</button>
               </div>
@@ -986,7 +1074,7 @@ export function AdminIncentives() {
             <form className="previewEditor" onSubmit={savePreview}>
               <div className="previewEditorMeta"><label><span>版本号</span><input name="version" placeholder="例如：v2.1 Beta" value={previewDraft.version} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, version: event.target.value }))} required /></label><label><span>预计上线时间</span><input name="target_date" type="date" value={previewDraft.target_date} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, target_date: event.target.value }))} disabled={previewDateTbd} /></label><button className={`previewDateTbdButton ${previewDateTbd ? "isActive" : ""}`} type="button" aria-pressed={previewDateTbd} onClick={() => setPreviewDateTbd((current) => !current)}>上线时间待定</button></div>
               <div className="previewEditorLanguages"><label><span>更新内容（中文）</span><textarea name="body_zh" rows={9} value={previewDraft.body_zh} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, body_zh: event.target.value }))} required /></label><label><span>Update content (English)</span><textarea name="body_en" rows={9} value={previewDraft.body_en} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, body_en: event.target.value }))} required /></label></div>
-              <div className="previewEditorActions"><button className="button buttonSecondary" type="submit" name="intent" value="save" disabled={previewSaving}>{previewDraft.status === "published" ? "保存更改" : "保存草稿"}</button><button className="button buttonPrimary" type="submit" name="intent" value="published" disabled={previewSaving}>{previewSaving ? "正在保存…" : previewDraft.status === "published" ? "保持发布并保存" : "发布预告"}</button></div>
+              <div className="previewEditorActions"><button className="button buttonSecondary" type="button" disabled={previewSaving || translationSaving === "preview"} onClick={() => void translatePreview()}>{translationSaving === "preview" ? "正在翻译…" : "从中文自动翻译英文"}</button><button className="button buttonSecondary" type="submit" name="intent" value="save" disabled={previewSaving}>{previewDraft.status === "published" ? "保存更改" : "保存草稿"}</button><button className="button buttonPrimary" type="submit" name="intent" value="published" disabled={previewSaving}>{previewSaving ? "正在保存…" : previewDraft.status === "published" ? "保持发布并保存" : "发布预告"}</button></div>
             </form>
             <div className="previewAdminList">{previews.map((preview) => <article key={preview.id}><div><span className={preview.status}>{preview.status === "published" ? "已发布" : "草稿"}</span><small>{preview.version} · 预计上线：{preview.target_date ?? "待定"}</small><p>中文：{[preview.body_zh, ...preview.highlights_zh].filter(Boolean).join(" / ")}</p>{preview.body_en && <p>English: {[preview.body_en, ...preview.highlights_en].filter(Boolean).join(" / ")}</p>}</div><div><button className="button buttonSecondary" type="button" onClick={() => editPreview(preview)}>编辑</button><button className="button buttonSecondary" type="button" onClick={() => void togglePreview(preview)}>{preview.status === "published" ? "撤回为草稿" : "发布到前台"}</button></div></article>)}</div>
           </>
