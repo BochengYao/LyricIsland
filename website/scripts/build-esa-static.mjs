@@ -45,6 +45,9 @@ try {
     "__ESA_SUPABASE_STORAGE_BUCKET__": process.env.SUPABASE_STORAGE_BUCKET ?? "lyric-island-submissions",
     "__ESA_ADMIN_PASSWORD__": process.env.ADMIN_PASSWORD ?? "",
     "__ESA_ADMIN_SESSION_SECRET__": process.env.ADMIN_SESSION_SECRET ?? "",
+    "__ESA_DEEPSEEK_API_KEY__": process.env.DEEPSEEK_API_KEY ?? "",
+    "__ESA_DEEPSEEK_BASE_URL__": process.env.DEEPSEEK_BASE_URL ?? "https://api.deepseek.com",
+    "__ESA_DEEPSEEK_MODEL__": process.env.DEEPSEEK_MODEL ?? "deepseek-v4-flash",
     "__ESA_FEATURE_CONTENT_JSON__": await readFile(featureContentDefaultPath, "utf8"),
     "__ESA_RELEASE_PREVIEW_JSON__": await readFile(releasePreviewDefaultPath, "utf8")
   };
