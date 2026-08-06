@@ -14,13 +14,12 @@
   <Properties>
     <DisplayName>LyricHover</DisplayName>
     <PublisherDisplayName>大丞子</PublisherDisplayName>
-    <Description>Windows desktop lyrics companion with multi-player lyrics and media controls.</Description>
+    <Description>简体中文界面的 Windows 桌面歌词伴侣，支持多播放器歌词显示与媒体控制。</Description>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
   <Resources>
     <Resource Language="zh-CN" />
-    <Resource Language="en-US" />
   </Resources>
 
   <Dependencies>
@@ -38,7 +37,7 @@
       uap10:TrustLevel="mediumIL">
       <uap:VisualElements
         DisplayName="LyricHover"
-        Description="Windows desktop lyrics companion"
+        Description="简体中文桌面歌词伴侣"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">
