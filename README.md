@@ -12,7 +12,9 @@ LyricHover | LyricHover 是一款为 Windows 10/11 打造的顶部动态歌词�
 
 **[前往 Microsoft Store 下载发布版本 →](https://apps.microsoft.com/detail/9NRXZP5HMXK2)**
 
-## 一眼了解LyricHover
+> **下载说明：** [GitHub Releases](https://github.com/BochengYao/LyricIsland/releases/tag/v1.0.0) 中提供的安装包仅为早期 Demo，不代表当前正式版本。当前正式版本请前往 [Microsoft Store](https://apps.microsoft.com/detail/9NRXZP5HMXK2) 下载。
+
+## 一眼了解 LyricHover
 
 - **始终在场，不打断工作。** 歌词贴合屏幕顶边出现，需要时展开，不播放时自然收起。
 - **换个播放器，歌词照常在场。** 自动识别当前音乐播放器，也可以优先选择你常用的播放器。
@@ -188,7 +190,7 @@ LyricHover主体功能始终免费。Pro 是自愿加入的支持计划，用于
 
 ### 从 Microsoft Store 安装
 
-前往 [Microsoft Store](https://apps.microsoft.com/detail/9NRXZP5HMXK2) 获取 LyricHover。安装后，从开始菜单打开LyricHover，并在任一受支持播放器中开始播放音乐。
+新版本统一通过 [Microsoft Store](https://apps.microsoft.com/detail/9NRXZP5HMXK2) 发布。安装后，从开始菜单打开 LyricHover，并在任一受支持播放器中开始播放音乐。GitHub Releases 中保留的安装包仅供早期 Demo 体验。
 
 首次启动会进入教学模式。右键LyricHover或通过系统托盘可以打开设置。
 
