@@ -661,6 +661,15 @@ export function AdminIncentives() {
     return result.translations.en;
   }
 
+  async function requestTranslations(entries: Array<{ key: string; text: string }>) {
+    const batchSize = 24;
+    const translations: Record<string, string> = {};
+    for (let start = 0; start < entries.length; start += batchSize) {
+      Object.assign(translations, await requestTranslation(entries.slice(start, start + batchSize)));
+    }
+    return translations;
+  }
+
   function nonEmptyLines(lines: string[]) {
     return lines.map((line) => line.trim()).filter(Boolean);
   }
@@ -682,7 +691,7 @@ export function AdminIncentives() {
     setTranslationSaving("features");
     setError("");
     try {
-      const translations = await requestTranslation(entries);
+      const translations = await requestTranslations(entries);
       setFeatureContent((content) => ({
         ...content,
         summary: {
