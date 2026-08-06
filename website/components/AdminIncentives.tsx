@@ -317,6 +317,7 @@ export function AdminIncentives() {
   const [featureSaving, setFeatureSaving] = useState(false);
   const [featureMessage, setFeatureMessage] = useState("");
   const [previews, setPreviews] = useState<ReleasePreview[]>([]);
+  const [draftPreviews, setDraftPreviews] = useState<ReleasePreview[]>([]);
   const [accessLogs, setAccessLogs] = useState<AccessLogEntry[]>([]);
   const [unreadAlerts, setUnreadAlerts] = useState(0);
   const [kindFilter, setKindFilter] = useState<"all" | "feature" | "bug">("all");
@@ -357,15 +358,15 @@ export function AdminIncentives() {
     if (!submissionResponse.ok || !featureResponse.ok || !previewResponse.ok) throw new Error("后台数据读取失败");
     const submissionData = (await submissionResponse.json()) as { submissions: IncentiveSubmission[] };
     const featureData = (await featureResponse.json()) as { content: unknown };
-    const previewData = (await previewResponse.json()) as { previews: ReleasePreview[] };
+    const previewData = (await previewResponse.json()) as { previews: ReleasePreview[]; drafts?: ReleasePreview[] };
     const logData = logResponse.ok
       ? await logResponse.json() as { logs: AccessLogEntry[]; unreadAlerts: number }
       : { logs: [] as AccessLogEntry[], unreadAlerts: 0 };
     setSubmissions(submissionData.submissions);
     setFeatureContent(sanitizeFeatureContent(featureData.content));
     setPreviews(previewData.previews);
-    const currentPreview = previewData.previews.find((preview) => preview.status === "published")
-      ?? previewData.previews[0];
+    setDraftPreviews(previewData.drafts ?? []);
+    const currentPreview = previewData.previews[0] ?? previewData.drafts?.[0];
     if (currentPreview) {
       setPreviewDraft(previewToDraft(currentPreview));
       setPreviewDateTbd(!currentPreview.target_date);
@@ -760,9 +761,17 @@ export function AdminIncentives() {
         setError(result.error ?? "保存失败");
         return;
       }
-      setPreviews((items) => items.some((item) => item.id === result.preview!.id)
-        ? items.map((item) => item.id === result.preview!.id ? result.preview! : item)
-        : [result.preview!, ...items]);
+      const savedPreview = result.preview;
+      setPreviews((items) => savedPreview.status === "published"
+        ? (items.some((item) => item.id === savedPreview.id)
+          ? items.map((item) => item.id === savedPreview.id ? savedPreview : item)
+          : [savedPreview, ...items])
+        : items.filter((item) => item.id !== savedPreview.id));
+      setDraftPreviews((items) => savedPreview.status === "draft"
+        ? (items.some((item) => item.id === savedPreview.id)
+          ? items.map((item) => item.id === savedPreview.id ? savedPreview : item)
+          : [savedPreview, ...items])
+        : items.filter((item) => item.id !== savedPreview.id));
       setPreviewDraft(previewToDraft(result.preview));
       setPreviewDateTbd(!result.preview.target_date);
     } catch (saveError) {
@@ -795,7 +804,17 @@ export function AdminIncentives() {
       setError(result.error ?? "更新失败");
       return;
     }
-    setPreviews((items) => items.map((item) => item.id === preview.id ? result.preview! : item));
+    const updatedPreview = result.preview;
+    setPreviews((items) => updatedPreview.status === "published"
+      ? (items.some((item) => item.id === updatedPreview.id)
+        ? items.map((item) => item.id === updatedPreview.id ? updatedPreview : item)
+        : [updatedPreview, ...items])
+      : items.filter((item) => item.id !== updatedPreview.id));
+    setDraftPreviews((items) => updatedPreview.status === "draft"
+      ? (items.some((item) => item.id === updatedPreview.id)
+        ? items.map((item) => item.id === updatedPreview.id ? updatedPreview : item)
+        : [updatedPreview, ...items])
+      : items.filter((item) => item.id !== updatedPreview.id));
     if (previewDraft.id === preview.id) {
       setPreviewDraft((draft) => ({ ...draft, status: result.preview!.status }));
     }
@@ -1079,13 +1098,13 @@ export function AdminIncentives() {
 
         {panel === "previews" && (
           <>
-            <header className="adminPageHeader"><div><p>RELEASE PREVIEW</p><h2>发布版本预告</h2></div><button className="button buttonSecondary" type="button" onClick={newPreview}>新建预告</button></header>
+            <header className="adminPageHeader"><div><p>RELEASE PREVIEW</p><h2>发布版本预告</h2></div><div className="featureAdminActions">{draftPreviews.map((preview) => <button className="button buttonSecondary" type="button" onClick={() => editPreview(preview)} key={preview.id}>编辑草稿 · {preview.version}</button>)}<button className="button buttonSecondary" type="button" onClick={newPreview}>新建预告</button></div></header>
             <form className="previewEditor" onSubmit={savePreview}>
               <div className="previewEditorMeta"><label><span>版本号</span><input name="version" placeholder="例如：v2.1 Beta" value={previewDraft.version} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, version: event.target.value }))} required /></label><label><span>预计上线时间</span><input name="target_date" type="date" value={previewDraft.target_date} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, target_date: event.target.value }))} disabled={previewDateTbd} /></label><button className={`previewDateTbdButton ${previewDateTbd ? "isActive" : ""}`} type="button" aria-pressed={previewDateTbd} onClick={() => setPreviewDateTbd((current) => !current)}>上线时间待定</button></div>
               <div className="previewEditorLanguages"><label><span>更新内容（中文）</span><textarea name="body_zh" rows={9} value={previewDraft.body_zh} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, body_zh: event.target.value }))} required /></label><label><span>Update content (English)</span><textarea name="body_en" rows={9} value={previewDraft.body_en} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, body_en: event.target.value }))} required /></label></div>
               <div className="previewEditorActions"><button className="button buttonSecondary" type="button" disabled={previewSaving || translationSaving === "preview"} onClick={() => void translatePreview()}>{translationSaving === "preview" ? "正在翻译…" : "从中文自动翻译英文"}</button><button className="button buttonSecondary" type="submit" name="intent" value="save" disabled={previewSaving}>{previewDraft.status === "published" ? "保存更改" : "保存草稿"}</button><button className="button buttonPrimary" type="submit" name="intent" value="published" disabled={previewSaving}>{previewSaving ? "正在保存…" : previewDraft.status === "published" ? "保持发布并保存" : "发布预告"}</button></div>
             </form>
-            <div className="previewAdminList">{previews.map((preview) => <article key={preview.id}><div><span className={preview.status}>{preview.status === "published" ? "已发布" : "草稿"}</span><small>{preview.version} · 预计上线：{preview.target_date ?? "待定"}</small><p>中文：{[preview.body_zh, ...preview.highlights_zh].filter(Boolean).join(" / ")}</p>{preview.body_en && <p>English: {[preview.body_en, ...preview.highlights_en].filter(Boolean).join(" / ")}</p>}</div><div><button className="button buttonSecondary" type="button" onClick={() => editPreview(preview)}>编辑</button><button className="button buttonSecondary" type="button" onClick={() => void togglePreview(preview)}>{preview.status === "published" ? "撤回为草稿" : "发布到前台"}</button></div></article>)}</div>
+            <div className="previewAdminList">{previews.map((preview) => <article key={preview.id}><div><span className="published">已发布到前台</span><small>{preview.version} · 预计上线：{preview.target_date ?? "待定"}</small><p>中文：{[preview.body_zh, ...preview.highlights_zh].filter(Boolean).join(" / ")}</p>{preview.body_en && <p>English: {[preview.body_en, ...preview.highlights_en].filter(Boolean).join(" / ")}</p>}</div><div><button className="button buttonSecondary" type="button" onClick={() => editPreview(preview)}>编辑</button><button className="button buttonSecondary" type="button" onClick={() => void togglePreview(preview)}>撤回为草稿</button></div></article>)}</div>
           </>
         )}
 

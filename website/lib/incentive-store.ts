@@ -239,7 +239,7 @@ export async function getPublicIncentives(voterHash?: string) {
     };
   }));
   const previews = await supabase<ReleasePreview[]>(
-    "/rest/v1/release_previews?select=*&status=eq.published&order=published_at.desc&limit=6"
+    "/rest/v1/release_previews?select=*&status=eq.published&order=published_at.desc&limit=20"
   );
   return {
     suggestions,
