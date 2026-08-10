@@ -6,7 +6,7 @@ import {
   sanitizeFeatureContent
 } from "@/data/feature-content";
 import type { FeatureContent } from "@/data/incentives-types";
-import type { Locale } from "@/data/site-copy";
+import { contentLocale, type Locale } from "@/data/site-copy";
 import { Eyebrow } from "@/components/SitePage";
 import { preloadClientJson } from "@/lib/client-data";
 
@@ -92,7 +92,7 @@ export function ManagedFeatureContent({
     );
   }
 
-  const localized = localizedFeatureContent(content, locale);
+  const localized = localizedFeatureContent(content, contentLocale(locale));
 
   return (
     <>

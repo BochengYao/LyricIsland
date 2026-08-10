@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import styles from "./CampaignPage.module.css";
-import { microsoftStoreUrl, type Locale } from "@/data/site-copy";
+import { contentLocale, microsoftStoreUrl, type Locale } from "@/data/site-copy";
 
 type Scene = {
   id: string;
@@ -15,7 +15,7 @@ type Scene = {
   variant: "hero" | "mouse" | "modules" | "collapse" | "translation" | "players";
 };
 
-const scenesByLocale: Record<Locale, Scene[]> = {
+const scenesByLocale: Record<"zh" | "en", Scene[]> = {
   zh: [
     {
       id: "hero",
@@ -154,7 +154,7 @@ const scenesByLocale: Record<Locale, Scene[]> = {
   ]
 };
 
-const playersByLocale: Record<Locale, string[]> = {
+const playersByLocale: Record<"zh" | "en", string[]> = {
   zh: ["Apple Music", "QQ 音乐", "网易云音乐", "酷狗音乐", "Spotify", "酷我音乐"],
   en: ["Apple Music", "QQ Music", "NetEase", "Kugou Music", "Spotify", "Kuwo Music"]
 };
@@ -210,7 +210,7 @@ function SceneVisual({
             <Image src="/images/app-logo.png" alt="" width={52} height={52} />
             <span>{locale === "zh" ? "歌词岛" : "Lyric Hover"}</span>
           </div>
-          {playersByLocale[locale].map((player, index) => (
+          {playersByLocale[contentLocale(locale)].map((player, index) => (
             <span className={styles[`player${index + 1}`]} key={player}>
               {player}
             </span>
@@ -241,7 +241,7 @@ function SceneVisual({
 }
 
 export function CampaignPage({ locale }: { locale: Locale }) {
-  const scenes = scenesByLocale[locale];
+  const scenes = scenesByLocale[contentLocale(locale)];
   const storeLabel = locale === "zh" ? "Microsoft Store" : "Microsoft Store";
 
   return (

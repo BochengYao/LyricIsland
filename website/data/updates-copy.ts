@@ -25,7 +25,7 @@ export type UpdatesCopy = {
   footerNote: string;
 };
 
-const rawUpdatesByLocale: Record<Locale, UpdatesCopy> = {
+const rawUpdatesByLocale: Record<"zh" | "en", UpdatesCopy> = {
   zh: {
     backLabel: "返回官网",
     menuLabel: "更新页导航",
@@ -227,5 +227,33 @@ const rawUpdatesByLocale: Record<Locale, UpdatesCopy> = {
 
 export const updatesByLocale: Record<Locale, UpdatesCopy> = {
   zh: normalizeBrandCopy(rawUpdatesByLocale.zh, "zh"),
-  en: normalizeBrandCopy(rawUpdatesByLocale.en, "en")
+  zhHant: {
+    ...rawUpdatesByLocale.zh,
+    backLabel: "返回官網",
+    menuLabel: "更新頁導覽",
+    languageName: "繁體中文",
+    languageHref: "/zh-hant/updates",
+    eyebrow: "版本說明",
+    title: "LyricHover V2.0\n更完整的一次重做",
+    intro: "LyricHover V2.0 支援更多 Windows 播放器與自由組合模組，並持續優化歌詞比對、展開收起、快速鍵、滑鼠避讓與執行穩定性，讓整體體驗更完整、更自然。",
+    downloadsEyebrow: "取得 LyricHover",
+    downloadsTitle: "LyricHover，現已登上 Microsoft Store。",
+    downloadsBody: "在 Microsoft Store 下載並取得後續更新。原始碼可在 GitHub 查看。",
+    footerNote: "播放器與音樂服務名稱及商標歸各自權利人所有。"
+  },
+  en: normalizeBrandCopy(rawUpdatesByLocale.en, "en"),
+  ja: {
+    ...rawUpdatesByLocale.en,
+    backLabel: "サイトへ戻る",
+    menuLabel: "更新内容のナビゲーション",
+    languageName: "日本語",
+    languageHref: "/ja/updates",
+    eyebrow: "リリースノート",
+    title: "LyricHover V2.0\nより完成度の高い再構築",
+    intro: "LyricHover V2.0 は対応する Windows プレーヤーと自由に構成できるモジュールを増やし、歌詞照合、展開と収納、ショートカット、マウス回避、実行時の安定性を磨きました。",
+    downloadsEyebrow: "LyricHover を入手",
+    downloadsTitle: "LyricHover は Microsoft Store で配信中です。",
+    downloadsBody: "Microsoft Store からダウンロードして、今後の更新を受け取れます。ソースコードは GitHub で確認できます。",
+    footerNote: "プレーヤー名、音楽サービス名および商標は、各権利者に帰属します。"
+  }
 };

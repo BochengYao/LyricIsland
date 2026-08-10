@@ -1,6 +1,32 @@
 import { normalizeBrandCopy } from "@/lib/brand";
 
-export type Locale = "zh" | "en";
+export type Locale = "zh" | "zhHant" | "en" | "ja";
+export type LocalizedPage = "home" | "updates" | "incentives";
+
+export const localeDetails: Record<Locale, { label: string; languageTag: string }> = {
+  zh: { label: "简体中文", languageTag: "zh-CN" },
+  zhHant: { label: "繁體中文", languageTag: "zh-Hant" },
+  en: { label: "English", languageTag: "en" },
+  ja: { label: "日本語", languageTag: "ja" }
+};
+
+export function localePath(locale: Locale, page: LocalizedPage): string {
+  const prefix = locale === "zh" ? "" : locale === "zhHant" ? "/zh-hant" : locale === "ja" ? "/ja" : "/en";
+  const suffix = page === "home" ? "" : `/${page}`;
+  return `${prefix}${suffix || "/"}`;
+}
+
+export function isChineseLocale(locale: Locale) {
+  return locale === "zh" || locale === "zhHant";
+}
+
+export function contentLocale(locale: Locale): "zh" | "en" {
+  return isChineseLocale(locale) ? "zh" : "en";
+}
+
+export function displayBrand(locale: Locale) {
+  return locale === "zh" ? "歌词岛" : locale === "zhHant" ? "歌詞島" : "LyricHover";
+}
 
 export type SiteCopy = {
   languageName: string;
@@ -110,7 +136,7 @@ const sharedPlayers = [
 export const microsoftStoreUrl =
   "https://apps.microsoft.com/detail/9nrxzp5hmxk2?hl=zh-CN&gl=CN";
 
-const rawCopyByLocale: Record<Locale, SiteCopy> = {
+const rawCopyByLocale: Record<"zh" | "en", SiteCopy> = {
   zh: {
     languageName: "EN",
     languageHref: "/en",
@@ -431,7 +457,65 @@ const rawCopyByLocale: Record<Locale, SiteCopy> = {
   }
 };
 
+const traditionalCharacters: Record<string, string> = {
+  这: "這", 个: "個", 见: "見", 音: "音", 乐: "樂", 词: "詞", 从: "從", 顶: "頂", 结: "結", 束: "束", 视: "視", 线: "線", 边: "邊", 断: "斷", 带: "帶", 来: "來", 余: "餘", 标: "標", 轻: "輕", 还: "還", 给: "給", 内: "內", 容: "容", 开: "開", 场: "場", 闲: "閒", 时: "時", 动: "動", 让: "讓", 桌: "桌", 处: "處", 应: "應", 亲: "親", 手: "手", 体: "體", 验: "驗", 换: "換", 状: "狀", 态: "態", 布: "佈", 局: "局", 浏: "瀏", 览: "覽", 器: "器", 连: "連", 接: "接", 组: "組", 合: "合", 展: "展", 现: "現", 简: "簡", 洁: "潔", 节: "節", 间: "間", 会: "會", 随: "隨", 变: "變", 识: "識", 别: "別", 当: "當", 前: "前", 设: "設", 置: "置", 锁: "鎖", 常: "常", 用: "用", 保: "保", 持: "持", 一: "一", 致: "致", 受: "受", 限: "限", 网: "網", 易: "易", 云: "雲", 暂: "暫", 不: "不", 支: "支", 进: "進", 度: "度", 条: "條", 实: "實", 匹: "匹", 配: "配", 翻: "翻", 译: "譯", 源: "源", 广: "廣", 告: "告", 扰: "擾", 纯: "純", 粹: "粹", 问: "問", 题: "題", 知: "知", 道: "道", 哪: "哪", 些: "些", 需: "需", 要: "要", 登: "登", 录: "錄", 订: "訂", 阅: "閱", 账: "帳", 号: "號", 参: "參", 与: "與", 获: "獲", 礼: "禮", 码: "碼", 权: "權", 益: "益", 绑: "綁", 定: "定", 教: "教", 学: "學", 导: "導", 完: "完", 成: "成", 后: "後", 只: "只", 自: "自", 查: "查", 找: "找", 尽: "盡", 减: "減", 少: "少", 错: "錯", 误: "誤", 继: "繼", 续: "續", 提: "提", 升: "升", 围: "圍", 准: "準", 确: "確", 下: "下", 载: "載", 软: "軟", 件: "件", 资: "資", 评: "評", 计: "計", 划: "劃", 各: "各", 属: "屬", 于: "於", 利: "利", 人: "人", 所: "所", 有: "有"
+};
+
+function transformCopy<T>(value: T, transform: (text: string) => string): T {
+  if (typeof value === "string") return transform(value) as T;
+  if (Array.isArray(value)) return value.map((item) => transformCopy(item, transform)) as T;
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([key, item]) => [key, transformCopy(item, transform)])) as T;
+  }
+  return value;
+}
+
+const traditionalSiteCopy = {
+  ...transformCopy(rawCopyByLocale.zh, (text) => Array.from(text, (character) => traditionalCharacters[character] ?? character).join("")),
+  nav: [
+    { label: "首頁", href: "#main" },
+    { label: "新功能", href: localePath("zhHant", "updates") },
+    { label: "使用者激勵計畫", href: localePath("zhHant", "incentives"), kind: "feature" as const },
+    { label: "Microsoft Store", href: microsoftStoreUrl, external: true, kind: "store" as const }
+  ]
+} satisfies SiteCopy;
+
+const japaneseSiteCopy: SiteCopy = {
+  languageName: "日本語", languageHref: "/ja", navLabel: "メインナビゲーション", menuLabel: "ナビゲーションを開く",
+  nav: [
+    { label: "ホーム", href: "#main" },
+    { label: "新機能", href: "/ja/updates" },
+    { label: "コミュニティ特典", href: "/ja/incentives", kind: "feature" },
+    { label: "Microsoft Store", href: microsoftStoreUrl, external: true, kind: "store" }
+  ],
+  heroTitle: "この一行を、\n見える場所へ。",
+  heroBody: "音楽が始まると、歌詞は画面上部に自然に現れます。再生が終われば、すっと引き上げる。いつも視界の端にいて、仕事の邪魔はしません。",
+  storeLabel: "Microsoft Store から入手", exploreLabel: "仕組みを見る", heroImageAlt: "Windows デスクトップ上部に表示された LyricHover",
+  experience: {
+    eyebrow: "", title: "音とともに現れ、\n静けさとともに消える。", body: "タスクバーも、余計なウィンドウも不要です。音楽が鳴れば現れ、止まれば静かに退く。ポインターが近づけば淡くなり、画面をあなたの作業へ返します。", watermark: "LYRIC HOVER",
+    items: [
+      { tag: "再生", title: "音が鳴れば、歌詞がいる。", body: "音楽が始まると、歌詞は画面上部に自然に現れます。", image: "/images/experience-playback.jpg", imageAlt: "再生中に画面上部へ現れる LyricHover", imagePosition: "50% 50%" },
+      { tag: "待機", title: "音がないなら、そっと退く。", body: "再生中のコンテンツがなければ、歌詞は画面外へ戻り、デスクトップは静けさを取り戻します。", image: "/images/experience-idle.png", imageAlt: "再生していない時に画面外へ退いた LyricHover", imagePosition: "50% 50%" },
+      { tag: "配慮", title: "近づいても、作業はクリア。", body: "ポインターが通る場所では歌詞が淡くなり、下のコンテンツを読み、操作できます。", image: "/images/experience-pointer.png", imageAlt: "ポインターに合わせて淡くなる LyricHover", imagePosition: "50% 50%" }
+    ]
+  },
+  demo: { eyebrow: "試してみる", title: "マウスを動かして、\n島の応答を見る。", body: "状態とレイアウトを切り替え、LyricHover の表示、収納、マウス回避を体験できます。これはブラウザー上のデモで、プレーヤーには接続しません。", playbackLabel: "再生状態", layoutLabel: "レイアウト", playing: "再生中", idle: "待機", near: "ポインターが近い", layoutA: "横並び", layoutC: "自動収納", nowPlaying: "再生中", track: "Quiet Orbit", artist: "LyricHover", lyric: "街の灯りが画面の端にとどまる", translation: "City lights rest above the screen", statusPlaying: "LyricHover を表示中", statusIdle: "LyricHover を収納しました", statusNear: "マウス回避が有効です", statusA: "A 横並びレイアウトを表示中", statusC: "C 自動収納レイアウトを表示中" },
+  modules: { eyebrow: "自分で組み立てる", title: "どう広げるか、\nどう見せるか。", body: "横並びならのびやかに。自動収納なら省スペースに。LyricHover は選んだレイアウトに自然になじみます。", names: ["アルバムアート", "同期歌詞", "再生コントロール", "曲情報", "再生位置", "区切り線"], imageAlt: "3 つのデスクトップ場面での LyricHover レイアウト" },
+  compatibility: { title: "プレーヤーが変わっても、\n歌詞はそのまま。", body: "LyricHover は使用中のプレーヤーを自動で認識し、再生状態に合わせます。設定でよく使うプレーヤーを固定すれば、いつでも一貫した体験です。", note: "*インターフェースの制限により、NetEase Cloud Music は現在、シーク後の進捗同期と歌詞の即時同期に対応していません。", players: sharedPlayers },
+  sources: { eyebrow: "歌詞はどこから", title: "複数のソースを、\n一度にマッチ。", body: "LRCLIB、Tencent Music、NetEase Cloud Music などの歌詞ソースを検索し、再生中の曲に同期歌詞と翻訳を見つけます。", facts: [{ value: "4+", label: "歌詞ソース", detail: "複数のソースを自動で照合します。" }, { value: "6+", label: "主要プレーヤー", detail: "Apple Music、QQ Music、NetEase Cloud Music* などに対応。" }, { value: "0", label: "広告の中断", detail: "広告なし。歌詞だけに集中できます。" }], note: "*API の制限により、NetEase Cloud Music は進捗バー同期とシーク後のリアルタイム歌詞同期に対応していません。" },
+  faq: { eyebrow: "よくある質問", title: "始める前に、\n知っておきたいこと。", items: [
+    { question: "LyricHover はどの音楽プレーヤーに対応していますか？", answer: "LyricHover は Apple Music、NetEase Cloud Music、QQ Music、Kugou Music、Kuwo Music などに対応します。Windows SMTC メディア制御プロトコルに接続するプレーヤーなら、再生中の曲を通常は自動で認識します。\nNetEase Cloud Music の Windows SMTC 対応は完全ではありません。プレーヤー内で手動シークすると、歌詞の位置がすぐに更新されない場合があります。" },
+    { question: "LyricHover は無料ですか？ アカウントやサブスクリプションは必要ですか？", answer: "LyricHover の基本機能はずっと無料です。LyricHover のアカウントもサブスクリプションも必要ありません。\nPro サポートプランに参加すると、開発を支援し、一部の新機能を先行体験できます。コミュニティ特典で有効な提案や不具合を送ると、Pro サポートプランのギフトコードを受け取れる場合があります。\nPro 特典は、LyricHover をダウンロードした Microsoft Store アカウントに紐づきます。" },
+    { question: "インストール後はどう始めますか？ プレーヤーを手動接続する必要がありますか？", answer: "手動接続は不要です。\n初回起動時はガイドが基本設定を案内します。その後は LyricHover を開いて音楽を再生するだけで、現在のプレーヤーを認識し、歌詞の照合を始めます。" },
+    { question: "歌詞が表示されない、または間違った歌詞が表示される場合は？", answer: "LyricHover は複数の歌詞ソースから自動で検索・照合し、未表示や誤一致を減らします。今後もソースを追加して、範囲と精度を高めます。" }
+  ] },
+  closing: { eyebrow: "LyricHover V2.0", title: "すべての一行を。\nちょうど、今に。", body: "GitHub で v1.0 とソースコードを確認できます。アプリは Microsoft Store から入手してください。", button: "GitHub", storeButton: "Microsoft Store" },
+  footer: { title: "音楽が鳴れば、\n歌詞が現れる。", product: "見どころ", productLinks: [{ label: "コア体験", href: "#experience" }, { label: "モジュールレイアウト", href: "#modules" }, { label: "プレーヤー対応", href: "#players" }], resources: "リソース", resourceLinks: [{ label: "Microsoft Store", href: microsoftStoreUrl }, { label: "GitHub: v1.0 とソース", href: "https://github.com/BochengYao/LyricHover" }, { label: "更新内容", href: "/ja/updates" }, { label: "コミュニティ特典", href: "/ja/incentives" }], note: "プレーヤー名と音楽サービス名、および商標は各権利者に帰属します。", copyright: "© 2026 LyricHover" }
+};
+
 export const copyByLocale: Record<Locale, SiteCopy> = {
   zh: normalizeBrandCopy(rawCopyByLocale.zh, "zh"),
-  en: normalizeBrandCopy(rawCopyByLocale.en, "en")
+  zhHant: traditionalSiteCopy,
+  en: normalizeBrandCopy(rawCopyByLocale.en, "en"),
+  ja: japaneseSiteCopy
 };

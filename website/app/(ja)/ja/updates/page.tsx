@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { UpdatesPage } from "@/components/UpdatesPage";
 
 export const metadata: Metadata = {
-  title: "v2.0 更新内容",
+  title: "v2.0 アップデート | LyricHover",
   description:
-    "详细了解歌词岛 v2.0 的模块化布局、多播放器支持、时间轴策略、歌词源与交互更新。",
+    "LyricHover v2.0 のモジュール式レイアウト、複数プレーヤー対応、タイムライン、歌詞ソース、操作性の更新をご紹介します。",
   alternates: {
-    canonical: "/updates/",
+    canonical: "/ja/updates/",
     languages: {
       "zh-CN": "/updates/",
       "zh-Hant": "/zh-hant/updates/",
@@ -17,6 +17,4 @@ export const metadata: Metadata = {
   }
 };
 
-export default function ChineseUpdatesPage() {
-  return <UpdatesPage locale="zh" />;
-}
+export default function JapaneseUpdatesPage() { return <UpdatesPage locale="ja" />; }

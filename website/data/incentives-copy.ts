@@ -57,7 +57,7 @@ export type IncentivesCopy = {
   footerNote: string;
 };
 
-const rawIncentivesByLocale: Record<Locale, IncentivesCopy> = {
+const rawIncentivesByLocale: Record<"zh" | "en", IncentivesCopy> = {
   zh: {
     pageTitle: "用户激励计划",
     pageDescription: "向LyricHover提交新功能建议或 Bug，查看已采纳建议与版本预告。",
@@ -174,5 +174,43 @@ const rawIncentivesByLocale: Record<Locale, IncentivesCopy> = {
 
 export const incentivesByLocale: Record<Locale, IncentivesCopy> = {
   zh: normalizeBrandCopy(rawIncentivesByLocale.zh, "zh"),
-  en: normalizeBrandCopy(rawIncentivesByLocale.en, "en")
+  zhHant: {
+    ...rawIncentivesByLocale.zh,
+    pageTitle: "使用者激勵計畫",
+    pageDescription: "向 LyricHover 提交新功能建議或 Bug，查看已採納建議與版本預告。",
+    navLabel: "使用者激勵計畫導覽",
+    backLabel: "返回官網",
+    languageName: "繁體中文",
+    languageHref: "/zh-hant/incentives",
+    eyebrow: "一起讓 LyricHover 更好",
+    title: "你的建議，\n也可能成為下一次更新。",
+    intro: "提出新功能，或告訴我們哪裡還不夠好。每一則回饋都會被仔細閱讀；建議被採納後，我們將透過電子郵件與你聯繫，並送上相應獎勵。",
+    privacyNote: "暱稱與電子郵件僅用於核對提交資訊及發放獎勵。",
+    tabs: { feature: "新功能提議", bug: "Bug 提交" },
+    feature: { ...rawIncentivesByLocale.zh.feature, eyebrow: "新功能提議", title: "把你的想法，\n說具體一點。", body: "告訴我們你會在什麼情境使用、目前哪裡不夠順手，以及你期待它如何運作。資訊越具體，越有助於我們評估與實現。", reward: "建議正式採納後，贈送 3 元紅包", acceptedTitle: "已經被聽見…", acceptedSubtitle: "為你認為可行的方案按讚，開發者會優先處理。", acceptedEmpty: "第一批被採納的建議將在這裡滾動出現。" },
+    bug: { ...rawIncentivesByLocale.zh.bug, eyebrow: "Bug 提交", title: "發現問題，\n告訴我們。", body: "請寫下問題出現前的操作、實際結果與預期結果。附上截圖或短片，可幫助我們更快定位並修正。", reward: "問題確認有效後，贈送軟體禮品碼" },
+    form: { ...rawIncentivesByLocale.zh.form, nickname: "暱稱", email: "電子郵件", title: "一句話標題", featureTitlePlaceholder: "例如：希望 LyricHover 支援單行／雙行快速切換", bugTitlePlaceholder: "例如：切換播放器後歌詞偶爾停住", description: "詳細說明", featureDescriptionPlaceholder: "使用情境、目前遇到的問題、你理想中的互動……", bugDescriptionPlaceholder: "重現步驟、實際結果、預期結果、系統與播放器版本……", attachments: "圖片或影片", attachmentHint: "最多 3 個檔案；單一不超過 15 MB，合計不超過 30 MB。", submitFeature: "提交新功能提議", submitBug: "提交 Bug", submitting: "正在提交…", successFeature: "謝謝你的提交；若被採納，我們將透過電子郵件聯繫你 ❤️", successBug: "謝謝你的提交；若被採納，我們將透過電子郵件聯繫你 ❤️", removeAttachment: "移除" },
+    preview: { ...rawIncentivesByLocale.zh.preview, eyebrow: "版本預告", title: "下一版，\n先見一面。", body: "正在開發中的新功能，會在這裡提前亮相。正式發布前，設計與功能仍可能隨測試繼續調整。", empty: "新的版本預告正在準備中。", target: "預計發布時間" },
+    footerNote: "獎勵由 LyricHover 維護者人工審核與發放；重複、無法重現或已有記錄的內容可能不會重複獎勵。"
+  },
+  en: normalizeBrandCopy(rawIncentivesByLocale.en, "en"),
+  ja: {
+    ...rawIncentivesByLocale.en,
+    pageTitle: "コミュニティ特典",
+    pageDescription: "LyricHover の機能を提案し、不具合を報告し、採用されたアイデアとリリース予定を確認できます。",
+    navLabel: "コミュニティ特典のナビゲーション",
+    backLabel: "サイトへ戻る",
+    languageName: "日本語",
+    languageHref: "/ja/incentives",
+    eyebrow: "一緒に LyricHover を育てる",
+    title: "あなたの声が、\n次のアップデートをつくる。",
+    intro: "新機能を提案するか、もっと良くできることを教えてください。すべての投稿を読み、採用されたアイデアにはメールで連絡し、対応する特典をお送りします。",
+    privacyNote: "ニックネームとメールアドレスは、投稿の確認と特典の付与にのみ使用します。",
+    tabs: { feature: "機能の提案", bug: "不具合の報告" },
+    feature: { eyebrow: "機能の提案", title: "アイデアを、\nもっと具体的に。", body: "使いたい場面、今の不便さ、期待する動きを教えてください。具体的なほど、評価と実装につながります。", reward: "採用された提案には ¥3 相当の特典", acceptedTitle: "もう、届いています…", acceptedSubtitle: "実現してほしい案に「いいね」を。開発者が優先して確認します。", acceptedEmpty: "最初に採用されたアイデアは、ここに流れてきます。" },
+    bug: { eyebrow: "不具合の報告", title: "気づいた問題を、\n教えてください。", body: "問題が出る前の操作、実際の結果、期待した結果を書いてください。スクリーンショットや短い動画があると、より早く確認して修正できます。", reward: "有効な報告にはソフトウェアのギフトコード" },
+    form: { nickname: "ニックネーム", email: "メールアドレス", title: "短いタイトル", featureTitlePlaceholder: "例：歌詞を 1 行／2 行で素早く切り替えたい", bugTitlePlaceholder: "例：プレーヤーを切り替えると歌詞が止まることがある", description: "詳しい内容", featureDescriptionPlaceholder: "使う場面、今の困りごと、理想の操作……", bugDescriptionPlaceholder: "再現手順、実際の結果、期待する結果、Windows とプレーヤーのバージョン……", attachments: "画像または動画", attachmentHint: "最大 3 ファイル、1 ファイル 15 MB、合計 30 MB まで。", identityHint: "", submitFeature: "機能を提案する", submitBug: "不具合を送る", submitting: "送信中…", successFeature: "ありがとうございます。採用された場合はメールでご連絡します ❤️", successBug: "ありがとうございます。採用された場合はメールでご連絡します ❤️", removeAttachment: "削除" },
+    preview: { eyebrow: "リリース予定", title: "次の版を、\nひと足先に。", body: "開発中の新機能を、ここで先に紹介します。正式公開まで、デザインと機能はテストを通じて変わることがあります。", empty: "次のリリース予定を準備中です。", target: "公開予定日" },
+    footerNote: "特典は LyricHover の管理者が手動で確認・付与します。重複、再現不能、既報の内容には追加の特典が付かない場合があります。"
+  }
 };

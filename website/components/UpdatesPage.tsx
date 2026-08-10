@@ -5,10 +5,11 @@ import { ManagedFeatureContent } from "@/components/ManagedFeatureContent";
 import { Eyebrow, LogoLockup, PrimaryNavigation } from "@/components/SitePage";
 import { SelectiveTextReveal } from "@/components/SelectiveTextReveal";
 import { SmoothSectionScroll } from "@/components/SmoothSectionScroll";
-import { displayBrand } from "@/lib/brand";
 import { VersionPreviewSection } from "@/components/VersionPreviewSection";
 import {
   copyByLocale,
+  displayBrand,
+  localePath,
   microsoftStoreUrl,
   type Locale
 } from "@/data/site-copy";
@@ -23,18 +24,18 @@ const githubUrl = "https://github.com/BochengYao/LyricHover";
 export function UpdatesPage({ locale }: Props) {
   const siteCopy = copyByLocale[locale];
   const copy = updatesByLocale[locale];
-  const home = locale === "zh" ? "/" : "/en";
+  const home = localePath(locale, "home");
 
   return (
     <>
       <DatabasePreload href="/api/features" />
       <DatabasePreload href="/api/incentives/public" />
       <a className="skipLink" href="#updates-main">
-        {locale === "zh" ? "跳到更新内容" : "Skip to updates"}
+        {locale === "zh" ? "跳到更新内容" : locale === "zhHant" ? "跳至更新內容" : locale === "ja" ? "更新内容へ移動" : "Skip to updates"}
       </a>
       <SmoothSectionScroll />
       <SelectiveTextReveal />
-      <PrimaryNavigation locale={locale} homeHref={home} languageHref={copy.languageHref} />
+      <PrimaryNavigation locale={locale} homeHref={home} page="updates" />
 
       <main id="updates-main" className="updatesMain">
         <ManagedFeatureContent

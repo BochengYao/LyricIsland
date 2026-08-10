@@ -6,7 +6,19 @@
   <url>
     <loc>https://lyric-island.top/</loc>
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://lyric-island.top/" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://lyric-island.top/zh-hant/" />
     <xhtml:link rel="alternate" hreflang="en" href="https://lyric-island.top/en/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://lyric-island.top/ja/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://lyric-island.top/" />
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://lyric-island.top/zh-hant/</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://lyric-island.top/" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://lyric-island.top/zh-hant/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://lyric-island.top/en/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://lyric-island.top/ja/" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://lyric-island.top/" />
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
@@ -14,7 +26,19 @@
   <url>
     <loc>https://lyric-island.top/en/</loc>
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://lyric-island.top/" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://lyric-island.top/zh-hant/" />
     <xhtml:link rel="alternate" hreflang="en" href="https://lyric-island.top/en/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://lyric-island.top/ja/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://lyric-island.top/" />
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://lyric-island.top/ja/</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://lyric-island.top/" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://lyric-island.top/zh-hant/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://lyric-island.top/en/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://lyric-island.top/ja/" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://lyric-island.top/" />
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
@@ -22,7 +46,19 @@
   <url>
     <loc>https://lyric-island.top/updates/</loc>
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://lyric-island.top/updates/" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://lyric-island.top/zh-hant/updates/" />
     <xhtml:link rel="alternate" hreflang="en" href="https://lyric-island.top/en/updates/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://lyric-island.top/ja/updates/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://lyric-island.top/updates/" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://lyric-island.top/zh-hant/updates/</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://lyric-island.top/updates/" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://lyric-island.top/zh-hant/updates/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://lyric-island.top/en/updates/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://lyric-island.top/ja/updates/" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://lyric-island.top/updates/" />
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -30,7 +66,19 @@
   <url>
     <loc>https://lyric-island.top/en/updates/</loc>
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://lyric-island.top/updates/" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://lyric-island.top/zh-hant/updates/" />
     <xhtml:link rel="alternate" hreflang="en" href="https://lyric-island.top/en/updates/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://lyric-island.top/ja/updates/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://lyric-island.top/updates/" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://lyric-island.top/ja/updates/</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://lyric-island.top/updates/" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://lyric-island.top/zh-hant/updates/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://lyric-island.top/en/updates/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://lyric-island.top/ja/updates/" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://lyric-island.top/updates/" />
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -38,7 +86,19 @@
   <url>
     <loc>https://lyric-island.top/incentives/</loc>
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://lyric-island.top/incentives/" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://lyric-island.top/zh-hant/incentives/" />
     <xhtml:link rel="alternate" hreflang="en" href="https://lyric-island.top/en/incentives/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://lyric-island.top/ja/incentives/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://lyric-island.top/incentives/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lyric-island.top/zh-hant/incentives/</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://lyric-island.top/incentives/" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://lyric-island.top/zh-hant/incentives/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://lyric-island.top/en/incentives/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://lyric-island.top/ja/incentives/" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://lyric-island.top/incentives/" />
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -46,7 +106,19 @@
   <url>
     <loc>https://lyric-island.top/en/incentives/</loc>
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://lyric-island.top/incentives/" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://lyric-island.top/zh-hant/incentives/" />
     <xhtml:link rel="alternate" hreflang="en" href="https://lyric-island.top/en/incentives/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://lyric-island.top/ja/incentives/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://lyric-island.top/incentives/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lyric-island.top/ja/incentives/</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://lyric-island.top/incentives/" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://lyric-island.top/zh-hant/incentives/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://lyric-island.top/en/incentives/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://lyric-island.top/ja/incentives/" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://lyric-island.top/incentives/" />
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>

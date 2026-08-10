@@ -586,6 +586,46 @@ html[lang="en"] :where(
   gap: 12px;
 }
 
+.languageSelect {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--ink);
+}
+
+.languageSelect select {
+  min-height: 44px;
+  padding: 0 34px 0 14px;
+  border: 1px solid rgba(20, 20, 19, 0.18);
+  border-radius: var(--radius-pill);
+  appearance: none;
+  background: var(--white);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.languageSelect svg {
+  position: absolute;
+  right: 13px;
+  width: 12px;
+  height: 8px;
+  fill: none;
+  pointer-events: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+.languageSelect select:hover { border-color: var(--ink); }
+.languageSelect select:active { transform: scale(0.98); }
+
 .button {
   display: inline-flex;
   align-items: center;
@@ -2129,7 +2169,8 @@ html[lang="en"] :where(
   }
 
   .desktopNavLinks,
-  .navActions > .languageLink {
+  .navActions > .languageLink,
+  .navActions > .languageSelect {
     display: none;
   }
 
@@ -2144,6 +2185,11 @@ html[lang="en"] :where(
 
   .mobileMenu {
     display: block;
+  }
+
+  .mobileMenuPanel .languageSelect {
+    display: inline-flex;
+    margin: 12px;
   }
 
   .hero {

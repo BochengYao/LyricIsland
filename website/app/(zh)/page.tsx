@@ -6,7 +6,9 @@ export const metadata: Metadata = {
     canonical: "/",
     languages: {
       "zh-CN": "/",
+      "zh-Hant": "/zh-hant/",
       en: "/en/",
+      ja: "/ja/",
       "x-default": "/"
     }
   }

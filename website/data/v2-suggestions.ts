@@ -1,5 +1,5 @@
 import type { PublicSuggestion } from "@/data/incentives-types";
-import type { Locale } from "@/data/site-copy";
+import { contentLocale, type Locale } from "@/data/site-copy";
 
 const base = [
   {
@@ -75,12 +75,13 @@ const base = [
 ] as const;
 
 export function v2Suggestions(locale: Locale): PublicSuggestion[] {
+  const content = contentLocale(locale);
   return base.map((item) => ({
     id: item.id,
     nickname: item.nickname,
     created_at: item.created_at,
-    title: item[locale][0],
-    body: item[locale][1],
+    title: item[content][0],
+    body: item[content][1],
     kind: "feature",
     developer_reply: null,
     like_count: 0,

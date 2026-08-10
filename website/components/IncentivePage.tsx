@@ -15,9 +15,8 @@ import type {
   SubmissionKind
 } from "@/data/incentives-types";
 import { incentivesByLocale } from "@/data/incentives-copy";
-import type { Locale } from "@/data/site-copy";
+import { displayBrand, localePath, type Locale } from "@/data/site-copy";
 import { preloadClientJson } from "@/lib/client-data";
-import { displayBrand } from "@/lib/brand";
 
 const IDENTITY_COOKIE = "lyric_island_contributor";
 const LOCAL_LIKES_KEY = "lyric_island_preview_likes";
@@ -392,7 +391,7 @@ const publicIncentivesPreload = preloadClientJson<PublicIncentivesResponse>("/ap
 
 export function IncentivePage({ locale }: { locale: Locale }) {
   const copy = incentivesByLocale[locale];
-  const home = locale === "zh" ? "/" : "/en";
+  const home = localePath(locale, "home");
   const [tab, setTab] = useState<SubmissionKind>("feature");
   const [identity, setIdentity] = useState<Identity>({ nickname: "", email: "" });
   const [suggestions, setSuggestions] = useState<PublicSuggestion[]>([]);
@@ -497,7 +496,7 @@ export function IncentivePage({ locale }: { locale: Locale }) {
         {locale === "zh" ? "跳到用户激励计划" : "Skip to community rewards"}
       </a>
       <SelectiveTextReveal />
-      <PrimaryNavigation locale={locale} homeHref={home} languageHref={copy.languageHref} />
+      <PrimaryNavigation locale={locale} homeHref={home} page="incentives" />
 
       <main id="incentives-main" className="incentivesMain">
         <section className="incentivesHero sectionContainer">

@@ -3,10 +3,10 @@ import { IncentivePage } from "@/components/IncentivePage";
 import { incentivesByLocale } from "@/data/incentives-copy";
 
 export const metadata: Metadata = {
-  title: incentivesByLocale.en.pageTitle,
-  description: incentivesByLocale.en.pageDescription,
+  title: incentivesByLocale.ja.pageTitle,
+  description: incentivesByLocale.ja.pageDescription,
   alternates: {
-    canonical: "/en/incentives/",
+    canonical: "/ja/incentives/",
     languages: {
       "zh-CN": "/incentives/",
       "zh-Hant": "/zh-hant/incentives/",
@@ -17,6 +17,4 @@ export const metadata: Metadata = {
   }
 };
 
-export default function EnglishIncentivesPage() {
-  return <IncentivePage locale="en" />;
-}
+export default function JapaneseIncentivesPage() { return <IncentivePage locale="ja" />; }
