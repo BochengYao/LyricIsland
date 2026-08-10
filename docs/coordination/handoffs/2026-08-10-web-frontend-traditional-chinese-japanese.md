@@ -3,7 +3,7 @@
 - 日期：2026-08-10
 - 任务线程：官网前台
 - 基线提交：`cd93a62780848670a0ead5dbd77acf6fc0366d87`（`codex/feature/web-locales`，从 `main` 创建）
-- 结果提交：待创建；通过本地官网发布前验证，待推送 `main` 触发 ESA 同步。
+- 结果提交：`624a7a52af597907588102e00a6151a6db9eeedc`；通过本地官网发布前验证，待推送 `main` 触发 ESA 同步。
 - 允许修改范围：公开路由、公开组件、公开文案、SEO 元数据和 `website/public/sitemap.xml`；在 `website/app/globals.css` 仅新增语言选择器专用样式，以维持现有 Mastercard 设计系统。
 
 ## 已完成
