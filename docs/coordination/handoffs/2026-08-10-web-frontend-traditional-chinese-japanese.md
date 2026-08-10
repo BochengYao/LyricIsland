@@ -3,7 +3,7 @@
 - 日期：2026-08-10
 - 任务线程：官网前台
 - 基线提交：`cd93a62780848670a0ead5dbd77acf6fc0366d87`（`codex/feature/web-locales`，从 `main` 创建）
-- 结果提交：`624a7a52af597907588102e00a6151a6db9eeedc`；通过本地官网发布前验证，待推送 `main` 触发 ESA 同步。
+- 结果提交：`624a7a52af597907588102e00a6151a6db9eeedc`（功能）及 `0d4bfe1`（交接）；已推送 `main` 并完成 ESA 生产同步。
 - 允许修改范围：公开路由、公开组件、公开文案、SEO 元数据和 `website/public/sitemap.xml`；在 `website/app/globals.css` 仅新增语言选择器专用样式，以维持现有 Mastercard 设计系统。
 
 ## 已完成
@@ -25,9 +25,10 @@
 - 命令：在 `website/` 运行 `npm run typecheck`、`npm run build:esa`、`npm run test:esa-api`。
 - 结果：三项均通过（退出码 0）；ESA 构建生成 16 条静态路由，包含 `/zh-hant`、`/zh-hant/updates`、`/zh-hant/incentives`、`/ja`、`/ja/updates`、`/ja/incentives`。
 - 手动：以构建产物运行浏览器回归，确认 `/`、`/zh-hant/`、`/en/`、`/ja/`、`/zh-hant/updates/`、`/ja/incentives/` 的 `lang`、四选项语言选择器与标题；确认桌面端切换至日文、移动端繁中导航菜单内的选择器可见。
+- 生产：`lyric-island.top` 经 ESA 返回 200；已实测 `/zh-hant/`、`/ja/`、`/ja/updates/` 的对应 `lang` 和 canonical，且 `/sitemap.xml` 包含繁中、日文与 `zh-Hant` 互链。
 
 ## 风险与后续
 
 - 已知限制：公开激励内容、版本预告与更新详情由既有只读接口提供，且当前只有中英字段；不增加字段或接口时，繁中回退中文、日文回退英文。这是有意维持 API 契约的展示回退。
-- 发布目标：ESA 生产环境；推送后复核新增路由、SEO 与 sitemap 的实际响应。
+- 发布状态：ESA 生产环境已同步；新增路由、SEO 与 sitemap 的实际响应已复核。
 - 回滚点：`cd93a62780848670a0ead5dbd77acf6fc0366d87`。
