@@ -3,6 +3,7 @@ import "@fontsource-variable/sofia-sans/wght.css";
 import "../../globals.css";
 import { AccessLogger } from "@/components/AccessLogger";
 import DevSourceLocator from "@/components/DevSourceLocator";
+import IncentiveNavFontPreloads from "@/components/IncentiveNavFontPreloads";
 import { SiteStructuredData } from "@/components/SiteStructuredData";
 
 export const metadata: Metadata = {
@@ -14,5 +15,5 @@ export const metadata: Metadata = {
 };
 
 export default function JapaneseRootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="ja"><head><SiteStructuredData locale="ja" /></head><body><AccessLogger />{children}{process.env.NODE_ENV === "development" ? <DevSourceLocator /> : null}</body></html>;
+  return <html lang="ja"><head><SiteStructuredData locale="ja" /><IncentiveNavFontPreloads locale="ja" /></head><body><AccessLogger />{children}{process.env.NODE_ENV === "development" ? <DevSourceLocator /> : null}</body></html>;
 }
