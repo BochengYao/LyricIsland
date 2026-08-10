@@ -112,7 +112,7 @@ export function PrimaryNavigation({
         </div>
 
         <div className="navActions">
-          <LanguageSwitcher locale={locale} page={page} label={copy.navLabel} />
+          <LanguageSwitcher locale={locale} page={page} />
           <details className="mobileMenu">
             <summary aria-label={copy.menuLabel}>
               <span />
@@ -136,7 +136,7 @@ export function PrimaryNavigation({
                   {renderLabel(item)}
                 </a>
               ))}
-              <LanguageSwitcher locale={locale} page={page} label={copy.navLabel} />
+              <LanguageSwitcher locale={locale} page={page} />
             </div>
           </details>
         </div>
