@@ -14,5 +14,5 @@ export const metadata: Metadata = {
 };
 
 export default function JapaneseRootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="ja"><head><SiteStructuredData locale="ja" /><link rel="preload" href="/fonts/xiaolai-nav-v2.woff2" as="font" type="font/woff2" crossOrigin="anonymous" /></head><body><AccessLogger />{children}{process.env.NODE_ENV === "development" ? <DevSourceLocator /> : null}</body></html>;
+  return <html lang="ja"><head><SiteStructuredData locale="ja" /></head><body><AccessLogger />{children}{process.env.NODE_ENV === "development" ? <DevSourceLocator /> : null}</body></html>;
 }

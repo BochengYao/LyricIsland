@@ -14,5 +14,5 @@ export const metadata: Metadata = {
 };
 
 export default function TraditionalChineseRootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="zh-Hant"><head><SiteStructuredData locale="zhHant" /><link rel="preload" href="/fonts/xiaolai-nav-v2.woff2" as="font" type="font/woff2" crossOrigin="anonymous" /></head><body><AccessLogger />{children}{process.env.NODE_ENV === "development" ? <DevSourceLocator /> : null}</body></html>;
+  return <html lang="zh-Hant"><head><SiteStructuredData locale="zhHant" /></head><body><AccessLogger />{children}{process.env.NODE_ENV === "development" ? <DevSourceLocator /> : null}</body></html>;
 }

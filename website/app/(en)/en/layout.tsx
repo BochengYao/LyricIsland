@@ -45,13 +45,6 @@ export default function EnglishRootLayout({
     <html lang="en">
       <head>
         <SiteStructuredData locale="en" />
-        <link
-          rel="preload"
-          href="/fonts/xiaolai-nav-v2.woff2"
-          as="font"
-          type="font/woff2"
-          crossOrigin="anonymous"
-        />
       </head>
       <body>
         <AccessLogger />
