@@ -93,16 +93,30 @@ create table if not exists public.release_previews (
   version text not null check (char_length(version) between 1 and 40),
   title_zh text not null check (char_length(title_zh) between 1 and 160),
   title_en text not null default '',
+  title_zh_tw text not null default '',
+  title_ja text not null default '',
   body_zh text not null check (char_length(body_zh) between 1 and 2400),
   body_en text not null default '',
+  body_zh_tw text not null default '',
+  body_ja text not null default '',
   highlights_zh jsonb not null default '[]'::jsonb,
   highlights_en jsonb not null default '[]'::jsonb,
+  highlights_zh_tw jsonb not null default '[]'::jsonb,
+  highlights_ja jsonb not null default '[]'::jsonb,
   target_date date,
   status text not null default 'draft' check (status in ('draft', 'published')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   published_at timestamptz
 );
+
+alter table public.release_previews
+  add column if not exists title_zh_tw text not null default '',
+  add column if not exists title_ja text not null default '',
+  add column if not exists body_zh_tw text not null default '',
+  add column if not exists body_ja text not null default '',
+  add column if not exists highlights_zh_tw jsonb not null default '[]'::jsonb,
+  add column if not exists highlights_ja jsonb not null default '[]'::jsonb;
 
 create index if not exists release_previews_public
   on public.release_previews (status, published_at desc);

@@ -14,7 +14,8 @@ import {
 } from "@/data/feature-content";
 import {
   defaultReleasePreview,
-  releasePreviewFallback
+  releasePreviewFallback,
+  type ReleasePreviewInput
 } from "@/data/release-preview";
 import type { AccessEventSource } from "@/lib/access-log";
 
@@ -33,6 +34,48 @@ type StoredFeatureRow = Omit<ReleasePreview, "highlights_zh" | "highlights_en"> 
   highlights_zh: unknown;
   highlights_en: unknown;
 };
+
+function firstText(...values: unknown[]) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
+function firstLines(...values: unknown[]) {
+  for (const value of values) {
+    if (!Array.isArray(value)) continue;
+    const lines = value.filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    if (lines.length) return lines;
+  }
+  return [] as string[];
+}
+
+function normalizeReleasePreview(preview: ReleasePreview): ReleasePreview {
+  const titleZh = firstText(preview.title_zh);
+  const titleEn = firstText(preview.title_en, titleZh);
+  const bodyZh = firstText(preview.body_zh);
+  const bodyEn = firstText(preview.body_en, bodyZh);
+  const highlightsZh = firstLines(preview.highlights_zh);
+  const highlightsEn = firstLines(preview.highlights_en, highlightsZh);
+  return {
+    ...preview,
+    title_zh: titleZh,
+    title_en: titleEn,
+    title_zh_tw: firstText(preview.title_zh_tw, titleZh),
+    title_ja: firstText(preview.title_ja, titleEn, titleZh),
+    body_zh: bodyZh,
+    body_en: bodyEn,
+    body_zh_tw: firstText(preview.body_zh_tw, bodyZh),
+    body_ja: firstText(preview.body_ja, bodyEn, bodyZh),
+    highlights_zh: highlightsZh,
+    highlights_en: highlightsEn,
+    highlights_zh_tw: firstLines(preview.highlights_zh_tw, highlightsZh),
+    highlights_ja: firstLines(preview.highlights_ja, highlightsEn, highlightsZh)
+  };
+}
 
 const REVIEW_META_PREFIX = "[[lyric-island-review:v1]]";
 const FEATURE_CONTENT_VERSION = "__FEATURE_CONTENT_V1__";
@@ -238,12 +281,12 @@ export async function getPublicIncentives(voterHash?: string) {
         : {})
     };
   }));
-  const previews = await supabase<ReleasePreview[]>(
+  const previews = (await supabase<ReleasePreview[]>(
     "/rest/v1/release_previews?select=*&status=eq.published&order=published_at.desc&limit=20"
-  );
+  )).map(normalizeReleasePreview);
   return {
     suggestions,
-    previews: previews.length ? previews : [releasePreviewFallback()]
+    previews: previews.length ? previews : [normalizeReleasePreview(releasePreviewFallback())]
   };
 }
 
@@ -400,12 +443,12 @@ export async function listReleasePreviews() {
     "/rest/v1/release_previews?select=*&version=not.in.(__FEATURE_CONTENT_V1__,__AUDIT_LOG_V1__)&order=created_at.desc&limit=50"
   );
   const previews = rows.filter((row) => !row.version.startsWith("__"));
-  if (previews.length) return previews;
+  if (previews.length) return previews.map(normalizeReleasePreview);
   return [await createReleasePreview(defaultReleasePreview)];
 }
 
 export async function createReleasePreview(
-  input: Omit<ReleasePreview, "id" | "created_at" | "updated_at" | "published_at">
+  input: ReleasePreviewInput
 ) {
   const now = new Date().toISOString();
   const rows = await supabase<ReleasePreview[]>("/rest/v1/release_previews", {
@@ -416,7 +459,7 @@ export async function createReleasePreview(
       published_at: input.status === "published" ? now : null
     })
   });
-  return rows[0];
+  return normalizeReleasePreview(rows[0]);
 }
 
 export async function updateReleasePreview(
@@ -439,7 +482,7 @@ export async function updateReleasePreview(
       })
     }
   );
-  return rows[0];
+  return normalizeReleasePreview(rows[0]);
 }
 
 async function getFeatureContentRow() {
