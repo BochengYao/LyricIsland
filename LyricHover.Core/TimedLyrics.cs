@@ -131,6 +131,47 @@ namespace LyricHover.Core
             return current;
         }
 
+        /// <summary>
+        /// Finds the translation line that belongs to an original line.  Some lyric
+        /// providers serialize the translated track a fraction of a second later
+        /// than the original track, so selecting only the last translation before
+        /// the playback position incorrectly leaves the translation row blank.
+        /// </summary>
+        public LyricLine GetTranslationForLine(LyricLine original, TimeSpan maximumOffset)
+        {
+            if (original == null || maximumOffset < TimeSpan.Zero || TranslationLines.Count == 0)
+            {
+                return null;
+            }
+
+            LyricLine closest = null;
+            var closestDistance = TimeSpan.MaxValue;
+            foreach (var translated in TranslationLines)
+            {
+                var distance = AbsoluteDifference(original.Timestamp, translated.Timestamp);
+                if (distance > maximumOffset)
+                {
+                    continue;
+                }
+
+                if (closest == null || distance < closestDistance)
+                {
+                    closest = translated;
+                    closestDistance = distance;
+                }
+            }
+
+            // Do not borrow a sparse translation from an adjacent original line.
+            // This keeps a missing translation empty rather than repeating the
+            // previous sentence under the next lyric.
+            if (closest == null || !IsClosestOriginalLine(original, closest))
+            {
+                return null;
+            }
+
+            return closest;
+        }
+
         public TimeSpan GetCurrentLineDuration(TimeSpan position, TimeSpan offset, TimeSpan fallbackDuration)
         {
             if (Lines.Count < 2)
@@ -163,6 +204,30 @@ namespace LyricHover.Core
 
             var duration = Lines[currentIndex + 1].Timestamp - Lines[currentIndex].Timestamp;
             return duration > TimeSpan.Zero ? duration : fallbackDuration;
+        }
+
+        private bool IsClosestOriginalLine(LyricLine original, LyricLine translated)
+        {
+            var originalDistance = AbsoluteDifference(original.Timestamp, translated.Timestamp);
+            foreach (var line in Lines)
+            {
+                if (ReferenceEquals(line, original))
+                {
+                    continue;
+                }
+
+                if (AbsoluteDifference(line.Timestamp, translated.Timestamp) < originalDistance)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static TimeSpan AbsoluteDifference(TimeSpan left, TimeSpan right)
+        {
+            return left >= right ? left - right : right - left;
         }
     }
 }

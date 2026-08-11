@@ -6,6 +6,8 @@ namespace LyricHover.Core
 {
     public static class LyricsDisplaySelector
     {
+        private static readonly TimeSpan TranslationAlignmentTolerance = TimeSpan.FromMilliseconds(1500);
+
         public static IReadOnlyList<LyricLine> Select(
             TimedLyrics lyrics,
             TimeSpan position,
@@ -42,7 +44,7 @@ namespace LyricHover.Core
                     return lyrics.GetCurrentLines(position, offset, 2);
                 }
 
-                var translated = lyrics.GetCurrentTranslationLine(position, offset);
+                var translated = lyrics.GetTranslationForLine(current, TranslationAlignmentTolerance);
                 if (HasMatchingTranslation(current, translated))
                 {
                     return new List<LyricLine> { current, translated }.AsReadOnly();
@@ -127,7 +129,8 @@ namespace LyricHover.Core
                 return false;
             }
 
-            return Math.Abs((current.Timestamp - translated.Timestamp).TotalMilliseconds) <= 1000;
+            return Math.Abs((current.Timestamp - translated.Timestamp).TotalMilliseconds) <=
+                TranslationAlignmentTolerance.TotalMilliseconds;
         }
     }
 }

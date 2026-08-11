@@ -39,6 +39,11 @@ namespace LyricHover.Core
             {
                 var searchJson = await fetchJsonAsync(BuildSearchRequestUri(cleanedTrack)).ConfigureAwait(false);
                 var song = ExtractBestSong(searchJson, cleanedTrack);
+                if (song == null && CanUseArtistAliasFallback(cleanedTrack))
+                {
+                    var aliasSearchJson = await fetchJsonAsync(BuildSearchRequestUri(cleanedTrack, true)).ConfigureAwait(false);
+                    song = ExtractBestSong(aliasSearchJson, cleanedTrack, true);
+                }
                 if (song == null)
                 {
                     return string.Empty;
@@ -73,7 +78,7 @@ namespace LyricHover.Core
             }
         }
 
-        private static SongCandidate ExtractBestSong(string json, TrackIdentity track)
+        private static SongCandidate ExtractBestSong(string json, TrackIdentity track, bool allowLocalizedTitleAlias = false)
         {
             using (var document = JsonDocument.Parse(json))
             {
@@ -87,6 +92,9 @@ namespace LyricHover.Core
 
                 var bestScore = int.MinValue;
                 SongCandidate best = null;
+                var bestAliasScore = int.MinValue;
+                var secondAliasScore = int.MinValue;
+                SongCandidate bestAlias = null;
 
                 foreach (var item in list.EnumerateArray())
                 {
@@ -119,9 +127,33 @@ namespace LyricHover.Core
                         best = new SongCandidate(id, mid);
                         bestScore = score;
                     }
+
+                    if (allowLocalizedTitleAlias)
+                    {
+                        var aliasScore = LyricsCandidateMatcher.ScoreLocalizedTitleAlias(
+                            track, title, artist, album, duration);
+                        if (bestAlias == null || aliasScore > bestAliasScore)
+                        {
+                            secondAliasScore = bestAliasScore;
+                            bestAliasScore = aliasScore;
+                            bestAlias = new SongCandidate(id, mid);
+                        }
+                        else if (aliasScore > secondAliasScore)
+                        {
+                            secondAliasScore = aliasScore;
+                        }
+                    }
                 }
 
-                return bestScore >= 45 ? best : null;
+                if (bestScore >= 45)
+                {
+                    return best;
+                }
+
+                return bestAlias != null && bestAliasScore >= 90 &&
+                    (secondAliasScore == int.MinValue || bestAliasScore - secondAliasScore >= 10)
+                    ? bestAlias
+                    : null;
             }
         }
 
@@ -262,13 +294,18 @@ namespace LyricHover.Core
             return string.Empty;
         }
 
-        private static Uri BuildSearchRequestUri(TrackIdentity track)
+        private static bool CanUseArtistAliasFallback(TrackIdentity track)
         {
-            var keywords = (track.Title + " " + track.Artist).Trim();
+            return track != null && !string.IsNullOrWhiteSpace(track.Artist) && track.Duration > TimeSpan.Zero;
+        }
+
+        private static Uri BuildSearchRequestUri(TrackIdentity track, bool artistOnly = false)
+        {
+            var keywords = artistOnly ? track.Artist.Trim() : (track.Title + " " + track.Artist).Trim();
             var url = "https://c.y.qq.com/soso/fcgi-bin/client_search_cp" +
                 "?format=json" +
                 "&p=1" +
-                "&n=8" +
+                "&n=" + (artistOnly ? "30" : "8") +
                 "&w=" + Uri.EscapeDataString(keywords) +
                 "&cr=1" +
                 "&new_json=1";

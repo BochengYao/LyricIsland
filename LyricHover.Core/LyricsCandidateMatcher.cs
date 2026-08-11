@@ -92,6 +92,83 @@ namespace LyricHover.Core
             return score;
         }
 
+        /// <summary>
+        /// Scores a source title that is intentionally different from the title
+        /// reported by the player (for example an Apple Music localized title).
+        /// This is deliberately stricter than <see cref="Score"/>: the source
+        /// artist and duration must both identify a single safe candidate.
+        /// </summary>
+        public static int ScoreLocalizedTitleAlias(
+            TrackIdentity track,
+            string title,
+            string artist,
+            string album,
+            TimeSpan duration)
+        {
+            if (track == null || track.Duration <= TimeSpan.Zero)
+            {
+                return 0;
+            }
+
+            var expectedTitle = Normalize(track.Title);
+            var candidateTitle = Normalize(title);
+            var expectedArtist = Normalize(track.Artist);
+            var candidateArtist = Normalize(artist);
+            if (string.IsNullOrWhiteSpace(expectedTitle) ||
+                string.IsNullOrWhiteSpace(candidateTitle) ||
+                string.IsNullOrWhiteSpace(expectedArtist) ||
+                string.IsNullOrWhiteSpace(candidateArtist) ||
+                expectedTitle == candidateTitle ||
+                (!candidateArtist.Contains(expectedArtist) && !expectedArtist.Contains(candidateArtist)) ||
+                duration <= TimeSpan.Zero ||
+                HasUnexpectedArrangementQualifier(expectedTitle, candidateTitle))
+            {
+                return 0;
+            }
+
+            var distance = Math.Abs((track.Duration - duration).TotalSeconds);
+            var score = candidateArtist == expectedArtist ? 45 : 35;
+            if (distance <= 2)
+            {
+                score += 55;
+            }
+            else if (distance <= 5)
+            {
+                score += 45;
+            }
+            else if (distance <= 8)
+            {
+                score += 35;
+            }
+            else
+            {
+                return 0;
+            }
+
+            var expectedAlbum = Normalize(track.Album);
+            var candidateAlbum = Normalize(album);
+            if (!string.IsNullOrWhiteSpace(expectedAlbum) && !string.IsNullOrWhiteSpace(candidateAlbum) &&
+                (expectedAlbum == candidateAlbum || expectedAlbum.Contains(candidateAlbum) || candidateAlbum.Contains(expectedAlbum)))
+            {
+                score += 10;
+            }
+
+            return score;
+        }
+
+        private static bool HasUnexpectedArrangementQualifier(string expectedTitle, string candidateTitle)
+        {
+            foreach (var qualifier in new[] { "live", "remix", "karaoke", "instrumental" })
+            {
+                if (candidateTitle.Contains(qualifier) && !expectedTitle.Contains(qualifier))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private static string Normalize(string value)
         {
             var builder = new StringBuilder();

@@ -37,6 +37,11 @@ namespace LyricHover.Core
             {
                 var searchJson = await fetchJsonAsync(BuildSearchRequestUri(cleanedTrack)).ConfigureAwait(false);
                 var songId = ExtractBestSongId(searchJson, cleanedTrack);
+                if (songId <= 0 && CanUseArtistAliasFallback(cleanedTrack))
+                {
+                    var aliasSearchJson = await fetchJsonAsync(BuildSearchRequestUri(cleanedTrack, true)).ConfigureAwait(false);
+                    songId = ExtractBestSongId(aliasSearchJson, cleanedTrack, true);
+                }
                 if (songId <= 0)
                 {
                     return string.Empty;
@@ -59,7 +64,7 @@ namespace LyricHover.Core
             }
         }
 
-        private static int ExtractBestSongId(string json, TrackIdentity track)
+        private static int ExtractBestSongId(string json, TrackIdentity track, bool allowLocalizedTitleAlias = false)
         {
             using (var document = JsonDocument.Parse(json))
             {
@@ -72,6 +77,9 @@ namespace LyricHover.Core
 
                 var bestId = 0;
                 var bestScore = int.MinValue;
+                var bestAliasId = 0;
+                var bestAliasScore = int.MinValue;
+                var secondAliasScore = int.MinValue;
 
                 foreach (var song in songs.EnumerateArray())
                 {
@@ -87,12 +95,34 @@ namespace LyricHover.Core
                             bestScore = score;
                             bestId = id.GetInt32();
                         }
+
+                        if (allowLocalizedTitleAlias)
+                        {
+                            var aliasScore = LyricsCandidateMatcher.ScoreLocalizedTitleAlias(
+                                track, title, artist, album, duration);
+                            if (aliasScore > bestAliasScore)
+                            {
+                                secondAliasScore = bestAliasScore;
+                                bestAliasScore = aliasScore;
+                                bestAliasId = id.GetInt32();
+                            }
+                            else if (aliasScore > secondAliasScore)
+                            {
+                                secondAliasScore = aliasScore;
+                            }
+                        }
                     }
                 }
 
                 if (bestId > 0 && bestScore >= 45)
                 {
                     return bestId;
+                }
+
+                if (bestAliasId > 0 && bestAliasScore >= 90 &&
+                    (secondAliasScore == int.MinValue || bestAliasScore - secondAliasScore >= 10))
+                {
+                    return bestAliasId;
                 }
             }
 
@@ -181,15 +211,20 @@ namespace LyricHover.Core
             return 0;
         }
 
-        private static Uri BuildSearchRequestUri(TrackIdentity track)
+        private static bool CanUseArtistAliasFallback(TrackIdentity track)
         {
-            var keywords = (track.Title + " " + track.Artist).Trim();
+            return track != null && !string.IsNullOrWhiteSpace(track.Artist) && track.Duration > TimeSpan.Zero;
+        }
+
+        private static Uri BuildSearchRequestUri(TrackIdentity track, bool artistOnly = false)
+        {
+            var keywords = artistOnly ? track.Artist.Trim() : (track.Title + " " + track.Artist).Trim();
             var url = "https://music.163.com/api/search/get/web" +
                 "?csrf_token=" +
                 "&s=" + Uri.EscapeDataString(keywords) +
                 "&type=1" +
                 "&offset=0" +
-                "&limit=5";
+                "&limit=" + (artistOnly ? "30" : "5");
             return new Uri(url);
         }
 
