@@ -27,6 +27,7 @@ namespace LyricHover.App
         {
             ["偏好设置"] = new[] { "偏好设置", "偏好設定", "Preferences", "設定" },
             ["语言"] = new[] { "语言", "語言", "Language", "言語" },
+            ["文 / A"] = new[] { "文 / A", "文 / A", "文 / A", "文 / A" },
             ["跟随系统"] = new[] { "跟随系统", "跟隨系統", "System default", "システムに従う" },
             ["简体中文"] = new[] { "简体中文", "簡體中文", "Simplified Chinese", "簡体字中国語" },
             ["繁體中文"] = new[] { "繁體中文", "繁體中文", "Traditional Chinese", "繁体字中国語" },

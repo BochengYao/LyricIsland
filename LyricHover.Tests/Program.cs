@@ -2947,6 +2947,9 @@ namespace LyricHover.Tests
                 xaml.IndexOf("x:Name=\"ThemeToggleRoot\"", StringComparison.Ordinal));
             Assert.True(xaml.Contains("SelectionChanged=\"LanguageComboBox_SelectionChanged\""));
             Assert.True(xaml.Substring(languageSelectorStart, 180).Contains("Width=\"194\""));
+            Assert.True(xaml.Contains("Text=\"文 / A\""));
+            Assert.True(xaml.Contains("ToolTip=\"语言\""));
+            Assert.True(xaml.Contains("AutomationProperties.Name=\"语言\""));
             Assert.True(settingsSource.Contains("AppLanguagePreference"));
             Assert.True(settingsSource.Contains("Language { get; set; } = AppLanguagePreference.System"));
             Assert.True(settingsSource.Contains("typeof(AppLanguagePreference)"));

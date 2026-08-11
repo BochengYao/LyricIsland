@@ -785,7 +785,9 @@
                             <TextBlock Margin="8,0,0,8"
                                        Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
                                        FontSize="12.5"
-                                       Text="语言" />
+                                       ToolTip="语言"
+                                       AutomationProperties.Name="语言"
+                                       Text="文 / A" />
                             <ComboBox x:Name="LanguageComboBox"
                                       Width="194"
                                       Height="36"
