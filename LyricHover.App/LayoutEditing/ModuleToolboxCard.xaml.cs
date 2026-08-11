@@ -31,6 +31,15 @@ namespace LyricHover.App.LayoutEditing
             if (descriptor != null)
             {
                 card.Width = descriptor.PreviewWidth;
+                card.RefreshLanguage();
+            }
+        }
+
+        public void RefreshLanguage()
+        {
+            if (Descriptor != null)
+            {
+                DisplayNameText.Text = LyricHover.App.UiLanguageService.Translate(Descriptor.DisplayName);
             }
         }
     }

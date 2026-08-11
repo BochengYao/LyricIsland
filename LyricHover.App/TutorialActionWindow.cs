@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -10,10 +11,17 @@ namespace LyricHover.App
     public sealed class TutorialActionWindow : Window
     {
         private const double ActionPadding = 28;
+        private const double ActionTextHorizontalPadding = 48;
 
         public TutorialActionWindow(string text, Color background, Action clicked, Action exitRequested = null, bool emphasized = false)
         {
-            Width = (emphasized ? 176 : 142) + ActionPadding * 2;
+            var fontSize = emphasized ? 18 : 15;
+            var buttonWidth = MeasureButtonWidth(
+                text,
+                fontSize,
+                emphasized ? FontWeights.Bold : FontWeights.SemiBold,
+                emphasized ? 176 : 142);
+            Width = buttonWidth + ActionPadding * 2;
             Height = (emphasized ? 56 : 44) + ActionPadding * 2;
             WindowStyle = WindowStyle.None;
             AllowsTransparency = true;
@@ -26,7 +34,7 @@ namespace LyricHover.App
 
             var button = new Button
             {
-                Width = emphasized ? 176 : 142,
+                Width = buttonWidth,
                 Height = emphasized ? 56 : 44,
                 Content = text ?? string.Empty,
                 Foreground = Brushes.White,
@@ -34,7 +42,7 @@ namespace LyricHover.App
                 BorderBrush = Brushes.Transparent,
                 BorderThickness = new Thickness(0),
                 FontFamily = new FontFamily("Microsoft YaHei UI"),
-                FontSize = emphasized ? 18 : 15,
+                FontSize = fontSize,
                 FontWeight = FontWeights.Bold,
                 Cursor = System.Windows.Input.Cursors.Hand,
                 Template = CreateButtonTemplate(background, emphasized)
@@ -107,6 +115,26 @@ namespace LyricHover.App
         {
             Topmost = false;
             Topmost = true;
+        }
+
+        private static double MeasureButtonWidth(string text, double fontSize, FontWeight fontWeight, double minimumWidth)
+        {
+            var typeface = new Typeface(
+                new FontFamily("Microsoft YaHei UI"),
+                FontStyles.Normal,
+                fontWeight,
+                FontStretches.Normal);
+            var formattedText = new FormattedText(
+                text ?? string.Empty,
+                CultureInfo.CurrentUICulture,
+                FlowDirection.LeftToRight,
+                typeface,
+                fontSize,
+                Brushes.White,
+                1.0);
+            return Math.Ceiling(Math.Max(
+                minimumWidth,
+                formattedText.WidthIncludingTrailingWhitespace + ActionTextHorizontalPadding));
         }
 
         private static ControlTemplate CreateButtonTemplate(Color background, bool emphasized)

@@ -11,7 +11,12 @@ namespace LyricHover.Core
         {
         }
 
-        public TimedLyrics(IEnumerable<LyricLine> lines, string title, string artist, IEnumerable<LyricLine> translationLines)
+        public TimedLyrics(
+            IEnumerable<LyricLine> lines,
+            string title,
+            string artist,
+            IEnumerable<LyricLine> translationLines,
+            LyricsTranslationLanguage translationLanguage = LyricsTranslationLanguage.SourceDefault)
         {
             Lines = (lines ?? Enumerable.Empty<LyricLine>())
                 .OrderBy(line => line.Timestamp)
@@ -23,11 +28,14 @@ namespace LyricHover.Core
                 .AsReadOnly();
             Title = title ?? string.Empty;
             Artist = artist ?? string.Empty;
+            TranslationLanguage = LyricsTranslationLanguages.Normalize(translationLanguage);
         }
 
         public IReadOnlyList<LyricLine> Lines { get; }
 
         public IReadOnlyList<LyricLine> TranslationLines { get; }
+
+        public LyricsTranslationLanguage TranslationLanguage { get; }
 
         public string Title { get; }
 

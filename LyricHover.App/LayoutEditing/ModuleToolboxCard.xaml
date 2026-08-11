@@ -17,11 +17,12 @@
                   Data="{Binding IconGeometry}"
                   Fill="{DynamicResource SettingsControlForegroundBrush}"
                   Stretch="Uniform" />
-            <TextBlock Margin="0,4,0,0"
+            <TextBlock x:Name="DisplayNameText"
+                       Margin="0,4,0,0"
                        HorizontalAlignment="Center"
                        Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
                        FontSize="9.5"
-                       Text="{Binding DisplayName}" />
+                       TextWrapping="NoWrap" />
         </StackPanel>
     </Border>
 </UserControl>

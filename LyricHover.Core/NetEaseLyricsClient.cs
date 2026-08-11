@@ -115,7 +115,10 @@ namespace LyricHover.Core
                         var translated = translation.GetString() ?? string.Empty;
                         if (!string.IsNullOrWhiteSpace(translated))
                         {
-                            return LyricsPackageParser.CreatePackage(original, translated);
+                            return LyricsPackageParser.CreatePackage(
+                                original,
+                                translated,
+                                LyricsTranslationLanguage.SimplifiedChinese);
                         }
                     }
 

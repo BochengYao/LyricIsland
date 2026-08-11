@@ -62,6 +62,7 @@ namespace LyricHover.App
         private DispatcherTimer translationModeToastTimer;
         private Storyboard layoutModePreviewStoryboard;
         private int themeTransitionVersion;
+        private bool systemBackdropApplied;
         private readonly StoreProEntitlementService proEntitlementService;
         private readonly SupporterBadgeIdentityStore supporterBadgeIdentityStore;
         private SupporterBadgeIdentity supporterBadgeIdentity;
@@ -73,11 +74,66 @@ namespace LyricHover.App
         private const string MicrosoftStoreProductId = "9NRXZP5HMXK2";
         private const string MicrosoftStoreProductUrl = "https://apps.microsoft.com/detail/9nrxzp5hmxk2";
         internal const string MicrosoftStoreProProductId = "lyric_island_pro";
-        private const string WebsiteUrl = "https://lyric-island.top/";
-        private const string FeedbackUrl = "https://lyric-island.top/incentives/";
+        private const string ChineseWebsiteUrl = "https://lyric-island.top/";
+        private const string ChineseFeedbackUrl = "https://lyric-island.top/incentives/";
+        private const string EnglishWebsiteUrl = "https://lyric-island.top/en/";
+        private const string EnglishFeedbackUrl = "https://lyric-island.top/en/incentives/";
+        private const string TraditionalChineseWebsiteUrl = "https://lyric-island.top/zh-hant/";
+        private const string TraditionalChineseFeedbackUrl = "https://lyric-island.top/zh-hant/incentives/";
+        private const string JapaneseWebsiteUrl = "https://lyric-island.top/ja/";
+        private const string JapaneseFeedbackUrl = "https://lyric-island.top/ja/incentives/";
         private const string SupporterBadgeButtonText = "查看我的支持者徽章";
         private const string PurchaseIconGeometry = "M4,7 L16,7 L17,18 L3,18 Z M7,7 L7,5 A3,3 0 0 1 13,5 L13,7";
         private const string BadgeIconGeometry = "M7.21,15 L2.66,7.14 A2,2 0 0 1 2.79,4.94 L4.4,2.8 A2,2 0 0 1 6,2 H18 A2,2 0 0 1 19.6,2.8 L21.2,4.94 A2,2 0 0 1 21.34,7.14 L16.79,15 M11,12 L5.12,2.2 M13,12 L18.88,2.2 M8,7 H16 M12,12 A5,5 0 1 1 12,22 A5,5 0 1 1 12,12 M12,18 V16 H11.5";
+        private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
+        private const int DWMWA_MICA_EFFECT = 1029;
+        private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+        private const int DWMSBT_TRANSIENTWINDOW = 3;
+        private const int DWMWCP_ROUND = 2;
+        private const int WCA_ACCENT_POLICY = 19;
+        private const int ACCENT_DISABLED = 0;
+        private const int ACCENT_ENABLE_ACRYLICBLURBEHIND = 4;
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MARGINS
+        {
+            public int cxLeftWidth;
+            public int cxRightWidth;
+            public int cyTopHeight;
+            public int cyBottomHeight;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct ACCENT_POLICY
+        {
+            public int AccentState;
+            public int AccentFlags;
+            public int GradientColor;
+            public int AnimationId;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct WINDOWCOMPOSITIONATTRIBDATA
+        {
+            public int Attribute;
+            public IntPtr Data;
+            public int SizeOfData;
+        }
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(
+            IntPtr hwnd,
+            int dwAttribute,
+            ref int pvAttribute,
+            int cbAttribute);
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmExtendFrameIntoClientArea(IntPtr hwnd, ref MARGINS margins);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern int SetWindowCompositionAttribute(
+            IntPtr hwnd,
+            ref WINDOWCOMPOSITIONATTRIBDATA data);
 
         [ComImport]
         [Guid("3E68D4BD-7135-4D10-8018-9FB6D9F33FA1")]
@@ -132,23 +188,16 @@ namespace LyricHover.App
             this.tutorialSectionChanged = tutorialSectionChanged;
             this.tryExitTutorial = tryExitTutorial;
             PreviewKeyDown += PlacementSettingsWindow_PreviewKeyDown;
-
-            ScreenComboBox.ItemsSource = this.screens
-                .Select((screen, index) => new ScreenOption(screen.Name, "显示器 " + (index + 1) + " (" + (int)screen.WorkWidth + " x " + (int)screen.WorkHeight + ")"))
-                .ToList();
-            LyricsSourceComboBox.ItemsSource = new[]
-            {
-                new LyricsSourceOption(LyricsSourcePreference.Automatic, "自动选择"),
-                new LyricsSourceOption(LyricsSourcePreference.LrcLib, "LRCLIB"),
-                new LyricsSourceOption(LyricsSourcePreference.QQMusic, "QQ 音乐"),
-                new LyricsSourceOption(LyricsSourcePreference.KuGou, "酷狗"),
-                new LyricsSourceOption(LyricsSourcePreference.NetEase, "网易云")
-            };
+            SourceInitialized += PlacementSettingsWindow_SourceInitialized;
 
             var settings = (currentSettings ?? new OverlayPlacementSettings()).DeepClone();
             settings.Normalize();
             workingSettings = settings;
             workingSettings.Normalize();
+            UiLanguageService.SetPreference(settings.Language);
+            InitializeLanguageSelector(settings.Language);
+            InitializeScreenSelection(settings.ScreenName);
+            InitializeLyricsSourceSelection(settings.LyricsSource);
             acceptedCacheLimitMegabytes = settings.CacheLimitMegabytes;
             selectedThemePreference = settings.SettingsTheme;
             SetThemeRadioButton(selectedThemePreference);
@@ -192,6 +241,8 @@ namespace LyricHover.App
             {
                 SubscribeToSystemThemeChanges();
                 ApplySettingsTheme();
+                UiLanguageService.ApplyTo(this);
+                ScheduleLocalizedVisualRefresh();
                 UpdateSegmentSelectionPositions(false);
                 CenterOnDesktop();
                 setHoverTransparencySuppressed?.Invoke(true);
@@ -214,6 +265,136 @@ namespace LyricHover.App
                 }
             };
             Closed += (sender, args) => UnsubscribeFromSystemThemeChanges();
+        }
+
+        private void PlacementSettingsWindow_SourceInitialized(object sender, EventArgs e)
+        {
+            ApplySettingsTheme();
+        }
+
+        private bool TryApplySettingsBackdrop(bool dark)
+        {
+            var source = PresentationSource.FromVisual(this) as HwndSource;
+            if (source == null || source.Handle == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            try
+            {
+                if (SystemParameters.HighContrast)
+                {
+                    ApplyAcrylicBlurBehind(source.Handle, ACCENT_DISABLED, 0);
+                    var noBackdrop = 1;
+                    DwmSetWindowAttribute(
+                        source.Handle,
+                        DWMWA_SYSTEMBACKDROP_TYPE,
+                        ref noBackdrop,
+                        sizeof(int));
+                    return false;
+                }
+
+                var cornerPreference = DWMWCP_ROUND;
+                DwmSetWindowAttribute(
+                    source.Handle,
+                    DWMWA_WINDOW_CORNER_PREFERENCE,
+                    ref cornerPreference,
+                    sizeof(int));
+
+                // WPF owns the client area of this borderless HWND. Extend the
+                // compositor frame before enabling an acrylic backdrop; otherwise
+                // WPF's transparent root resolves to the HWND's black fallback
+                // surface instead of the blurred desktop behind the window.
+                var margins = new MARGINS
+                {
+                    cxLeftWidth = -1,
+                    cxRightWidth = -1,
+                    cyTopHeight = -1,
+                    cyBottomHeight = -1
+                };
+                if (DwmExtendFrameIntoClientArea(source.Handle, ref margins) != 0)
+                {
+                    return false;
+                }
+
+                source.CompositionTarget.BackgroundColor = Colors.Transparent;
+
+                var acrylicBlurApplied = false;
+                try
+                {
+                    acrylicBlurApplied = ApplyAcrylicBlurBehind(
+                        source.Handle,
+                        ACCENT_ENABLE_ACRYLICBLURBEHIND,
+                        dark ? unchecked((int)0x60181312) : unchecked((int)0x60FAF3F4));
+                }
+                catch (EntryPointNotFoundException)
+                {
+                    // Older Windows versions can still use the DWM fallback below.
+                }
+
+                if (acrylicBlurApplied)
+                {
+                    return true;
+                }
+
+                var backdropType = DWMSBT_TRANSIENTWINDOW;
+                var result = DwmSetWindowAttribute(
+                    source.Handle,
+                    DWMWA_SYSTEMBACKDROP_TYPE,
+                    ref backdropType,
+                    sizeof(int));
+
+                if (result != 0)
+                {
+                    var micaEnabled = 1;
+                    result = DwmSetWindowAttribute(
+                        source.Handle,
+                        DWMWA_MICA_EFFECT,
+                        ref micaEnabled,
+                        sizeof(int));
+                }
+
+                if (result != 0)
+                {
+                    return false;
+                }
+                return true;
+            }
+            catch (DllNotFoundException)
+            {
+                return false;
+            }
+            catch (EntryPointNotFoundException)
+            {
+                return false;
+            }
+        }
+
+        private static bool ApplyAcrylicBlurBehind(IntPtr hwnd, int accentState, int gradientColor)
+        {
+            var accentPolicy = new ACCENT_POLICY
+            {
+                AccentState = accentState,
+                GradientColor = gradientColor
+            };
+            var policySize = Marshal.SizeOf(typeof(ACCENT_POLICY));
+            var policyPointer = Marshal.AllocHGlobal(policySize);
+
+            try
+            {
+                Marshal.StructureToPtr(accentPolicy, policyPointer, false);
+                var data = new WINDOWCOMPOSITIONATTRIBDATA
+                {
+                    Attribute = WCA_ACCENT_POLICY,
+                    Data = policyPointer,
+                    SizeOfData = policySize
+                };
+                return SetWindowCompositionAttribute(hwnd, ref data) != 0;
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(policyPointer);
+            }
         }
 
         public void NotifyExternalSettingsChanged()
@@ -296,6 +477,72 @@ namespace LyricHover.App
 
         private void SettingsSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            QueueDirtyStateUpdate();
+        }
+
+        private void InitializeLanguageSelector(AppLanguagePreference preference)
+        {
+            LanguageComboBox.ItemsSource = UiLanguageService.CreateOptions();
+            LanguageComboBox.SelectedValue = preference;
+        }
+
+        private void InitializeScreenSelection(string selectedScreenName)
+        {
+            ScreenComboBox.ItemsSource = screens
+                .Select((screen, index) => new ScreenOption(
+                    screen.Name,
+                    UiLanguageService.Translate("显示器") + " " + (index + 1) +
+                    " (" + (int)screen.WorkWidth + " x " + (int)screen.WorkHeight + ")"))
+                .ToList();
+            ScreenComboBox.SelectedValue = string.IsNullOrWhiteSpace(selectedScreenName)
+                ? screens.FirstOrDefault()?.Name
+                : selectedScreenName;
+        }
+
+        private void InitializeLyricsSourceSelection(LyricsSourcePreference preference)
+        {
+            LyricsSourceComboBox.ItemsSource = new[]
+            {
+                new LyricsSourceOption(LyricsSourcePreference.Automatic, UiLanguageService.Translate("自动选择")),
+                new LyricsSourceOption(LyricsSourcePreference.LrcLib, "LRCLIB"),
+                new LyricsSourceOption(LyricsSourcePreference.QQMusic, "QQ 音乐"),
+                new LyricsSourceOption(LyricsSourcePreference.KuGou, "酷狗"),
+                new LyricsSourceOption(LyricsSourcePreference.NetEase, "网易云")
+            };
+            LyricsSourceComboBox.SelectedValue = preference;
+        }
+
+        private void RefreshLocalizedSettingsContent()
+        {
+            InitializeScreenSelection(ScreenComboBox.SelectedValue as string);
+            InitializeLyricsSourceSelection(LyricsSourceComboBox.SelectedValue is LyricsSourcePreference preference
+                ? preference
+                : LyricsSourcePreference.Automatic);
+            InitializePlayerSelection(workingSettings);
+            ApplyProEntitlementState(proEntitlementKind);
+            UpdateSettingValueLabels();
+        }
+
+        private void LanguageComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (initializingSettings || !(LanguageComboBox.SelectedValue is AppLanguagePreference preference))
+            {
+                return;
+            }
+
+            if (workingSettings != null &&
+                workingSettings.Language == preference &&
+                UiLanguageService.Preference == preference)
+            {
+                return;
+            }
+
+            workingSettings.Language = preference;
+            UiLanguageService.SetPreference(preference);
+            InitializeLanguageSelector(preference);
+            RefreshLocalizedSettingsContent();
+            UiLanguageService.ApplyTo(this);
+            ScheduleLocalizedVisualRefresh();
             QueueDirtyStateUpdate();
         }
 
@@ -477,10 +724,17 @@ namespace LyricHover.App
 
         private void SystemEvents_UserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
         {
-            if (selectedThemePreference == SettingsThemePreference.System)
+            var refreshTheme = selectedThemePreference == SettingsThemePreference.System;
+            Dispatcher.BeginInvoke(new Action(() =>
             {
-                Dispatcher.BeginInvoke(new Action(ApplySettingsTheme));
-            }
+                var previousSystemBackdropApplied = systemBackdropApplied;
+                var dark = ResolveDarkSettingsTheme(selectedThemePreference);
+                systemBackdropApplied = TryApplySettingsBackdrop(dark);
+                if (refreshTheme || SystemParameters.HighContrast || previousSystemBackdropApplied != systemBackdropApplied)
+                {
+                    ApplySettingsTheme();
+                }
+            }));
         }
 
         private void SaveButton_Click(object sender, RoutedEventArgs e)
@@ -557,6 +811,9 @@ namespace LyricHover.App
             settings.HoverSpectrumStops = ReadHoverSpectrumStops();
             settings.PassThroughOnHover = PassThroughOnHoverCheckBox.IsChecked == true;
             settings.SettingsTheme = selectedThemePreference;
+            settings.Language = LanguageComboBox.SelectedValue is AppLanguagePreference language
+                ? language
+                : AppLanguagePreference.System;
             settings.LyricsSource = ReadLyricsSource();
             settings.LockedSourceAppUserModelId = PlayerSelectionComboBox.SelectedValue as string ?? string.Empty;
             settings.UseMultiLineDisplay = ReadUseMultiLineDisplay();
@@ -624,14 +881,17 @@ namespace LyricHover.App
         {
             var playerOptions = new Dictionary<string, PlayerSelectionOption>(StringComparer.OrdinalIgnoreCase)
             {
-                [string.Empty] = new PlayerSelectionOption(string.Empty, "自动选择", true)
+                [string.Empty] = new PlayerSelectionOption(
+                    string.Empty,
+                    UiLanguageService.Translate("自动选择"),
+                    true)
             };
 
             foreach (var installed in installedPlayers.OrderBy(player => player.DisplayName))
             {
                 playerOptions[installed.SelectionKey] = new PlayerSelectionOption(
                     installed.SelectionKey,
-                    installed.DisplayName,
+                    UiLanguageService.Translate(installed.DisplayName),
                     true);
             }
 
@@ -645,7 +905,7 @@ namespace LyricHover.App
                 var displayName = string.IsNullOrWhiteSpace(session.PlayerDisplayName)
                     ? profile.DisplayName
                     : session.PlayerDisplayName;
-                playerOptions[selectionKey] = new PlayerSelectionOption(selectionKey, displayName, true);
+                playerOptions[selectionKey] = new PlayerSelectionOption(selectionKey, UiLanguageService.Translate(displayName), true);
             }
 
             var selectedValue = NormalizePlayerSelection(settings.LockedSourceAppUserModelId);
@@ -655,7 +915,7 @@ namespace LyricHover.App
                 var displayName = PlayerProfileCatalog.TryResolveSelectionKey(selectedValue, out selectedProfile)
                     ? selectedProfile.DisplayName
                     : selectedValue;
-                playerOptions[selectedValue] = new PlayerSelectionOption(selectedValue, displayName, false);
+                playerOptions[selectedValue] = new PlayerSelectionOption(selectedValue, UiLanguageService.Translate(displayName), false);
             }
 
             var options = playerOptions.Values
@@ -700,19 +960,19 @@ namespace LyricHover.App
             string selectionHint;
             if (option == null || string.IsNullOrEmpty(option.Value))
             {
-                selectionHint = "自动选择会跟随最近活跃的播放器";
+                selectionHint = UiLanguageService.Translate("自动选择会跟随最近活跃的播放器");
             }
             else if (!option.IsDetected)
             {
-                selectionHint = "未检测到，启动播放器后生效";
+                selectionHint = UiLanguageService.Translate("未检测到，启动播放器后生效");
             }
             else
             {
-                selectionHint = "优先选择 " + option.DisplayName;
+                selectionHint = UiLanguageService.Translate("优先选择") + " " + option.DisplayName;
             }
 
             PlayerSelectionHintText.Text = selectionHint + Environment.NewLine +
-                "注：网易云音乐由于接口限制无法实时同步歌曲进度（播放器内拖动进度条无法同步）";
+                UiLanguageService.Translate("注：网易云音乐由于接口限制无法实时同步歌曲进度（播放器内拖动进度条无法同步）");
         }
 
         private static string NormalizePlayerSelection(string value)
@@ -1108,10 +1368,11 @@ namespace LyricHover.App
                 return;
             }
 
+            const double themeSegmentWidth = 62.6666666667;
             var target = DarkThemeRadioButton.IsChecked == true
-                ? 42
+                ? themeSegmentWidth
                 : SystemThemeRadioButton.IsChecked == true
-                    ? 84
+                    ? themeSegmentWidth * 2
                     : 0;
             AnimateSegmentSelection(ThemeSelectionTransform, target, animated);
         }
@@ -1286,7 +1547,7 @@ namespace LyricHover.App
         {
             Dispatcher.BeginInvoke(
                 DispatcherPriority.Background,
-                new Action(() => OpenExternalUrl(FeedbackUrl)));
+                new Action(() => OpenExternalUrl(GetLocalizedFeedbackUrl())));
         }
 
         private async void SupportProPurchaseButton_Click(object sender, RoutedEventArgs e)
@@ -1427,9 +1688,10 @@ namespace LyricHover.App
         {
             proEntitlementKind = kind;
             var presentation = ProEntitlementPresentation.For(kind);
-            SupportProTitleText.Text = presentation.Title;
-            SupportProDescriptionText.Text = presentation.Description;
-            SupportProButtonText.Text = presentation.ButtonText;
+            SupportProTitleText.Text = UiLanguageService.Translate(presentation.Title);
+            SupportProDescriptionText.Text = UiLanguageService.Translate(presentation.Description);
+            SupportProButtonText.Text = UiLanguageService.Translate(presentation.ButtonText);
+            RefreshSupportProBenefitText();
             SupportProButtonIcon.Data = Geometry.Parse(
                 presentation.UseBadgeIcon ? BadgeIconGeometry : PurchaseIconGeometry);
             UpdateSupporterIdentityControls();
@@ -1442,10 +1704,15 @@ namespace LyricHover.App
                 return;
             }
 
+            OpenSupporterBadgePreview(supporterBadgeIdentity);
+        }
+
+        private void OpenSupporterBadgePreview(SupporterBadgeIdentity identity)
+        {
             supporterBadgePreviewWindow = new SupporterBadgePreviewWindow(
                 new SupporterBadgeOptions
                 {
-                    Identity = supporterBadgeIdentity,
+                    Identity = identity,
                     AutoRotate = true,
                     InitialSide = SupporterBadgeInitialSide.Front,
                     Size = SupporterBadgeSize.Large
@@ -1491,13 +1758,8 @@ namespace LyricHover.App
                     return false;
                 }
 
-                var confirmation = MessageBox.Show(
-                    "署名将与 Microsoft Store 获取日期一起刻印在支持者徽章背面。提交后不可修改，是否确认？",
-                    "确认并永久刻印",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning,
-                    MessageBoxResult.No);
-                if (confirmation != MessageBoxResult.Yes)
+                var confirmation = new SupporterBadgeImprintConfirmationWindow(this);
+                if (confirmation.ShowDialog() != true)
                 {
                     return false;
                 }
@@ -1623,7 +1885,7 @@ namespace LyricHover.App
 
             SupportStatusText.BeginAnimation(OpacityProperty, null);
             SupportStatusText.Opacity = 1;
-            SupportStatusText.Text = message;
+            SupportStatusText.Text = UiLanguageService.Translate(message);
             SupportStatusText.Foreground = isError
                 ? new SolidColorBrush(Color.FromRgb(190, 58, 58))
                 : (Brush)FindResource("SettingsControlMutedForegroundBrush");
@@ -1676,8 +1938,10 @@ namespace LyricHover.App
             }
 
             var dark = ResolveDarkSettingsTheme(selectedThemePreference);
+            systemBackdropApplied = TryApplySettingsBackdrop(dark);
             UpdateThemeResources(dark);
             RootChrome.BorderBrush = Brushes.Transparent;
+            RootChrome.BorderThickness = new Thickness(0);
             SidebarCard.BorderBrush = Brushes.Transparent;
             ContentCard.Background = Brushes.Transparent;
             ContentCard.BorderBrush = Brushes.Transparent;
@@ -1691,12 +1955,24 @@ namespace LyricHover.App
         {
             var animate = IsLoaded && !initializingSettings;
             var transitionVersion = ++themeTransitionVersion;
-            SetBrushResource("SettingsRootBackgroundBrush", dark ? "#121318" : "#F4F3FA", animate, transitionVersion);
-            SetBrushResource("SettingsSidebarBackgroundBrush", dark ? "#202126" : "#FBFBFD", animate, transitionVersion);
+            SetBrushResource(
+                "SettingsRootBackgroundBrush",
+                systemBackdropApplied
+                    ? (dark ? "#14121318" : "#14F4F3FA")
+                    : (dark ? "#121318" : "#F4F3FA"),
+                animate,
+                transitionVersion);
+            SetBrushResource(
+                "SettingsSidebarBackgroundBrush",
+                systemBackdropApplied
+                    ? (dark ? "#36202126" : "#3CFBFBFD")
+                    : (dark ? "#202126" : "#FBFBFD"),
+                animate,
+                transitionVersion);
             SetBrushResource("SettingsThemeToggleBackgroundBrush", dark ? "#2B2C32" : "#ECECF2", animate, transitionVersion);
             SetBrushResource("SettingsControlBackgroundBrush", dark ? "#20252E" : "#F8FAFC", animate, transitionVersion);
             SetBrushResource("SettingsControlForegroundBrush", dark ? "#F3F4F6" : "#1F2937", animate, transitionVersion);
-            SetBrushResource("SettingsControlMutedForegroundBrush", dark ? "#B4BDCA" : "#667085", animate, transitionVersion);
+            SetBrushResource("SettingsControlMutedForegroundBrush", dark ? "#B4BDCA" : "#344054", animate, transitionVersion);
             SetBrushResource("SettingsControlBorderBrush", dark ? "#3A4250" : "#D8DEE8", animate, transitionVersion);
             SetBrushResource("SettingsControlHoverBackgroundBrush", dark ? "#28303B" : "#FFFFFF", animate, transitionVersion);
             SetBrushResource("SettingsControlPressedBackgroundBrush", dark ? "#303846" : "#EEF2F7", animate, transitionVersion);
@@ -1704,7 +1980,7 @@ namespace LyricHover.App
             SetBrushResource("SettingsSelectedForegroundBrush", dark ? "#F8FAFC" : "#111827", animate, transitionVersion);
             SetBrushResource("SettingsSidebarHoverBackgroundBrush", dark ? "#2A2B31" : "#F0F0F4", animate, transitionVersion);
             SetBrushResource("SettingsSidebarSelectedBackgroundBrush", dark ? "#34353C" : "#E5E5EA", animate, transitionVersion);
-            SetBrushResource("SettingsSidebarSelectedForegroundBrush", dark ? "#4B4C54" : "#D2D2D8", animate, transitionVersion);
+            SetBrushResource("SettingsSidebarSelectedForegroundBrush", dark ? "#4B4C54" : "#1D2939", animate, transitionVersion);
             SetBrushResource("SettingsTrackBackgroundBrush", dark ? "#303846" : "#E6EAF0", animate, transitionVersion);
             SetBrushResource("SettingsToastBackgroundBrush", dark ? "#F020252E" : "#FFFFFFFF", animate, transitionVersion);
             SetBrushResource("SettingsToastBorderBrush", dark ? "#664F9CFF" : "#C9D7EC", animate, transitionVersion);
@@ -1884,6 +2160,8 @@ namespace LyricHover.App
             LayoutSettingsPanel.Visibility = section == "Layout" ? Visibility.Visible : Visibility.Collapsed;
             SupportSettingsPanel.Visibility = section == "Support" ? Visibility.Visible : Visibility.Collapsed;
             AboutSettingsPanel.Visibility = section == "About" ? Visibility.Visible : Visibility.Collapsed;
+            UiLanguageService.ApplyTo(this);
+            ScheduleLocalizedVisualRefresh();
             if (section == "Support")
             {
                 _ = RefreshProEntitlementAsync();
@@ -1894,6 +2172,41 @@ namespace LyricHover.App
                 layoutEditingActive = true;
                 beginLayoutEditing(ReadEditedLayoutMode(), false);
             }
+        }
+
+        private void ScheduleLocalizedVisualRefresh()
+        {
+            Dispatcher.BeginInvoke(
+                DispatcherPriority.ContextIdle,
+                new Action(() =>
+                {
+                    if (!IsLoaded)
+                    {
+                        return;
+                    }
+
+                    UiLanguageService.ApplyTo(this);
+                    RefreshSupportProBenefitText();
+                    foreach (var card in FindVisualChildren<ModuleToolboxCard>(this))
+                    {
+                        card.RefreshLanguage();
+                    }
+                }));
+        }
+
+        private void RefreshSupportProBenefitText()
+        {
+            if (SupportProEarlyAccessTitleText == null)
+            {
+                return;
+            }
+
+            SupportProEarlyAccessTitleText.Text = UiLanguageService.Translate("抢先体验");
+            SupportProEarlyAccessDescriptionText.Text = UiLanguageService.Translate("优先体验新功能。");
+            SupportProBadgeTitleText.Text = UiLanguageService.Translate("支持者徽章");
+            SupportProBadgeDescriptionText.Text = UiLanguageService.Translate("永久展示支持者身份。");
+            SupportProLifetimeTitleText.Text = UiLanguageService.Translate("永久有效");
+            SupportProLifetimeDescriptionText.Text = UiLanguageService.Translate("一次购买，权益长期有效。");
         }
 
         public void PulseLayoutEditSettingsHighlight()
@@ -1932,7 +2245,37 @@ namespace LyricHover.App
         {
             Dispatcher.BeginInvoke(
                 DispatcherPriority.Background,
-                new Action(() => OpenExternalUrl(WebsiteUrl)));
+                new Action(() => OpenExternalUrl(GetLocalizedWebsiteUrl())));
+        }
+
+        private static string GetLocalizedWebsiteUrl()
+        {
+            switch (UiLanguageService.EffectiveLanguage)
+            {
+                case AppLanguagePreference.SimplifiedChinese:
+                    return ChineseWebsiteUrl;
+                case AppLanguagePreference.TraditionalChinese:
+                    return TraditionalChineseWebsiteUrl;
+                case AppLanguagePreference.Japanese:
+                    return JapaneseWebsiteUrl;
+                default:
+                    return EnglishWebsiteUrl;
+            }
+        }
+
+        private static string GetLocalizedFeedbackUrl()
+        {
+            switch (UiLanguageService.EffectiveLanguage)
+            {
+                case AppLanguagePreference.SimplifiedChinese:
+                    return ChineseFeedbackUrl;
+                case AppLanguagePreference.TraditionalChinese:
+                    return TraditionalChineseFeedbackUrl;
+                case AppLanguagePreference.Japanese:
+                    return JapaneseFeedbackUrl;
+                default:
+                    return EnglishFeedbackUrl;
+            }
         }
 
         private static void OpenGitHub()
@@ -2129,9 +2472,9 @@ namespace LyricHover.App
             DividerSpacingValueText.Text = ((int)Math.Round(DividerSpacingSlider.Value)).ToString(CultureInfo.InvariantCulture) + " px";
             var noPlaybackSeconds = (int)Math.Round(NoPlaybackAutoRetractSlider.Value);
             NoPlaybackAutoRetractValueText.Text = noPlaybackSeconds == 0
-                ? "永不"
-                : noPlaybackSeconds.ToString(CultureInfo.InvariantCulture) + " 秒";
-            ExpandedAutoCollapseValueText.Text = ((int)Math.Round(ExpandedAutoCollapseSlider.Value)).ToString(CultureInfo.InvariantCulture) + " 秒";
+                ? UiLanguageService.Translate("永不")
+                : noPlaybackSeconds.ToString(CultureInfo.InvariantCulture) + " " + UiLanguageService.Translate("秒");
+            ExpandedAutoCollapseValueText.Text = ((int)Math.Round(ExpandedAutoCollapseSlider.Value)).ToString(CultureInfo.InvariantCulture) + " " + UiLanguageService.Translate("秒");
             UpdateSpectrumPreview();
             UpdateHoverShapePreview();
         }

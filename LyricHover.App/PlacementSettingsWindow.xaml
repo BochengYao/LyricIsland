@@ -6,7 +6,7 @@
         Title="LyricHover | LYRIC HOVER - 偏好设置"
         Width="1040"
         Height="720"
-        AllowsTransparency="True"
+        AllowsTransparency="False"
         Background="Transparent"
         WindowStartupLocation="Manual"
         WindowStyle="None"
@@ -17,7 +17,7 @@
     <Window.Resources>
         <SolidColorBrush x:Key="SettingsControlBackgroundBrush" Color="#F8FAFC" />
         <SolidColorBrush x:Key="SettingsControlForegroundBrush" Color="#1F2937" />
-        <SolidColorBrush x:Key="SettingsControlMutedForegroundBrush" Color="#667085" />
+        <SolidColorBrush x:Key="SettingsControlMutedForegroundBrush" Color="#344054" />
         <SolidColorBrush x:Key="SettingsControlBorderBrush" Color="#D8DEE8" />
         <SolidColorBrush x:Key="SettingsControlHoverBackgroundBrush" Color="#FFFFFF" />
         <SolidColorBrush x:Key="SettingsControlPressedBackgroundBrush" Color="#EEF2F7" />
@@ -25,7 +25,7 @@
         <SolidColorBrush x:Key="SettingsSelectedForegroundBrush" Color="#111827" />
         <SolidColorBrush x:Key="SettingsSidebarHoverBackgroundBrush" Color="#F2F5FA" />
         <SolidColorBrush x:Key="SettingsSidebarSelectedBackgroundBrush" Color="#EAF2FF" />
-        <SolidColorBrush x:Key="SettingsSidebarSelectedForegroundBrush" Color="#0F5FD7" />
+        <SolidColorBrush x:Key="SettingsSidebarSelectedForegroundBrush" Color="#1D2939" />
         <SolidColorBrush x:Key="SettingsTrackBackgroundBrush" Color="#E6EAF0" />
         <SolidColorBrush x:Key="SettingsToastBackgroundBrush" Color="#FFFFFFFF" />
         <SolidColorBrush x:Key="SettingsToastBorderBrush" Color="#C9D7EC" />
@@ -51,6 +51,8 @@
         <Style x:Key="SettingLabel" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource SettingsControlMutedForegroundBrush}" />
             <Setter Property="FontSize" Value="14" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="LineHeight" Value="18" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
         <Style x:Key="CompoundSettingLabel"
@@ -602,7 +604,7 @@
             </Setter>
         </Style>
         <Style x:Key="ThemeSegmentButtonStyle" TargetType="RadioButton">
-            <Setter Property="Width" Value="42" />
+            <Setter Property="Width" Value="62.6666666667" />
             <Setter Property="Height" Value="30" />
             <Setter Property="FontFamily" Value="Segoe UI Symbol" />
             <Setter Property="FontSize" Value="15" />
@@ -637,7 +639,7 @@
     <Border x:Name="RootChrome"
             Background="{DynamicResource SettingsRootBackgroundBrush}"
             BorderThickness="0"
-            CornerRadius="20">
+            CornerRadius="8">
         <Grid Margin="22,20,24,20">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -677,7 +679,7 @@
             <Grid Grid.Row="1"
                   Grid.RowSpan="2">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="194" />
+                    <ColumnDefinition Width="230" />
                     <ColumnDefinition Width="28" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
@@ -783,9 +785,22 @@
                             <TextBlock Margin="8,0,0,8"
                                        Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
                                        FontSize="12.5"
+                                       Text="语言" />
+                            <ComboBox x:Name="LanguageComboBox"
+                                      Width="194"
+                                      Height="36"
+                                      Margin="0,0,0,16"
+                                      HorizontalAlignment="Left"
+                                      Tag="NativeLanguageOptions"
+                                      DisplayMemberPath="DisplayName"
+                                      SelectedValuePath="Value"
+                                      SelectionChanged="LanguageComboBox_SelectionChanged" />
+                            <TextBlock Margin="8,0,0,8"
+                                       Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                       FontSize="12.5"
                                        Text="外观" />
                             <Border x:Name="ThemeToggleRoot"
-                                    Width="134"
+                                    Width="194"
                                     Height="36"
                                     Padding="3"
                                     HorizontalAlignment="Left"
@@ -794,7 +809,7 @@
                                     CornerRadius="12">
                                 <Grid>
                                     <Border x:Name="ThemeSelectionThumb"
-                                            Width="42"
+                                            Width="62.6666666667"
                                             Height="30"
                                             HorizontalAlignment="Left"
                                             IsHitTestVisible="False"
@@ -865,7 +880,7 @@
                                  <RowDefinition Height="Auto" />
                              </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="112" />
+                                <ColumnDefinition Width="148" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
 
@@ -977,7 +992,7 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="112" />
+                                <ColumnDefinition Width="148" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="76" />
                             </Grid.ColumnDefinitions>
@@ -1072,7 +1087,7 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="112" />
+                                <ColumnDefinition Width="148" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
 
@@ -1143,7 +1158,7 @@
                                 <RowDefinition Height="*" MinHeight="34" />
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="112" />
+                                <ColumnDefinition Width="148" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="64" />
                             </Grid.ColumnDefinitions>
@@ -1510,7 +1525,7 @@
                                  <RowDefinition Height="Auto" />
                              </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="112" />
+                                <ColumnDefinition Width="148" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
 
@@ -1821,7 +1836,9 @@
                                         Margin="0,14,0,0"
                                         VerticalAlignment="Top"
                                         Orientation="Horizontal">
-                                <Button Margin="0,0,8,0"
+                                <Button MinWidth="112"
+                                        Padding="20,0"
+                                        Margin="0,0,8,0"
                                         Content="恢复默认"
                                         Click="ResetLayoutButton_Click" />
                             </StackPanel>
@@ -1836,7 +1853,7 @@
                                     <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
                                     <Setter Property="FontSize" Value="13.5" />
                                     <Setter Property="FontWeight" Value="SemiBold" />
-                                    <Setter Property="TextWrapping" Value="NoWrap" />
+                                    <Setter Property="TextWrapping" Value="Wrap" />
                                 </Style>
                                 <Style x:Key="SupportActionDescriptionStyle" TargetType="TextBlock">
                                     <Setter Property="Margin" Value="0,3,0,0" />
@@ -1874,7 +1891,8 @@
                                     <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
                                     <Setter Property="FontSize" Value="14" />
                                     <Setter Property="FontWeight" Value="SemiBold" />
-                                    <Setter Property="TextWrapping" Value="NoWrap" />
+                                    <Setter Property="TextWrapping" Value="Wrap" />
+                                    <Setter Property="LineHeight" Value="17" />
                                 </Style>
                             </Grid.Resources>
 
@@ -1914,7 +1932,8 @@
 
                                 <Grid x:Name="SupportFreeActionsGrid"
                                       Grid.Row="3"
-                                      Margin="0,12,0,0">
+                                      Margin="0,12,0,0"
+                                      VerticalAlignment="Top">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="1" />
@@ -1927,7 +1946,7 @@
 
                                     <Grid Grid.Column="0"
                                           Margin="0,0,12,0">
-                                        <Grid Margin="0,8,0,8" VerticalAlignment="Center">
+                                        <Grid Margin="0,8,0,8" VerticalAlignment="Top">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="28" />
                                                 <ColumnDefinition Width="12" />
@@ -1940,20 +1959,23 @@
                                             <Grid x:Name="SupportReviewTextGrid"
                                                   Grid.Column="2">
                                                 <Grid.RowDefinitions>
-                                                    <RowDefinition Height="20" />
-                                                    <RowDefinition Height="34" />
-                                                    <RowDefinition Height="20" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
                                                 </Grid.RowDefinitions>
                                                 <TextBlock Grid.Row="0" Style="{StaticResource SupportActionTitleStyle}" Text="评价与撰写评价" />
                                                 <TextBlock Grid.Row="1" Style="{StaticResource SupportActionDescriptionStyle}" Text="你的想法会让LyricHover更好" />
                                                 <Button Grid.Row="2"
                                                         VerticalAlignment="Top"
+                                                        HorizontalAlignment="Stretch"
+                                                        HorizontalContentAlignment="Stretch"
                                                         Style="{StaticResource TextLinkButtonStyle}"
                                                         Click="SupportStoreReviewButton_Click">
                                                     <TextBlock Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                                FontSize="12"
                                                                FontWeight="SemiBold"
-                                                               Text="去评价  &gt;" />
+                                                               TextWrapping="Wrap"
+                                                               Text="去评价" />
                                                 </Button>
                                             </Grid>
                                         </Grid>
@@ -1968,7 +1990,7 @@
 
                                     <Grid Grid.Column="2"
                                           Margin="12,0">
-                                        <Grid Margin="0,8" VerticalAlignment="Center">
+                                        <Grid Margin="0,8" VerticalAlignment="Top">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="28" />
                                                 <ColumnDefinition Width="12" />
@@ -1981,20 +2003,23 @@
                                             <Grid x:Name="SupportShareTextGrid"
                                                   Grid.Column="2">
                                                 <Grid.RowDefinitions>
-                                                    <RowDefinition Height="20" />
-                                                    <RowDefinition Height="34" />
-                                                    <RowDefinition Height="20" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
                                                 </Grid.RowDefinitions>
                                                 <TextBlock Grid.Row="0" Style="{StaticResource SupportActionTitleStyle}" Text="分享给身边的朋友" />
                                                 <TextBlock Grid.Row="1" Style="{StaticResource SupportActionDescriptionStyle}" Text="让更多人发现并使用LyricHover" />
                                                 <Button Grid.Row="2"
                                                         VerticalAlignment="Top"
+                                                        HorizontalAlignment="Stretch"
+                                                        HorizontalContentAlignment="Stretch"
                                                         Style="{StaticResource TextLinkButtonStyle}"
                                                         Click="SupportShareButton_Click">
                                                     <TextBlock Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                                FontSize="12"
                                                                FontWeight="SemiBold"
-                                                               Text="立即分享  &gt;" />
+                                                               TextWrapping="Wrap"
+                                                               Text="立即分享" />
                                                 </Button>
                                             </Grid>
                                         </Grid>
@@ -2009,7 +2034,7 @@
 
                                     <Grid Grid.Column="4"
                                           Margin="12,0">
-                                        <Grid Margin="0,8" VerticalAlignment="Center">
+                                        <Grid Margin="0,8" VerticalAlignment="Top">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="28" />
                                                 <ColumnDefinition Width="12" />
@@ -2022,20 +2047,23 @@
                                             <Grid x:Name="SupportGitHubTextGrid"
                                                   Grid.Column="2">
                                                 <Grid.RowDefinitions>
-                                                    <RowDefinition Height="20" />
-                                                    <RowDefinition Height="34" />
-                                                    <RowDefinition Height="20" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
                                                 </Grid.RowDefinitions>
                                                 <TextBlock Grid.Row="0" Style="{StaticResource SupportActionTitleStyle}" Text="在 GitHub 上点 Star" />
                                                 <TextBlock Grid.Row="1" Style="{StaticResource SupportActionDescriptionStyle}" Text="Star 越多，越多人看到LyricHover" />
                                                 <Button Grid.Row="2"
                                                         VerticalAlignment="Top"
+                                                        HorizontalAlignment="Stretch"
+                                                        HorizontalContentAlignment="Stretch"
                                                         Style="{StaticResource TextLinkButtonStyle}"
                                                         Click="OpenGitHubAboutRow_Click">
                                                     <TextBlock Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                                FontSize="12"
                                                                FontWeight="SemiBold"
-                                                               Text="去 GitHub  &gt;" />
+                                                               TextWrapping="Wrap"
+                                                               Text="去 GitHub" />
                                                 </Button>
                                             </Grid>
                                         </Grid>
@@ -2051,7 +2079,7 @@
                                     <Grid x:Name="SupportFeedbackItem"
                                           Grid.Column="6"
                                           Margin="12,0,0,0">
-                                        <Grid Margin="0,8,0,8" VerticalAlignment="Center">
+                                        <Grid Margin="0,8,0,8" VerticalAlignment="Top">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="28" />
                                                 <ColumnDefinition Width="12" />
@@ -2064,20 +2092,23 @@
                                             <Grid x:Name="SupportFeedbackTextGrid"
                                                   Grid.Column="2">
                                                 <Grid.RowDefinitions>
-                                                    <RowDefinition Height="20" />
-                                                    <RowDefinition Height="34" />
-                                                    <RowDefinition Height="20" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
                                                 </Grid.RowDefinitions>
                                                 <TextBlock Grid.Row="0" Style="{StaticResource SupportActionTitleStyle}" Text="意见反馈" />
                                                 <TextBlock Grid.Row="1" Style="{StaticResource SupportActionDescriptionStyle}" Text="提交问题与功能建议" />
                                                 <Button Grid.Row="2"
                                                         VerticalAlignment="Top"
+                                                        HorizontalAlignment="Stretch"
+                                                        HorizontalContentAlignment="Stretch"
                                                         Style="{StaticResource TextLinkButtonStyle}"
                                                         Click="SupportFeedbackButton_Click">
                                                     <TextBlock Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                                FontSize="12"
                                                                FontWeight="SemiBold"
-                                                               Text="去反馈  &gt;" />
+                                                               TextWrapping="Wrap"
+                                                               Text="去反馈" />
                                                 </Button>
                                             </Grid>
                                         </Grid>
@@ -2086,20 +2117,20 @@
 
                                 <TextBlock x:Name="SupportStatusText"
                                            Grid.Row="4"
-                                           Height="16"
+                                           MinHeight="16"
                                            Margin="0,2,0,0"
                                            Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
                                            FontSize="11.5"
+                                           LineHeight="16"
                                            Text=""
-                                           TextTrimming="CharacterEllipsis" />
+                                           TextWrapping="Wrap" />
 
                                 <Border Grid.Row="5"
                                         Margin="0,14,0,0"
                                         VerticalAlignment="Stretch"
                                         Style="{StaticResource SupportProContainerStyle}">
                                     <Grid>
-                                        <Grid x:Name="SupportProContentGrid"
-                                              Margin="0,0,80,0">
+                                        <Grid x:Name="SupportProContentGrid">
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="Auto" />
                                             <RowDefinition Height="Auto" />
@@ -2113,16 +2144,16 @@
                                                    Text="LYRIC HOVER PRO" />
                                         <TextBlock x:Name="SupportProTitleText"
                                                    Grid.Row="1"
-                                                   Margin="0,3,0,0"
+                                                   Margin="0,3,88,0"
                                                    MaxWidth="760"
                                                    HorizontalAlignment="Left"
                                                    FontSize="23"
                                                    FontWeight="SemiBold"
                                                    TextWrapping="Wrap"
                                                    Text="Pro 支持计划" />
-                                         <TextBlock x:Name="SupportProDescriptionText"
-                                                    Grid.Row="2"
-                                                    Margin="0,8,0,0"
+                                          <TextBlock x:Name="SupportProDescriptionText"
+                                                     Grid.Row="2"
+                                                     Margin="0,8,88,0"
                                                     MaxWidth="760"
                                                     HorizontalAlignment="Left"
                                                     Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
@@ -2134,7 +2165,7 @@
 
                                         <Grid x:Name="SupportProBenefitsGrid"
                                               Grid.Row="3"
-                                              Margin="0,14,0,0"
+                                              Margin="0,14,272,0"
                                               VerticalAlignment="Center">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
@@ -2142,28 +2173,34 @@
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="1" />
                                                 <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="16" />
-                                                <ColumnDefinition Width="248" />
                                             </Grid.ColumnDefinitions>
 
                                             <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <Path Width="25"
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="25" />
+                                                        <ColumnDefinition Width="8" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Path Grid.Column="0"
+                                                          Width="25"
                                                           Height="25"
-                                                          Margin="0,0,8,0"
                                                           Style="{StaticResource SupportLineIconStyle}"
                                                           Data="M12,15 V20 C12,20 15.03,19.45 16,18 C17.08,16.38 16,13 16,13 M4.5,16.5 C3,17.76 2.5,21.5 2.5,21.5 C2.5,21.5 6.24,21 7.5,19.5 C8.21,18.66 8.2,17.37 7.41,16.59 C6.63,15.8 5.34,15.79 4.5,16.5 M9,12 C9.54,10.63 10.21,9.31 11,8.05 C13.49,4.15 17.56,1.86 22,2 C22,4.72 21.22,9.5 16,13 C14.74,13.79 13.4,14.46 12,15 Z M9,12 H4 C4,12 4.55,8.97 6,8 C7.62,6.92 11,8.05 11,8.05" />
-                                                    <TextBlock Style="{StaticResource SupportProFeatureTitleStyle}"
+                                                    <TextBlock x:Name="SupportProEarlyAccessTitleText"
+                                                               Grid.Column="2"
+                                                               Style="{StaticResource SupportProFeatureTitleStyle}"
                                                                VerticalAlignment="Center"
-                                                               Text="抢先使用新功能" />
-                                                </StackPanel>
-                                                <TextBlock Margin="33,1,0,0"
+                                                               Text="抢先体验" />
+                                                </Grid>
+                                                <TextBlock x:Name="SupportProEarlyAccessDescriptionText"
+                                                           Margin="33,4,0,0"
                                                             Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
                                                             FontSize="12"
-                                                            LineHeight="16"
-                                                            LineStackingStrategy="BlockLineHeight"
-                                                            Text="新能力发布后优先体验。"
-                                                            TextWrapping="Wrap" />
+                                                             LineHeight="16"
+                                                             LineStackingStrategy="BlockLineHeight"
+                                                             Text="优先体验新功能。"
+                                                             TextWrapping="Wrap" />
                                             </StackPanel>
 
                                             <Border Grid.Column="1"
@@ -2174,22 +2211,30 @@
                                                     Opacity="0.48" />
 
                                             <StackPanel Grid.Column="2" Margin="8,0">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <Path Width="25"
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="25" />
+                                                        <ColumnDefinition Width="8" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Path Grid.Column="0"
+                                                          Width="25"
                                                           Height="25"
-                                                          Margin="0,0,8,0"
                                                           Style="{StaticResource SupportLineIconStyle}"
                                                           Data="M7.21,15 L2.66,7.14 A2,2 0 0 1 2.79,4.94 L4.4,2.8 A2,2 0 0 1 6,2 H18 A2,2 0 0 1 19.6,2.8 L21.2,4.94 A2,2 0 0 1 21.34,7.14 L16.79,15 M11,12 L5.12,2.2 M13,12 L18.88,2.2 M8,7 H16 M12,12 A5,5 0 1 1 12,22 A5,5 0 1 1 12,12 M12,18 V16 H11.5" />
-                                                    <TextBlock Style="{StaticResource SupportProFeatureTitleStyle}"
+                                                    <TextBlock x:Name="SupportProBadgeTitleText"
+                                                               Grid.Column="2"
+                                                               Style="{StaticResource SupportProFeatureTitleStyle}"
                                                                VerticalAlignment="Center"
                                                                Text="支持者徽章" />
-                                                </StackPanel>
-                                                <TextBlock Margin="33,1,0,0"
+                                                </Grid>
+                                                <TextBlock x:Name="SupportProBadgeDescriptionText"
+                                                           Margin="33,4,0,0"
                                                             Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
                                                             FontSize="12"
                                                             LineHeight="16"
                                                             LineStackingStrategy="BlockLineHeight"
-                                                           Text="一次性设置署名与激活日期，永久展示支持者身份。"
+                                                            Text="永久展示支持者身份。"
                                                             TextWrapping="Wrap" />
                                             </StackPanel>
 
@@ -2201,27 +2246,41 @@
                                                     Opacity="0.48" />
 
                                             <StackPanel Grid.Column="4" Margin="8,0,0,0">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <Path Width="25"
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="25" />
+                                                        <ColumnDefinition Width="8" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Path Grid.Column="0"
+                                                          Width="25"
                                                           Height="25"
-                                                          Margin="0,0,8,0"
                                                           Style="{StaticResource SupportLineIconStyle}"
                                                           Data="M6,16 C11,16 13,8 18,8 A4,4 0 0 1 18,16 C13,16 11,8 6,8 A4,4 0 1 0 6,16" />
-                                                    <TextBlock Style="{StaticResource SupportProFeatureTitleStyle}"
+                                                    <TextBlock x:Name="SupportProLifetimeTitleText"
+                                                               Grid.Column="2"
+                                                               Style="{StaticResource SupportProFeatureTitleStyle}"
                                                                VerticalAlignment="Center"
                                                                Text="永久有效" />
-                                                </StackPanel>
-                                                <TextBlock Margin="33,1,0,0"
+                                                </Grid>
+                                                <TextBlock x:Name="SupportProLifetimeDescriptionText"
+                                                           Margin="33,4,0,0"
                                                             Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
                                                             FontSize="12"
-                                                            LineHeight="16"
-                                                            LineStackingStrategy="BlockLineHeight"
-                                                            Text="买断制会员，已购权益长期有效。"
-                                                            TextWrapping="Wrap" />
+                                                             LineHeight="16"
+                                                             LineStackingStrategy="BlockLineHeight"
+                                                             Text="一次购买，权益长期有效。"
+                                                             TextWrapping="Wrap" />
                                             </StackPanel>
 
+                                        </Grid>
+                                        <Grid x:Name="SupportProActionHost"
+                                              Grid.Row="3"
+                                              Width="248"
+                                              Margin="0,0,0,16"
+                                              HorizontalAlignment="Right"
+                                              VerticalAlignment="Bottom">
                                             <Button x:Name="SupportProPurchaseButton"
-                                                    Grid.Column="6"
                                                     Width="248"
                                                     Height="46"
                                                     VerticalAlignment="Center"
@@ -2254,8 +2313,7 @@
                                                 </StackPanel>
                                              </Button>
                                             <Grid x:Name="SupporterIdentityInputHost"
-                                                  Grid.Column="6"
-                                                  Width="248"
+                                                   Width="248"
                                                   Height="46"
                                                   VerticalAlignment="Center"
                                                   Visibility="Collapsed">
@@ -2293,7 +2351,7 @@
                                            Panel.ZIndex="1"
                                            Width="64"
                                            Height="64"
-                                           Margin="0,0,8,0"
+                                           Margin="0"
                                            HorizontalAlignment="Right"
                                            VerticalAlignment="Top"
                                            AutomationProperties.Name="LyricHover + Pro + LyricHover + Pro"
@@ -2607,16 +2665,22 @@
                         Panel.ZIndex="2"
                         HorizontalAlignment="Right"
                         Orientation="Horizontal">
-                <Button Margin="0,0,8,0"
+                <Button MinWidth="112"
+                        Padding="20,0"
+                        Margin="0,0,8,0"
                         Click="CancelButton_Click"
                         IsCancel="True"
                         Content="取消" />
                 <Button x:Name="ApplyButton"
+                        MinWidth="112"
+                        Padding="20,0"
                         Margin="0,0,8,0"
                         Style="{StaticResource ActionButtonStyle}"
                         Click="ApplyButton_Click"
                         Content="应用" />
                 <Button x:Name="SaveButton"
+                        MinWidth="112"
+                        Padding="20,0"
                         IsDefault="True"
                         Style="{StaticResource ActionButtonStyle}"
                         Click="SaveButton_Click"

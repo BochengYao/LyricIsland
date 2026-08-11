@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace LyricHover.Core
 {
-    public sealed class CompositeLyricsClient : ILyricsClient
+    public sealed class CompositeLyricsClient : ITargetedLyricsClient
     {
         private readonly IReadOnlyList<ILyricsClient> clients;
 
@@ -37,6 +37,16 @@ namespace LyricHover.Core
             }
 
             return LyricsTranslationMerger.MergeMatchingLines(directLyrics, referenceLyrics);
+        }
+
+        public async Task<string> GetSyncedLyricsAsync(
+            TrackIdentity track,
+            LyricsTranslationLanguage targetTranslationLanguage)
+        {
+            var lyrics = await GetSyncedLyricsAsync(track).ConfigureAwait(false);
+            return LyricsPackageParser.HasTranslationForLanguage(lyrics, targetTranslationLanguage)
+                ? lyrics
+                : LyricsPackageParser.GetOriginalLyrics(lyrics);
         }
 
         private async Task<string> GetBestLyricsAsync(TrackIdentity track)

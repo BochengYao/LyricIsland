@@ -32,6 +32,11 @@ namespace LyricHover.Core
 
         public string GetPath(TrackIdentity track)
         {
+            return GetPath(track, LyricsTranslationLanguage.SourceDefault);
+        }
+
+        public string GetPath(TrackIdentity track, LyricsTranslationLanguage targetTranslationLanguage)
+        {
             if (track == null)
             {
                 throw new ArgumentNullException(nameof(track));
@@ -39,12 +44,22 @@ namespace LyricHover.Core
 
             var seconds = Math.Max(0, (int)Math.Round(track.Duration.TotalSeconds));
             var slug = Slugify(track.Artist + "-" + track.Title + "-" + seconds);
-            return Path.Combine(rootDirectory, slug + ".lrc");
+            var languageCode = LyricsTranslationLanguages.ToCode(targetTranslationLanguage);
+            var suffix = string.IsNullOrEmpty(languageCode) ? string.Empty : "." + languageCode.ToLowerInvariant();
+            return Path.Combine(rootDirectory, slug + suffix + ".lrc");
         }
 
         public bool TryRead(TrackIdentity track, out string lrc)
         {
-            foreach (var path in GetReadCandidatePaths(track))
+            return TryRead(track, LyricsTranslationLanguage.SourceDefault, out lrc);
+        }
+
+        public bool TryRead(
+            TrackIdentity track,
+            LyricsTranslationLanguage targetTranslationLanguage,
+            out string lrc)
+        {
+            foreach (var path in GetReadCandidatePaths(track, targetTranslationLanguage))
             {
                 if (!File.Exists(path))
                 {
@@ -62,8 +77,16 @@ namespace LyricHover.Core
 
         public void Write(TrackIdentity track, string lrc)
         {
+            Write(track, LyricsTranslationLanguage.SourceDefault, lrc);
+        }
+
+        public void Write(
+            TrackIdentity track,
+            LyricsTranslationLanguage targetTranslationLanguage,
+            string lrc)
+        {
             Directory.CreateDirectory(rootDirectory);
-            var path = GetPath(track);
+            var path = GetPath(track, targetTranslationLanguage);
             File.WriteAllText(path, lrc ?? string.Empty, Encoding.UTF8);
             Touch(path);
             PruneToLimit();
@@ -126,9 +149,11 @@ namespace LyricHover.Core
             }
         }
 
-        private IEnumerable<string> GetReadCandidatePaths(TrackIdentity track)
+        private IEnumerable<string> GetReadCandidatePaths(
+            TrackIdentity track,
+            LyricsTranslationLanguage targetTranslationLanguage)
         {
-            yield return GetPath(track);
+            yield return GetPath(track, targetTranslationLanguage);
 
             var roundedSeconds = Math.Max(0, (int)Math.Round(track.Duration.TotalSeconds));
             foreach (var offset in new[] { -1, 1, -2, 2 })
@@ -139,11 +164,13 @@ namespace LyricHover.Core
                     continue;
                 }
 
-                yield return GetPath(new TrackIdentity(
-                    track.Title,
-                    track.Artist,
-                    TimeSpan.FromSeconds(candidateSeconds),
-                    track.Album));
+                yield return GetPath(
+                    new TrackIdentity(
+                        track.Title,
+                        track.Artist,
+                        TimeSpan.FromSeconds(candidateSeconds),
+                        track.Album),
+                    targetTranslationLanguage);
             }
         }
 

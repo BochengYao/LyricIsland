@@ -15,6 +15,11 @@ namespace LyricHover.App
 {
     public partial class SupporterBadgePreviewWindow : Window
     {
+        private const double InitialIdleRotationTimeScale = 0.20;
+        private const double ZoomStep = 0.12;
+        private const double MinimumCameraWidth = 1.80;
+        private const double MaximumCameraWidth = 6.90;
+
         private readonly SupporterBadgeOptions options;
         private readonly SupporterBadgeRotationState rotationState;
         private readonly SupporterBadge3DScene badgeScene;
@@ -24,6 +29,7 @@ namespace LyricHover.App
         private readonly Stopwatch interactionStopwatch = new Stopwatch();
 
         private bool isDragging;
+        private bool hasUserInteracted;
         private Point lastPointerPosition;
         private TimeSpan previousRenderTime;
         private TouchDevice activeTouchDevice;
@@ -46,6 +52,7 @@ namespace LyricHover.App
         {
             this.options = options ?? new SupporterBadgeOptions();
             InitializeComponent();
+            UiLanguageService.ApplyTo(this);
 
             var reduceMotion = !SystemParameters.ClientAreaAnimation;
             var initialYaw = this.options.InitialSide == SupporterBadgeInitialSide.Back
@@ -142,7 +149,10 @@ namespace LyricHover.App
                 ? 1.0 / 60.0
                 : (elapsed - previousRenderTime).TotalSeconds;
             previousRenderTime = elapsed;
-            if (rotationState.Advance(delta))
+            var rotationDelta = hasUserInteracted
+                ? delta
+                : delta * InitialIdleRotationTimeScale;
+            if (rotationState.Advance(rotationDelta))
             {
                 UpdateSceneRotation();
             }
@@ -193,6 +203,7 @@ namespace LyricHover.App
         private void BeginPointerInteraction(Point point)
         {
             isDragging = true;
+            hasUserInteracted = true;
             lastPointerPosition = point;
             interactionStopwatch.Restart();
             rotationState.BeginInteraction();
@@ -209,7 +220,7 @@ namespace LyricHover.App
             var elapsed = Math.Max(1.0 / 240.0, interactionStopwatch.Elapsed.TotalSeconds);
             rotationState.ApplyDrag(
                 point.X - lastPointerPosition.X,
-                point.Y - lastPointerPosition.Y,
+                lastPointerPosition.Y - point.Y,
                 elapsed);
             lastPointerPosition = point;
             interactionStopwatch.Restart();
@@ -254,6 +265,17 @@ namespace LyricHover.App
             MouseButtonEventArgs e)
         {
             ReleasePointerCapture();
+            e.Handled = true;
+        }
+
+        private void BadgeInteractionSurface_MouseWheel(
+            object sender,
+            MouseWheelEventArgs e)
+        {
+            var scale = Math.Exp(-e.Delta / 120.0 * ZoomStep);
+            BadgeCamera.Width = Math.Max(
+                MinimumCameraWidth,
+                Math.Min(MaximumCameraWidth, BadgeCamera.Width * scale));
             e.Handled = true;
         }
 

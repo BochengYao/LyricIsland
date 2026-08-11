@@ -25,7 +25,7 @@ namespace LyricHover.App
             if (!File.Exists(modelPath))
             {
                 throw new FileNotFoundException(
-                    "找不到LyricHover Pro 支持者徽章模型资源。",
+                    UiLanguageService.Translate("找不到LyricHover Pro 支持者徽章模型资源。"),
                     modelPath);
             }
 

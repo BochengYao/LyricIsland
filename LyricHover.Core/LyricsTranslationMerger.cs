@@ -48,7 +48,8 @@ namespace LyricHover.Core
 
             return LyricsPackageParser.CreatePackage(
                 LyricsPackageParser.GetOriginalLyrics(targetPackage),
-                translationLrc.ToString());
+                translationLrc.ToString(),
+                reference.TranslationLanguage);
         }
 
         private static Dictionary<string, string> BuildReferenceMap(TimedLyrics reference)

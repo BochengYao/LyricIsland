@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using LyricHover.App;
 using LyricHover.Core;
 using LyricHover.Core.Layout;
 using LyricHover.Core.Media;
@@ -107,6 +108,7 @@ namespace LyricHover.Tests
             suite.Run("store package reuses the reserved product identity", StorePackageReusesReservedProductIdentity);
             suite.Run("tutorial waits for required user actions", TutorialWaitsForRequiredUserActions);
             suite.Run("tutorial rejects control click without temporary interaction", TutorialRejectsControlClickWithoutTemporaryInteraction);
+            suite.Run("tutorial copy is localized and has no new-feature marker", TutorialCopyIsLocalizedAndHasNoNewFeatureMarker);
             suite.Run("first launch tutorial is persisted and can be replayed", FirstLaunchTutorialIsPersistedAndCanBeReplayed);
             suite.Run("tutorial overlay is dimmer and cannot cover interactions", TutorialOverlayIsDimmerAndCannotCoverInteractions);
             suite.Run("layout rebuild replays the latest island content", LayoutRebuildReplaysLatestIslandContent);
@@ -175,6 +177,11 @@ namespace LyricHover.Tests
             suite.Run("mouse avoidance settings restores screenshot defaults", MouseAvoidanceSettingsRestoresScreenshotDefaults);
             suite.Run("click through keeps left drag available", ClickThroughKeepsLeftDragAvailable);
             suite.Run("settings window exposes theme mode switcher", SettingsWindowExposesThemeModeSwitcher);
+            suite.Run("settings window uses Windows 11 acrylic with a safe fallback", SettingsWindowUsesWindows11AcrylicWithSafeFallback);
+            suite.Run("settings language preference supports system fallback and manual choices", SettingsLanguagePreferenceSupportsSystemFallbackAndManualChoices);
+            suite.Run("settings static captions have translation coverage", SettingsStaticCaptionsHaveTranslationCoverage);
+            suite.Run("all visible island and badge copy has translation coverage", AllVisibleIslandAndBadgeCopyHasTranslationCoverage);
+            suite.Run("runtime island and tutorial copy follows the selected language", RuntimeIslandAndTutorialCopyFollowsSelectedLanguage);
             suite.Run("system theme follows Windows changes live", SystemThemeFollowsWindowsChangesLive);
             suite.Run("cache settings explains capacity and cleanup", CacheSettingsExplainsCapacityAndCleanup);
             suite.Run("settings layout exposes requested streamlined controls", SettingsLayoutExposesRequestedStreamlinedControls);
@@ -1406,6 +1413,8 @@ namespace LyricHover.Tests
             var entitlementSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "StoreProEntitlementService.cs"));
             var previewXaml = File.ReadAllText(Path.Combine(root, "LyricHover.App", "SupporterBadgePreviewWindow.xaml"));
             var previewSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "SupporterBadgePreviewWindow.xaml.cs"));
+            var imprintConfirmationXaml = File.ReadAllText(Path.Combine(root, "LyricHover.App", "SupporterBadgeImprintConfirmationWindow.xaml"));
+            var imprintConfirmationSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "SupporterBadgeImprintConfirmationWindow.xaml.cs"));
             var factorySource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "SupporterBadge3DFactory.cs"));
             var glbLoaderSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "SupporterBadgeGlbLoader.cs"));
             var appProject = File.ReadAllText(Path.Combine(root, "LyricHover.App", "LyricHover.App.csproj"));
@@ -1438,10 +1447,13 @@ namespace LyricHover.Tests
             Assert.False(supportPanel.Contains("VerticalScrollBarVisibility"));
             Assert.True(supportPanel.Contains("ClipToBounds=\"True\""));
             Assert.True(supportPanel.Contains("x:Name=\"SupportPageContent\""));
+            Assert.False(supportPanel.Contains("Margin=\"0,0,80,0\""));
             Assert.True(supportPanel.Contains("<RowDefinition Height=\"*\" MinHeight=\"96\" />"));
             Assert.True(supportPanel.Contains("<RowDefinition Height=\"1.45*\" MinHeight=\"198\" />"));
             Assert.Equal(1, CountOccurrences(supportPanel, "<Setter Property=\"CornerRadius\" Value=\"9\" />"));
             Assert.Equal(1, CountOccurrences(supportPanel, "Style=\"{StaticResource SupportProContainerStyle}\""));
+            Assert.True(proBenefits.Contains("Margin=\"0,14,272,0\""));
+            Assert.True(CountOccurrences(proBenefits, "<ColumnDefinition Width=\"*\" />") >= 3);
             Assert.False(supportPanel.Contains("Style=\"{StaticResource CardStyle}\""));
             Assert.True(supportPanel.Contains("<Run Text=\"LyricHover主体功能始终免费。您可以通过免费方式支持项目，您也可以升级Pro来支持开发者。\" />"));
             Assert.True(supportPanel.Contains("<LineBreak />"));
@@ -1453,7 +1465,8 @@ namespace LyricHover.Tests
             Assert.True(supportPanel.Contains("Margin=\"0,21,0,0\""));
             Assert.True(supportPanel.Contains("x:Name=\"SupportFreeActionsGrid\""));
             Assert.True(freeActionsOpeningTag.Contains("Margin=\"0,12,0,0\""));
-            Assert.False(freeActionsOpeningTag.Contains("VerticalAlignment=\"Top\""));
+            Assert.True(freeActionsOpeningTag.Contains("VerticalAlignment=\"Top\""));
+            Assert.True(CountOccurrences(freeActions, "VerticalAlignment=\"Top\"") >= 8);
             Assert.True(supportPanel.Contains("x:Name=\"SupportFeedbackItem\""));
             Assert.True(supportPanel.Contains("x:Name=\"SupportReviewTextGrid\""));
             Assert.True(supportPanel.Contains("x:Name=\"SupportShareTextGrid\""));
@@ -1461,9 +1474,11 @@ namespace LyricHover.Tests
             Assert.True(supportPanel.Contains("x:Name=\"SupportFeedbackTextGrid\""));
             Assert.True(supportPanel.Contains("Text=\"意见反馈\""));
             Assert.True(supportPanel.Contains("Text=\"提交问题与功能建议\""));
+            Assert.False(supportPanel.Contains("TextAlignment=\"Justify\""));
+            Assert.True(supportPanel.Contains("HorizontalContentAlignment=\"Stretch\""));
             Assert.True(freeActions.Contains("<Grid.RowDefinitions>"));
             Assert.Equal(4, CountOccurrences(freeColumns, "<ColumnDefinition Width=\"*\" />"));
-            Assert.Equal(3, CountOccurrences(freeColumns, "<ColumnDefinition Width=\"1\" />"));
+            Assert.True(CountOccurrences(freeColumns, "<ColumnDefinition Width=\"1\" />") >= 3);
             Assert.Equal(4, CountOccurrences(freeActions, "<ColumnDefinition Width=\"28\" />"));
             Assert.Equal(4, CountOccurrences(freeActions, "<ColumnDefinition Width=\"12\" />"));
             Assert.Equal(4, CountOccurrences(freeActions, "HorizontalAlignment=\"Center\""));
@@ -1472,7 +1487,7 @@ namespace LyricHover.Tests
             Assert.True(supportPanel.Contains("评价与撰写评价"));
             Assert.True(supportPanel.Contains("分享给身边的朋友"));
             Assert.True(supportPanel.Contains("在 GitHub 上点 Star"));
-            Assert.Equal(4, CountOccurrences(freeActions, "<RowDefinition Height=\"34\" />"));
+            Assert.Equal(12, CountOccurrences(freeActions, "<RowDefinition Height=\"Auto\" />"));
             Assert.Equal(4, CountOccurrences(freeActions, "Grid.Row=\"2\""));
             Assert.True(supportPanel.Contains("M9,18 H15 M10,22 H14"));
             Assert.False(supportPanel.Contains("M3,3 H21 V17 H10 L6,21"));
@@ -1487,23 +1502,58 @@ namespace LyricHover.Tests
             Assert.Equal(1, CountOccurrences(supportPanel, "Click=\"SupportShareButton_Click\""));
             Assert.Equal(1, CountOccurrences(supportPanel, "Click=\"OpenGitHubAboutRow_Click\""));
             Assert.Equal(1, CountOccurrences(supportPanel, "Click=\"SupportFeedbackButton_Click\""));
-            Assert.True(supportPanel.Contains("Text=\"去反馈  &gt;\""));
+            Assert.True(supportPanel.Contains("Text=\"去评价\""));
+            Assert.True(supportPanel.Contains("Text=\"立即分享\""));
+            Assert.True(supportPanel.Contains("Text=\"去 GitHub\""));
+            Assert.True(supportPanel.Contains("Text=\"去反馈\""));
             Assert.True(source.Contains("https://lyric-island.top/incentives/"));
+            Assert.True(source.Contains("https://lyric-island.top/en/"));
+            Assert.True(source.Contains("https://lyric-island.top/en/incentives/"));
+            Assert.True(source.Contains("https://lyric-island.top/zh-hant/"));
+            Assert.True(source.Contains("https://lyric-island.top/zh-hant/incentives/"));
+            Assert.True(source.Contains("https://lyric-island.top/ja/"));
+            Assert.True(source.Contains("https://lyric-island.top/ja/incentives/"));
             Assert.True(source.Contains("SupportFeedbackButton_Click"));
+            Assert.True(source.Contains("OpenExternalUrl(GetLocalizedFeedbackUrl())"));
+            Assert.True(source.Contains("OpenExternalUrl(GetLocalizedWebsiteUrl())"));
+            Assert.True(source.Contains("case AppLanguagePreference.TraditionalChinese:"));
+            Assert.True(source.Contains("case AppLanguagePreference.Japanese:"));
             Assert.True(supportPanel.Contains("Pro 支持计划"));
             Assert.True(supportPanel.Contains("x:Name=\"SupportProTitleText\""));
             Assert.True(supportPanel.Contains("x:Name=\"SupportProDescriptionText\""));
+            Assert.True(supportPanel.Contains("Margin=\"0,3,88,0\""));
+            Assert.True(supportPanel.Contains("Margin=\"0,8,88,0\""));
             Assert.True(supportPanel.Contains("x:Name=\"SupportProButtonIcon\""));
             Assert.True(supportPanel.Contains("x:Name=\"SupportProButtonText\""));
+            Assert.True(supportPanel.Contains("x:Name=\"SupportProEmblem\""));
+            Assert.True(supportPanel.Contains("x:Name=\"SupportProActionHost\""));
+            Assert.True(supportPanel.Contains("HorizontalAlignment=\"Right\""));
+            Assert.False(proBenefits.Contains("TextAlignment=\"Justify\""));
+            Assert.True(CountOccurrences(proBenefits, "<ColumnDefinition Width=\"25\" />") >= 3);
+            Assert.True(imprintConfirmationXaml.Contains("确认永久刻印"));
+            Assert.True(imprintConfirmationXaml.Contains("确认刻印"));
+            Assert.True(imprintConfirmationXaml.Contains("SettingsRootBackgroundBrush"));
+            Assert.True(imprintConfirmationXaml.Contains("<Setter Property=\"MinWidth\" Value=\"94\" />"));
+            Assert.True(imprintConfirmationXaml.Contains("<Setter Property=\"MinWidth\" Value=\"128\" />"));
+            Assert.False(imprintConfirmationXaml.Contains("<Setter Property=\"Width\" Value=\"94\" />"));
+            Assert.False(imprintConfirmationXaml.Contains("<Setter Property=\"Width\" Value=\"128\" />"));
+            Assert.True(CountOccurrences(imprintConfirmationXaml, "<ContentPresenter Margin=\"14,0\"") >= 2);
+            Assert.True(imprintConfirmationSource.Contains("InheritThemeResources"));
+            Assert.True(source.Contains("new SupporterBadgeImprintConfirmationWindow(this)"));
+            Assert.False(source.Contains("ToggleLocalProPreview"));
+            Assert.False(source.Contains("localProPreviewEnabled"));
+            Assert.False(source.Contains("ModifierKeys.Control | ModifierKeys.Shift"));
+            Assert.False(source.Contains("本地预览已启用"));
+            Assert.False(source.Contains("本地 Pro 预览已关闭"));
             Assert.True(supportPanel.Contains("Margin=\"0,8,0,0\""));
             Assert.True(supportPanel.Contains("LineHeight=\"22\""));
             Assert.True(supportPanel.Contains("通过 Microsoft Store 升级 Pro，支持LyricHover持续开发，并解锁更多专属权益。"));
-            Assert.True(supportPanel.Contains("抢先使用新功能"));
-            Assert.True(supportPanel.Contains("新能力发布后优先体验。"));
+            Assert.True(supportPanel.Contains("抢先体验"));
+            Assert.True(supportPanel.Contains("优先体验新功能。"));
             Assert.True(supportPanel.Contains("支持者徽章"));
-            Assert.True(supportPanel.Contains("一次性设置署名与激活日期，永久展示支持者身份。"));
+            Assert.True(supportPanel.Contains("永久展示支持者身份。"));
             Assert.True(supportPanel.Contains("永久有效"));
-            Assert.True(supportPanel.Contains("买断制会员，已购权益长期有效。"));
+            Assert.True(supportPanel.Contains("一次购买，权益长期有效。"));
             Assert.True(supportPanel.Contains("x:Name=\"SupportProPurchaseButton\""));
             Assert.True(supportPanel.Contains("Click=\"SupportProPurchaseButton_Click\""));
             Assert.True(supportPanel.Contains("Text=\"升级 Pro · ¥7\""));
@@ -1535,13 +1585,15 @@ namespace LyricHover.Tests
             Assert.True(factorySource.Contains("RenderTargetBitmap"));
             Assert.True(factorySource.Contains("ImageBrush"));
             Assert.True(factorySource.Contains("yyyy.MM.dd"));
-            Assert.True(previewXaml.Contains("通过拖拽旋转徽章"));
-            Assert.True(previewXaml.Contains("按下 Esc 键关闭"));
+            Assert.True(previewXaml.Contains("拖拽旋转 · 滚轮放大 / 缩小"));
+            Assert.False(previewXaml.Contains("静止时持续缓慢旋转"));
             Assert.True(previewXaml.Contains("Background=\"#F2000000\""));
             Assert.True(previewXaml.Contains("Topmost=\"True\""));
             Assert.True(previewXaml.Contains("LyricHover Pro 支持计划"));
             Assert.True(previewXaml.Contains("感谢你支持LyricHover，你已获得专属支持者徽章。"));
             Assert.True(previewXaml.Contains("<OrthographicCamera"));
+            Assert.True(previewXaml.Contains("x:Name=\"BadgeCamera\""));
+            Assert.True(previewXaml.Contains("MouseWheel=\"BadgeInteractionSurface_MouseWheel\""));
             Assert.True(previewXaml.Contains("TouchDown=\"BadgeInteractionSurface_TouchDown\""));
             Assert.False(previewXaml.Contains("BadgeViewButtonStyle"));
             Assert.False(previewXaml.Contains("<UniformGrid"));
@@ -1549,6 +1601,13 @@ namespace LyricHover.Tests
             Assert.False(previewXaml.Contains("Content=\"背面\""));
             Assert.False(previewSource.Contains("BadgeViewButton_Click"));
             Assert.True(previewSource.Contains("BeginPointerInteraction"));
+            Assert.True(previewSource.Contains("InitialIdleRotationTimeScale = 0.20"));
+            Assert.True(previewSource.Contains("hasUserInteracted"));
+            Assert.True(previewSource.Contains("lastPointerPosition.Y - point.Y"));
+            Assert.True(previewSource.Contains("BadgeInteractionSurface_MouseWheel"));
+            Assert.True(previewSource.Contains("MinimumCameraWidth = 1.80"));
+            Assert.True(previewSource.Contains("MinimumCameraWidth"));
+            Assert.True(previewSource.Contains("MaximumCameraWidth"));
             Assert.True(previewSource.Contains("Forms.Screen.FromHandle(ownerHandle)"));
             Assert.True(previewSource.Contains("CaptureMouse()"));
             Assert.True(previewSource.Contains("CaptureTouch(activeTouchDevice)"));
@@ -1645,13 +1704,13 @@ namespace LyricHover.Tests
             Assert.True(xaml.Contains("<Setter Property=\"FocusVisualStyle\" Value=\"{StaticResource SidebarKeyboardFocusVisualStyle}\" />"));
             Assert.True(supportPanel.Contains("<Setter Property=\"Foreground\" Value=\"{DynamicResource SettingsControlForegroundBrush}\" />"));
             Assert.False(supportPanel.Contains("M10,18 C8,16 2,12 2,7"));
-            Assert.Equal(3, CountOccurrences(proBenefits, "<ColumnDefinition Width=\"*\" />"));
+            Assert.True(CountOccurrences(proBenefits, "<ColumnDefinition Width=\"*\" />") >= 3);
             Assert.False(proBenefits.Contains("1.08*"));
             Assert.False(proBenefits.Contains("1.18*"));
             Assert.Equal(3, CountOccurrences(proBenefits, "Style=\"{StaticResource SupportProFeatureTitleStyle}\""));
-            Assert.Equal(3, CountOccurrences(proBenefits, "Margin=\"33,1,0,0\""));
+            Assert.Equal(3, CountOccurrences(proBenefits, "Margin=\"33,4,0,0\""));
             Assert.Equal(3, CountOccurrences(proBenefits, "LineHeight=\"16\""));
-            Assert.True(supportPanel.Contains("<Setter Property=\"TextWrapping\" Value=\"NoWrap\" />"));
+            Assert.True(supportPanel.Contains("<Setter Property=\"TextWrapping\" Value=\"Wrap\" />"));
             Assert.False(supportPanel.Contains("升级 Pro 会员"));
             Assert.False(supportPanel.Contains("抢先使用所有新功能"));
             Assert.False(supportPanel.Contains("支持与否不会影响"));
@@ -2413,10 +2472,10 @@ namespace LyricHover.Tests
             var xaml = File.ReadAllText(Path.Combine(
                 root, "LyricHover.App", "PlacementSettingsWindow.xaml"));
             var settings = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml.cs"));
+            var language = File.ReadAllText(Path.Combine(root, "LyricHover.App", "UiLanguageService.cs"));
             var detector = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Media", "InstalledPlayerCatalog.cs"));
 
             Assert.True(xaml.Contains("x:Name=\"PlayerSelectionComboBox\""));
-            Assert.True(xaml.Contains("自动选择"));
             Assert.True(xaml.Contains("PlayerSelectionComboBox_SelectionChanged"));
             Assert.True(xaml.Contains("x:Name=\"PlayerSelectionHintText\""));
             Assert.True(xaml.Contains("注：网易云音乐由于接口限制无法实时同步歌曲进度（播放器内拖动进度条无法同步）"));
@@ -2432,10 +2491,12 @@ namespace LyricHover.Tests
             Assert.True(settings.Contains("workingSettings.LockedSourceAppUserModelId"));
             Assert.True(settings.Contains("source is ComboBoxItem"));
             Assert.True(settings.Contains("DeepClone()"));
-            Assert.True(settings.Contains("优先选择 "));
+            Assert.True(settings.Contains("UiLanguageService.Translate(\"自动选择\")"));
+            Assert.True(settings.Contains("UiLanguageService.Translate(\"优先选择\")"));
             Assert.False(settings.Contains("已锁定到 "));
             Assert.True(settings.Contains("注：网易云音乐由于接口限制无法实时同步歌曲进度（播放器内拖动进度条无法同步）"));
             Assert.True(settings.Contains("未检测到，启动播放器后生效"));
+            Assert.True(language.Contains("Automatically follows the most recently active player"));
             Assert.True(detector.Contains("CurrentVersion\\Uninstall"));
             Assert.True(detector.Contains("AppModel\\Repository\\Packages"));
             Assert.True(detector.Contains("SpecialFolder.CommonStartMenu"));
@@ -2751,6 +2812,7 @@ namespace LyricHover.Tests
         static void MouseAvoidanceSettingsFitWithoutScrolling()
         {
             var xaml = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "PlacementSettingsWindow.xaml"));
+            var normalizedXaml = xaml.Replace("\r\n", "\n");
             var panelStart = xaml.IndexOf("x:Name=\"HoverSettingsPanel\"", StringComparison.Ordinal);
             var panelEnd = xaml.IndexOf("x:Name=\"HotkeySettingsPanel\"", panelStart, StringComparison.Ordinal);
             var panel = xaml.Substring(panelStart, panelEnd - panelStart);
@@ -2763,7 +2825,7 @@ namespace LyricHover.Tests
             Assert.True(panel.Contains("<RowDefinition Height=\"*\" MinHeight=\"102\" />"));
             Assert.True(panel.Contains("<RowDefinition Height=\"*\" MinHeight=\"50\" />"));
             Assert.True(xaml.Contains("Height=\"96\""));
-            Assert.True(xaml.Contains("Style=\"{StaticResource SettingLabel}\"\n                                       Text=\"实时预览\""));
+            Assert.True(normalizedXaml.Contains("Style=\"{StaticResource SettingLabel}\"\n                                       Text=\"实时预览\""));
         }
 
         static void MouseAvoidanceSettingsRestoresScreenshotDefaults()
@@ -2806,19 +2868,217 @@ namespace LyricHover.Tests
             var xaml = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml"));
             var settingsSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "OverlayPlacementSettings.cs"));
             var windowSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml.cs"));
+            var themeToggleStart = xaml.IndexOf("x:Name=\"ThemeToggleRoot\"", StringComparison.Ordinal);
+            var themeThumbStart = xaml.IndexOf("x:Name=\"ThemeSelectionThumb\"", StringComparison.Ordinal);
 
             Assert.True(xaml.Contains("x:Name=\"ThemeToggleRoot\""));
+            Assert.True(xaml.Substring(themeToggleStart, 160).Contains("Width=\"194\""));
+            Assert.True(xaml.Substring(themeThumbStart, 180).Contains("Width=\"62.6666666667\""));
+            Assert.True(xaml.Contains("<Setter Property=\"Width\" Value=\"62.6666666667\" />"));
             Assert.True(xaml.Contains("ToolTip=\"浅色模式\""));
             Assert.True(xaml.Contains("ToolTip=\"深色模式\""));
             Assert.True(xaml.Contains("ToolTip=\"跟随系统\""));
             Assert.True(xaml.Contains("SettingsControlBackgroundBrush"));
             Assert.True(xaml.Contains("SettingsSelectedForegroundBrush"));
+            Assert.True(xaml.Contains("SettingsControlMutedForegroundBrush\" Color=\"#344054"));
+            Assert.True(xaml.Contains("SettingsSidebarSelectedForegroundBrush\" Color=\"#1D2939"));
             Assert.True(settingsSource.Contains("SettingsThemePreference"));
             Assert.True(windowSource.Contains("ResolveDarkSettingsTheme"));
             Assert.True(windowSource.Contains("UpdateThemeResources"));
+            Assert.True(windowSource.Contains("dark ? \"#B4BDCA\" : \"#344054\""));
+            Assert.True(windowSource.Contains("dark ? \"#4B4C54\" : \"#1D2939\""));
             Assert.True(windowSource.Contains("ColorAnimation"));
             Assert.True(windowSource.Contains("TimeSpan.FromMilliseconds(180)"));
+            Assert.True(windowSource.Contains("const double themeSegmentWidth = 62.6666666667"));
             Assert.False(windowSource.Contains("foreach (var control in FindVisualChildren<Control>(root))"));
+        }
+
+        static void SettingsWindowUsesWindows11AcrylicWithSafeFallback()
+        {
+            var root = GetSolutionRoot();
+            var xaml = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml"));
+            var source = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml.cs"));
+
+            Assert.True(xaml.Contains("AllowsTransparency=\"False\""));
+            Assert.True(xaml.Contains("Background=\"Transparent\""));
+            Assert.False(xaml.Substring(0, 400).Contains("AllowsTransparency=\"True\""));
+            Assert.True(xaml.Contains("x:Name=\"RootChrome\""));
+            Assert.True(xaml.Contains("CornerRadius=\"8\""));
+            Assert.True(source.Contains("SourceInitialized += PlacementSettingsWindow_SourceInitialized"));
+            Assert.True(source.Contains("DWMWA_SYSTEMBACKDROP_TYPE = 38"));
+            Assert.True(source.Contains("DWMWA_MICA_EFFECT = 1029"));
+            Assert.True(source.Contains("DWMSBT_TRANSIENTWINDOW = 3"));
+            Assert.True(source.Contains("DwmSetWindowAttribute"));
+            Assert.True(source.Contains("DwmExtendFrameIntoClientArea"));
+            var backdropMethodStart = source.IndexOf("private bool TryApplySettingsBackdrop", StringComparison.Ordinal);
+            var backdropMethodEnd = source.IndexOf("private static bool ApplyAcrylicBlurBehind", backdropMethodStart, StringComparison.Ordinal);
+            var backdropMethod = source.Substring(backdropMethodStart, backdropMethodEnd - backdropMethodStart);
+            Assert.True(backdropMethod.IndexOf("DwmExtendFrameIntoClientArea(source.Handle, ref margins)", StringComparison.Ordinal) <
+                backdropMethod.IndexOf("var acrylicBlurApplied = false", StringComparison.Ordinal));
+            Assert.True(source.Contains("ACCENT_ENABLE_ACRYLICBLURBEHIND = 4"));
+            Assert.True(source.Contains("SetWindowCompositionAttribute"));
+            Assert.True(source.Contains("ApplyAcrylicBlurBehind"));
+            Assert.True(source.Contains("DWMWA_WINDOW_CORNER_PREFERENCE = 33"));
+            Assert.True(source.Contains("DWMWCP_ROUND = 2"));
+            Assert.False(source.Contains("CreateRoundRectRgn"));
+            Assert.False(source.Contains("SetWindowRgn"));
+            Assert.False(source.Contains("PlacementSettingsWindow_SizeChanged"));
+            Assert.True(source.Contains("RootChrome.BorderThickness = new Thickness(0)"));
+            Assert.True(source.Contains("SystemParameters.HighContrast"));
+            Assert.True(source.Contains("systemBackdropApplied = TryApplySettingsBackdrop(dark)"));
+            Assert.True(source.Contains("0x60181312"));
+            Assert.True(source.Contains("0x60FAF3F4"));
+            Assert.True(source.Contains("#14121318"));
+            Assert.True(source.Contains("#14F4F3FA"));
+            Assert.True(source.Contains("#121318"));
+            Assert.True(source.Contains("#F4F3FA"));
+        }
+
+        static void SettingsLanguagePreferenceSupportsSystemFallbackAndManualChoices()
+        {
+            var root = GetSolutionRoot();
+            var xaml = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml"));
+            var settingsSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "OverlayPlacementSettings.cs"));
+            var windowSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml.cs"));
+            var languageSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "UiLanguageService.cs"));
+            var languageSelectorStart = xaml.IndexOf("x:Name=\"LanguageComboBox\"", StringComparison.Ordinal);
+
+            Assert.True(xaml.IndexOf("x:Name=\"LanguageComboBox\"", StringComparison.Ordinal) <
+                xaml.IndexOf("x:Name=\"ThemeToggleRoot\"", StringComparison.Ordinal));
+            Assert.True(xaml.Contains("SelectionChanged=\"LanguageComboBox_SelectionChanged\""));
+            Assert.True(xaml.Substring(languageSelectorStart, 180).Contains("Width=\"194\""));
+            Assert.True(settingsSource.Contains("AppLanguagePreference"));
+            Assert.True(settingsSource.Contains("Language { get; set; } = AppLanguagePreference.System"));
+            Assert.True(settingsSource.Contains("typeof(AppLanguagePreference)"));
+            Assert.True(windowSource.Contains("InitializeLanguageSelector"));
+            Assert.True(windowSource.Contains("UiLanguageService.ApplyTo(this)"));
+            Assert.True(xaml.Contains("Tag=\"NativeLanguageOptions\""));
+            Assert.True(xaml.Contains("<ColumnDefinition Width=\"230\" />"));
+            Assert.True(xaml.Contains("<Setter Property=\"TextWrapping\" Value=\"Wrap\" />"));
+            Assert.True(xaml.Contains("Margin=\"0,0,0,16\""));
+            Assert.True(languageSource.Contains("GetTranslationIndex(EffectiveLanguage)"));
+            Assert.True(languageSource.Contains("new LanguageOption(AppLanguagePreference.English, \"English\")"));
+            Assert.True(languageSource.Contains("new LanguageOption(AppLanguagePreference.Japanese, \"日本語\")"));
+            Assert.True(languageSource.Contains("NativeLanguageOptions"));
+            Assert.True(languageSource.Contains("What's new in v2.0"));
+            Assert.True(languageSource.Contains("Cache keeps downloaded synced lyrics"));
+            Assert.True(languageSource.Contains("Traditional Chinese"));
+            Assert.True(languageSource.Contains("Japanese"));
+            Assert.True(languageSource.Contains("[\"去评价\"]"));
+            Assert.True(languageSource.Contains("[\"去反馈\"]"));
+            Assert.True(languageSource.Contains("Try new features first."));
+            Assert.True(languageSource.Contains("\"Always visible.\""));
+            Assert.False(languageSource.Contains("Your supporter identity stays on display."));
+            Assert.True(languageSource.Contains("View badge"));
+            Assert.True(languageSource.Contains("\"Art\""));
+            Assert.True(languageSource.Contains("\"Split\""));
+            Assert.True(languageSource.Contains("name.StartsWith(\"ja\""));
+            Assert.True(windowSource.Contains("RefreshLocalizedSettingsContent"));
+            Assert.True(windowSource.Contains("InitializeScreenSelection"));
+            Assert.True(windowSource.Contains("InitializeLyricsSourceSelection"));
+            Assert.True(windowSource.Contains("UiLanguageService.Translate(\"秒\")"));
+        }
+
+        static void SettingsStaticCaptionsHaveTranslationCoverage()
+        {
+            var root = GetSolutionRoot();
+            var xaml = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml"));
+            var language = File.ReadAllText(Path.Combine(root, "LyricHover.App", "UiLanguageService.cs"));
+            var window = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml.cs"));
+            var captions = System.Text.RegularExpressions.Regex.Matches(
+                    xaml,
+                    "(?:Text|Content|ToolTip)=\"([^\"]*[\\u4e00-\\u9fff][^\"]*)\"")
+                .Cast<System.Text.RegularExpressions.Match>()
+                .Select(match => match.Groups[1].Value.Replace("&#x0a;", "\\n"))
+                .Distinct(StringComparer.Ordinal);
+
+            foreach (var caption in captions)
+            {
+                Assert.True(language.Contains("[\"" + caption + "\"]"));
+            }
+
+            var runtimeCaptions = System.Text.RegularExpressions.Regex.Matches(
+                    window,
+                    "\"([^\"\\r\\n]*[\\u4e00-\\u9fff][^\"\\r\\n]*)\"")
+                .Cast<System.Text.RegularExpressions.Match>()
+                .Select(match => match.Groups[1].Value)
+                .Distinct(StringComparer.Ordinal);
+
+            foreach (var caption in runtimeCaptions)
+            {
+                Assert.True(language.Contains("[\"" + caption + "\"]"));
+            }
+
+            Assert.True(language.Contains("public static bool HasTranslation"));
+            Assert.True(window.Contains("DispatcherPriority.ContextIdle"));
+            Assert.True(window.Contains("RefreshSupportProBenefitText"));
+        }
+
+        static void AllVisibleIslandAndBadgeCopyHasTranslationCoverage()
+        {
+            var root = GetSolutionRoot();
+            var language = File.ReadAllText(Path.Combine(root, "LyricHover.App", "UiLanguageService.cs"));
+            var visibleSources = new[]
+            {
+                Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"),
+                Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml"),
+                Path.Combine(root, "LyricHover.App", "SupporterBadgePreviewWindow.xaml"),
+                Path.Combine(root, "LyricHover.App", "SupporterBadgeImprintConfirmationWindow.xaml")
+            };
+
+            foreach (var path in visibleSources)
+            {
+                var captions = System.Text.RegularExpressions.Regex.Matches(
+                        File.ReadAllText(path),
+                        "\"([^\"\\r\\n]*[\\u4e00-\\u9fff][^\"\\r\\n]*)\"")
+                    .Cast<System.Text.RegularExpressions.Match>()
+                    .Select(match => match.Groups[1].Value.Replace("&#x0a;", "\\n"))
+                    .Distinct(StringComparer.Ordinal);
+
+                foreach (var caption in captions)
+                {
+                    Assert.True(language.Contains("[\"" + caption + "\"]"));
+                }
+            }
+
+            var preview = File.ReadAllText(Path.Combine(root, "LyricHover.App", "SupporterBadgePreviewWindow.xaml.cs"));
+            var imprint = File.ReadAllText(Path.Combine(root, "LyricHover.App", "SupporterBadgeImprintConfirmationWindow.xaml.cs"));
+            var settings = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml.cs"));
+            var badgeLoader = File.ReadAllText(Path.Combine(root, "LyricHover.App", "SupporterBadgeObjLoader.cs"));
+
+            Assert.True(language.Contains("LyricHover retracts automatically in {0} seconds"));
+            Assert.True(language.Contains("Right-click LyricHover to open Settings"));
+            Assert.True(language.Contains("Drag to rotate · scroll to zoom"));
+            Assert.True(language.Contains("Confirm permanent engraving"));
+            Assert.True(language.Contains("AutomationProperties.GetName"));
+            Assert.True(language.Contains("AutomationProperties.GetHelpText"));
+            Assert.True(preview.Contains("UiLanguageService.ApplyTo(this)"));
+            Assert.True(imprint.Contains("UiLanguageService.ApplyTo(this)"));
+            Assert.True(settings.Contains("UiLanguageService.Translate(installed.DisplayName)"));
+            Assert.True(badgeLoader.Contains("UiLanguageService.Translate(\"找不到LyricHover Pro 支持者徽章模型资源。\")"));
+        }
+
+        static void RuntimeIslandAndTutorialCopyFollowsSelectedLanguage()
+        {
+            var original = UiLanguageService.Preference;
+            try
+            {
+                UiLanguageService.SetPreference(AppLanguagePreference.Japanese);
+                Assert.Equal("LyricHover は 30 秒後に自動で収納されます", string.Format(
+                    UiLanguageService.Translate("LyricHover将在 {0} 秒后自动收起"), 30));
+                Assert.Equal("LyricHover を右クリックして設定を開きます",
+                    UiLanguageService.Translate("请右键LyricHover打开设置"));
+
+                UiLanguageService.SetPreference(AppLanguagePreference.English);
+                Assert.Equal("LyricHover retracts automatically in 30 seconds", string.Format(
+                    UiLanguageService.Translate("LyricHover将在 {0} 秒后自动收起"), 30));
+                Assert.Equal("Right-click LyricHover to open Settings",
+                    UiLanguageService.Translate("请右键LyricHover打开设置"));
+            }
+            finally
+            {
+                UiLanguageService.SetPreference(original);
+            }
         }
 
         static void SettingsFirstOpenTextUsesThemeResources()
@@ -3000,6 +3260,8 @@ namespace LyricHover.Tests
             Assert.True(layoutPanel.Contains("Text=\"自定义模块\" />") && layoutPanel.Contains("Margin=\"0,17,16,0\""));
             Assert.True(layoutPanel.Contains("Text=\"歌词宽度\" />") && layoutPanel.Contains("Margin=\"0,4,16,0\""));
             Assert.True(layoutPanel.Contains("Content=\"恢复默认\"") && layoutPanel.Contains("Margin=\"0,14,0,0\""));
+            Assert.True(layoutPanel.Contains("MinWidth=\"112\""));
+            Assert.True(source.Contains("UiLanguageService.ApplyTo(this);"));
             Assert.True(xaml.Contains("x:Name=\"DividerOpacityValueText\""));
             Assert.True(xaml.Contains("x:Name=\"DividerSpacingValueText\""));
             Assert.True(source.Contains("DividerOpacityValueText.Text ="));
@@ -3087,7 +3349,7 @@ namespace LyricHover.Tests
             Assert.False(hintMethod.Contains("LyricHover已启动，等待播放内容"));
             Assert.True(hintMethod.Contains("startupHintTimer.Start();"));
             Assert.True(hintMethod.Contains("if (autoRetractSeconds > 0)"));
-            Assert.True(hintMethod.Contains("\"LyricHover将在 \" + autoRetractSeconds + \" 秒后自动收起\""));
+            Assert.True(hintMethod.Contains("FormatLocalizedText(\"LyricHover将在 {0} 秒后自动收起\", autoRetractSeconds)"));
         }
 
         static void NativeSmtcServiceKeepsPersistentSessionSubscriptions()
@@ -3191,6 +3453,34 @@ namespace LyricHover.Tests
             Assert.True(settingsWindowSource.Contains("RestartTutorialAboutRow_Click"));
         }
 
+        static void TutorialCopyIsLocalizedAndHasNoNewFeatureMarker()
+        {
+            var root = GetSolutionRoot();
+            var main = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
+            var language = File.ReadAllText(Path.Combine(root, "LyricHover.App", "UiLanguageService.cs"));
+
+            foreach (var caption in new[]
+            {
+                "即将开始教学模式",
+                "单击LyricHover继续",
+                "退出教学模式",
+                "接下来演示鼠标避让",
+                "按下{0}可暂时关闭鼠标避让来点击控制按钮",
+                "现在我们来体验新功能——自定义模块",
+                "按住 {0} 即时展开，松开后自动折叠",
+                "🎉教学模式已结束！快去体验吧！！"
+            })
+            {
+                Assert.True(language.Contains("[\"" + caption + "\"]"));
+            }
+
+            Assert.True(language.Contains("Tutorial is about to begin"));
+            Assert.True(language.Contains("チュートリアルを始めます"));
+            Assert.True(main.Contains("FormatTutorialTextWithTemporaryInteraction"));
+            Assert.True(main.Contains("UiLanguageService.Translate(text ?? string.Empty)"));
+            Assert.False(main.Contains("（新功能！）"));
+        }
+
         static void TutorialOverlayIsDimmerAndCannotCoverInteractions()
         {
             var root = GetSolutionRoot();
@@ -3267,7 +3557,8 @@ namespace LyricHover.Tests
 
             Assert.False(method.Contains("FadeOutSettingsWindowAsync"));
             Assert.True(method.Contains("ApplyPendingChangesForTutorial"));
-            Assert.True(action.Contains("Width = emphasized ? 176 : 142"));
+            Assert.True(action.Contains("MeasureButtonWidth"));
+            Assert.True(action.Contains("emphasized ? 176 : 142"));
             Assert.True(action.Contains("Opacity = emphasized ? 0.72 : 0.22"));
         }
 
@@ -3279,9 +3570,11 @@ namespace LyricHover.Tests
                 GetSolutionRoot(), "LyricHover.App", "MainWindow.xaml.cs"));
 
             Assert.True(action.Contains("const double ActionPadding"));
+            Assert.True(action.Contains("const double ActionTextHorizontalPadding = 48"));
             Assert.True(action.Contains("button.Margin = new Thickness(ActionPadding)"));
             Assert.True(action.Contains("BorderThickness = new Thickness(0)"));
-            Assert.True(action.Contains("FontSize = emphasized ? 18 : 15"));
+            Assert.True(action.Contains("FontSize = fontSize"));
+            Assert.True(action.Contains("WidthIncludingTrailingWhitespace"));
             Assert.True(action.Contains("public Task PulseInAsync"));
             Assert.True(action.Contains("new LinearDoubleKeyFrame(0.32"));
             Assert.True(main.Contains("tutorialNextWindow.PulseInAsync(TimeSpan.FromMilliseconds(820))"));
@@ -3350,7 +3643,7 @@ namespace LyricHover.Tests
             Assert.True(settings.Contains("ExpandablePreviewShortcutRun.Text = gesture"));
             Assert.True(xaml.Contains("按住 "));
             Assert.True(xaml.Contains("即展开，松开后自动折叠"));
-            Assert.True(main.Contains("按住 \" + GetTemporaryInteractionGesture() + \" 即时展开"));
+            Assert.True(main.Contains("FormatTutorialTextWithTemporaryInteraction(\"按住 {0} 即时展开，松开后自动折叠\")"));
             Assert.False(main.Contains("并单击LyricHover展开"));
         }
 

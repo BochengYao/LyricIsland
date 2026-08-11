@@ -6,4 +6,11 @@ namespace LyricHover.Core
     {
         Task<string> GetSyncedLyricsAsync(TrackIdentity track);
     }
+
+    public interface ITargetedLyricsClient : ILyricsClient
+    {
+        Task<string> GetSyncedLyricsAsync(
+            TrackIdentity track,
+            LyricsTranslationLanguage targetTranslationLanguage);
+    }
 }

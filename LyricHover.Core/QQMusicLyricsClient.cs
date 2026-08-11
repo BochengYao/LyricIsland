@@ -142,7 +142,10 @@ namespace LyricHover.Core
                     var translated = WebUtility.HtmlDecode(trans.GetString() ?? string.Empty);
                     if (!string.IsNullOrWhiteSpace(translated))
                     {
-                        return LyricsPackageParser.CreatePackage(original, translated);
+                        return LyricsPackageParser.CreatePackage(
+                            original,
+                            translated,
+                            LyricsTranslationLanguage.SimplifiedChinese);
                     }
                 }
 
@@ -172,7 +175,10 @@ namespace LyricHover.Core
                 var translated = DecodeMaybeBase64(ReadString(data, "trans"));
                 if (!string.IsNullOrWhiteSpace(translated))
                 {
-                    return LyricsPackageParser.CreatePackage(original, translated);
+                        return LyricsPackageParser.CreatePackage(
+                            original,
+                            translated,
+                            LyricsTranslationLanguage.SimplifiedChinese);
                 }
 
                 return original;

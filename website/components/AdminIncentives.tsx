@@ -865,10 +865,16 @@ export function AdminIncentives() {
         id,
         title_zh: "",
         title_en: "",
+        title_zh_tw: "",
+        title_ja: "",
         body_zh: "",
         body_en: "",
+        body_zh_tw: "",
+        body_ja: "",
         items_zh: [],
         items_en: [],
+        items_zh_tw: [],
+        items_ja: [],
         visible: false
       }]
     }));

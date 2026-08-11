@@ -33,13 +33,7 @@
                        FontFamily="Microsoft YaHei UI"
                        FontSize="20"
                        FontWeight="SemiBold"
-                       Text="通过拖拽旋转徽章" />
-            <TextBlock Margin="0,6,0,0"
-                       HorizontalAlignment="Center"
-                       Foreground="#A8FFFFFF"
-                       FontFamily="Microsoft YaHei UI"
-                       FontSize="13"
-                       Text="按下 Esc 键关闭" />
+                       Text="拖拽旋转 · 滚轮放大 / 缩小" />
         </StackPanel>
 
         <Viewbox Grid.Row="1"
@@ -51,9 +45,11 @@
                     Height="720"
                     Background="Transparent"
                     AutomationProperties.Name="可拖拽旋转的LyricHover Pro 支持者徽章"
+                    AutomationProperties.HelpText="拖拽可旋转徽章；上下拖拽方向已反转。滚动鼠标滚轮可放大或缩小徽章。"
                     MouseLeftButtonDown="BadgeInteractionSurface_MouseLeftButtonDown"
                     MouseMove="BadgeInteractionSurface_MouseMove"
                     MouseLeftButtonUp="BadgeInteractionSurface_MouseLeftButtonUp"
+                    MouseWheel="BadgeInteractionSurface_MouseWheel"
                     LostMouseCapture="BadgeInteractionSurface_LostMouseCapture"
                     TouchDown="BadgeInteractionSurface_TouchDown"
                     TouchMove="BadgeInteractionSurface_TouchMove"
@@ -64,7 +60,8 @@
                             IsHitTestVisible="False"
                             SnapsToDevicePixels="True">
                     <Viewport3D.Camera>
-                        <OrthographicCamera Position="0,0,7"
+                        <OrthographicCamera x:Name="BadgeCamera"
+                                            Position="0,0,7"
                                             LookDirection="0,0,-7"
                                             UpDirection="0,1,0"
                                             Width="4.72" />

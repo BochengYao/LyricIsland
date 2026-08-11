@@ -13,10 +13,27 @@ namespace LyricHover.Core
             bool multiLine,
             bool showTranslation)
         {
+            return Select(
+                lyrics,
+                position,
+                offset,
+                multiLine,
+                showTranslation,
+                LyricsTranslationLanguage.SourceDefault);
+        }
+
+        public static IReadOnlyList<LyricLine> Select(
+            TimedLyrics lyrics,
+            TimeSpan position,
+            TimeSpan offset,
+            bool multiLine,
+            bool showTranslation,
+            LyricsTranslationLanguage targetTranslationLanguage)
+        {
             lyrics = lyrics ?? new TimedLyrics(new LyricLine[0]);
             var current = lyrics.GetCurrentLine(position, offset);
 
-            if (showTranslation)
+            if (showTranslation && HasTranslationForTarget(lyrics, targetTranslationLanguage))
             {
                 if (ShouldIgnoreTranslation(lyrics))
                 {
@@ -35,6 +52,15 @@ namespace LyricHover.Core
             }
 
             return lyrics.GetCurrentLines(position, offset, multiLine ? 2 : 1);
+        }
+
+        public static bool HasTranslationForTarget(
+            TimedLyrics lyrics,
+            LyricsTranslationLanguage targetTranslationLanguage)
+        {
+            return lyrics != null &&
+                lyrics.TranslationLines.Count > 0 &&
+                LyricsTranslationLanguages.IsMatch(lyrics.TranslationLanguage, targetTranslationLanguage);
         }
 
         public static bool ShouldIgnoreTranslation(TimedLyrics lyrics)

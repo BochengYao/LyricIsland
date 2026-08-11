@@ -150,6 +150,7 @@ namespace LyricHover.App
                 Dispatcher.BeginInvoke(new Action(async () => await RefreshAsync()));
             settingsStore = new OverlaySettingsStore(settingsPath);
             placementSettings = settingsStore.Load();
+            UiLanguageService.SetPreference(placementSettings.Language);
             shouldStartFirstRunTutorial = !settingsFileExisted;
             if (settingsFileExisted && !placementSettings.HasSeenTutorial)
             {
@@ -220,8 +221,8 @@ namespace LyricHover.App
                 Icon = LoadTrayIcon(),
                 ContextMenuStrip = new Forms.ContextMenuStrip()
             };
-            trayIcon.ContextMenuStrip.Items.Add("偏好设置", null, (sender, args) => Dispatcher.BeginInvoke(new Action(OpenPlacementSettingsWindow)));
-            trayIcon.ContextMenuStrip.Items.Add("退出", null, (sender, args) => Dispatcher.BeginInvoke(new Action(() => System.Windows.Application.Current.Shutdown())));
+            trayIcon.ContextMenuStrip.Items.Add(UiLanguageService.Translate("偏好设置"), null, (sender, args) => Dispatcher.BeginInvoke(new Action(OpenPlacementSettingsWindow)));
+            trayIcon.ContextMenuStrip.Items.Add(UiLanguageService.Translate("退出"), null, (sender, args) => Dispatcher.BeginInvoke(new Action(() => System.Windows.Application.Current.Shutdown())));
             trayIcon.DoubleClick += (sender, args) => Dispatcher.BeginInvoke(new Action(OpenPlacementSettingsWindow));
             trayIcon.Visible = true;
         }
@@ -327,7 +328,7 @@ namespace LyricHover.App
             milliseconds = Math.Max(-10000, Math.Min(10000, milliseconds));
             lyricOffset = TimeSpan.FromMilliseconds(milliseconds);
             ModuleHost.ShowTransientMessage(
-                "歌词偏移 " + (milliseconds / 1000.0).ToString("+0.0;-0.0;0.0") + "s",
+                FormatLocalizedText("歌词偏移 {0}s", (milliseconds / 1000.0).ToString("+0.0;-0.0;0.0")),
                 TimeSpan.FromSeconds(1.2));
         }
 
@@ -374,7 +375,7 @@ namespace LyricHover.App
                 "暂无播放内容",
                 autoRetractSeconds == 0
                     ? "未播放内容时，LyricHover将保持显示"
-                    : "LyricHover将在 " + autoRetractSeconds + " 秒后自动收起");
+                    : FormatLocalizedText("LyricHover将在 {0} 秒后自动收起", autoRetractSeconds));
             ShowIsland();
             if (startupHintTimer == null)
             {
@@ -1019,10 +1020,18 @@ namespace LyricHover.App
         {
             var previousSource = placementSettings.LyricsSource;
             var previousShowTranslation = placementSettings.ShowTranslation;
+            var previousLanguage = placementSettings.Language;
             var editedLayouts = placementSettings.IslandLayouts;
             placementSettings = settings ?? new OverlayPlacementSettings();
             placementSettings.IslandLayouts = editedLayouts ?? placementSettings.IslandLayouts;
             placementSettings.Normalize();
+            UiLanguageService.SetPreference(placementSettings.Language);
+            if (previousLanguage != placementSettings.Language && trayIcon?.ContextMenuStrip != null)
+            {
+                trayIcon.ContextMenuStrip.Items.Clear();
+                trayIcon.ContextMenuStrip.Items.Add(UiLanguageService.Translate("偏好设置"), null, (sender, args) => Dispatcher.BeginInvoke(new Action(OpenPlacementSettingsWindow)));
+                trayIcon.ContextMenuStrip.Items.Add(UiLanguageService.Translate("退出"), null, (sender, args) => Dispatcher.BeginInvoke(new Action(() => System.Windows.Application.Current.Shutdown())));
+            }
             interactionController.ExpandedDuration = TimeSpan.FromSeconds(placementSettings.ExpandedAutoCollapseSeconds);
             cache.SetMaxBytes(GetCacheLimitBytes(placementSettings));
             selectedLyricsSource = placementSettings.LyricsSource;
@@ -1442,8 +1451,8 @@ namespace LyricHover.App
 
         private void SetIslandText(string primary, string secondary, TimeSpan lineDuration)
         {
-            currentPrimaryText = primary ?? string.Empty;
-            currentSecondaryText = secondary ?? string.Empty;
+            currentPrimaryText = UiLanguageService.Translate(primary ?? string.Empty);
+            currentSecondaryText = UiLanguageService.Translate(secondary ?? string.Empty);
             currentLineDuration = lineDuration;
             RenderCurrentModuleState();
         }
@@ -2204,7 +2213,7 @@ namespace LyricHover.App
 
                 SetTutorialText("该功能可方便看到岛下内容", "无需频繁拖动LyricHover，助你高效工作");
                 await DelayTutorialAsync(3200, cancellationToken);
-                SetTutorialText("可以透过岛直接左键点击控制岛下内容", string.Empty, "（新功能！）");
+                SetTutorialText("可以透过岛直接左键点击控制岛下内容", string.Empty);
                 await DelayTutorialAsync(3000, cancellationToken);
 
                 tutorialLayoutOverride = CreateTutorialProfile(IslandModuleType.Lyrics, IslandModuleType.Divider, IslandModuleType.PlaybackControls);
@@ -2217,7 +2226,7 @@ namespace LyricHover.App
                 SetTutorialText("新版本增加了音乐控制功能", string.Empty);
                 await DelayTutorialAsync(2200, cancellationToken);
 
-                SetTutorialText("按下" + GetTemporaryInteractionGesture() + "可暂时关闭鼠标避让来点击控制按钮", "来试试看！");
+                SetTutorialText(FormatTutorialTextWithTemporaryInteraction("按下{0}可暂时关闭鼠标避让来点击控制按钮"), "来试试看！");
                 tutorialFlow.BeginControlClickPractice();
             }
             catch (OperationCanceledException)
@@ -2310,11 +2319,11 @@ namespace LyricHover.App
 
                 // Keep the user's current horizontal layout visible while explaining the
                 // alternate hold-to-expand behavior; the tutorial should not switch modes.
-                SetTutorialText("自动折叠模式", "按住 " + GetTemporaryInteractionGesture() + " 即时展开，松开后自动折叠");
+                SetTutorialText("自动折叠模式", FormatTutorialTextWithTemporaryInteraction("按住 {0} 即时展开，松开后自动折叠"));
                 await DelayTutorialAsync(1800, cancellationToken);
                 SetTutorialText("平时保持紧凑，只显示核心模块", string.Empty);
                 await DelayTutorialAsync(2500, cancellationToken);
-                SetTutorialText("按住 " + GetTemporaryInteractionGesture() + " 后显示你的完整模块布局", "与水平积木布局独立");
+                SetTutorialText(FormatTutorialTextWithTemporaryInteraction("按住 {0} 后显示你的完整模块布局"), "与水平积木布局独立");
                 await DelayTutorialAsync(3500, cancellationToken);
                 SetTutorialText("🎉教学模式已结束！快去体验吧！！", string.Empty);
                 await DelayTutorialAsync(2300, cancellationToken);
@@ -2389,7 +2398,7 @@ namespace LyricHover.App
 
         private TutorialActionWindow CreateTutorialActionWindow(string text, Color color, bool topRight, Action clicked)
         {
-            var window = new TutorialActionWindow(text, color, clicked, () => TryExitTutorial(), !topRight);
+            var window = new TutorialActionWindow(UiLanguageService.Translate(text ?? string.Empty), color, clicked, () => TryExitTutorial(), !topRight);
             var screen = ResolveScreen();
             window.Left = screen.WorkLeft + screen.WorkWidth - window.Width - 24;
             window.Top = topRight ? screen.WorkTop + 24 : screen.WorkTop + (screen.WorkHeight - window.Height) / 2;
@@ -2443,11 +2452,21 @@ namespace LyricHover.App
 
         private void SetTutorialText(string primary, string secondary, string accent = "")
         {
-            tutorialPrimaryText = primary ?? string.Empty;
-            tutorialSecondaryText = secondary ?? string.Empty;
-            tutorialAccentText = accent ?? string.Empty;
+            tutorialPrimaryText = UiLanguageService.Translate(primary ?? string.Empty);
+            tutorialSecondaryText = UiLanguageService.Translate(secondary ?? string.Empty);
+            tutorialAccentText = UiLanguageService.Translate(accent ?? string.Empty);
             currentLineDuration = TimeSpan.FromSeconds(5);
             RenderCurrentModuleState();
+        }
+
+        private string FormatTutorialTextWithTemporaryInteraction(string template)
+        {
+            return FormatLocalizedText(template, GetTemporaryInteractionGesture());
+        }
+
+        private static string FormatLocalizedText(string template, params object[] values)
+        {
+            return string.Format(UiLanguageService.Translate(template ?? string.Empty), values ?? Array.Empty<object>());
         }
 
         private bool IsTutorialTemporaryInteractionHeld()

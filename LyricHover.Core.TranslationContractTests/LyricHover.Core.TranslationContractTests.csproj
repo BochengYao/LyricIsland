@@ -1,13 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
   </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\LyricHover.Core\LyricHover.Core.csproj" />
-    <ProjectReference Include="..\LyricHover.App\LyricHover.App.csproj" />
   </ItemGroup>
-
 </Project>

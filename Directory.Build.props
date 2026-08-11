@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
     <!-- Single source of truth. tools/publish-next-version.ps1 increments the patch number. -->
-    <VersionPrefix>2.0.40</VersionPrefix>
+    <VersionPrefix>2.1.7</VersionPrefix>
     <VersionSuffix>Beta</VersionSuffix>
     <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
     <PackageVersion>$(Version)</PackageVersion>

@@ -58,6 +58,8 @@ namespace LyricHover.App
 
         public SettingsThemePreference SettingsTheme { get; set; } = SettingsThemePreference.System;
 
+        public AppLanguagePreference Language { get; set; } = AppLanguagePreference.System;
+
         public LyricsSourcePreference LyricsSource { get; set; } = LyricsSourcePreference.Automatic;
 
         public bool UseMultiLineDisplay { get; set; } = true;
@@ -125,6 +127,11 @@ namespace LyricHover.App
             if (!Enum.IsDefined(typeof(SettingsThemePreference), SettingsTheme))
             {
                 SettingsTheme = SettingsThemePreference.System;
+            }
+
+            if (!Enum.IsDefined(typeof(AppLanguagePreference), Language))
+            {
+                Language = AppLanguagePreference.System;
             }
 
             if (ShowTranslation)
@@ -208,6 +215,7 @@ namespace LyricHover.App
                 var originalHoverSpectrum = SerializeHoverSpectrum(settings.HoverSpectrumStops);
                 var originalPassThroughOnHover = settings.PassThroughOnHover;
                 var originalSettingsTheme = settings.SettingsTheme;
+                var originalLanguage = settings.Language;
                 var originalLyricsSource = settings.LyricsSource;
                 var originalUseMultiLineDisplay = settings.UseMultiLineDisplay;
                 var originalShowTranslation = settings.ShowTranslation;
@@ -222,6 +230,7 @@ namespace LyricHover.App
                     SerializeHoverSpectrum(settings.HoverSpectrumStops) != originalHoverSpectrum ||
                     settings.PassThroughOnHover != originalPassThroughOnHover ||
                     settings.SettingsTheme != originalSettingsTheme ||
+                    settings.Language != originalLanguage ||
                     settings.LyricsSource != originalLyricsSource ||
                     settings.UseMultiLineDisplay != originalUseMultiLineDisplay ||
                     settings.ShowTranslation != originalShowTranslation)
@@ -274,5 +283,14 @@ namespace LyricHover.App
         System,
         Light,
         Dark
+    }
+
+    public enum AppLanguagePreference
+    {
+        System,
+        SimplifiedChinese,
+        TraditionalChinese,
+        English,
+        Japanese
     }
 }

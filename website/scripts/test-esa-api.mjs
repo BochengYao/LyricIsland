@@ -254,6 +254,10 @@ try {
     "自定义字体、颜色",
     "自定义各模块颜色"
   ]);
+  assert.equal(publicData.previews[0].body_zh_tw, publicData.previews[0].body_zh);
+  assert.equal(publicData.previews[0].body_ja, publicData.previews[0].body_en);
+  assert.deepEqual(publicData.previews[0].highlights_zh_tw, publicData.previews[0].highlights_zh);
+  assert.deepEqual(publicData.previews[0].highlights_ja, publicData.previews[0].highlights_en);
   assert.equal(calls.length, 4, "public API must stay within ESA's four-subrequest limit");
   assert.ok(
     calls.every((call) => call.init.headers.apikey === values.__ESA_SUPABASE_SERVICE_ROLE_KEY__),
@@ -375,6 +379,8 @@ try {
 
   const managedFeatures = structuredClone(publicFeaturesData.content);
   managedFeatures.sections[0].title_zh = "后台修改后的标题";
+  managedFeatures.sections[0].title_zh_tw = "後台修改後的標題";
+  managedFeatures.sections[0].title_ja = "管理画面で変更した見出し";
   managedFeatures.sections.reverse();
   const featureSaveResponse = await api.fetch(
     new Request("https://lyric-island.top/api/incentives/admin/features", {
@@ -390,6 +396,8 @@ try {
   assert.equal(featureSaveResponse.status, 200);
   const featureSaveData = await featureSaveResponse.json();
   assert.equal(featureSaveData.content.sections[5].title_zh, "后台修改后的标题");
+  assert.equal(featureSaveData.content.sections[5].title_zh_tw, "後台修改後的標題");
+  assert.equal(featureSaveData.content.sections[5].title_ja, "管理画面で変更した見出し");
   assert.equal(featureSaveData.content.sections[0].id, "feature-06");
 
   const proxiedLoginResponse = await api.fetch(
@@ -619,6 +627,8 @@ try {
         version: "v2.2 Preview",
         body_zh: "中文更新内容。",
         body_en: "English release notes.",
+        body_zh_tw: "繁中更新內容。",
+        body_ja: "日本語の更新内容。",
         target_date: "",
         status: "draft"
       })
@@ -630,6 +640,8 @@ try {
   assert.equal(previewData.preview.title_en, "v2.2 Preview");
   assert.equal(previewData.preview.body_zh, "中文更新内容。");
   assert.equal(previewData.preview.body_en, "English release notes.");
+  assert.equal(previewData.preview.body_zh_tw, "繁中更新內容。");
+  assert.equal(previewData.preview.body_ja, "日本語の更新内容。");
   assert.equal(previewData.preview.target_date, null);
 
   const publishedOnlyResponse = await api.fetch(
