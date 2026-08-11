@@ -26,7 +26,10 @@
 - 已生成并提升：`publish/current`。
 - 已归档：上一份 `publish/current` 至 `publish/archive/v2.1.7-Beta`。
 - 已生成：本地未签名 MSIX；签名状态 `NotSigned`，等待 Microsoft Store 处理。
-- 未执行：Git 提交、GitHub 推送或 Release、Partner Center 上传、提交审核、Store 发布、官网生产发布。
+- 已提交：`6361074 feat: recover localized lyrics aliases`。
+- 已推送：`origin/codex/feature/desktop-v250-localization` 指向 `6361074`；未合并 `main`，未创建 GitHub Release。
+- Store：本机未发现可用的 `msstore`、Partner Center 或 Azure CLI，且没有可交互的已认证 Partner Center 会话；未选择包、未上传、未完成平台验证、未提交审核、未发布。
+- 未执行：官网生产发布。
 
 ## 回滚
 
