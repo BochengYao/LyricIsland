@@ -10,14 +10,21 @@ function previewPayload(body: Record<string, unknown>) {
   const version = typeof body.version === "string" ? body.version.trim().slice(0, 40) : "";
   const bodyZh = typeof body.body_zh === "string" ? body.body_zh.trim().slice(0, 2400) : "";
   const bodyEn = typeof body.body_en === "string" ? body.body_en.trim().slice(0, 2400) : "";
+  const optionalLocalizedBody = (field: "body_zh_tw" | "body_ja") => Object.hasOwn(body, field)
+    ? { [field]: typeof body[field] === "string" ? body[field].trim().slice(0, 2400) : "" }
+    : {};
   return {
     version,
     title_zh: version,
     title_en: version,
+    title_zh_tw: version,
+    title_ja: version,
     body_zh: bodyZh,
     body_en: bodyEn,
     highlights_zh: [] as string[],
     highlights_en: [] as string[],
+    ...optionalLocalizedBody("body_zh_tw"),
+    ...optionalLocalizedBody("body_ja"),
     target_date: typeof body.target_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.target_date)
       ? body.target_date
       : null,
@@ -66,7 +73,7 @@ export async function PATCH(request: Request) {
     if (!id || (body.status !== "draft" && body.status !== "published")) {
       return Response.json({ error: "Invalid update" }, { status: 400 });
     }
-    const hasContent = ["version", "body_zh", "body_en", "target_date"]
+    const hasContent = ["version", "body_zh", "body_en", "body_zh_tw", "body_ja", "target_date"]
       .some((field) => Object.hasOwn(body, field));
     if (hasContent) {
       const payload = previewPayload(body);

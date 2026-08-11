@@ -25,27 +25,53 @@ export function sanitizeFeatureContent(value: unknown): FeatureContent {
     ? source.summary as Record<string, unknown>
     : {};
   const sectionsSource = Array.isArray(source.sections) ? source.sections : [];
+  const summaryLabelZh = cleanText(summarySource.label_zh, 80) || defaultFeatureContent.summary.label_zh;
+  const summaryLabelEn = cleanText(summarySource.label_en, 80) || defaultFeatureContent.summary.label_en;
+  const summaryItemsZh = cleanLines(summarySource.items_zh, 12, 200);
+  const summaryItemsEn = cleanLines(summarySource.items_en, 12, 200);
+  const summaryItemsZhTw = cleanLines(summarySource.items_zh_tw, 12, 200);
+  const summaryItemsJa = cleanLines(summarySource.items_ja, 12, 200);
   const sections = sectionsSource
     .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object"))
     .slice(0, 30)
-    .map((item, index): FeatureContentSection => ({
-      id: cleanText(item.id, 80) || `feature-${String(index + 1).padStart(2, "0")}`,
-      title_zh: cleanText(item.title_zh, 160),
-      title_en: cleanText(item.title_en, 160),
-      body_zh: cleanText(item.body_zh, 1200),
-      body_en: cleanText(item.body_en, 1200),
-      items_zh: cleanLines(item.items_zh, 12, 240),
-      items_en: cleanLines(item.items_en, 12, 240),
-      visible: item.visible !== false
-    }))
+    .map((item, index): FeatureContentSection => {
+      const titleZh = cleanText(item.title_zh, 160);
+      const titleEn = cleanText(item.title_en, 160);
+      const bodyZh = cleanText(item.body_zh, 1200);
+      const bodyEn = cleanText(item.body_en, 1200);
+      const itemsZh = cleanLines(item.items_zh, 12, 240);
+      const itemsEn = cleanLines(item.items_en, 12, 240);
+      const itemsZhTw = cleanLines(item.items_zh_tw, 12, 240);
+      const itemsJa = cleanLines(item.items_ja, 12, 240);
+      return {
+        id: cleanText(item.id, 80) || `feature-${String(index + 1).padStart(2, "0")}`,
+        title_zh: titleZh,
+        title_en: titleEn,
+        title_zh_tw: cleanText(item.title_zh_tw, 160) || titleZh,
+        title_ja: cleanText(item.title_ja, 160) || titleEn || titleZh,
+        body_zh: bodyZh,
+        body_en: bodyEn,
+        body_zh_tw: cleanText(item.body_zh_tw, 1200) || bodyZh,
+        body_ja: cleanText(item.body_ja, 1200) || bodyEn || bodyZh,
+        items_zh: itemsZh,
+        items_en: itemsEn,
+        items_zh_tw: itemsZhTw.length ? itemsZhTw : itemsZh,
+        items_ja: itemsJa.length ? itemsJa : (itemsEn.length ? itemsEn : itemsZh),
+        visible: item.visible !== false
+      };
+    })
     .filter((item) => item.title_zh || item.title_en);
 
   return {
     summary: {
-      label_zh: cleanText(summarySource.label_zh, 80) || defaultFeatureContent.summary.label_zh,
-      label_en: cleanText(summarySource.label_en, 80) || defaultFeatureContent.summary.label_en,
-      items_zh: cleanLines(summarySource.items_zh, 12, 200),
-      items_en: cleanLines(summarySource.items_en, 12, 200),
+      label_zh: summaryLabelZh,
+      label_en: summaryLabelEn,
+      label_zh_tw: cleanText(summarySource.label_zh_tw, 80) || summaryLabelZh,
+      label_ja: cleanText(summarySource.label_ja, 80) || summaryLabelEn || summaryLabelZh,
+      items_zh: summaryItemsZh,
+      items_en: summaryItemsEn,
+      items_zh_tw: summaryItemsZhTw.length ? summaryItemsZhTw : summaryItemsZh,
+      items_ja: summaryItemsJa.length ? summaryItemsJa : (summaryItemsEn.length ? summaryItemsEn : summaryItemsZh),
       visible: summarySource.visible !== false
     },
     sections

@@ -45,10 +45,16 @@ export type ReleasePreview = {
   version: string;
   title_zh: string;
   title_en: string;
+  title_zh_tw: string;
+  title_ja: string;
   body_zh: string;
   body_en: string;
+  body_zh_tw: string;
+  body_ja: string;
   highlights_zh: string[];
   highlights_en: string[];
+  highlights_zh_tw: string[];
+  highlights_ja: string[];
   target_date: string | null;
   status: "draft" | "published";
   created_at: string;
@@ -60,10 +66,16 @@ export type FeatureContentSection = {
   id: string;
   title_zh: string;
   title_en: string;
+  title_zh_tw: string;
+  title_ja: string;
   body_zh: string;
   body_en: string;
+  body_zh_tw: string;
+  body_ja: string;
   items_zh: string[];
   items_en: string[];
+  items_zh_tw: string[];
+  items_ja: string[];
   visible: boolean;
 };
 
@@ -71,8 +83,12 @@ export type FeatureContent = {
   summary: {
     label_zh: string;
     label_en: string;
+    label_zh_tw: string;
+    label_ja: string;
     items_zh: string[];
     items_en: string[];
+    items_zh_tw: string[];
+    items_ja: string[];
     visible: boolean;
   };
   sections: FeatureContentSection[];

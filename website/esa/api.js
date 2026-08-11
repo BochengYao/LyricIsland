@@ -119,26 +119,94 @@ function sanitizeFeatureContent(value) {
   const sections = (Array.isArray(source.sections) ? source.sections : [])
     .filter((item) => item && typeof item === "object")
     .slice(0, 30)
-    .map((item, index) => ({
-      id: cleanFeatureText(item.id, 80) || `feature-${String(index + 1).padStart(2, "0")}`,
-      title_zh: cleanFeatureText(item.title_zh, 160),
-      title_en: cleanFeatureText(item.title_en, 160),
-      body_zh: cleanFeatureText(item.body_zh, 1200),
-      body_en: cleanFeatureText(item.body_en, 1200),
-      items_zh: cleanFeatureLines(item.items_zh, 12, 240),
-      items_en: cleanFeatureLines(item.items_en, 12, 240),
-      visible: item.visible !== false
-    }))
+    .map((item, index) => {
+      const titleZh = cleanFeatureText(item.title_zh, 160);
+      const titleEn = cleanFeatureText(item.title_en, 160);
+      const bodyZh = cleanFeatureText(item.body_zh, 1200);
+      const bodyEn = cleanFeatureText(item.body_en, 1200);
+      const itemsZh = cleanFeatureLines(item.items_zh, 12, 240);
+      const itemsEn = cleanFeatureLines(item.items_en, 12, 240);
+      const itemsZhTw = cleanFeatureLines(item.items_zh_tw, 12, 240);
+      const itemsJa = cleanFeatureLines(item.items_ja, 12, 240);
+      return {
+        id: cleanFeatureText(item.id, 80) || `feature-${String(index + 1).padStart(2, "0")}`,
+        title_zh: titleZh,
+        title_en: titleEn,
+        title_zh_tw: cleanFeatureText(item.title_zh_tw, 160) || titleZh,
+        title_ja: cleanFeatureText(item.title_ja, 160) || titleEn || titleZh,
+        body_zh: bodyZh,
+        body_en: bodyEn,
+        body_zh_tw: cleanFeatureText(item.body_zh_tw, 1200) || bodyZh,
+        body_ja: cleanFeatureText(item.body_ja, 1200) || bodyEn || bodyZh,
+        items_zh: itemsZh,
+        items_en: itemsEn,
+        items_zh_tw: itemsZhTw.length ? itemsZhTw : itemsZh,
+        items_ja: itemsJa.length ? itemsJa : (itemsEn.length ? itemsEn : itemsZh),
+        visible: item.visible !== false
+      };
+    })
     .filter((item) => item.title_zh || item.title_en);
+  const summaryLabelZh = cleanFeatureText(summary.label_zh, 80) || DEFAULT_FEATURE_CONTENT.summary.label_zh;
+  const summaryLabelEn = cleanFeatureText(summary.label_en, 80) || DEFAULT_FEATURE_CONTENT.summary.label_en;
+  const summaryItemsZh = cleanFeatureLines(summary.items_zh, 12, 200);
+  const summaryItemsEn = cleanFeatureLines(summary.items_en, 12, 200);
+  const summaryItemsZhTw = cleanFeatureLines(summary.items_zh_tw, 12, 200);
+  const summaryItemsJa = cleanFeatureLines(summary.items_ja, 12, 200);
   return {
     summary: {
-      label_zh: cleanFeatureText(summary.label_zh, 80) || DEFAULT_FEATURE_CONTENT.summary.label_zh,
-      label_en: cleanFeatureText(summary.label_en, 80) || DEFAULT_FEATURE_CONTENT.summary.label_en,
-      items_zh: cleanFeatureLines(summary.items_zh, 12, 200),
-      items_en: cleanFeatureLines(summary.items_en, 12, 200),
+      label_zh: summaryLabelZh,
+      label_en: summaryLabelEn,
+      label_zh_tw: cleanFeatureText(summary.label_zh_tw, 80) || summaryLabelZh,
+      label_ja: cleanFeatureText(summary.label_ja, 80) || summaryLabelEn || summaryLabelZh,
+      items_zh: summaryItemsZh,
+      items_en: summaryItemsEn,
+      items_zh_tw: summaryItemsZhTw.length ? summaryItemsZhTw : summaryItemsZh,
+      items_ja: summaryItemsJa.length ? summaryItemsJa : (summaryItemsEn.length ? summaryItemsEn : summaryItemsZh),
       visible: summary.visible !== false
     },
     sections
+  };
+}
+
+function firstPreviewText(...values) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
+function firstPreviewLines(...values) {
+  for (const value of values) {
+    if (!Array.isArray(value)) continue;
+    const lines = value.filter((item) => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    if (lines.length) return lines;
+  }
+  return [];
+}
+
+function normalizeReleasePreview(preview) {
+  const titleZh = firstPreviewText(preview.title_zh);
+  const titleEn = firstPreviewText(preview.title_en, titleZh);
+  const bodyZh = firstPreviewText(preview.body_zh);
+  const bodyEn = firstPreviewText(preview.body_en, bodyZh);
+  const highlightsZh = firstPreviewLines(preview.highlights_zh);
+  const highlightsEn = firstPreviewLines(preview.highlights_en, highlightsZh);
+  return {
+    ...preview,
+    title_zh: titleZh,
+    title_en: titleEn,
+    title_zh_tw: firstPreviewText(preview.title_zh_tw, titleZh),
+    title_ja: firstPreviewText(preview.title_ja, titleEn, titleZh),
+    body_zh: bodyZh,
+    body_en: bodyEn,
+    body_zh_tw: firstPreviewText(preview.body_zh_tw, bodyZh),
+    body_ja: firstPreviewText(preview.body_ja, bodyEn, bodyZh),
+    highlights_zh: highlightsZh,
+    highlights_en: highlightsEn,
+    highlights_zh_tw: firstPreviewLines(preview.highlights_zh_tw, highlightsZh),
+    highlights_ja: firstPreviewLines(preview.highlights_ja, highlightsEn, highlightsZh)
   };
 }
 
@@ -545,7 +613,7 @@ async function getPublicIncentives(voterHash) {
   const previewRequest = supabase(
     "/rest/v1/release_previews?select=*&status=eq.published&order=published_at.desc&limit=20"
   );
-  const [rows, likedRows, previews] = await Promise.all([
+  const [rows, likedRows, previewRows] = await Promise.all([
     suggestionRequest,
     likesRequest,
     previewRequest
@@ -568,17 +636,18 @@ async function getPublicIncentives(voterHash) {
         : {})
     };
   });
+  const previews = previewRows.map(normalizeReleasePreview);
   return {
     suggestions,
     previews: previews.length
       ? previews
-      : [{
+      : [normalizeReleasePreview({
           id: "default-release-preview-v2-1",
           ...DEFAULT_RELEASE_PREVIEW,
           created_at: "2026-07-29T00:00:00.000Z",
           updated_at: "2026-07-29T00:00:00.000Z",
           published_at: "2026-07-29T00:00:00.000Z"
-        }]
+        })]
   };
 }
 
@@ -809,7 +878,7 @@ async function listReleasePreviews() {
     "/rest/v1/release_previews?select=*&version=not.in.(__FEATURE_CONTENT_V1__,__AUDIT_LOG_V1__)&order=created_at.desc&limit=50"
   );
   const previews = rows.filter((row) => !row.version.startsWith("__"));
-  if (previews.length) return previews;
+  if (previews.length) return previews.map(normalizeReleasePreview);
   return [await createReleasePreview(DEFAULT_RELEASE_PREVIEW)];
 }
 
@@ -823,7 +892,7 @@ async function createReleasePreview(input) {
       published_at: input.status === "published" ? now : null
     })
   });
-  return rows[0];
+  return normalizeReleasePreview(rows[0]);
 }
 
 async function updateReleasePreview(id, input) {
@@ -844,7 +913,7 @@ async function updateReleasePreview(id, input) {
       })
     }
   );
-  return rows[0];
+  return normalizeReleasePreview(rows[0]);
 }
 
 async function getFeatureContentRow() {
@@ -934,14 +1003,21 @@ function lines(value) {
 
 function previewPayload(body) {
   const version = typeof body.version === "string" ? body.version.trim().slice(0, 40) : "";
+  const optionalLocalizedBody = (field) => Object.prototype.hasOwnProperty.call(body, field)
+    ? { [field]: typeof body[field] === "string" ? body[field].trim().slice(0, 2400) : "" }
+    : {};
   return {
     version,
     title_zh: version,
     title_en: version,
+    title_zh_tw: version,
+    title_ja: version,
     body_zh: typeof body.body_zh === "string" ? body.body_zh.trim().slice(0, 2400) : "",
     body_en: typeof body.body_en === "string" ? body.body_en.trim().slice(0, 2400) : "",
     highlights_zh: lines(body.highlights_zh),
     highlights_en: lines(body.highlights_en),
+    ...optionalLocalizedBody("body_zh_tw"),
+    ...optionalLocalizedBody("body_ja"),
     target_date:
       typeof body.target_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.target_date)
         ? body.target_date
@@ -1449,7 +1525,7 @@ async function handleAdminPreviews(request) {
       if (!id || (body.status !== "draft" && body.status !== "published")) {
         return jsonError("Invalid update");
       }
-      const hasContent = ["version", "body_zh", "body_en", "target_date"]
+      const hasContent = ["version", "body_zh", "body_en", "body_zh_tw", "body_ja", "target_date"]
         .some((field) => Object.prototype.hasOwnProperty.call(body, field));
       const payload = hasContent ? previewPayload(body) : { status: body.status };
       if (hasContent && (!payload.version || !payload.body_zh || !payload.body_en)) {
