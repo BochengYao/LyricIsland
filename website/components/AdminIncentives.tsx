@@ -27,9 +27,15 @@ type PreviewDraft = {
   version: string;
   body_zh: string;
   body_en: string;
+  body_zh_tw: string;
+  body_ja: string;
   target_date: string;
   status: "draft" | "published";
 };
+type TranslationLocale = "en" | "zh-tw" | "ja";
+type LocalizedTranslations = Record<TranslationLocale, Record<string, string>>;
+
+const translationLocales: TranslationLocale[] = ["en", "zh-tw", "ja"];
 type BulkAction =
   | `status:${SubmissionStatus}`
   | `reward:${RewardStatus}`
@@ -69,6 +75,8 @@ const emptyPreviewDraft: PreviewDraft = {
   version: "",
   body_zh: "",
   body_en: "",
+  body_zh_tw: "",
+  body_ja: "",
   target_date: "",
   status: "draft"
 };
@@ -79,6 +87,8 @@ function previewToDraft(preview: ReleasePreview): PreviewDraft {
     version: preview.version,
     body_zh: [preview.body_zh, ...preview.highlights_zh].filter(Boolean).join("\n"),
     body_en: [preview.body_en, ...preview.highlights_en].filter(Boolean).join("\n"),
+    body_zh_tw: [preview.body_zh_tw, ...preview.highlights_zh_tw].filter(Boolean).join("\n"),
+    body_ja: [preview.body_ja, ...preview.highlights_ja].filter(Boolean).join("\n"),
     target_date: preview.target_date ?? "",
     status: preview.status
   };
@@ -647,7 +657,7 @@ export function AdminIncentives() {
     const response = await fetch("/api/incentives/admin/translate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ entries, targetLocales: ["en"] })
+      body: JSON.stringify({ entries, targetLocales: translationLocales })
     });
     const result = await response.json().catch(() => ({})) as {
       error?: string;
@@ -657,17 +667,20 @@ export function AdminIncentives() {
       setAuth("login");
       throw new Error("登录已过期");
     }
-    if (!response.ok || !result.translations?.en) {
+    if (!response.ok || translationLocales.some((locale) => !result.translations?.[locale])) {
       throw new Error(result.error ?? `翻译失败（HTTP ${response.status}）`);
     }
-    return result.translations.en;
+    return result.translations as LocalizedTranslations;
   }
 
   async function requestTranslations(entries: Array<{ key: string; text: string }>) {
-    const batchSize = 24;
-    const translations: Record<string, string> = {};
+    const batchSize = 12;
+    const translations: LocalizedTranslations = { en: {}, "zh-tw": {}, ja: {} };
     for (let start = 0; start < entries.length; start += batchSize) {
-      Object.assign(translations, await requestTranslation(entries.slice(start, start + batchSize)));
+      const translated = await requestTranslation(entries.slice(start, start + batchSize));
+      for (const locale of translationLocales) {
+        Object.assign(translations[locale], translated[locale]);
+      }
     }
     return translations;
   }
@@ -678,13 +691,13 @@ export function AdminIncentives() {
 
   async function translateManagedFeatures() {
     const entries: Array<{ key: string; text: string }> = [];
-    if (featureContent.summary.label_zh.trim()) entries.push({ key: "summary.label_en", text: featureContent.summary.label_zh });
-    nonEmptyLines(featureContent.summary.items_zh).forEach((text, index) => entries.push({ key: `summary.items_en.${index}`, text }));
+    if (featureContent.summary.label_zh.trim()) entries.push({ key: "summary.label", text: featureContent.summary.label_zh });
+    nonEmptyLines(featureContent.summary.items_zh).forEach((text, index) => entries.push({ key: `summary.items.${index}`, text }));
     featureContent.sections.forEach((section) => {
       const prefix = `section.${section.id}`;
-      if (section.title_zh.trim()) entries.push({ key: `${prefix}.title_en`, text: section.title_zh });
-      if (section.body_zh.trim()) entries.push({ key: `${prefix}.body_en`, text: section.body_zh });
-      nonEmptyLines(section.items_zh).forEach((text, index) => entries.push({ key: `${prefix}.items_en.${index}`, text }));
+      if (section.title_zh.trim()) entries.push({ key: `${prefix}.title`, text: section.title_zh });
+      if (section.body_zh.trim()) entries.push({ key: `${prefix}.body`, text: section.body_zh });
+      nonEmptyLines(section.items_zh).forEach((text, index) => entries.push({ key: `${prefix}.items.${index}`, text }));
     });
     if (!entries.length) {
       setFeatureMessage("请先填写需要翻译的中文内容");
@@ -698,20 +711,30 @@ export function AdminIncentives() {
         ...content,
         summary: {
           ...content.summary,
-          label_en: translations["summary.label_en"] ?? content.summary.label_en,
-          items_en: nonEmptyLines(content.summary.items_zh).map((_, index) => translations[`summary.items_en.${index}`] ?? content.summary.items_en[index] ?? "")
+          label_en: translations.en["summary.label"] ?? content.summary.label_en,
+          label_zh_tw: translations["zh-tw"]["summary.label"] ?? content.summary.label_zh_tw,
+          label_ja: translations.ja["summary.label"] ?? content.summary.label_ja,
+          items_en: nonEmptyLines(content.summary.items_zh).map((_, index) => translations.en[`summary.items.${index}`] ?? content.summary.items_en[index] ?? ""),
+          items_zh_tw: nonEmptyLines(content.summary.items_zh).map((_, index) => translations["zh-tw"][`summary.items.${index}`] ?? content.summary.items_zh_tw[index] ?? ""),
+          items_ja: nonEmptyLines(content.summary.items_zh).map((_, index) => translations.ja[`summary.items.${index}`] ?? content.summary.items_ja[index] ?? "")
         },
         sections: content.sections.map((section) => {
           const prefix = `section.${section.id}`;
           return {
             ...section,
-            title_en: translations[`${prefix}.title_en`] ?? section.title_en,
-            body_en: translations[`${prefix}.body_en`] ?? section.body_en,
-            items_en: nonEmptyLines(section.items_zh).map((_, index) => translations[`${prefix}.items_en.${index}`] ?? section.items_en[index] ?? "")
+            title_en: translations.en[`${prefix}.title`] ?? section.title_en,
+            title_zh_tw: translations["zh-tw"][`${prefix}.title`] ?? section.title_zh_tw,
+            title_ja: translations.ja[`${prefix}.title`] ?? section.title_ja,
+            body_en: translations.en[`${prefix}.body`] ?? section.body_en,
+            body_zh_tw: translations["zh-tw"][`${prefix}.body`] ?? section.body_zh_tw,
+            body_ja: translations.ja[`${prefix}.body`] ?? section.body_ja,
+            items_en: nonEmptyLines(section.items_zh).map((_, index) => translations.en[`${prefix}.items.${index}`] ?? section.items_en[index] ?? ""),
+            items_zh_tw: nonEmptyLines(section.items_zh).map((_, index) => translations["zh-tw"][`${prefix}.items.${index}`] ?? section.items_zh_tw[index] ?? ""),
+            items_ja: nonEmptyLines(section.items_zh).map((_, index) => translations.ja[`${prefix}.items.${index}`] ?? section.items_ja[index] ?? "")
           };
         })
       }));
-      setFeatureMessage("英文内容已自动生成，请确认后保存并同步前台");
+      setFeatureMessage("英文、繁中和日文内容已自动生成，请确认后保存并同步前台");
     } catch (translationError) {
       const message = translationError instanceof Error ? translationError.message : "翻译失败";
       setFeatureMessage(`自动翻译未完成：${message}`);
@@ -729,8 +752,13 @@ export function AdminIncentives() {
     setTranslationSaving("preview");
     setError("");
     try {
-      const translations = await requestTranslation([{ key: "body_en", text: previewDraft.body_zh }]);
-      setPreviewDraft((draft) => ({ ...draft, body_en: translations.body_en ?? draft.body_en }));
+      const translations = await requestTranslation([{ key: "body", text: previewDraft.body_zh }]);
+      setPreviewDraft((draft) => ({
+        ...draft,
+        body_en: translations.en.body ?? draft.body_en,
+        body_zh_tw: translations["zh-tw"].body ?? draft.body_zh_tw,
+        body_ja: translations.ja.body ?? draft.body_ja
+      }));
     } catch (translationError) {
       setError(translationError instanceof Error ? translationError.message : "翻译失败");
     } finally {
@@ -753,6 +781,8 @@ export function AdminIncentives() {
           version: previewDraft.version,
           body_zh: previewDraft.body_zh,
           body_en: previewDraft.body_en,
+          body_zh_tw: previewDraft.body_zh_tw,
+          body_ja: previewDraft.body_ja,
           target_date: previewDateTbd ? "" : previewDraft.target_date,
           status
         })
@@ -1044,8 +1074,8 @@ export function AdminIncentives() {
             <header className="adminPageHeader">
               <div><p>FEATURE PAGE CONTENT</p><h2>新功能页内容</h2></div>
               <div className="featureAdminActions">
-                <span role="status">{featureMessage || "现有中英文内容已导入，可直接修改"}</span>
-                <button className="button buttonSecondary" type="button" disabled={featureSaving || translationSaving === "features"} onClick={() => void translateManagedFeatures()}>{translationSaving === "features" ? "正在翻译…" : "从中文自动翻译英文"}</button>
+                <span role="status">{featureMessage || "现有四种语言内容已导入，可直接修改"}</span>
+                <button className="button buttonSecondary" type="button" disabled={featureSaving || translationSaving === "features"} onClick={() => void translateManagedFeatures()}>{translationSaving === "features" ? "正在翻译…" : "从中文自动翻译其他语言"}</button>
                 <button className="button buttonSecondary" type="button" onClick={addFeatureSection}>新增功能条目</button>
                 <button className="button buttonPrimary" type="button" disabled={featureSaving} onClick={() => void saveManagedFeatures()}>{featureSaving ? "保存中…" : "保存并同步前台"}</button>
               </div>
@@ -1053,7 +1083,7 @@ export function AdminIncentives() {
 
             <section className="featureAdminSummary">
               <header>
-                <div><strong>本次重点</strong><small>管理顶部重点摘要，中文和英文同步保存</small></div>
+                <div><strong>本次重点</strong><small>管理顶部重点摘要，四种语言同步保存</small></div>
                 <button className={`displayToggle ${featureContent.summary.visible ? "isPublic" : ""}`} type="button" onClick={() => updateFeatureSummary({ visible: !featureContent.summary.visible })}><span aria-hidden="true" />{featureContent.summary.visible ? "前台显示" : "前台隐藏"}</button>
               </header>
               <div className="featureLanguageGrid">
@@ -1064,6 +1094,14 @@ export function AdminIncentives() {
                 <div>
                   <label><span>English title</span><input value={featureContent.summary.label_en} onChange={(event) => updateFeatureSummary({ label_en: event.target.value })} /></label>
                   <label><span>English bullets (one per line)</span><textarea rows={6} value={featureContent.summary.items_en.join("\n")} onChange={(event) => updateFeatureSummary({ items_en: event.target.value.split("\n") })} /></label>
+                </div>
+                <div>
+                  <label><span>繁中標題</span><input value={featureContent.summary.label_zh_tw} onChange={(event) => updateFeatureSummary({ label_zh_tw: event.target.value })} /></label>
+                  <label><span>繁中分點（每行一條）</span><textarea rows={6} value={featureContent.summary.items_zh_tw.join("\n")} onChange={(event) => updateFeatureSummary({ items_zh_tw: event.target.value.split("\n") })} /></label>
+                </div>
+                <div>
+                  <label><span>日本語の見出し</span><input value={featureContent.summary.label_ja} onChange={(event) => updateFeatureSummary({ label_ja: event.target.value })} /></label>
+                  <label><span>日本語の箇条書き（1行ずつ）</span><textarea rows={6} value={featureContent.summary.items_ja.join("\n")} onChange={(event) => updateFeatureSummary({ items_ja: event.target.value.split("\n") })} /></label>
                 </div>
               </div>
             </section>
@@ -1091,6 +1129,16 @@ export function AdminIncentives() {
                       <label><span>English description</span><textarea rows={4} value={section.body_en} onChange={(event) => updateFeatureSection(section.id, { body_en: event.target.value })} /></label>
                       <label><span>English bullets (one per line)</span><textarea rows={7} value={section.items_en.join("\n")} onChange={(event) => updateFeatureSection(section.id, { items_en: event.target.value.split("\n") })} /></label>
                     </div>
+                    <div>
+                      <label><span>繁中標題</span><input value={section.title_zh_tw} onChange={(event) => updateFeatureSection(section.id, { title_zh_tw: event.target.value })} /></label>
+                      <label><span>繁中描述</span><textarea rows={4} value={section.body_zh_tw} onChange={(event) => updateFeatureSection(section.id, { body_zh_tw: event.target.value })} /></label>
+                      <label><span>繁中分點（每行一條）</span><textarea rows={7} value={section.items_zh_tw.join("\n")} onChange={(event) => updateFeatureSection(section.id, { items_zh_tw: event.target.value.split("\n") })} /></label>
+                    </div>
+                    <div>
+                      <label><span>日本語の見出し</span><input value={section.title_ja} onChange={(event) => updateFeatureSection(section.id, { title_ja: event.target.value })} /></label>
+                      <label><span>日本語の説明</span><textarea rows={4} value={section.body_ja} onChange={(event) => updateFeatureSection(section.id, { body_ja: event.target.value })} /></label>
+                      <label><span>日本語の箇条書き（1行ずつ）</span><textarea rows={7} value={section.items_ja.join("\n")} onChange={(event) => updateFeatureSection(section.id, { items_ja: event.target.value.split("\n") })} /></label>
+                    </div>
                   </div>
                 </article>
               ))}
@@ -1104,8 +1152,8 @@ export function AdminIncentives() {
             <header className="adminPageHeader"><div><p>RELEASE PREVIEW</p><h2>发布版本预告</h2></div><div className="featureAdminActions">{draftPreviews.length > 0 && <div className="previewDraftMenu"><button className="button buttonSecondary" type="button" aria-expanded={draftMenuOpen} onClick={() => setDraftMenuOpen((open) => !open)}>草稿箱（{draftPreviews.length}）</button>{draftMenuOpen && <div className="previewDraftMenuPanel">{draftPreviews.map((preview) => <button type="button" onClick={() => editPreview(preview)} key={preview.id}>{preview.version} · {preview.target_date ?? "待定"}</button>)}</div>}</div>}<button className="button buttonSecondary" type="button" onClick={newPreview}>新建预告</button></div></header>
             <form className="previewEditor" onSubmit={savePreview}>
               <div className="previewEditorMeta"><label><span>版本号</span><input name="version" placeholder="例如：v2.1 Beta" value={previewDraft.version} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, version: event.target.value }))} required /></label><label><span>预计上线时间</span><input name="target_date" type="date" value={previewDraft.target_date} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, target_date: event.target.value }))} disabled={previewDateTbd} /></label><button className={`previewDateTbdButton ${previewDateTbd ? "isActive" : ""}`} type="button" aria-pressed={previewDateTbd} onClick={() => setPreviewDateTbd((current) => !current)}>上线时间待定</button></div>
-              <div className="previewEditorLanguages"><label><span>更新内容（中文）</span><textarea name="body_zh" rows={9} value={previewDraft.body_zh} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, body_zh: event.target.value }))} required /></label><label><span>Update content (English)</span><textarea name="body_en" rows={9} value={previewDraft.body_en} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, body_en: event.target.value }))} required /></label></div>
-              <div className="previewEditorActions"><button className="button buttonSecondary" type="button" disabled={previewSaving || translationSaving === "preview"} onClick={() => void translatePreview()}>{translationSaving === "preview" ? "正在翻译…" : "从中文自动翻译英文"}</button><button className="button buttonSecondary" type="submit" name="intent" value="save" disabled={previewSaving}>{previewDraft.status === "published" ? "保存更改" : "保存草稿"}</button><button className="button buttonPrimary" type="submit" name="intent" value="published" disabled={previewSaving}>{previewSaving ? "正在保存…" : previewDraft.status === "published" ? "保持发布并保存" : "发布预告"}</button></div>
+              <div className="previewEditorLanguages"><label><span>更新内容（中文）</span><textarea name="body_zh" rows={9} value={previewDraft.body_zh} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, body_zh: event.target.value }))} required /></label><label><span>Update content (English)</span><textarea name="body_en" rows={9} value={previewDraft.body_en} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, body_en: event.target.value }))} required /></label><label><span>更新內容（繁中）</span><textarea name="body_zh_tw" rows={9} value={previewDraft.body_zh_tw} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, body_zh_tw: event.target.value }))} /></label><label><span>更新内容（日本語）</span><textarea name="body_ja" rows={9} value={previewDraft.body_ja} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, body_ja: event.target.value }))} /></label></div>
+              <div className="previewEditorActions"><button className="button buttonSecondary" type="button" disabled={previewSaving || translationSaving === "preview"} onClick={() => void translatePreview()}>{translationSaving === "preview" ? "正在翻译…" : "从中文自动翻译其他语言"}</button><button className="button buttonSecondary" type="submit" name="intent" value="save" disabled={previewSaving}>{previewDraft.status === "published" ? "保存更改" : "保存草稿"}</button><button className="button buttonPrimary" type="submit" name="intent" value="published" disabled={previewSaving}>{previewSaving ? "正在保存…" : previewDraft.status === "published" ? "保持发布并保存" : "发布预告"}</button></div>
             </form>
             <div className="previewAdminList">{previews.map((preview) => <article key={preview.id}><div><span className="published">已发布到前台</span><small>{preview.version} · 预计上线：{preview.target_date ?? "待定"}</small><p>中文：{[preview.body_zh, ...preview.highlights_zh].filter(Boolean).join(" / ")}</p>{preview.body_en && <p>English: {[preview.body_en, ...preview.highlights_en].filter(Boolean).join(" / ")}</p>}</div><div><button className="button buttonSecondary" type="button" onClick={() => editPreview(preview)}>编辑</button><button className="button buttonSecondary" type="button" onClick={() => void togglePreview(preview)}>撤回为草稿</button></div></article>)}</div>
           </>

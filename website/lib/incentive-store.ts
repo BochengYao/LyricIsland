@@ -1,6 +1,7 @@
 import type {
   FeatureContent,
   IncentiveSubmission,
+  PublicReleasePreview,
   PublicSuggestion,
   ReleasePreview,
   SubmissionAttachment,
@@ -75,6 +76,67 @@ function normalizeReleasePreview(preview: ReleasePreview): ReleasePreview {
     highlights_zh_tw: firstLines(preview.highlights_zh_tw, highlightsZh),
     highlights_ja: firstLines(preview.highlights_ja, highlightsEn, highlightsZh)
   };
+}
+
+const DEFAULT_PUBLIC_PREVIEW_LIMIT = 20;
+const MAX_PUBLIC_PREVIEW_LIMIT = 50;
+
+export type PublicPreviewPageOptions = {
+  cursor?: { publishedAt: string; id: string };
+  limit?: number;
+};
+
+export function parsePublicPreviewPageOptions(request: Request): PublicPreviewPageOptions {
+  const url = new URL(request.url);
+  const rawLimit = url.searchParams.get("preview_limit");
+  const parsedLimit = rawLimit ? Number.parseInt(rawLimit, 10) : DEFAULT_PUBLIC_PREVIEW_LIMIT;
+  const limit = Number.isInteger(parsedLimit)
+    ? Math.min(Math.max(parsedLimit, 1), MAX_PUBLIC_PREVIEW_LIMIT)
+    : DEFAULT_PUBLIC_PREVIEW_LIMIT;
+  const rawCursor = url.searchParams.get("preview_cursor");
+  if (!rawCursor) return { limit };
+  const [rawPublishedAt, rawId, ...extra] = rawCursor.split("~");
+  let publishedAt = "";
+  let id = "";
+  try {
+    publishedAt = decodeURIComponent(rawPublishedAt ?? "");
+    id = decodeURIComponent(rawId ?? "");
+  } catch {
+    throw new Error("Invalid preview cursor");
+  }
+  if (extra.length || !publishedAt || !id || id.length > 128 || Number.isNaN(Date.parse(publishedAt))) {
+    throw new Error("Invalid preview cursor");
+  }
+  return { limit, cursor: { publishedAt, id } };
+}
+
+function publicPreviewCursor(preview: ReleasePreview) {
+  if (!preview.published_at) return null;
+  return `${encodeURIComponent(preview.published_at)}~${encodeURIComponent(preview.id)}`;
+}
+
+function majorVersionOf(version: string) {
+  const match = version.trim().match(/^v?\s*(\d+)/i);
+  return match ? `V${match[1]}` : "OTHER";
+}
+
+function toPublicReleasePreview(preview: ReleasePreview): PublicReleasePreview {
+  const normalized = normalizeReleasePreview(preview);
+  return { ...normalized, major_version: majorVersionOf(normalized.version) };
+}
+
+function publicPreviewQuery(options: Required<Pick<PublicPreviewPageOptions, "limit">> & Pick<PublicPreviewPageOptions, "cursor">) {
+  const params = new URLSearchParams({
+    select: "*",
+    status: "eq.published",
+    order: "published_at.desc,id.desc",
+    limit: String(options.limit + 1)
+  });
+  if (options.cursor) {
+    const { publishedAt, id } = options.cursor;
+    params.set("or", `(published_at.lt.${publishedAt},and(published_at.eq.${publishedAt},id.lt.${id}))`);
+  }
+  return `/rest/v1/release_previews?${params.toString()}`;
 }
 
 const REVIEW_META_PREFIX = "[[lyric-island-review:v1]]";
@@ -258,7 +320,7 @@ export async function createSubmission(input: {
   return toSubmission(rows[0]);
 }
 
-export async function getPublicIncentives(voterHash?: string) {
+export async function getPublicIncentives(voterHash?: string, options: PublicPreviewPageOptions = {}) {
   const rows = await supabase<Array<Pick<StoredSubmission, "id" | "kind" | "nickname" | "title" | "body" | "created_at" | "like_count" | "attachments" | "reviewer_note" | "status">>>(
     "/rest/v1/incentive_submissions?select=id,kind,nickname,title,body,created_at,like_count,attachments,reviewer_note,status&order=updated_at.desc&limit=100"
   );
@@ -281,12 +343,19 @@ export async function getPublicIncentives(voterHash?: string) {
         : {})
     };
   }));
-  const previews = (await supabase<ReleasePreview[]>(
-    "/rest/v1/release_previews?select=*&status=eq.published&order=published_at.desc&limit=20"
-  )).map(normalizeReleasePreview);
+  const previewLimit = options.limit ?? DEFAULT_PUBLIC_PREVIEW_LIMIT;
+  const previewRows = await supabase<ReleasePreview[]>(publicPreviewQuery({
+    limit: previewLimit,
+    cursor: options.cursor
+  }));
+  const hasMorePreviews = previewRows.length > previewLimit;
+  const previews = previewRows.slice(0, previewLimit).map(toPublicReleasePreview);
   return {
     suggestions,
-    previews: previews.length ? previews : [normalizeReleasePreview(releasePreviewFallback())]
+    previews: previews.length || options.cursor
+      ? previews
+      : [toPublicReleasePreview(releasePreviewFallback())],
+    next_preview_cursor: hasMorePreviews ? publicPreviewCursor(previewRows[previewLimit - 1]) : null
   };
 }
 

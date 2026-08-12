@@ -62,6 +62,10 @@ export type ReleasePreview = {
   published_at: string | null;
 };
 
+export type PublicReleasePreview = ReleasePreview & {
+  major_version: string;
+};
+
 export type FeatureContentSection = {
   id: string;
   title_zh: string;

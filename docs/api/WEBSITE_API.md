@@ -25,6 +25,12 @@
 | `/api/incentives/admin/submissions` | `GET`、`PATCH`、`DELETE` | 审核提交 | 管理员 |
 | `/api/incentives/admin/translate` | `POST` | 管理端翻译辅助 | 管理员，依赖服务端配置 |
 
+## 本地化内容字段
+
+`/api/features` 的 `content` 与 `/api/incentives/public` 的 `previews` 均返回简中、英文、繁中和日文内容。繁中字段以 `_zh_tw` 结尾，日文字段以 `_ja` 结尾；新功能内容使用 `label_*`、`title_*`、`body_*`、`items_*`，功能预告使用 `title_*`、`body_*`、`highlights_*`。管理端上传表单可编辑全部四种语言字段。每个公开预告还返回 `major_version`（如 `V2`、`V3`），供前台按大版本分组。
+
+为兼容既有数据库记录，繁中缺失时服务端回退简中；日文缺失时依次回退英文、简中。管理端 `POST`/`PATCH /api/incentives/admin/previews` 可选接收 `body_zh_tw`、`body_ja`；未传字段不会在更新时被清空。`POST /api/incentives/admin/translate` 支持同一次请求指定 `en`、`zh-tw`、`ja` 目标语言，并按目标语言键分别返回翻译结果。公开预告接口支持游标分页：`preview_limit` 可选（默认 20，最大 50），`preview_cursor` 使用上一页返回的 `next_preview_cursor`；响应始终返回 `next_preview_cursor`（无下一页时为 `null`）。分页只作用于预告，建议数据保持原有返回方式。公开页面必须继续经上述接口读取，且由官网前台线程负责将 `zh-TW`、`ja` 路由映射到对应字段并在分页结果中按 `major_version` 分组。
+
 ## 鉴权与变更规则
 
 管理端接口必须在每个请求路径验证管理员会话；登录、退出和会话 cookie 的具体实现以相邻路由和服务端工具函数为准。公开接口不等于无限制接口：应验证输入、限制写入权限，并避免泄露内部字段。
