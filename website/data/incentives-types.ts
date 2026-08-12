@@ -68,6 +68,10 @@ export type PublicReleasePreview = ReleasePreview & {
 
 export type FeatureContentSection = {
   id: string;
+  /** Full published release version, e.g. v2.1.8. */
+  release_version: string;
+  /** Derived from release_version; never edited independently. */
+  major_version: string;
   title_zh: string;
   title_en: string;
   title_zh_tw: string;

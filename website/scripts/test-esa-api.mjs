@@ -400,6 +400,8 @@ try {
   const publicFeaturesData = await publicFeaturesResponse.json();
   assert.equal(publicFeaturesData.content.summary.label_zh, "本次重点");
   assert.equal(publicFeaturesData.content.sections.length, 6);
+  assert.equal(publicFeaturesData.content.sections[0].release_version, "早期更新");
+  assert.equal(publicFeaturesData.content.sections[0].major_version, "OTHER");
   assert.equal(calls.length, 2, "first feature read must import the bundled content in two requests");
 
   const loginResponse = await api.fetch(
@@ -439,7 +441,23 @@ try {
   assert.equal(translationData.translations.ja["preview.body"], "ja:支持自定义歌词岛形状");
   assert.equal(calls.length, 1, "translation must make exactly one server-side DeepSeek request");
 
+  const invalidFeatures = structuredClone(publicFeaturesData.content);
+  invalidFeatures.sections[0].release_version = "";
+  const invalidFeatureSaveResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/features", {
+      method: "PUT",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({ content: invalidFeatures })
+    })
+  );
+  assert.equal(invalidFeatureSaveResponse.status, 400, "new feature entries require a release version");
+
   const managedFeatures = structuredClone(publicFeaturesData.content);
+  managedFeatures.sections[0].release_version = "v2.1.8";
   managedFeatures.sections[0].title_zh = "后台修改后的标题";
   managedFeatures.sections[0].title_zh_tw = "後台修改後的標題";
   managedFeatures.sections[0].title_ja = "管理画面で変更した見出し";
@@ -460,6 +478,8 @@ try {
   assert.equal(featureSaveData.content.sections[5].title_zh, "后台修改后的标题");
   assert.equal(featureSaveData.content.sections[5].title_zh_tw, "後台修改後的標題");
   assert.equal(featureSaveData.content.sections[5].title_ja, "管理画面で変更した見出し");
+  assert.equal(featureSaveData.content.sections[5].release_version, "v2.1.8");
+  assert.equal(featureSaveData.content.sections[5].major_version, "V2");
   assert.equal(featureSaveData.content.sections[0].id, "feature-06");
 
   const proxiedLoginResponse = await api.fetch(

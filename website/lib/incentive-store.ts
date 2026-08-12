@@ -11,6 +11,7 @@ import type {
 } from "@/data/incentives-types";
 import {
   defaultFeatureContent,
+  isFeatureReleaseVersion,
   sanitizeFeatureContent
 } from "@/data/feature-content";
 import {
@@ -590,6 +591,12 @@ export async function getFeatureContent() {
 }
 
 export async function saveFeatureContent(value: unknown) {
+  const rawSections = value && typeof value === "object" && Array.isArray((value as { sections?: unknown }).sections)
+    ? (value as { sections: unknown[] }).sections
+    : [];
+  if (rawSections.some((section) => !section || typeof section !== "object" || typeof (section as { release_version?: unknown }).release_version !== "string" || !(section as { release_version: string }).release_version.trim())) {
+    throw new Error("Every feature section requires a complete release version");
+  }
   const content = sanitizeFeatureContent(value);
   if (!content.sections.length) {
     throw new Error("At least one feature section is required");
@@ -599,6 +606,9 @@ export async function saveFeatureContent(value: unknown) {
     (!section.title_zh || !section.title_en || !section.body_zh || !section.body_en)
   )) {
     throw new Error("Visible feature sections require bilingual titles and descriptions");
+  }
+  if (content.sections.some((section) => !isFeatureReleaseVersion(section.release_version))) {
+    throw new Error("Every feature section requires a complete release version");
   }
   const existing = await getFeatureContentRow();
   if (!existing) {

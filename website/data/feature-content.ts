@@ -3,6 +3,19 @@ import type { FeatureContent, FeatureContentSection } from "@/data/incentives-ty
 
 export const defaultFeatureContent = defaultContentJson as FeatureContent;
 
+export const LEGACY_FEATURE_RELEASE_VERSION = "早期更新";
+const FEATURE_RELEASE_VERSION_PATTERN = /^v\d+\.\d+\.\d+$/i;
+
+export function isFeatureReleaseVersion(value: unknown) {
+  const normalized = typeof value === "string" ? value.trim() : "";
+  return normalized === LEGACY_FEATURE_RELEASE_VERSION || FEATURE_RELEASE_VERSION_PATTERN.test(normalized);
+}
+
+function majorVersionOf(version: string) {
+  const match = version.trim().match(/^v?\s*(\d+)/i);
+  return match ? `V${match[1]}` : "OTHER";
+}
+
 function cleanText(value: unknown, max: number) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
 }
@@ -43,8 +56,11 @@ export function sanitizeFeatureContent(value: unknown): FeatureContent {
       const itemsEn = cleanLines(item.items_en, 12, 240);
       const itemsZhTw = cleanLines(item.items_zh_tw, 12, 240);
       const itemsJa = cleanLines(item.items_ja, 12, 240);
+      const releaseVersion = cleanText(item.release_version, 40) || LEGACY_FEATURE_RELEASE_VERSION;
       return {
         id: cleanText(item.id, 80) || `feature-${String(index + 1).padStart(2, "0")}`,
+        release_version: releaseVersion,
+        major_version: majorVersionOf(releaseVersion),
         title_zh: titleZh,
         title_en: titleEn,
         title_zh_tw: cleanText(item.title_zh_tw, 160) || titleZh,

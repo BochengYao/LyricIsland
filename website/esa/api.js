@@ -22,6 +22,7 @@ const DEFAULT_PUBLIC_PREVIEW_LIMIT = 20;
 const MAX_PUBLIC_PREVIEW_LIMIT = 50;
 const REVIEW_META_PREFIX = "[[lyric-island-review:v1]]";
 const FEATURE_CONTENT_VERSION = "__FEATURE_CONTENT_V1__";
+const LEGACY_FEATURE_RELEASE_VERSION = "早期更新";
 const AUDIT_VERSION = "__AUDIT_LOG_V1__";
 const DEFAULT_FEATURE_CONTENT = JSON.parse("__ESA_FEATURE_CONTENT_JSON__");
 const DEFAULT_RELEASE_PREVIEW = JSON.parse("__ESA_RELEASE_PREVIEW_JSON__");
@@ -130,8 +131,11 @@ function sanitizeFeatureContent(value) {
       const itemsEn = cleanFeatureLines(item.items_en, 12, 240);
       const itemsZhTw = cleanFeatureLines(item.items_zh_tw, 12, 240);
       const itemsJa = cleanFeatureLines(item.items_ja, 12, 240);
+      const releaseVersion = cleanFeatureText(item.release_version, 40) || LEGACY_FEATURE_RELEASE_VERSION;
       return {
         id: cleanFeatureText(item.id, 80) || `feature-${String(index + 1).padStart(2, "0")}`,
+        release_version: releaseVersion,
+        major_version: majorVersionOf(releaseVersion),
         title_zh: titleZh,
         title_en: titleEn,
         title_zh_tw: cleanFeatureText(item.title_zh_tw, 160) || titleZh,
@@ -168,6 +172,10 @@ function sanitizeFeatureContent(value) {
     },
     sections
   };
+}
+
+function isFeatureReleaseVersion(value) {
+  return value === LEGACY_FEATURE_RELEASE_VERSION || /^v\d+\.\d+\.\d+$/i.test(String(value || "").trim());
 }
 
 function firstPreviewText(...values) {
@@ -1006,6 +1014,10 @@ async function getFeatureContent() {
 }
 
 async function saveFeatureContent(value) {
+  const rawSections = value && typeof value === "object" && Array.isArray(value.sections) ? value.sections : [];
+  if (rawSections.some((section) => !section || typeof section !== "object" || typeof section.release_version !== "string" || !section.release_version.trim())) {
+    throw new Error("Every feature section requires a complete release version");
+  }
   const content = sanitizeFeatureContent(value);
   if (!content.sections.length) throw new Error("At least one feature section is required");
   if (content.sections.some((section) =>
@@ -1013,6 +1025,9 @@ async function saveFeatureContent(value) {
     (!section.title_zh || !section.title_en || !section.body_zh || !section.body_en)
   )) {
     throw new Error("Visible feature sections require bilingual titles and descriptions");
+  }
+  if (content.sections.some((section) => !isFeatureReleaseVersion(section.release_version))) {
+    throw new Error("Every feature section requires a complete release version");
   }
   const existing = await getFeatureContentRow();
   if (!existing) {
