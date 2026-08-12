@@ -6,6 +6,7 @@ import { ExternalArrow } from "@/components/ExternalArrow";
 import { LogoLockup } from "@/components/SitePage";
 import {
   defaultFeatureContent,
+  isFeatureReleaseVersion,
   sanitizeFeatureContent
 } from "@/data/feature-content";
 import type {
@@ -893,6 +894,8 @@ export function AdminIncentives() {
       ...content,
       sections: [...content.sections, {
         id,
+        release_version: "",
+        major_version: "OTHER",
         title_zh: "",
         title_en: "",
         title_zh_tw: "",
@@ -921,6 +924,13 @@ export function AdminIncentives() {
   }
 
   async function saveManagedFeatures() {
+    const incompleteVersionSection = featureContent.sections.find((section) =>
+      !isFeatureReleaseVersion(section.release_version)
+    );
+    if (incompleteVersionSection) {
+      setFeatureMessage(`未保存：“${incompleteVersionSection.title_zh || incompleteVersionSection.title_en || "未命名条目"}”必须填写完整版本号（例如 v2.1.8）`);
+      return;
+    }
     const incompleteVisibleSection = featureContent.sections.find((section) =>
       section.visible &&
       (!section.title_zh.trim() || !section.title_en.trim() || !section.body_zh.trim() || !section.body_en.trim())
@@ -1116,7 +1126,7 @@ export function AdminIncentives() {
               {featureContent.sections.map((section, index) => (
                 <article key={section.id}>
                   <header>
-                    <div><span>{String(index + 1).padStart(2, "0")}</span><strong>{section.title_zh || section.title_en || "未命名功能条目"}</strong></div>
+                    <div><span>{String(index + 1).padStart(2, "0")}</span><strong>{section.title_zh || section.title_en || "未命名功能条目"}</strong><small>{section.release_version || "未填写版本号"}</small></div>
                     <div className="featureRowActions">
                       <button type="button" disabled={index === 0} onClick={() => moveFeatureSection(section.id, -1)}>上移</button>
                       <button type="button" disabled={index === featureContent.sections.length - 1} onClick={() => moveFeatureSection(section.id, 1)}>下移</button>
@@ -1124,6 +1134,7 @@ export function AdminIncentives() {
                       <button className="danger" type="button" onClick={() => deleteFeatureSection(section)}>删除</button>
                     </div>
                   </header>
+                  <label><span>完整发布版本号（例如 v2.1.8）</span><input value={section.release_version ?? ""} placeholder="v2.1.8" onChange={(event) => updateFeatureSection(section.id, { release_version: event.target.value })} required /></label>
                   <div className="featureLanguageGrid">
                     <div>
                       <label><span>中文标题</span><input value={section.title_zh} onChange={(event) => updateFeatureSection(section.id, { title_zh: event.target.value })} /></label>

@@ -29,6 +29,8 @@
 
 `/api/features` 的 `content` 与 `/api/incentives/public` 的 `previews` 均返回简中、英文、繁中和日文内容。繁中字段以 `_zh_tw` 结尾，日文字段以 `_ja` 结尾；新功能内容使用 `label_*`、`title_*`、`body_*`、`items_*`，功能预告使用 `title_*`、`body_*`、`highlights_*`。管理端上传表单可编辑全部四种语言字段。每个公开预告还返回 `major_version`（如 `V2`、`V3`），供前台按大版本分组。
 
+新功能条目（`content.sections[]`）必须以 `release_version` 保存完整发布版本（规范为 `vX.Y.Z`，例如 `v2.1.8`），这是该条目的唯一可编辑版本来源；公开 `/api/features` 会同时返回由它派生的 `major_version`（如 `V2`），前台只能使用该派生字段分组，不得另存或编辑大版本号。`PUT /api/incentives/admin/features` 对每条条目要求填写 `release_version`；历史记录缺失版本时读取会回退为 `早期更新`、大版本为 `OTHER`，以保证旧数据可读，管理员保存这些兼容记录不会破坏数据。
+
 为兼容既有数据库记录，繁中缺失时服务端回退简中；日文缺失时依次回退英文、简中。管理端 `POST`/`PATCH /api/incentives/admin/previews` 可选接收 `body_zh_tw`、`body_ja`；未传字段不会在更新时被清空。`POST /api/incentives/admin/translate` 支持同一次请求指定 `en`、`zh-tw`、`ja` 目标语言，并按目标语言键分别返回翻译结果。公开预告接口支持游标分页：`preview_limit` 可选（默认 20，最大 50），`preview_cursor` 使用上一页返回的 `next_preview_cursor`；响应始终返回 `next_preview_cursor`（无下一页时为 `null`）。分页只作用于预告，建议数据保持原有返回方式。公开页面必须继续经上述接口读取，且由官网前台线程负责将 `zh-TW`、`ja` 路由映射到对应字段并在分页结果中按 `major_version` 分组。
 
 ## 鉴权与变更规则

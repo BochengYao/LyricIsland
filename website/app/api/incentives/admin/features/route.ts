@@ -27,6 +27,8 @@ export async function PUT(request: Request) {
       ? "至少保留一条新功能内容"
       : error instanceof Error && error.message.includes("bilingual")
         ? "前台显示的条目必须补全中英文标题和描述"
+        : error instanceof Error && error.message.includes("release version")
+          ? "每条新功能必须填写完整版本号（例如 v2.1.8）"
         : "保存失败";
     return Response.json({ error: message }, { status: 400 });
   }
