@@ -50,6 +50,30 @@ let insertedSubmissions = [];
 let featureRow = null;
 let releasePreviewRows = [];
 
+function publicPreviewRow(id, version, publishedAt) {
+  return {
+    id,
+    version,
+    title_zh: version,
+    title_en: version,
+    title_zh_tw: version,
+    title_ja: version,
+    body_zh: `${version} 中文更新。`,
+    body_en: `${version} English updates.`,
+    body_zh_tw: `${version} 繁中更新。`,
+    body_ja: `${version} 日本語の更新。`,
+    highlights_zh: [],
+    highlights_en: [],
+    highlights_zh_tw: [],
+    highlights_ja: [],
+    target_date: null,
+    status: "published",
+    created_at: publishedAt,
+    updated_at: publishedAt,
+    published_at: publishedAt
+  };
+}
+
 function storedSubmission() {
   return {
     id: "11111111-1111-4111-8111-111111111111",
@@ -134,7 +158,16 @@ globalThis.fetch = async (input, init = {}) => {
     return response([storedSubmission(), ...insertedSubmissions]);
   }
   if (url.includes("release_previews?select=*&status=eq.published")) {
-    return response(releasePreviewRows.filter((row) => row.status === "published"));
+    const query = new URL(url).searchParams;
+    const cursorFilter = query.get("or")?.match(/published_at\.lt\.([^,]+),and\(published_at\.eq\.([^,]+),id\.lt\.([^\)]+)\)\)/);
+    let rows = releasePreviewRows
+      .filter((row) => row.status === "published")
+      .sort((left, right) => String(right.published_at).localeCompare(String(left.published_at)) || String(right.id).localeCompare(String(left.id)));
+    if (cursorFilter) {
+      const [, beforePublishedAt, equalPublishedAt, beforeId] = cursorFilter;
+      rows = rows.filter((row) => String(row.published_at) < beforePublishedAt || (String(row.published_at) === equalPublishedAt && String(row.id) < beforeId));
+    }
+    return response(rows.slice(0, Number(query.get("limit") ?? rows.length)));
   }
   if (url.includes("release_previews?select=*&version=not.in.")) {
     return response(releasePreviewRows);
@@ -248,6 +281,8 @@ try {
   assert.equal(publicData.suggestions[0].developer_reply, "Planned for the next version.");
   assert.match(publicData.suggestions[0].attachment.url, /token=test$/);
   assert.equal(publicData.previews[0].version, "v2.1");
+  assert.equal(publicData.previews[0].major_version, "V2");
+  assert.equal(publicData.next_preview_cursor, null);
   assert.equal(publicData.previews[0].target_date, null);
   assert.deepEqual(publicData.previews[0].highlights_zh, [
     "自定义LyricHover形状",
@@ -267,6 +302,32 @@ try {
     calls.every((call) => !("Authorization" in call.init.headers)),
     "opaque sb_secret_ keys must not be sent as bearer JWTs"
   );
+
+  releasePreviewRows = [
+    publicPreviewRow("preview-v3", "v3.0", "2026-08-03T00:00:00.000Z"),
+    publicPreviewRow("preview-v2-5", "v2.5", "2026-08-02T00:00:00.000Z"),
+    publicPreviewRow("preview-v2-1", "v2.1", "2026-08-01T00:00:00.000Z")
+  ];
+  const firstPreviewPageResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/public?preview_limit=2")
+  );
+  assert.equal(firstPreviewPageResponse.status, 200);
+  const firstPreviewPage = await firstPreviewPageResponse.json();
+  assert.deepEqual(firstPreviewPage.previews.map((preview) => preview.version), ["v3.0", "v2.5"]);
+  assert.equal(firstPreviewPage.previews[0].major_version, "V3");
+  assert.ok(firstPreviewPage.next_preview_cursor, "a full page must return a cursor");
+  const secondPreviewPageResponse = await api.fetch(
+    new Request(`https://lyric-island.top/api/incentives/public?preview_limit=2&preview_cursor=${encodeURIComponent(firstPreviewPage.next_preview_cursor)}`)
+  );
+  assert.equal(secondPreviewPageResponse.status, 200);
+  const secondPreviewPage = await secondPreviewPageResponse.json();
+  assert.deepEqual(secondPreviewPage.previews.map((preview) => preview.version), ["v2.1"]);
+  assert.equal(secondPreviewPage.next_preview_cursor, null);
+  const invalidCursorResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/public?preview_cursor=bad")
+  );
+  assert.equal(invalidCursorResponse.status, 400);
+  releasePreviewRows = [];
 
   calls.length = 0;
   const duplicateLikeResponse = await api.fetch(
@@ -366,7 +427,7 @@ try {
         cookie: adminCookie.split(";")[0]
       },
       body: JSON.stringify({
-        targetLocales: ["en", "ja"],
+        targetLocales: ["en", "zh-tw", "ja"],
         entries: [{ key: "preview.body", text: "支持自定义歌词岛形状" }]
       })
     })
@@ -374,6 +435,7 @@ try {
   assert.equal(translationResponse.status, 200);
   const translationData = await translationResponse.json();
   assert.equal(translationData.translations.en["preview.body"], "en:支持自定义歌词岛形状");
+  assert.equal(translationData.translations["zh-tw"]["preview.body"], "zh-tw:支持自定义歌词岛形状");
   assert.equal(translationData.translations.ja["preview.body"], "ja:支持自定义歌词岛形状");
   assert.equal(calls.length, 1, "translation must make exactly one server-side DeepSeek request");
 

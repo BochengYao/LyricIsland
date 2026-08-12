@@ -18,6 +18,8 @@ const VOTER_SECONDS = 60 * 60 * 24 * 365;
 const MAX_FILES = 3;
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
 const MAX_TOTAL_SIZE = 30 * 1024 * 1024;
+const DEFAULT_PUBLIC_PREVIEW_LIMIT = 20;
+const MAX_PUBLIC_PREVIEW_LIMIT = 50;
 const REVIEW_META_PREFIX = "[[lyric-island-review:v1]]";
 const FEATURE_CONTENT_VERSION = "__FEATURE_CONTENT_V1__";
 const AUDIT_VERSION = "__AUDIT_LOG_V1__";
@@ -206,8 +208,57 @@ function normalizeReleasePreview(preview) {
     highlights_zh: highlightsZh,
     highlights_en: highlightsEn,
     highlights_zh_tw: firstPreviewLines(preview.highlights_zh_tw, highlightsZh),
-    highlights_ja: firstPreviewLines(preview.highlights_ja, highlightsEn, highlightsZh)
+    highlights_ja: firstPreviewLines(preview.highlights_ja, highlightsEn, highlightsZh),
+    major_version: majorVersionOf(preview.version)
   };
+}
+
+function majorVersionOf(version) {
+  const match = typeof version === "string" ? version.trim().match(/^v?\s*(\d+)/i) : null;
+  return match ? `V${match[1]}` : "OTHER";
+}
+
+function parsePublicPreviewPageOptions(request) {
+  const url = new URL(request.url);
+  const rawLimit = url.searchParams.get("preview_limit");
+  const parsedLimit = rawLimit ? Number.parseInt(rawLimit, 10) : DEFAULT_PUBLIC_PREVIEW_LIMIT;
+  const limit = Number.isInteger(parsedLimit)
+    ? Math.min(Math.max(parsedLimit, 1), MAX_PUBLIC_PREVIEW_LIMIT)
+    : DEFAULT_PUBLIC_PREVIEW_LIMIT;
+  const rawCursor = url.searchParams.get("preview_cursor");
+  if (!rawCursor) return { limit };
+  const [rawPublishedAt, rawId, ...extra] = rawCursor.split("~");
+  let publishedAt = "";
+  let id = "";
+  try {
+    publishedAt = decodeURIComponent(rawPublishedAt || "");
+    id = decodeURIComponent(rawId || "");
+  } catch {
+    throw new Error("Invalid preview cursor");
+  }
+  if (extra.length || !publishedAt || !id || id.length > 128 || Number.isNaN(Date.parse(publishedAt))) {
+    throw new Error("Invalid preview cursor");
+  }
+  return { limit, cursor: { publishedAt, id } };
+}
+
+function publicPreviewCursor(preview) {
+  if (!preview || !preview.published_at) return null;
+  return `${encodeURIComponent(preview.published_at)}~${encodeURIComponent(preview.id)}`;
+}
+
+function publicPreviewPath(options) {
+  const params = new URLSearchParams({
+    select: "*",
+    status: "eq.published",
+    order: "published_at.desc,id.desc",
+    limit: String(options.limit + 1)
+  });
+  if (options.cursor) {
+    const { publishedAt, id } = options.cursor;
+    params.set("or", `(published_at.lt.${publishedAt},and(published_at.eq.${publishedAt},id.lt.${id}))`);
+  }
+  return `/rest/v1/release_previews?${params.toString()}`;
 }
 
 function json(data, status = 200, extraHeaders = {}) {
@@ -601,7 +652,7 @@ async function createSignedUrls(paths) {
   );
 }
 
-async function getPublicIncentives(voterHash) {
+async function getPublicIncentives(voterHash, options = {}) {
   const suggestionRequest = supabase(
     "/rest/v1/incentive_submissions?select=id,kind,nickname,title,body,created_at,like_count,attachments,reviewer_note,status&order=updated_at.desc&limit=100"
   );
@@ -610,9 +661,11 @@ async function getPublicIncentives(voterHash) {
         `/rest/v1/incentive_likes?select=submission_id&voter_token_hash=eq.${encodeURIComponent(voterHash)}&limit=200`
       )
     : Promise.resolve([]);
-  const previewRequest = supabase(
-    "/rest/v1/release_previews?select=*&status=eq.published&order=published_at.desc&limit=20"
-  );
+  const previewLimit = options.limit || DEFAULT_PUBLIC_PREVIEW_LIMIT;
+  const previewRequest = supabase(publicPreviewPath({
+    limit: previewLimit,
+    cursor: options.cursor
+  }));
   const [rows, likedRows, previewRows] = await Promise.all([
     suggestionRequest,
     likesRequest,
@@ -636,10 +689,11 @@ async function getPublicIncentives(voterHash) {
         : {})
     };
   });
-  const previews = previewRows.map(normalizeReleasePreview);
+  const hasMorePreviews = previewRows.length > previewLimit;
+  const previews = previewRows.slice(0, previewLimit).map(normalizeReleasePreview);
   return {
     suggestions,
-    previews: previews.length
+    previews: previews.length || options.cursor
       ? previews
       : [normalizeReleasePreview({
           id: "default-release-preview-v2-1",
@@ -647,7 +701,8 @@ async function getPublicIncentives(voterHash) {
           created_at: "2026-07-29T00:00:00.000Z",
           updated_at: "2026-07-29T00:00:00.000Z",
           published_at: "2026-07-29T00:00:00.000Z"
-        })]
+        })],
+    next_preview_cursor: hasMorePreviews ? publicPreviewCursor(previewRows[previewLimit - 1]) : null
   };
 }
 
@@ -1029,11 +1084,17 @@ function previewPayload(body) {
 async function handlePublic(request) {
   try {
     const token = readCookie(request, VOTER_COOKIE);
-    const data = await getPublicIncentives(token ? await sha256(token) : undefined);
+    const data = await getPublicIncentives(
+      token ? await sha256(token) : undefined,
+      parsePublicPreviewPageOptions(request)
+    );
     return json({ ...data, configured: true });
   } catch (error) {
+    if (error instanceof Error && error.message === "Invalid preview cursor") {
+      return jsonError(error.message, 400);
+    }
     if (error instanceof Error && error.message.includes("not configured")) {
-      return json({ suggestions: [], previews: [], configured: false });
+      return json({ suggestions: [], previews: [], next_preview_cursor: null, configured: false });
     }
     return jsonError("Unable to load community updates", 500);
   }
