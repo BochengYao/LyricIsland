@@ -455,6 +455,8 @@ try {
   const managedFeatures = structuredClone(publicFeaturesData.content);
   managedFeatures.sections[0].release_version = "v2.1.8";
   managedFeatures.sections[0].title_zh = "后台修改后的标题";
+  managedFeatures.sections[0].title_zh_tw = "後台修改後的標題";
+  managedFeatures.sections[0].title_ja = "管理画面で変更した見出し";
   managedFeatures.sections.reverse();
   const featureSaveResponse = await api.fetch(
     new Request("https://lyric-island.top/api/incentives/admin/features", {
