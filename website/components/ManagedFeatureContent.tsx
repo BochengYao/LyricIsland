@@ -236,20 +236,23 @@ export function ManagedFeatureContent({
 
   const versions = availableVersions(content);
   const selected = versions.find((version) => version.key === selectedKey) ?? versions[0];
-  const localized = localizedFeatureContent({ ...content, sections: selected?.sections ?? [] }, locale);
+  const localizedSummary = localizedFeatureContent(content, locale);
+  const localizedRelease = localizedFeatureContent({ ...content, sections: selected?.sections ?? [] }, locale);
 
   return (
     <>
       <section className="updatesOverviewSnap databaseContentReveal" id="updates-overview" data-snap-section>
         <div className="updatesHero sectionContainer"><Eyebrow reveal>{heroEyebrow}</Eyebrow><h1 data-text-reveal="title">{heroTitle}</h1><p className="updatesLead">{heroIntro}</p></div>
-        {selected ? <div className="updatesVersionPicker sectionContainer"><span className="updatesVersionPickerLabel">{versionPickerLabel}</span><VersionPicker versions={versions} selectedKey={selected.key} label={versionPickerLabel} onSelect={setSelectedKey} /></div> : <div className="databaseLoading updatesOverviewDatabaseLoading sectionContainer" role="status"><span className="databaseLoadingLabel">{content.sections.some((section) => section.visible) ? releaseVersionUnavailable : noPublishedVersions}</span></div>}
-        {localized.summaryVisible ? <div className="updatesSummary sectionContainer"><span>{localized.summaryLabel}</span><ul>{localized.summary.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul></div> : null}
+        {localizedSummary.summaryVisible ? <div className="updatesSummary sectionContainer"><span>{localizedSummary.summaryLabel}</span><ul>{localizedSummary.summary.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul></div> : null}
       </section>
 
       <section className="updatesDetailsSnap databaseContentReveal" id="updates-details" data-snap-section>
         <div className="releaseSections sectionContainer">
-          <Eyebrow reveal>{selected?.label ?? releaseLabel}</Eyebrow>
-          {selected ? localized.sections.map((section) => <article className="releaseSection" key={section.number}><span className="releaseNumber">{section.number}</span><div><h2>{section.title}</h2><p>{section.body}</p></div><ul>{section.items.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul></article>) : <p className="updatesEmpty">{content.sections.some((section) => section.visible) ? releaseVersionUnavailable : noPublishedVersions}</p>}
+          <div className="releaseHeader">
+            <Eyebrow reveal>{selected?.label ?? releaseLabel}</Eyebrow>
+            {selected ? <div className="updatesVersionPicker"><span className="updatesVersionPickerLabel">{versionPickerLabel}</span><VersionPicker versions={versions} selectedKey={selected.key} label={versionPickerLabel} onSelect={setSelectedKey} /></div> : null}
+          </div>
+          {selected ? localizedRelease.sections.map((section) => <article className="releaseSection" key={section.number}><span className="releaseNumber">{section.number}</span><div><h2>{section.title}</h2><p>{section.body}</p></div><ul>{section.items.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul></article>) : <p className="updatesEmpty">{content.sections.some((section) => section.visible) ? releaseVersionUnavailable : noPublishedVersions}</p>}
         </div>
       </section>
     </>

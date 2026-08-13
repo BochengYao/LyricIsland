@@ -2001,11 +2001,9 @@ html[lang="en"] :where(
 .updatesVersionPicker {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 20px 24px 20px 32px;
-  border-radius: var(--radius-large);
-  background: var(--surface);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
 .updatesVersionPickerLabel {
@@ -2209,13 +2207,27 @@ html[lang="en"] :where(
   padding-bottom: 128px;
 }
 
-.releaseSections > .eyebrow {
+.releaseHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 18px;
+}
+
+.releaseSections > .eyebrow,
+.releaseHeader > .eyebrow {
   margin-bottom: 18px;
   font-size: 18px;
   letter-spacing: 0.04em;
 }
 
-.releaseSections > .eyebrow span {
+.releaseHeader > .eyebrow {
+  margin-bottom: 0;
+}
+
+.releaseSections > .eyebrow span,
+.releaseHeader > .eyebrow span {
   font-size: 24px;
 }
 
@@ -2865,10 +2877,8 @@ html[lang="en"] :where(
   }
 
   .updatesVersionPicker {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 16px;
-    padding: 24px;
+    align-items: center;
+    justify-content: flex-start;
   }
 
   .versionPicker {
@@ -2882,6 +2892,12 @@ html[lang="en"] :where(
   .releaseSections {
     padding-top: 72px;
     padding-bottom: 72px;
+  }
+
+  .releaseHeader {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
   }
 
   .releaseSection {
