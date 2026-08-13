@@ -87,8 +87,13 @@ export function sanitizeFeatureContent(value: unknown): FeatureContent {
       };
     })
     .filter((item) => item.title_zh || item.title_en);
+  const sourceVersions = Array.isArray(source.versions) ? source.versions : [];
+  const versions = [...sourceVersions, ...sections.map((section) => section.release_version)]
+    .map((value) => cleanText(value, 40))
+    .filter((value): value is string => Boolean(value) && value !== LEGACY_FEATURE_RELEASE_VERSION && FEATURE_RELEASE_VERSION_PATTERN.test(value));
 
   return {
+    versions: [...new Set(versions)],
     summary: {
       label_zh: summaryLabelZh,
       label_en: summaryLabelEn,

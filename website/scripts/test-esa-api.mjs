@@ -398,6 +398,7 @@ try {
   assert.equal(publicFeaturesData.content.sections.length, 6);
   assert.equal(publicFeaturesData.content.sections[0].release_version, "早期更新");
   assert.equal(publicFeaturesData.content.sections[0].major_version, "OTHER");
+  assert.deepEqual(publicFeaturesData.content.versions, [], "legacy content without versions recovers without inventing versions");
   assert.equal(calls.length, 2, "first feature read must import the bundled content in two requests");
 
   const loginResponse = await api.fetch(
@@ -450,6 +451,26 @@ try {
   );
   assert.equal(legacyFeatureSaveResponse.status, 200, "legacy early-update entries remain editable");
 
+  const featureOperation = (operation) => api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/features", {
+      method: "PUT",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({ operation })
+    })
+  );
+  for (const release_version of ["v2.1.8", "v3.0.0", "v2.5.0"]) {
+    const response = await featureOperation({ type: "create", release_version });
+    assert.equal(response.status, 200, `create empty feature version ${release_version}`);
+  }
+  const emptyVersionCreate = await featureOperation({ type: "create", release_version: "v4.0.0" });
+  assert.equal(emptyVersionCreate.status, 200, "empty versions can be created");
+  const emptyVersionDelete = await featureOperation({ type: "delete", release_version: "v4.0.0" });
+  assert.equal(emptyVersionDelete.status, 200, "empty versions can be deleted");
+
   const invalidFeatures = structuredClone(publicFeaturesData.content);
   invalidFeatures.sections[0].release_version = "";
   const invalidFeatureSaveResponse = await api.fetch(
@@ -466,6 +487,7 @@ try {
   assert.equal(invalidFeatureSaveResponse.status, 400, "new feature entries require a release version");
 
   const managedFeatures = structuredClone(publicFeaturesData.content);
+  managedFeatures.versions = ["v2.1.8", "v3.0.0", "v2.5.0"];
   managedFeatures.sections[0].release_version = "v2.1.8";
   managedFeatures.sections[1].release_version = "v3.0.0";
   managedFeatures.sections[2].release_version = "v2.5.0";
@@ -496,6 +518,20 @@ try {
   assert.equal(featureSaveData.content.sections[3].release_version, "v2.5.0");
   assert.equal(featureSaveData.content.sections[3].major_version, "V2");
   assert.equal(featureSaveData.content.sections[0].id, "feature-06");
+
+  const renameVersionResponse = await featureOperation({ type: "rename", from: "v3.0.0", to: "v3.1.0" });
+  assert.equal(renameVersionResponse.status, 200, "renaming a feature version succeeds");
+  const renamedVersionData = await renameVersionResponse.json();
+  assert.equal(renamedVersionData.content.sections[4].release_version, "v3.1.0", "rename cascades atomically to child sections");
+  assert.deepEqual(renamedVersionData.content.versions, ["v2.1.8", "v3.1.0", "v2.5.0"]);
+
+  const protectedDeleteResponse = await featureOperation({ type: "delete", release_version: "v3.1.0" });
+  assert.equal(protectedDeleteResponse.status, 400, "non-empty version deletion requires explicit cascade confirmation");
+  const confirmedDeleteResponse = await featureOperation({ type: "delete", release_version: "v3.1.0", delete_sections: true });
+  assert.equal(confirmedDeleteResponse.status, 200, "confirmed deletion removes a version and its children");
+  const confirmedDeleteData = await confirmedDeleteResponse.json();
+  assert.ok(!confirmedDeleteData.content.versions.includes("v3.1.0"));
+  assert.ok(!confirmedDeleteData.content.sections.some((section) => section.release_version === "v3.1.0"));
 
   const proxiedLoginResponse = await api.fetch(
     new Request("https://internal-worker.local/api/incentives/admin/login", {

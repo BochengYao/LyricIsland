@@ -6,7 +6,6 @@ import { ExternalArrow } from "@/components/ExternalArrow";
 import { LogoLockup } from "@/components/SitePage";
 import {
   defaultFeatureContent,
-  featureReleaseVersionFromPreview,
   LEGACY_FEATURE_RELEASE_VERSION,
   isFeatureReleaseVersion,
   sanitizeFeatureContent
@@ -16,6 +15,7 @@ import type {
   AccessSeverity,
   FeatureContent,
   FeatureContentSection,
+  FeatureContentVersionOperation,
   IncentiveSubmission,
   ReleasePreview,
   RewardStatus,
@@ -326,10 +326,12 @@ export function AdminIncentives() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submissions, setSubmissions] = useState<IncentiveSubmission[]>([]);
-  const [featureContent, setFeatureContent] = useState<FeatureContent>(defaultFeatureContent);
+  const [featureContent, setFeatureContent] = useState<FeatureContent>(() => sanitizeFeatureContent(defaultFeatureContent));
   const [featureSaving, setFeatureSaving] = useState(false);
   const [featureMessage, setFeatureMessage] = useState("");
   const [selectedFeatureVersion, setSelectedFeatureVersion] = useState("");
+  const [featureVersionDraft, setFeatureVersionDraft] = useState("");
+  const [featureVersionSaving, setFeatureVersionSaving] = useState(false);
   const [previews, setPreviews] = useState<ReleasePreview[]>([]);
   const [draftPreviews, setDraftPreviews] = useState<ReleasePreview[]>([]);
   const [accessLogs, setAccessLogs] = useState<AccessLogEntry[]>([]);
@@ -360,17 +362,12 @@ export function AdminIncentives() {
   const [translationSaving, setTranslationSaving] = useState<"features" | "preview" | null>(null);
 
   const featureVersionOptions = useMemo(() => {
-    const options = new Map<string, string>();
-    featureContent.sections.forEach((section) => {
-      if (isFeatureReleaseVersion(section.release_version)) options.set(section.release_version, section.release_version);
-    });
-    [...previews, ...draftPreviews].forEach((preview) => {
-      const version = featureReleaseVersionFromPreview(preview.version);
-      if (version && !options.has(version)) options.set(version, preview.version);
-    });
-    options.set(LEGACY_FEATURE_RELEASE_VERSION, "早期更新（历史未标版本）");
-    return [...options].map(([value, label]) => ({ value, label }));
-  }, [draftPreviews, featureContent.sections, previews]);
+    const options = featureContent.versions.map((version) => ({ value: version, label: version }));
+    if (featureContent.sections.some((section) => section.release_version === LEGACY_FEATURE_RELEASE_VERSION)) {
+      options.push({ value: LEGACY_FEATURE_RELEASE_VERSION, label: "早期更新（历史未标版本）" });
+    }
+    return options;
+  }, [featureContent.sections, featureContent.versions]);
 
   const activeFeatureVersion = featureVersionOptions.some((option) => option.value === selectedFeatureVersion)
     ? selectedFeatureVersion
@@ -882,6 +879,79 @@ export function AdminIncentives() {
     setFeatureMessage("有未保存的更改");
   }
 
+  async function runFeatureVersionOperation(operation: FeatureContentVersionOperation) {
+    setFeatureVersionSaving(true);
+    setError("");
+    try {
+      const response = await fetch("/api/incentives/admin/features", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ operation })
+      });
+      const result = await response.json().catch(() => ({})) as { error?: string; content?: unknown };
+      if (response.status === 401) {
+        setAuth("login");
+        throw new Error("登录已过期");
+      }
+      if (!response.ok || !result.content) throw new Error(result.error ?? "版本操作失败");
+      setFeatureContent(sanitizeFeatureContent(result.content));
+      setSelectedFeatureVersion(operation.type === "create"
+        ? operation.release_version
+        : operation.type === "rename"
+          ? operation.to
+          : "");
+      setFeatureMessage("版本已保存");
+      return true;
+    } catch (operationError) {
+      const message = operationError instanceof Error ? operationError.message : "网络异常";
+      setFeatureMessage(`版本操作未完成：${message}`);
+      setError(message);
+      return false;
+    } finally {
+      setFeatureVersionSaving(false);
+    }
+  }
+
+  async function createFeatureVersion() {
+    const releaseVersion = featureVersionDraft.trim();
+    if (!/^v\d+\.\d+\.\d+$/i.test(releaseVersion)) {
+      setFeatureMessage("请输入完整发布版本号（例如 v2.5.0）");
+      return;
+    }
+    if (await runFeatureVersionOperation({ type: "create", release_version: releaseVersion })) {
+      setFeatureVersionDraft("");
+    }
+  }
+
+  async function renameFeatureVersion() {
+    if (activeFeatureVersion === LEGACY_FEATURE_RELEASE_VERSION) {
+      setFeatureMessage("历史兼容组不能重命名");
+      return;
+    }
+    const nextVersion = featureVersionDraft.trim();
+    if (!/^v\d+\.\d+\.\d+$/i.test(nextVersion)) {
+      setFeatureMessage("请输入完整发布版本号（例如 v2.5.0）");
+      return;
+    }
+    if (nextVersion === activeFeatureVersion) return;
+    if (await runFeatureVersionOperation({ type: "rename", from: activeFeatureVersion, to: nextVersion })) {
+      setFeatureVersionDraft("");
+    }
+  }
+
+  async function deleteFeatureVersion() {
+    if (activeFeatureVersion === LEGACY_FEATURE_RELEASE_VERSION) {
+      setFeatureMessage("历史兼容组不能删除");
+      return;
+    }
+    const sectionCount = activeFeatureSections.length;
+    const message = sectionCount > 0
+      ? `版本 ${activeFeatureVersion} 包含 ${sectionCount} 条功能。确定删除该版本及其全部功能条目吗？此操作保存后不可恢复。`
+      : `版本 ${activeFeatureVersion} 当前为空。确定删除此版本吗？`;
+    if (!window.confirm(message)) return;
+    await runFeatureVersionOperation({ type: "delete", release_version: activeFeatureVersion, delete_sections: sectionCount > 0 });
+  }
+
   function updateFeatureSummary(patch: Partial<FeatureContent["summary"]>) {
     setFeatureContent((content) => ({
       ...content,
@@ -916,7 +986,7 @@ export function AdminIncentives() {
 
   function addFeatureSection() {
     if (activeFeatureVersion === LEGACY_FEATURE_RELEASE_VERSION || !isFeatureReleaseVersion(activeFeatureVersion)) {
-      setFeatureMessage("请先在版本预告中创建规范的完整版本号（例如 v2.1.8），再回来新增功能条目");
+      setFeatureMessage("请先在此页新建规范的完整版本号（例如 v2.1.8），再新增功能条目");
       return;
     }
     const id = typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -1161,9 +1231,19 @@ export function AdminIncentives() {
               </header>
               {activeFeatureVersion === LEGACY_FEATURE_RELEASE_VERSION
                 ? <p role="status">当前为历史兼容组：条目未标记发布版本，可以浏览、编辑和保存，但不能在此新增。</p>
-                : !hasUsableFeatureVersion
-                  ? <p role="status">尚无可用的完整版本号。请先在“版本预告”中创建版本，再回到此处新增功能条目。</p>
-                  : null}
+                : null}
+              <div className="featureVersionActions">
+                <label><span>新建版本</span><input value={featureVersionDraft} placeholder="例如 v2.5.0" onChange={(event) => setFeatureVersionDraft(event.target.value)} /></label>
+                <button className="button buttonSecondary" type="button" disabled={featureVersionSaving} onClick={() => void createFeatureVersion()}>新建版本</button>
+                {activeFeatureVersion !== LEGACY_FEATURE_RELEASE_VERSION && (
+                  <>
+                    <label><span>重命名当前版本</span><input value={featureVersionDraft} placeholder={activeFeatureVersion} onChange={(event) => setFeatureVersionDraft(event.target.value)} /></label>
+                    <button className="button buttonSecondary" type="button" disabled={featureVersionSaving} onClick={() => void renameFeatureVersion()}>保存重命名</button>
+                    <button className="button buttonSecondary danger" type="button" disabled={featureVersionSaving} onClick={() => void deleteFeatureVersion()}>删除版本</button>
+                  </>
+                )}
+              </div>
+              {!hasUsableFeatureVersion && activeFeatureVersion === LEGACY_FEATURE_RELEASE_VERSION && <p role="status">尚无可用的新功能版本。请在此处新建完整版本号后，再新增功能条目。</p>}
             </section>
 
             <div className="featureAdminList">

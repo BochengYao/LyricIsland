@@ -5169,6 +5169,40 @@ button.danger,
   line-height: 1.55;
 }
 
+.featureVersionActions {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(232, 213, 138, 0.65);
+}
+
+.featureVersionActions label {
+  display: grid;
+  min-width: 190px;
+  gap: 7px;
+  color: var(--charcoal);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.featureVersionActions input {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid #aaa49d;
+  border-radius: 10px;
+  outline: 0;
+  background: var(--white);
+  color: var(--ink);
+  font: inherit;
+}
+
+.featureVersionActions input:focus {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px rgba(255, 199, 57, 0.28);
+}
+
 .featureAdminSummary {
   display: grid;
   gap: 16px;
@@ -5935,5 +5969,15 @@ button.danger,
 
   .featureVersionPanel > header label {
     min-width: 0;
+  }
+
+  .featureVersionActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .featureVersionActions label,
+  .featureVersionActions .button {
+    width: 100%;
   }
 }
