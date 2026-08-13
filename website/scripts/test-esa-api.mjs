@@ -437,6 +437,19 @@ try {
   assert.equal(translationData.translations.ja["preview.body"], "ja:支持自定义歌词岛形状");
   assert.equal(calls.length, 1, "translation must make exactly one server-side DeepSeek request");
 
+  const legacyFeatureSaveResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/features", {
+      method: "PUT",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({ content: publicFeaturesData.content })
+    })
+  );
+  assert.equal(legacyFeatureSaveResponse.status, 200, "legacy early-update entries remain editable");
+
   const invalidFeatures = structuredClone(publicFeaturesData.content);
   invalidFeatures.sections[0].release_version = "";
   const invalidFeatureSaveResponse = await api.fetch(
@@ -455,6 +468,7 @@ try {
   const managedFeatures = structuredClone(publicFeaturesData.content);
   managedFeatures.sections[0].release_version = "v2.1.8";
   managedFeatures.sections[1].release_version = "v3.0.0";
+  managedFeatures.sections[2].release_version = "v2.5.0";
   managedFeatures.sections[0].title_zh = "后台修改后的标题";
   managedFeatures.sections[0].title_zh_tw = "後台修改後的標題";
   managedFeatures.sections[0].title_ja = "管理画面で変更した見出し";
@@ -479,6 +493,8 @@ try {
   assert.equal(featureSaveData.content.sections[5].major_version, "V2");
   assert.equal(featureSaveData.content.sections[4].release_version, "v3.0.0");
   assert.equal(featureSaveData.content.sections[4].major_version, "V3");
+  assert.equal(featureSaveData.content.sections[3].release_version, "v2.5.0");
+  assert.equal(featureSaveData.content.sections[3].major_version, "V2");
   assert.equal(featureSaveData.content.sections[0].id, "feature-06");
 
   const proxiedLoginResponse = await api.fetch(

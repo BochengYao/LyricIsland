@@ -6,6 +6,15 @@ export const defaultFeatureContent = defaultContentJson as FeatureContent;
 
 export const LEGACY_FEATURE_RELEASE_VERSION = "早期更新";
 const FEATURE_RELEASE_VERSION_PATTERN = /^v\d+\.\d+\.\d+$/i;
+const PREVIEW_RELEASE_VERSION_PATTERN = /^v?\s*(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:\s|$)/i;
+
+/** Convert a preview label such as v3 or v2.5 to the persisted full version. */
+export function featureReleaseVersionFromPreview(value: unknown) {
+  const normalized = typeof value === "string" ? value.trim() : "";
+  const match = normalized.match(PREVIEW_RELEASE_VERSION_PATTERN);
+  if (!match) return null;
+  return `v${match[1]}.${match[2] ?? "0"}.${match[3] ?? "0"}`;
+}
 
 export function isFeatureReleaseVersion(value: unknown) {
   const normalized = typeof value === "string" ? value.trim() : "";

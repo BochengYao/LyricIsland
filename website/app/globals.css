@@ -5090,11 +5090,83 @@ button.danger,
 }
 
 .featureAdminSummary,
+.featureVersionPanel,
 .featureAdminList article {
   padding: 18px;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--white);
+}
+
+.featureVersionPanel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+  background: #fffdf5;
+  border-color: #e8d58a;
+}
+
+.featureVersionPanel > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.featureVersionPanel > header > div {
+  display: grid;
+  gap: 4px;
+}
+
+.featureVersionPanel > header p {
+  margin: 0;
+  color: var(--orbit);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.featureVersionPanel > header h3 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.featureVersionPanel > header small,
+.featureVersionPanel > p {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.featureVersionPanel > header label {
+  display: grid;
+  min-width: min(280px, 100%);
+  gap: 7px;
+  color: var(--charcoal);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.featureVersionPanel select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 38px 0 14px;
+  border: 1px solid #aaa49d;
+  border-radius: 12px;
+  outline: 0;
+  background: var(--white);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+}
+
+.featureVersionPanel select:focus {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px rgba(255, 199, 57, 0.28);
+}
+
+.featureVersionPanel > p {
+  margin: 0;
+  line-height: 1.55;
 }
 
 .featureAdminSummary {
@@ -5852,5 +5924,16 @@ button.danger,
 @media (max-width: 767px) and (prefers-reduced-motion: reduce) {
   .acceptedWaterfall {
     grid-template-columns: repeat(2, minmax(168px, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .featureVersionPanel > header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .featureVersionPanel > header label {
+    min-width: 0;
   }
 }

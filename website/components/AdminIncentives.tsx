@@ -6,6 +6,7 @@ import { ExternalArrow } from "@/components/ExternalArrow";
 import { LogoLockup } from "@/components/SitePage";
 import {
   defaultFeatureContent,
+  featureReleaseVersionFromPreview,
   LEGACY_FEATURE_RELEASE_VERSION,
   isFeatureReleaseVersion,
   sanitizeFeatureContent
@@ -359,18 +360,23 @@ export function AdminIncentives() {
   const [translationSaving, setTranslationSaving] = useState<"features" | "preview" | null>(null);
 
   const featureVersionOptions = useMemo(() => {
-    const versions = [
-      ...featureContent.sections.map((section) => section.release_version),
-      ...previews.map((preview) => preview.version),
-      ...draftPreviews.map((preview) => preview.version)
-    ].filter((version): version is string => typeof version === "string" && Boolean(version.trim()));
-    if (!versions.includes(LEGACY_FEATURE_RELEASE_VERSION)) versions.push(LEGACY_FEATURE_RELEASE_VERSION);
-    return [...new Set(versions)];
+    const options = new Map<string, string>();
+    featureContent.sections.forEach((section) => {
+      if (isFeatureReleaseVersion(section.release_version)) options.set(section.release_version, section.release_version);
+    });
+    [...previews, ...draftPreviews].forEach((preview) => {
+      const version = featureReleaseVersionFromPreview(preview.version);
+      if (version && !options.has(version)) options.set(version, preview.version);
+    });
+    options.set(LEGACY_FEATURE_RELEASE_VERSION, "早期更新（历史未标版本）");
+    return [...options].map(([value, label]) => ({ value, label }));
   }, [draftPreviews, featureContent.sections, previews]);
 
-  const activeFeatureVersion = featureVersionOptions.includes(selectedFeatureVersion)
+  const activeFeatureVersion = featureVersionOptions.some((option) => option.value === selectedFeatureVersion)
     ? selectedFeatureVersion
-    : (featureVersionOptions[0] ?? LEGACY_FEATURE_RELEASE_VERSION);
+    : (featureVersionOptions.find((option) => option.value !== LEGACY_FEATURE_RELEASE_VERSION)?.value ?? LEGACY_FEATURE_RELEASE_VERSION);
+  const activeFeatureVersionLabel = featureVersionOptions.find((option) => option.value === activeFeatureVersion)?.label ?? activeFeatureVersion;
+  const hasUsableFeatureVersion = featureVersionOptions.some((option) => option.value !== LEGACY_FEATURE_RELEASE_VERSION);
   const activeFeatureSections = featureContent.sections.filter((section) => section.release_version === activeFeatureVersion);
 
   async function loadData() {
@@ -951,7 +957,7 @@ export function AdminIncentives() {
 
   async function saveManagedFeatures() {
     const incompleteVersionSection = featureContent.sections.find((section) =>
-      !isFeatureReleaseVersion(section.release_version)
+      section.release_version !== LEGACY_FEATURE_RELEASE_VERSION && !isFeatureReleaseVersion(section.release_version)
     );
     if (incompleteVersionSection) {
       setFeatureMessage(`未保存：“${incompleteVersionSection.title_zh || incompleteVersionSection.title_en || "未命名条目"}”必须填写完整版本号（例如 v2.1.8）`);
@@ -1118,7 +1124,6 @@ export function AdminIncentives() {
               <div className="featureAdminActions">
                 <span role="status">{featureMessage || "现有四种语言内容已导入，可直接修改"}</span>
                 <button className="button buttonSecondary" type="button" disabled={featureSaving || translationSaving === "features"} onClick={() => void translateManagedFeatures()}>{translationSaving === "features" ? "正在翻译…" : "从中文自动翻译其他语言"}</button>
-                <label><span>版本号</span><select value={activeFeatureVersion} onChange={(event) => setSelectedFeatureVersion(event.target.value)}>{featureVersionOptions.map((version) => <option value={version} key={version}>{version}</option>)}</select></label>
                 <button className="button buttonSecondary" type="button" onClick={addFeatureSection}>新增功能条目</button>
                 <button className="button buttonPrimary" type="button" disabled={featureSaving} onClick={() => void saveManagedFeatures()}>{featureSaving ? "保存中…" : "保存并同步前台"}</button>
               </div>
@@ -1147,6 +1152,18 @@ export function AdminIncentives() {
                   <label><span>日本語の箇条書き（1行ずつ）</span><textarea rows={6} value={featureContent.summary.items_ja.join("\n")} onChange={(event) => updateFeatureSummary({ items_ja: event.target.value.split("\n") })} /></label>
                 </div>
               </div>
+            </section>
+
+            <section className="featureVersionPanel" aria-labelledby="feature-version-heading">
+              <header>
+                <div><p>FEATURE VERSION</p><h3 id="feature-version-heading">版本号</h3><small>当前版本组：{activeFeatureVersionLabel}</small></div>
+                <label><span>版本号</span><select value={activeFeatureVersion} onChange={(event) => setSelectedFeatureVersion(event.target.value)}>{featureVersionOptions.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>
+              </header>
+              {activeFeatureVersion === LEGACY_FEATURE_RELEASE_VERSION
+                ? <p role="status">当前为历史兼容组：条目未标记发布版本，可以浏览、编辑和保存，但不能在此新增。</p>
+                : !hasUsableFeatureVersion
+                  ? <p role="status">尚无可用的完整版本号。请先在“版本预告”中创建版本，再回到此处新增功能条目。</p>
+                  : null}
             </section>
 
             <div className="featureAdminList">
