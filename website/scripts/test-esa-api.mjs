@@ -533,6 +533,59 @@ try {
   assert.ok(!confirmedDeleteData.content.versions.includes("v3.1.0"));
   assert.ok(!confirmedDeleteData.content.sections.some((section) => section.release_version === "v3.1.0"));
 
+  const nineLegacyFeatures = structuredClone(publicFeaturesData.content);
+  nineLegacyFeatures.versions = ["V2.0.36"];
+  nineLegacyFeatures.sections = Array.from({ length: 9 }, (_, index) => ({
+    ...publicFeaturesData.content.sections[index % publicFeaturesData.content.sections.length],
+    id: `legacy-${index + 1}`,
+    release_version: "早期更新",
+    major_version: "OTHER"
+  }));
+  const nineLegacySaveResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/features", {
+      method: "PUT",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({ content: nineLegacyFeatures })
+    })
+  );
+  assert.equal(nineLegacySaveResponse.status, 200, "multiple legacy entries remain a valid migration source");
+
+  const unauthenticatedMigrationResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/features", {
+      method: "PUT",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ operation: { type: "migrate-legacy", to: "V2.0.36" } })
+    })
+  );
+  assert.equal(unauthenticatedMigrationResponse.status, 401, "legacy migration requires an authenticated admin session");
+
+  const migrationResponse = await featureOperation({ type: "migrate-legacy", to: "V2.0.36" });
+  assert.equal(migrationResponse.status, 200, "authenticated legacy migration succeeds");
+  const migrationData = await migrationResponse.json();
+  assert.equal(migrationData.content.sections.length, 9, "migration updates all legacy sections atomically");
+  assert.ok(migrationData.content.sections.every((section) => section.release_version === "V2.0.36"));
+  assert.ok(migrationData.content.sections.every((section) => section.major_version === "V2"));
+  assert.deepEqual(migrationData.content.versions, ["V2.0.36"], "existing target metadata is merged without duplicates");
+  assert.ok(!migrationData.content.sections.some((section) => section.release_version === "早期更新"));
+
+  const migratedPublicFeaturesResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/features")
+  );
+  assert.equal(migratedPublicFeaturesResponse.status, 200);
+  const migratedPublicFeaturesData = await migratedPublicFeaturesResponse.json();
+  assert.ok(migratedPublicFeaturesData.content.sections.every((section) => section.release_version === "V2.0.36"));
+  assert.ok(migratedPublicFeaturesData.content.sections.every((section) => section.major_version === "V2"));
+
+  const repeatedMigrationResponse = await featureOperation({ type: "migrate-legacy", to: "V2.0.36" });
+  assert.equal(repeatedMigrationResponse.status, 400, "migration cannot partially or repeatedly rewrite a completed history group");
+
   const proxiedLoginResponse = await api.fetch(
     new Request("https://internal-worker.local/api/incentives/admin/login", {
       method: "POST",

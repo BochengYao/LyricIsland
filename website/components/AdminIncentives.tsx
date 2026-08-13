@@ -331,6 +331,7 @@ export function AdminIncentives() {
   const [featureMessage, setFeatureMessage] = useState("");
   const [selectedFeatureVersion, setSelectedFeatureVersion] = useState("");
   const [featureVersionDraft, setFeatureVersionDraft] = useState("");
+  const [legacyMigrationDraft, setLegacyMigrationDraft] = useState("V2.0.36");
   const [featureVersionSaving, setFeatureVersionSaving] = useState(false);
   const [previews, setPreviews] = useState<ReleasePreview[]>([]);
   const [draftPreviews, setDraftPreviews] = useState<ReleasePreview[]>([]);
@@ -899,7 +900,9 @@ export function AdminIncentives() {
         ? operation.release_version
         : operation.type === "rename"
           ? operation.to
-          : "");
+          : operation.type === "migrate-legacy"
+            ? operation.to
+            : "");
       setFeatureMessage("版本已保存");
       return true;
     } catch (operationError) {
@@ -950,6 +953,17 @@ export function AdminIncentives() {
       : `版本 ${activeFeatureVersion} 当前为空。确定删除此版本吗？`;
     if (!window.confirm(message)) return;
     await runFeatureVersionOperation({ type: "delete", release_version: activeFeatureVersion, delete_sections: sectionCount > 0 });
+  }
+
+  async function migrateLegacyFeatures() {
+    const target = legacyMigrationDraft.trim();
+    if (!/^v\d+\.\d+\.\d+$/i.test(target) || target === LEGACY_FEATURE_RELEASE_VERSION) {
+      setFeatureMessage("请输入完整目标版本号（例如 V2.0.36）");
+      return;
+    }
+    const sectionCount = activeFeatureSections.length;
+    if (!window.confirm(`确定将 ${sectionCount} 条早期更新历史内容一次性迁移为 ${target} 吗？`)) return;
+    await runFeatureVersionOperation({ type: "migrate-legacy", to: target });
   }
 
   function updateFeatureSummary(patch: Partial<FeatureContent["summary"]>) {
@@ -1230,7 +1244,13 @@ export function AdminIncentives() {
                 <label><span>版本号</span><select value={activeFeatureVersion} onChange={(event) => setSelectedFeatureVersion(event.target.value)}>{featureVersionOptions.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>
               </header>
               {activeFeatureVersion === LEGACY_FEATURE_RELEASE_VERSION
-                ? <p role="status">当前为历史兼容组：条目未标记发布版本，可以浏览、编辑和保存，但不能在此新增。</p>
+                ? <>
+                    <p role="status">当前为历史兼容组：共 {activeFeatureSections.length} 条未标记版本的历史内容，可以浏览、编辑和保存。</p>
+                    <div className="featureVersionActions">
+                      <label><span>迁移历史条目到版本号</span><input value={legacyMigrationDraft} placeholder="V2.0.36" onChange={(event) => setLegacyMigrationDraft(event.target.value)} /></label>
+                      <button className="button buttonSecondary" type="button" disabled={featureVersionSaving || !activeFeatureSections.length} onClick={() => void migrateLegacyFeatures()}>迁移历史条目（{activeFeatureSections.length}）</button>
+                    </div>
+                  </>
                 : null}
               <div className="featureVersionActions">
                 <label><span>新建版本</span><input value={featureVersionDraft} placeholder="例如 v2.5.0" onChange={(event) => setFeatureVersionDraft(event.target.value)} /></label>

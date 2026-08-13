@@ -1064,6 +1064,17 @@ async function saveFeatureContent(value) {
 
 async function applyFeatureContentVersionOperation(operation) {
   const content = sanitizeFeatureContent(await getFeatureContent());
+  if (operation && operation.type === "migrate-legacy") {
+    const target = String(operation.to || "").trim();
+    if (target === LEGACY_FEATURE_RELEASE_VERSION || !/^v\d+\.\d+\.\d+$/i.test(target)) throw new Error("Feature versions must use complete release versions");
+    const legacyCount = content.sections.filter((section) => section.release_version === LEGACY_FEATURE_RELEASE_VERSION).length;
+    if (!legacyCount) throw new Error("No legacy feature sections to migrate");
+    return saveFeatureContent({
+      ...content,
+      versions: content.versions.includes(target) ? content.versions : [...content.versions, target],
+      sections: content.sections.map((section) => section.release_version === LEGACY_FEATURE_RELEASE_VERSION ? { ...section, release_version: target } : section)
+    });
+  }
   if (operation && operation.type === "create") {
     const releaseVersion = String(operation.release_version || "").trim();
     if (!/^v\d+\.\d+\.\d+$/i.test(releaseVersion) || releaseVersion === LEGACY_FEATURE_RELEASE_VERSION) throw new Error("Feature versions must use complete release versions");
@@ -1684,6 +1695,8 @@ async function handleAdminFeatures(request) {
             ? "该版本号已存在"
           : error instanceof Error && error.message.includes("not found")
             ? "找不到要操作的版本"
+          : error instanceof Error && error.message.includes("No legacy")
+            ? "当前没有可迁移的早期更新条目"
           : "保存失败";
       return jsonError(message, 400);
     }

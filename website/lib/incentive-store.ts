@@ -641,6 +641,21 @@ export async function saveFeatureContent(value: unknown) {
 export async function applyFeatureContentVersionOperation(operation: FeatureContentVersionOperation) {
   const current = await getFeatureContent();
   const content = sanitizeFeatureContent(current);
+  if (operation.type === "migrate-legacy") {
+    const target = operation.to.trim();
+    if (target === "早期更新" || !/^v\d+\.\d+\.\d+$/i.test(target)) {
+      throw new Error("Feature versions must use complete release versions");
+    }
+    const legacyCount = content.sections.filter((section) => section.release_version === "早期更新").length;
+    if (!legacyCount) throw new Error("No legacy feature sections to migrate");
+    return saveFeatureContent({
+      ...content,
+      versions: content.versions.includes(target) ? content.versions : [...content.versions, target],
+      sections: content.sections.map((section) => section.release_version === "早期更新"
+        ? { ...section, release_version: target }
+        : section)
+    });
+  }
   if (operation.type === "create") {
     const releaseVersion = operation.release_version.trim();
     if (!/^v\d+\.\d+\.\d+$/i.test(releaseVersion) || releaseVersion === "早期更新") {

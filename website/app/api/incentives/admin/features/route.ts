@@ -36,6 +36,8 @@ export async function PUT(request: Request) {
           ? "该版本号已存在"
         : error instanceof Error && error.message.includes("not found")
           ? "找不到要操作的版本"
+        : error instanceof Error && error.message.includes("No legacy")
+          ? "当前没有可迁移的早期更新条目"
         : error instanceof Error && error.message.includes("release version")
           ? "每条新功能必须填写完整版本号（例如 v2.1.8）"
         : "保存失败";
