@@ -6,6 +6,7 @@ import { ExternalArrow } from "@/components/ExternalArrow";
 import { LogoLockup } from "@/components/SitePage";
 import {
   defaultFeatureContent,
+  LEGACY_FEATURE_RELEASE_VERSION,
   isFeatureReleaseVersion,
   sanitizeFeatureContent
 } from "@/data/feature-content";
@@ -327,6 +328,7 @@ export function AdminIncentives() {
   const [featureContent, setFeatureContent] = useState<FeatureContent>(defaultFeatureContent);
   const [featureSaving, setFeatureSaving] = useState(false);
   const [featureMessage, setFeatureMessage] = useState("");
+  const [selectedFeatureVersion, setSelectedFeatureVersion] = useState("");
   const [previews, setPreviews] = useState<ReleasePreview[]>([]);
   const [draftPreviews, setDraftPreviews] = useState<ReleasePreview[]>([]);
   const [accessLogs, setAccessLogs] = useState<AccessLogEntry[]>([]);
@@ -355,6 +357,21 @@ export function AdminIncentives() {
   const [previewSaving, setPreviewSaving] = useState(false);
   const [draftMenuOpen, setDraftMenuOpen] = useState(false);
   const [translationSaving, setTranslationSaving] = useState<"features" | "preview" | null>(null);
+
+  const featureVersionOptions = useMemo(() => {
+    const versions = [
+      ...featureContent.sections.map((section) => section.release_version),
+      ...previews.map((preview) => preview.version),
+      ...draftPreviews.map((preview) => preview.version)
+    ].filter((version): version is string => typeof version === "string" && Boolean(version.trim()));
+    if (!versions.includes(LEGACY_FEATURE_RELEASE_VERSION)) versions.push(LEGACY_FEATURE_RELEASE_VERSION);
+    return [...new Set(versions)];
+  }, [draftPreviews, featureContent.sections, previews]);
+
+  const activeFeatureVersion = featureVersionOptions.includes(selectedFeatureVersion)
+    ? selectedFeatureVersion
+    : (featureVersionOptions[0] ?? LEGACY_FEATURE_RELEASE_VERSION);
+  const activeFeatureSections = featureContent.sections.filter((section) => section.release_version === activeFeatureVersion);
 
   async function loadData() {
     const [submissionResponse, featureResponse, previewResponse, logResponse] = await Promise.all([
@@ -694,7 +711,7 @@ export function AdminIncentives() {
     const entries: Array<{ key: string; text: string }> = [];
     if (featureContent.summary.label_zh.trim()) entries.push({ key: "summary.label", text: featureContent.summary.label_zh });
     nonEmptyLines(featureContent.summary.items_zh).forEach((text, index) => entries.push({ key: `summary.items.${index}`, text }));
-    featureContent.sections.forEach((section) => {
+    featureContent.sections.filter((section) => section.release_version === activeFeatureVersion).forEach((section) => {
       const prefix = `section.${section.id}`;
       if (section.title_zh.trim()) entries.push({ key: `${prefix}.title`, text: section.title_zh });
       if (section.body_zh.trim()) entries.push({ key: `${prefix}.body`, text: section.body_zh });
@@ -720,6 +737,7 @@ export function AdminIncentives() {
           items_ja: nonEmptyLines(content.summary.items_zh).map((_, index) => translations.ja[`summary.items.${index}`] ?? content.summary.items_ja[index] ?? "")
         },
         sections: content.sections.map((section) => {
+          if (section.release_version !== activeFeatureVersion) return section;
           const prefix = `section.${section.id}`;
           return {
             ...section,
@@ -877,8 +895,12 @@ export function AdminIncentives() {
   function moveFeatureSection(id: string, direction: -1 | 1) {
     setFeatureContent((content) => {
       const index = content.sections.findIndex((section) => section.id === id);
-      const target = index + direction;
-      if (index < 0 || target < 0 || target >= content.sections.length) return content;
+      const groupIndexes = content.sections
+        .map((section, sectionIndex) => section.release_version === activeFeatureVersion ? sectionIndex : -1)
+        .filter((sectionIndex) => sectionIndex >= 0);
+      const groupPosition = groupIndexes.indexOf(index);
+      const target = groupIndexes[groupPosition + direction];
+      if (index < 0 || groupPosition < 0 || target === undefined) return content;
       const sections = [...content.sections];
       [sections[index], sections[target]] = [sections[target], sections[index]];
       return { ...content, sections };
@@ -887,6 +909,10 @@ export function AdminIncentives() {
   }
 
   function addFeatureSection() {
+    if (activeFeatureVersion === LEGACY_FEATURE_RELEASE_VERSION || !isFeatureReleaseVersion(activeFeatureVersion)) {
+      setFeatureMessage("请先在版本预告中创建规范的完整版本号（例如 v2.1.8），再回来新增功能条目");
+      return;
+    }
     const id = typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
       : `feature-${Date.now()}`;
@@ -894,7 +920,7 @@ export function AdminIncentives() {
       ...content,
       sections: [...content.sections, {
         id,
-        release_version: "",
+        release_version: activeFeatureVersion,
         major_version: "OTHER",
         title_zh: "",
         title_en: "",
@@ -1092,6 +1118,7 @@ export function AdminIncentives() {
               <div className="featureAdminActions">
                 <span role="status">{featureMessage || "现有四种语言内容已导入，可直接修改"}</span>
                 <button className="button buttonSecondary" type="button" disabled={featureSaving || translationSaving === "features"} onClick={() => void translateManagedFeatures()}>{translationSaving === "features" ? "正在翻译…" : "从中文自动翻译其他语言"}</button>
+                <label><span>版本号</span><select value={activeFeatureVersion} onChange={(event) => setSelectedFeatureVersion(event.target.value)}>{featureVersionOptions.map((version) => <option value={version} key={version}>{version}</option>)}</select></label>
                 <button className="button buttonSecondary" type="button" onClick={addFeatureSection}>新增功能条目</button>
                 <button className="button buttonPrimary" type="button" disabled={featureSaving} onClick={() => void saveManagedFeatures()}>{featureSaving ? "保存中…" : "保存并同步前台"}</button>
               </div>
@@ -1123,18 +1150,17 @@ export function AdminIncentives() {
             </section>
 
             <div className="featureAdminList">
-              {featureContent.sections.map((section, index) => (
+              {activeFeatureSections.map((section, index) => (
                 <article key={section.id}>
                   <header>
-                    <div><span>{String(index + 1).padStart(2, "0")}</span><strong>{section.title_zh || section.title_en || "未命名功能条目"}</strong><small>{section.release_version || "未填写版本号"}</small></div>
+                    <div><span>{String(index + 1).padStart(2, "0")}</span><strong>{section.title_zh || section.title_en || "未命名功能条目"}</strong></div>
                     <div className="featureRowActions">
                       <button type="button" disabled={index === 0} onClick={() => moveFeatureSection(section.id, -1)}>上移</button>
-                      <button type="button" disabled={index === featureContent.sections.length - 1} onClick={() => moveFeatureSection(section.id, 1)}>下移</button>
+                      <button type="button" disabled={index === activeFeatureSections.length - 1} onClick={() => moveFeatureSection(section.id, 1)}>下移</button>
                       <button className={section.visible ? "isVisible" : ""} type="button" onClick={() => updateFeatureSection(section.id, { visible: !section.visible })}>{section.visible ? "正在显示" : "已隐藏"}</button>
                       <button className="danger" type="button" onClick={() => deleteFeatureSection(section)}>删除</button>
                     </div>
                   </header>
-                  <label><span>完整发布版本号（例如 v2.1.8）</span><input value={section.release_version ?? ""} placeholder="v2.1.8" onChange={(event) => updateFeatureSection(section.id, { release_version: event.target.value })} required /></label>
                   <div className="featureLanguageGrid">
                     <div>
                       <label><span>中文标题</span><input value={section.title_zh} onChange={(event) => updateFeatureSection(section.id, { title_zh: event.target.value })} /></label>
@@ -1159,7 +1185,7 @@ export function AdminIncentives() {
                   </div>
                 </article>
               ))}
-              {!featureContent.sections.length && <p className="adminEmpty">还没有功能条目，请先新增一条再保存。</p>}
+              {!activeFeatureSections.length && <p className="adminEmpty">该版本还没有功能条目，请先选择其他版本或新增一条。</p>}
             </div>
           </>
         )}
