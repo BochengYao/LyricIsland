@@ -20,84 +20,79 @@ type Props = {
 
 type FeatureResponse = { content?: unknown };
 
-type PublicFeatureContentSection = FeatureContentSection & {
-  release_version?: string;
-  major_version?: string;
-};
-
-type PublicFeatureContent = Omit<FeatureContent, "sections"> & {
-  sections: PublicFeatureContentSection[];
-};
-
-type FeatureGroup = {
-  majorVersion: string;
-  sections: PublicFeatureContentSection[];
+type VersionOption = {
+  key: string;
+  label: string;
+  sections: FeatureContentSection[];
+  parts: [number, number, number];
 };
 
 const featureContentPreload = preloadClientJson<FeatureResponse>("/api/features");
+const releaseVersionPattern = /^v?(\d+)\.(\d+)\.(\d+)$/i;
 
-function sanitizePublicFeatureContent(value: unknown): PublicFeatureContent {
-  const source = value && typeof value === "object" ? value as { sections?: unknown[] } : {};
-  const releaseMetadata = new Map<string, { release_version?: string; major_version?: string }>();
+function normalizeReleaseVersion(value: string) {
+  const match = value.trim().match(releaseVersionPattern);
+  if (!match) return null;
 
-  source.sections?.forEach((section, index) => {
-    if (!section || typeof section !== "object") return;
-    const raw = section as Record<string, unknown>;
-    const id = typeof raw.id === "string" && raw.id.trim()
-      ? raw.id.trim()
-      : `feature-${String(index + 1).padStart(2, "0")}`;
-    releaseMetadata.set(id, {
-      release_version: typeof raw.release_version === "string" ? raw.release_version.trim() : undefined,
-      major_version: typeof raw.major_version === "string" ? raw.major_version.trim() : undefined
-    });
-  });
+  const parts: [number, number, number] = [Number(match[1]), Number(match[2]), Number(match[3])];
+  if (parts.some((part) => !Number.isSafeInteger(part))) return null;
 
-  const content = sanitizeFeatureContent(value);
   return {
-    ...content,
-    sections: content.sections.map((section) => ({
-      ...section,
-      ...releaseMetadata.get(section.id)
-    }))
+    key: parts.join("."),
+    label: `V${parts.join(".")}`,
+    parts
   };
 }
 
-function groupFeatureSections(sections: PublicFeatureContentSection[]) {
-  const groups = new Map<string, PublicFeatureContentSection[]>();
+function compareVersionsNewestFirst(left: VersionOption, right: VersionOption) {
+  for (let index = 0; index < left.parts.length; index += 1) {
+    const difference = right.parts[index] - left.parts[index];
+    if (difference) return difference;
+  }
+  return left.label.localeCompare(right.label, undefined, { numeric: true, sensitivity: "base" });
+}
 
-  for (const section of sections) {
+function availableVersions(content: FeatureContent) {
+  const sectionsByVersion = new Map<string, FeatureContentSection[]>();
+
+  for (const section of content.sections) {
     if (!section.visible) continue;
-    if (!section.release_version?.trim()) continue;
-    const majorVersion = section.major_version?.trim() || "OTHER";
-    const current = groups.get(majorVersion) ?? [];
-    current.push(section);
-    groups.set(majorVersion, current);
+    const version = normalizeReleaseVersion(section.release_version);
+    if (!version) continue;
+    const sections = sectionsByVersion.get(version.key) ?? [];
+    sections.push(section);
+    sectionsByVersion.set(version.key, sections);
   }
 
-  return [...groups.entries()].map(([majorVersion, groupedSections]) => ({
-    majorVersion,
-    sections: groupedSections
-  } satisfies FeatureGroup));
+  const options = new Map<string, VersionOption>();
+  for (const rawVersion of content.versions) {
+    const version = normalizeReleaseVersion(rawVersion);
+    if (!version) continue;
+    const sections = sectionsByVersion.get(version.key);
+    if (!sections?.length || options.has(version.key)) continue;
+    options.set(version.key, { ...version, sections });
+  }
+
+  return [...options.values()].sort(compareVersionsNewestFirst);
 }
 
 function VersionPicker({
-  groups,
-  selectedId,
+  versions,
+  selectedKey,
   label,
   onSelect
 }: {
-  groups: FeatureGroup[];
-  selectedId: string;
+  versions: VersionOption[];
+  selectedKey: string;
   label: string;
-  onSelect: (id: string) => void;
+  onSelect: (key: string) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const sections = groups.flatMap((group) => group.sections);
-  const selectedIndex = Math.max(0, sections.findIndex((section) => section.id === selectedId));
-  const selected = sections[selectedIndex];
+  const selectedIndex = Math.max(0, versions.findIndex((version) => version.key === selectedKey));
+  const selected = versions[selectedIndex];
 
   useEffect(() => {
     const closeWhenClickingElsewhere = (event: PointerEvent) => {
@@ -112,13 +107,8 @@ function VersionPicker({
     requestAnimationFrame(() => optionRefs.current[index]?.focus());
   };
 
-  const openAndFocus = (index: number) => {
-    setIsOpen(true);
-    focusOption(index);
-  };
-
-  const selectSection = (id: string) => {
-    onSelect(id);
+  const selectVersion = (key: string) => {
+    onSelect(key);
     setIsOpen(false);
     requestAnimationFrame(() => triggerRef.current?.focus());
   };
@@ -137,71 +127,56 @@ function VersionPicker({
         onKeyDown={(event) => {
           if (event.key === "ArrowDown" || event.key === "ArrowUp") {
             event.preventDefault();
-            openAndFocus(selectedIndex);
+            setIsOpen(true);
+            focusOption(selectedIndex);
           }
         }}
       >
-        <span className="versionPickerValue">
-          <strong>{selected?.release_version}</strong>
-          <small>{selected?.major_version}</small>
-        </span>
+        <span className="versionPickerValue"><strong>{selected.label}</strong></span>
         <svg viewBox="0 0 12 8" aria-hidden="true"><path d="m1 1 5 5 5-5" /></svg>
       </button>
 
       {isOpen ? (
         <div id="release-version-options" className="versionPickerPanel" role="listbox" aria-label={label}>
-          {groups.map((group, groupIndex) => {
-            const optionStart = groups.slice(0, groupIndex).reduce((total, current) => total + current.sections.length, 0);
-
+          {versions.map((version, index) => {
+            const isSelected = version.key === selectedKey;
             return (
-              <div className="versionPickerGroup" role="group" aria-label={group.majorVersion} key={group.majorVersion}>
-                <span className="versionPickerGroupLabel">{group.majorVersion}</span>
-                {group.sections.map((section, index) => {
-                  const optionIndex = optionStart + index;
-                  const isSelected = section.id === selectedId;
-
-                  return (
-                    <button
-                      key={section.id}
-                      ref={(element) => { optionRefs.current[optionIndex] = element; }}
-                      type="button"
-                      className="versionPickerOption"
-                      role="option"
-                      aria-selected={isSelected}
-                      data-current={isSelected || undefined}
-                      onClick={() => selectSection(section.id)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Escape") {
-                          event.preventDefault();
-                          setIsOpen(false);
-                          triggerRef.current?.focus();
-                        }
-                        if (event.key === "ArrowDown") {
-                          event.preventDefault();
-                          focusOption((optionIndex + 1) % sections.length);
-                        }
-                        if (event.key === "ArrowUp") {
-                          event.preventDefault();
-                          focusOption((optionIndex - 1 + sections.length) % sections.length);
-                        }
-                        if (event.key === "Home") {
-                          event.preventDefault();
-                          focusOption(0);
-                        }
-                        if (event.key === "End") {
-                          event.preventDefault();
-                          focusOption(sections.length - 1);
-                        }
-                      }}
-                    >
-                      <span>{section.release_version}</span>
-                      {isSelected ? (
-                        <svg viewBox="0 0 16 12" aria-hidden="true"><path d="m1.5 6.5 4 4 9-9" /></svg>
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
+              <button
+                key={version.key}
+                ref={(element) => { optionRefs.current[index] = element; }}
+                type="button"
+                className="versionPickerOption"
+                role="option"
+                aria-selected={isSelected}
+                data-current={isSelected || undefined}
+                onClick={() => selectVersion(version.key)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    setIsOpen(false);
+                    triggerRef.current?.focus();
+                  }
+                  if (event.key === "ArrowDown") {
+                    event.preventDefault();
+                    focusOption((index + 1) % versions.length);
+                  }
+                  if (event.key === "ArrowUp") {
+                    event.preventDefault();
+                    focusOption((index - 1 + versions.length) % versions.length);
+                  }
+                  if (event.key === "Home") {
+                    event.preventDefault();
+                    focusOption(0);
+                  }
+                  if (event.key === "End") {
+                    event.preventDefault();
+                    focusOption(versions.length - 1);
+                  }
+                }}
+              >
+                <span>{version.label}</span>
+                {isSelected ? <svg viewBox="0 0 16 12" aria-hidden="true"><path d="m1.5 6.5 4 4 9-9" /></svg> : null}
+              </button>
             );
           })}
         </div>
@@ -220,31 +195,25 @@ export function ManagedFeatureContent({
   noPublishedVersions,
   releaseVersionUnavailable
 }: Props) {
-  const [content, setContent] = useState<PublicFeatureContent | null>(null);
-  const [selectedId, setSelectedId] = useState("");
+  const [content, setContent] = useState<FeatureContent | null>(null);
+  const [selectedKey, setSelectedKey] = useState("");
   const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
     let active = true;
     const request = featureContentPreload ?? preloadClientJson<FeatureResponse>("/api/features");
 
-    request
-      ?.then((data) => {
-        if (!active || !data.content) return;
-        const nextContent = sanitizePublicFeatureContent(data.content);
-        const firstVisibleSection = nextContent.sections.find((section) => section.visible);
-        setContent(nextContent);
-        setSelectedId((current) => nextContent.sections.some((section) => section.id === current)
-          ? current
-          : firstVisibleSection?.id ?? "");
-      })
-      .catch(() => {
-        if (active) setLoadFailed(true);
-      });
+    request?.then((data) => {
+      if (!active || !data.content) return;
+      const nextContent = sanitizeFeatureContent(data.content);
+      const versions = availableVersions(nextContent);
+      setContent(nextContent);
+      setSelectedKey((current) => versions.some((version) => version.key === current) ? current : versions[0]?.key ?? "");
+    }).catch(() => {
+      if (active) setLoadFailed(true);
+    });
 
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, []);
 
   if (!content) {
@@ -255,75 +224,32 @@ export function ManagedFeatureContent({
     return (
       <>
         <section className="updatesOverviewSnap" id="updates-overview" data-snap-section>
-          <div className="updatesHero sectionContainer">
-            <Eyebrow reveal>{heroEyebrow}</Eyebrow>
-            <h1 data-text-reveal="title">{heroTitle}</h1>
-            <p className="updatesLead">{heroIntro}</p>
-          </div>
-          <div className={`databaseLoading updatesOverviewDatabaseLoading sectionContainer${loadFailed ? " isError" : ""}`} aria-busy={!loadFailed} role="status">
-            <span className="databaseLoadingLabel">{loadingText}</span>
-          </div>
+          <div className="updatesHero sectionContainer"><Eyebrow reveal>{heroEyebrow}</Eyebrow><h1 data-text-reveal="title">{heroTitle}</h1><p className="updatesLead">{heroIntro}</p></div>
+          <div className={`databaseLoading updatesOverviewDatabaseLoading sectionContainer${loadFailed ? " isError" : ""}`} aria-busy={!loadFailed} role="status"><span className="databaseLoadingLabel">{loadingText}</span></div>
         </section>
-
         <section className="updatesDetailsSnap" id="updates-details" data-snap-section>
-          <div className="releaseSections sectionContainer">
-            <Eyebrow reveal>{releaseLabel}</Eyebrow>
-            <div className={`databaseLoading updatesDetailsDatabaseLoading${loadFailed ? " isError" : ""}`} aria-busy={!loadFailed} role="status">
-              <span className="databaseLoadingLabel">{loadingText}</span>
-            </div>
-          </div>
+          <div className="releaseSections sectionContainer"><Eyebrow reveal>{releaseLabel}</Eyebrow><div className={`databaseLoading updatesDetailsDatabaseLoading${loadFailed ? " isError" : ""}`} aria-busy={!loadFailed} role="status"><span className="databaseLoadingLabel">{loadingText}</span></div></div>
         </section>
       </>
     );
   }
 
-  const groups = groupFeatureSections(content.sections);
-  const selected = groups.flatMap((group) => group.sections).find((section) => section.id === selectedId) ?? groups[0]?.sections[0];
-  const localized = localizedFeatureContent({ ...content, sections: selected ? [selected] : [] }, locale).sections[0];
-  const noCompatibleVersion = content.sections.some((section) => section.visible) && groups.length === 0;
+  const versions = availableVersions(content);
+  const selected = versions.find((version) => version.key === selectedKey) ?? versions[0];
+  const localized = localizedFeatureContent({ ...content, sections: selected?.sections ?? [] }, locale);
 
   return (
     <>
       <section className="updatesOverviewSnap databaseContentReveal" id="updates-overview" data-snap-section>
-        <div className="updatesHero sectionContainer">
-          <Eyebrow reveal>{heroEyebrow}</Eyebrow>
-          <h1 data-text-reveal="title">{heroTitle}</h1>
-          <p className="updatesLead">{heroIntro}</p>
-        </div>
-
-        {selected ? (
-          <div className="updatesVersionPicker sectionContainer">
-            <span className="updatesVersionPickerLabel">{versionPickerLabel}</span>
-            <VersionPicker groups={groups} selectedId={selected.id} label={versionPickerLabel} onSelect={setSelectedId} />
-          </div>
-        ) : (
-          <div className="databaseLoading updatesOverviewDatabaseLoading sectionContainer" role="status">
-            <span className="databaseLoadingLabel">{noCompatibleVersion ? releaseVersionUnavailable : noPublishedVersions}</span>
-          </div>
-        )}
+        <div className="updatesHero sectionContainer"><Eyebrow reveal>{heroEyebrow}</Eyebrow><h1 data-text-reveal="title">{heroTitle}</h1><p className="updatesLead">{heroIntro}</p></div>
+        {selected ? <div className="updatesVersionPicker sectionContainer"><span className="updatesVersionPickerLabel">{versionPickerLabel}</span><VersionPicker versions={versions} selectedKey={selected.key} label={versionPickerLabel} onSelect={setSelectedKey} /></div> : <div className="databaseLoading updatesOverviewDatabaseLoading sectionContainer" role="status"><span className="databaseLoadingLabel">{content.sections.some((section) => section.visible) ? releaseVersionUnavailable : noPublishedVersions}</span></div>}
+        {localized.summaryVisible ? <div className="updatesSummary sectionContainer"><span>{localized.summaryLabel}</span><ul>{localized.summary.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul></div> : null}
       </section>
 
       <section className="updatesDetailsSnap databaseContentReveal" id="updates-details" data-snap-section>
         <div className="releaseSections sectionContainer">
-          <Eyebrow reveal>{selected?.major_version ?? releaseLabel}</Eyebrow>
-          {localized && selected ? (
-            <article className="releaseSection">
-              <span className="releaseNumber">{selected.release_version}</span>
-              <div>
-                <h2>{localized.title}</h2>
-                <p>{localized.body}</p>
-              </div>
-              {localized.items.length ? (
-                <ul>
-                  {localized.items.map((item, index) => (
-                    <li key={`${index}-${item}`}>{item}</li>
-                  ))}
-                </ul>
-              ) : null}
-            </article>
-          ) : (
-            <p className="updatesEmpty">{noCompatibleVersion ? releaseVersionUnavailable : noPublishedVersions}</p>
-          )}
+          <Eyebrow reveal>{selected?.label ?? releaseLabel}</Eyebrow>
+          {selected ? localized.sections.map((section) => <article className="releaseSection" key={section.number}><span className="releaseNumber">{section.number}</span><div><h2>{section.title}</h2><p>{section.body}</p></div><ul>{section.items.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul></article>) : <p className="updatesEmpty">{content.sections.some((section) => section.visible) ? releaseVersionUnavailable : noPublishedVersions}</p>}
         </div>
       </section>
     </>
