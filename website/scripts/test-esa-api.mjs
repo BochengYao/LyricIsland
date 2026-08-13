@@ -454,6 +454,7 @@ try {
 
   const managedFeatures = structuredClone(publicFeaturesData.content);
   managedFeatures.sections[0].release_version = "v2.1.8";
+  managedFeatures.sections[1].release_version = "v3.0.0";
   managedFeatures.sections[0].title_zh = "后台修改后的标题";
   managedFeatures.sections[0].title_zh_tw = "後台修改後的標題";
   managedFeatures.sections[0].title_ja = "管理画面で変更した見出し";
@@ -476,6 +477,8 @@ try {
   assert.equal(featureSaveData.content.sections[5].title_ja, "管理画面で変更した見出し");
   assert.equal(featureSaveData.content.sections[5].release_version, "v2.1.8");
   assert.equal(featureSaveData.content.sections[5].major_version, "V2");
+  assert.equal(featureSaveData.content.sections[4].release_version, "v3.0.0");
+  assert.equal(featureSaveData.content.sections[4].major_version, "V3");
   assert.equal(featureSaveData.content.sections[0].id, "feature-06");
 
   const proxiedLoginResponse = await api.fetch(
