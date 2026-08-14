@@ -2354,9 +2354,9 @@ html[lang="en"] :where(
   .updatesOverviewSnap {
     display: grid;
     align-content: center;
-    gap: clamp(28px, 4svh, 48px);
+    gap: clamp(72px, 9svh, 96px);
     min-block-size: 100svh;
-    padding: clamp(136px, 15svh, 168px) 0 clamp(36px, 5svh, 56px);
+    padding: clamp(136px, 15svh, 168px) 0 clamp(20px, 3svh, 32px);
   }
 
   .updatesOverviewSnap .updatesHero {
@@ -2370,6 +2370,10 @@ html[lang="en"] :where(
 
   .updatesOverviewSnap .updatesHero h1 {
     line-height: 1.1;
+  }
+
+  .updatesOverviewSnap .updatesSummary {
+    transform: translateY(clamp(48px, 6svh, 72px));
   }
 
   .updatesDetailsSnap {
@@ -5115,16 +5119,20 @@ button.danger,
 
 .previewEditor {
   display: grid;
-  gap: 32px;
-  margin-bottom: 48px;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--white);
 }
 
 .featureAdminSummary,
 .featureVersionPanel,
 .featureAdminList article {
-  padding: 18px;
+  padding: 16px;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 12px;
   background: var(--white);
 }
 
@@ -5235,8 +5243,8 @@ button.danger,
 
 .featureAdminSummary {
   display: grid;
-  gap: 16px;
-  margin-bottom: 14px;
+  gap: 12px;
+  margin-bottom: 10px;
 }
 
 .featureAdminSummary > header,
@@ -5312,12 +5320,12 @@ button.danger,
 
 .featureAdminList {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .featureAdminList article {
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
 .featureAdminList article > header > div:first-child {
@@ -5393,8 +5401,12 @@ button.danger,
 .previewEditorMeta {
   display: grid;
   grid-template-columns: 1fr 1fr auto;
-  gap: 16px;
+  gap: 12px;
   align-items: end;
+}
+
+.previewLocaleTabs {
+  margin-top: -2px;
 }
 
 .previewDateTbdButton {
@@ -5431,8 +5443,8 @@ button.danger,
 
 .previewEditorLanguages {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
+  grid-template-columns: 1fr;
+  gap: 12px;
 }
 
 .previewEditor fieldset {
@@ -5452,7 +5464,16 @@ button.danger,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 32px;
+  gap: 18px;
+  padding: 14px 16px;
+  border-radius: 12px;
+}
+
+.previewRowActions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .previewAdminList article h3 {
@@ -5911,11 +5932,17 @@ button.danger,
   .previewEditor,
   .previewAdminList article,
   .adminLoginCard {
-    padding: 24px 20px;
-    border-radius: 32px;
+    padding: 16px;
+    border-radius: 12px;
   }
 
-  .previewAdminList article .button {
+  .previewRowActions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .previewRowActions .button {
     width: 100%;
   }
 }
