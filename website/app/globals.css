@@ -1991,9 +1991,9 @@ html[lang="en"] :where(
 
 .updatesHeroSubtitle {
   max-width: 760px;
-  margin: 28px 0 0;
-  font-size: 30px;
-  font-weight: 600;
+  margin: 14px 0 0;
+  font-size: 38px;
+  font-weight: 400;
   letter-spacing: -0.035em;
   line-height: 1.35;
 }
@@ -2880,8 +2880,8 @@ html[lang="en"] :where(
   }
 
   .updatesHeroSubtitle {
-    margin-top: 20px;
-    font-size: 24px;
+    margin-top: 14px;
+    font-size: 30px;
   }
 
   .updatesSummary {
