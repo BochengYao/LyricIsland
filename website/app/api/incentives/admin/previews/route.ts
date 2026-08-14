@@ -1,6 +1,7 @@
 import { isAdminRequest, isSameOrigin } from "@/lib/admin-auth";
 import {
   createReleasePreview,
+  deleteReleasePreview,
   listReleasePreviews,
   updateReleasePreview
 } from "@/lib/incentive-store";
@@ -91,5 +92,24 @@ export async function PATCH(request: Request) {
     });
   } catch {
     return Response.json({ error: "更新失败" }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  if (!isSameOrigin(request) || !(await isAdminRequest(request))) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  try {
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+    const id = typeof body.id === "string"
+      ? body.id.trim()
+      : new URL(request.url).searchParams.get("id")?.trim() ?? "";
+    if (!id) return Response.json({ error: "Invalid preview id" }, { status: 400 });
+    return Response.json({ preview: await deleteReleasePreview(id) });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "删除失败";
+    if (message.includes("not found")) return Response.json({ error: "找不到要删除的版本预告" }, { status: 404 });
+    if (message.includes("Internal content")) return Response.json({ error: "内部内容不能删除" }, { status: 400 });
+    return Response.json({ error: "删除版本预告失败" }, { status: 500 });
   }
 }

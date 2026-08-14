@@ -37,6 +37,7 @@ type PreviewDraft = {
 };
 type TranslationLocale = "en" | "zh-tw" | "ja";
 type LocalizedTranslations = Record<TranslationLocale, Record<string, string>>;
+type FeatureLocale = "zh" | "en" | "zh_tw" | "ja";
 
 const translationLocales: TranslationLocale[] = ["en", "zh-tw", "ja"];
 type BulkAction =
@@ -95,6 +96,40 @@ function previewToDraft(preview: ReleasePreview): PreviewDraft {
     target_date: preview.target_date ?? "",
     status: preview.status
   };
+}
+
+function FeatureSectionLocaleFields({
+  section,
+  locale,
+  onChange
+}: {
+  section: FeatureContentSection;
+  locale: FeatureLocale;
+  onChange: (patch: Partial<FeatureContentSection>) => void;
+}) {
+  const fields = locale === "zh"
+    ? { title: section.title_zh, body: section.body_zh, items: section.items_zh, titleLabel: "中文标题", bodyLabel: "中文描述", itemsLabel: "中文分条（每行一条）" }
+    : locale === "en"
+      ? { title: section.title_en, body: section.body_en, items: section.items_en, titleLabel: "English title", bodyLabel: "English description", itemsLabel: "English bullets (one per line)" }
+      : locale === "zh_tw"
+        ? { title: section.title_zh_tw, body: section.body_zh_tw, items: section.items_zh_tw, titleLabel: "繁中標題", bodyLabel: "繁中描述", itemsLabel: "繁中分點（每行一條）" }
+        : { title: section.title_ja, body: section.body_ja, items: section.items_ja, titleLabel: "日本語の見出し", bodyLabel: "日本語の説明", itemsLabel: "日本語の箇条書き（1行ずつ）" };
+  const patchFor = (field: "title" | "body" | "items", value: string | string[]) => onChange(
+    locale === "zh"
+      ? { [field === "title" ? "title_zh" : field === "body" ? "body_zh" : "items_zh"]: value }
+      : locale === "en"
+        ? { [field === "title" ? "title_en" : field === "body" ? "body_en" : "items_en"]: value }
+        : locale === "zh_tw"
+          ? { [field === "title" ? "title_zh_tw" : field === "body" ? "body_zh_tw" : "items_zh_tw"]: value }
+          : { [field === "title" ? "title_ja" : field === "body" ? "body_ja" : "items_ja"]: value }
+  );
+  return (
+    <div className="featureLocaleFields">
+      <label><span>{fields.titleLabel}</span><input value={fields.title} onChange={(event) => patchFor("title", event.target.value)} /></label>
+      <label><span>{fields.bodyLabel}</span><textarea rows={4} value={fields.body} onChange={(event) => patchFor("body", event.target.value)} /></label>
+      <label><span>{fields.itemsLabel}</span><textarea rows={7} value={fields.items.join("\n")} onChange={(event) => patchFor("items", event.target.value.split("\n"))} /></label>
+    </div>
+  );
 }
 
 const eventLabels: Record<string, string> = {
@@ -359,8 +394,12 @@ export function AdminIncentives() {
   const [previewDateTbd, setPreviewDateTbd] = useState(false);
   const [previewDraft, setPreviewDraft] = useState<PreviewDraft>(emptyPreviewDraft);
   const [previewSaving, setPreviewSaving] = useState(false);
+  const [previewDeletingId, setPreviewDeletingId] = useState("");
   const [draftMenuOpen, setDraftMenuOpen] = useState(false);
   const [translationSaving, setTranslationSaving] = useState<"features" | "preview" | null>(null);
+  const [expandedFeatureSectionId, setExpandedFeatureSectionId] = useState<string | null>(null);
+  const [featureLocaleBySection, setFeatureLocaleBySection] = useState<Record<string, "zh" | "en" | "zh_tw" | "ja">>({});
+  const [summaryLocale, setSummaryLocale] = useState<"zh" | "en" | "zh_tw" | "ja">("zh");
 
   const featureVersionOptions = useMemo(() => {
     const options = featureContent.versions.map((version) => ({ value: version, label: version }));
@@ -876,6 +915,37 @@ export function AdminIncentives() {
     }
   }
 
+  async function deletePreview(preview: ReleasePreview) {
+    const confirmed = window.confirm(
+      `确定删除版本预告“${preview.version}”吗？删除后会立即从前台移除；不会删除同版本的新功能内容。此操作保存后不可恢复。`
+    );
+    if (!confirmed) return;
+    setPreviewDeletingId(preview.id);
+    setError("");
+    try {
+      const response = await fetch("/api/incentives/admin/previews", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: preview.id })
+      });
+      const result = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) {
+        setError(result.error ?? "删除预告失败");
+        return;
+      }
+      setPreviews((items) => items.filter((item) => item.id !== preview.id));
+      setDraftPreviews((items) => items.filter((item) => item.id !== preview.id));
+      if (previewDraft.id === preview.id) {
+        setPreviewDraft(emptyPreviewDraft);
+        setPreviewDateTbd(true);
+      }
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "删除预告失败");
+    } finally {
+      setPreviewDeletingId("");
+    }
+  }
+
   function markFeatureDirty() {
     setFeatureMessage("有未保存的更改");
   }
@@ -1215,27 +1285,18 @@ export function AdminIncentives() {
 
             <section className="featureAdminSummary">
               <header>
-                <div><strong>本次重点</strong><small>管理顶部重点摘要，四种语言同步保存</small></div>
+                <div><strong>本次重点</strong><small>默认编辑简中；其他语言按需切换，保存并同步前台后生效</small></div>
                 <button className={`displayToggle ${featureContent.summary.visible ? "isPublic" : ""}`} type="button" onClick={() => updateFeatureSummary({ visible: !featureContent.summary.visible })}><span aria-hidden="true" />{featureContent.summary.visible ? "前台显示" : "前台隐藏"}</button>
               </header>
-              <div className="featureLanguageGrid">
-                <div>
-                  <label><span>中文标题</span><input value={featureContent.summary.label_zh} onChange={(event) => updateFeatureSummary({ label_zh: event.target.value })} /></label>
-                  <label><span>中文分条（每行一条）</span><textarea rows={6} value={featureContent.summary.items_zh.join("\n")} onChange={(event) => updateFeatureSummary({ items_zh: event.target.value.split("\n") })} /></label>
-                </div>
-                <div>
-                  <label><span>English title</span><input value={featureContent.summary.label_en} onChange={(event) => updateFeatureSummary({ label_en: event.target.value })} /></label>
-                  <label><span>English bullets (one per line)</span><textarea rows={6} value={featureContent.summary.items_en.join("\n")} onChange={(event) => updateFeatureSummary({ items_en: event.target.value.split("\n") })} /></label>
-                </div>
-                <div>
-                  <label><span>繁中標題</span><input value={featureContent.summary.label_zh_tw} onChange={(event) => updateFeatureSummary({ label_zh_tw: event.target.value })} /></label>
-                  <label><span>繁中分點（每行一條）</span><textarea rows={6} value={featureContent.summary.items_zh_tw.join("\n")} onChange={(event) => updateFeatureSummary({ items_zh_tw: event.target.value.split("\n") })} /></label>
-                </div>
-                <div>
-                  <label><span>日本語の見出し</span><input value={featureContent.summary.label_ja} onChange={(event) => updateFeatureSummary({ label_ja: event.target.value })} /></label>
-                  <label><span>日本語の箇条書き（1行ずつ）</span><textarea rows={6} value={featureContent.summary.items_ja.join("\n")} onChange={(event) => updateFeatureSummary({ items_ja: event.target.value.split("\n") })} /></label>
-                </div>
+              <div className="featureLocaleTabs" role="tablist" aria-label="重点语言">
+                {([ ["zh", "中文"], ["en", "English"], ["zh_tw", "繁中"], ["ja", "日本語"] ] as const).map(([locale, label]) => (
+                  <button type="button" role="tab" aria-selected={summaryLocale === locale} className={summaryLocale === locale ? "isActive" : ""} onClick={() => setSummaryLocale(locale)} key={locale}>{label}</button>
+                ))}
               </div>
+              {summaryLocale === "zh" && <div className="featureLocaleFields"><label><span>中文标题</span><input value={featureContent.summary.label_zh} onChange={(event) => updateFeatureSummary({ label_zh: event.target.value })} /></label><label><span>中文分条（每行一条）</span><textarea rows={6} value={featureContent.summary.items_zh.join("\n")} onChange={(event) => updateFeatureSummary({ items_zh: event.target.value.split("\n") })} /></label></div>}
+              {summaryLocale === "en" && <div className="featureLocaleFields"><label><span>English title</span><input value={featureContent.summary.label_en} onChange={(event) => updateFeatureSummary({ label_en: event.target.value })} /></label><label><span>English bullets (one per line)</span><textarea rows={6} value={featureContent.summary.items_en.join("\n")} onChange={(event) => updateFeatureSummary({ items_en: event.target.value.split("\n") })} /></label></div>}
+              {summaryLocale === "zh_tw" && <div className="featureLocaleFields"><label><span>繁中標題</span><input value={featureContent.summary.label_zh_tw} onChange={(event) => updateFeatureSummary({ label_zh_tw: event.target.value })} /></label><label><span>繁中分點（每行一條）</span><textarea rows={6} value={featureContent.summary.items_zh_tw.join("\n")} onChange={(event) => updateFeatureSummary({ items_zh_tw: event.target.value.split("\n") })} /></label></div>}
+              {summaryLocale === "ja" && <div className="featureLocaleFields"><label><span>日本語の見出し</span><input value={featureContent.summary.label_ja} onChange={(event) => updateFeatureSummary({ label_ja: event.target.value })} /></label><label><span>日本語の箇条書き（1行ずつ）</span><textarea rows={6} value={featureContent.summary.items_ja.join("\n")} onChange={(event) => updateFeatureSummary({ items_ja: event.target.value.split("\n") })} /></label></div>}
             </section>
 
             <section className="featureVersionPanel" aria-labelledby="feature-version-heading">
@@ -1268,38 +1329,26 @@ export function AdminIncentives() {
 
             <div className="featureAdminList">
               {activeFeatureSections.map((section, index) => (
-                <article key={section.id}>
+                <article className={expandedFeatureSectionId === section.id ? "isExpanded" : ""} key={section.id}>
                   <header>
-                    <div><span>{String(index + 1).padStart(2, "0")}</span><strong>{section.title_zh || section.title_en || "未命名功能条目"}</strong></div>
+                    <div><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{section.title_zh || section.title_en || "未命名功能条目"}</strong><small>{section.body_zh || section.body_en || "尚未填写摘要"}</small></div></div>
                     <div className="featureRowActions">
                       <button type="button" disabled={index === 0} onClick={() => moveFeatureSection(section.id, -1)}>上移</button>
                       <button type="button" disabled={index === activeFeatureSections.length - 1} onClick={() => moveFeatureSection(section.id, 1)}>下移</button>
                       <button className={section.visible ? "isVisible" : ""} type="button" onClick={() => updateFeatureSection(section.id, { visible: !section.visible })}>{section.visible ? "正在显示" : "已隐藏"}</button>
+                      <button type="button" aria-expanded={expandedFeatureSectionId === section.id} onClick={() => setExpandedFeatureSectionId((current) => current === section.id ? null : section.id)}>{expandedFeatureSectionId === section.id ? "收起编辑" : "编辑内容"}</button>
                       <button className="danger" type="button" onClick={() => deleteFeatureSection(section)}>删除</button>
                     </div>
                   </header>
-                  <div className="featureLanguageGrid">
-                    <div>
-                      <label><span>中文标题</span><input value={section.title_zh} onChange={(event) => updateFeatureSection(section.id, { title_zh: event.target.value })} /></label>
-                      <label><span>中文描述</span><textarea rows={4} value={section.body_zh} onChange={(event) => updateFeatureSection(section.id, { body_zh: event.target.value })} /></label>
-                      <label><span>中文分条（每行一条）</span><textarea rows={7} value={section.items_zh.join("\n")} onChange={(event) => updateFeatureSection(section.id, { items_zh: event.target.value.split("\n") })} /></label>
+                  {expandedFeatureSectionId === section.id && <div className="featureSectionEditor">
+                    <div className="featureLocaleTabs" role="tablist" aria-label={`${section.title_zh || "功能条目"} 语言`}>
+                      {([ ["zh", "中文"], ["en", "English"], ["zh_tw", "繁中"], ["ja", "日本語"] ] as const).map(([locale, label]) => {
+                        const activeLocale = featureLocaleBySection[section.id] ?? "zh";
+                        return <button type="button" role="tab" aria-selected={activeLocale === locale} className={activeLocale === locale ? "isActive" : ""} onClick={() => setFeatureLocaleBySection((current) => ({ ...current, [section.id]: locale }))} key={locale}>{label}</button>;
+                      })}
                     </div>
-                    <div>
-                      <label><span>English title</span><input value={section.title_en} onChange={(event) => updateFeatureSection(section.id, { title_en: event.target.value })} /></label>
-                      <label><span>English description</span><textarea rows={4} value={section.body_en} onChange={(event) => updateFeatureSection(section.id, { body_en: event.target.value })} /></label>
-                      <label><span>English bullets (one per line)</span><textarea rows={7} value={section.items_en.join("\n")} onChange={(event) => updateFeatureSection(section.id, { items_en: event.target.value.split("\n") })} /></label>
-                    </div>
-                    <div>
-                      <label><span>繁中標題</span><input value={section.title_zh_tw} onChange={(event) => updateFeatureSection(section.id, { title_zh_tw: event.target.value })} /></label>
-                      <label><span>繁中描述</span><textarea rows={4} value={section.body_zh_tw} onChange={(event) => updateFeatureSection(section.id, { body_zh_tw: event.target.value })} /></label>
-                      <label><span>繁中分點（每行一條）</span><textarea rows={7} value={section.items_zh_tw.join("\n")} onChange={(event) => updateFeatureSection(section.id, { items_zh_tw: event.target.value.split("\n") })} /></label>
-                    </div>
-                    <div>
-                      <label><span>日本語の見出し</span><input value={section.title_ja} onChange={(event) => updateFeatureSection(section.id, { title_ja: event.target.value })} /></label>
-                      <label><span>日本語の説明</span><textarea rows={4} value={section.body_ja} onChange={(event) => updateFeatureSection(section.id, { body_ja: event.target.value })} /></label>
-                      <label><span>日本語の箇条書き（1行ずつ）</span><textarea rows={7} value={section.items_ja.join("\n")} onChange={(event) => updateFeatureSection(section.id, { items_ja: event.target.value.split("\n") })} /></label>
-                    </div>
-                  </div>
+                    <FeatureSectionLocaleFields section={section} locale={featureLocaleBySection[section.id] ?? "zh"} onChange={(patch) => updateFeatureSection(section.id, patch)} />
+                  </div>}
                 </article>
               ))}
               {!activeFeatureSections.length && <p className="adminEmpty">该版本还没有功能条目，请先选择其他版本或新增一条。</p>}

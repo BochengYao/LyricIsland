@@ -984,6 +984,24 @@ async function updateReleasePreview(id, input) {
   return normalizeReleasePreview(rows[0]);
 }
 
+async function deleteReleasePreview(id) {
+  const existingRows = await supabase(
+    `/rest/v1/release_previews?id=eq.${encodeURIComponent(id)}&limit=1`
+  );
+  const existing = existingRows[0];
+  if (!existing) throw new Error("Release preview not found");
+  if (String(existing.version || "").startsWith("__")) throw new Error("Internal content cannot be deleted");
+  const rows = await supabase(
+    `/rest/v1/release_previews?id=eq.${encodeURIComponent(id)}`,
+    {
+      method: "DELETE",
+      headers: supabaseHeaders("return=representation")
+    }
+  );
+  if (!rows[0]) throw new Error("Release preview not found");
+  return normalizeReleasePreview(rows[0]);
+}
+
 async function getFeatureContentRow() {
   const rows = await supabase(
     `/rest/v1/release_previews?select=*&version=eq.${encodeURIComponent(FEATURE_CONTENT_VERSION)}&order=updated_at.desc&limit=1`
@@ -1664,6 +1682,21 @@ async function handleAdminPreviews(request) {
       });
     } catch {
       return jsonError("更新失败", 500);
+    }
+  }
+  if (request.method === "DELETE") {
+    try {
+      const body = await request.json().catch(() => ({}));
+      const id = typeof body.id === "string"
+        ? body.id.trim()
+        : new URL(request.url).searchParams.get("id")?.trim() || "";
+      if (!id) return jsonError("Invalid preview id");
+      return json({ preview: await deleteReleasePreview(id) });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "删除失败";
+      if (message.includes("not found")) return jsonError("找不到要删除的版本预告", 404);
+      if (message.includes("Internal content")) return jsonError("内部内容不能删除");
+      return jsonError("删除版本预告失败", 500);
     }
   }
   return jsonError("Method not allowed", 405);
