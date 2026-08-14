@@ -21,7 +21,7 @@
 | `/api/incentives/admin/logout` | `POST` | 结束管理员会话 | 已认证会话 |
 | `/api/incentives/admin/access-logs` | `GET`、`PATCH` | 管理访问记录 | 管理员 |
 | `/api/incentives/admin/features` | `GET`、`PUT` | 管理功能数据 | 管理员 |
-| `/api/incentives/admin/previews` | `GET`、`POST`、`PATCH` | 管理预览内容 | 管理员 |
+| `/api/incentives/admin/previews` | `GET`、`POST`、`PATCH`、`DELETE` | 管理预览内容 | 管理员 |
 | `/api/incentives/admin/submissions` | `GET`、`PATCH`、`DELETE` | 审核提交 | 管理员 |
 | `/api/incentives/admin/translate` | `POST` | 管理端翻译辅助 | 管理员，依赖服务端配置 |
 
@@ -31,7 +31,9 @@
 
 新功能条目（`content.sections[]`）必须以 `release_version` 保存完整发布版本（规范为 `vX.Y.Z`，例如 `v2.1.8`），这是该条目的唯一可编辑版本来源；公开 `/api/features` 会同时返回由它派生的 `major_version`（如 `V2`），前台只能使用该派生字段分组，不得另存或编辑大版本号。`content.versions` 是新功能内容自身维护的版本元数据，允许存在没有条目的空版本；历史记录缺少该字段时服务端从 sections 恢复规范版本，未标版本只回退为 `早期更新` / `OTHER`，不会为历史条目编造版本。`PUT /api/incentives/admin/features` 对每条非兼容条目要求填写并归属 `content.versions` 中的完整版本。
 
-管理端“新功能内容”按版本编辑：版本下拉候选仅来自 `content.versions` 与仍有条目的 `早期更新` 兼容组，完全独立于 `/api/incentives/admin/previews`。管理员可在同一页面创建、重命名和删除版本；重命名由服务端原子级联该版本下所有 sections。非空版本删除必须显式传 `delete_sections: true`，空版本可直接删除。`早期更新` 仍可浏览、编辑和保存；管理员可通过 `{type:"migrate-legacy",to:"V2.0.36"}` 在已认证会话下明确确认，一次性将全部历史条目迁移到目标版本，目标已存在时合并版本元数据，迁移成功且无残留条目后兼容组不再出现。版本操作通过同一 `PUT /api/incentives/admin/features` 的 `operation` 字段提交：`{type:"create",release_version}`, `{type:"rename",from,to}`, `{type:"delete",release_version,delete_sections?}`, `{type:"migrate-legacy",to}`。版本预告仍只管理未来预告自身 CRUD/status，不作为新功能版本来源。该分组仅改变后台操作方式，不改变公开 `/api/features` 对 sections 的版本字段契约。
+管理端“新功能内容”按版本编辑：版本下拉候选仅来自 `content.versions` 与仍有条目的 `早期更新` 兼容组，完全独立于 `/api/incentives/admin/previews`。管理员可在同一页面创建、重命名和删除版本；重命名由服务端原子级联该版本下所有 sections。非空版本删除必须显式传 `delete_sections: true`，空版本可直接删除。编辑器将全局亮点与版本模块分层显示，默认只展开简中，其他语言通过标签按需编辑；模块摘要卡一次只允许展开一个模块，保存并同步前台仍是明确操作。`早期更新` 仍可浏览、编辑和保存；管理员可通过 `{type:"migrate-legacy",to:"V2.0.36"}` 在已认证会话下明确确认，一次性将全部历史条目迁移到目标版本，目标已存在时合并版本元数据，迁移成功且无残留条目后兼容组不再出现。版本操作通过同一 `PUT /api/incentives/admin/features` 的 `operation` 字段提交：`{type:"create",release_version}`, `{type:"rename",from,to}`, `{type:"delete",release_version,delete_sections?}`, `{type:"migrate-legacy",to}`。版本预告仍只管理未来预告自身 CRUD/status，不作为新功能版本来源。该分组仅改变后台操作方式，不改变公开 `/api/features` 对 sections 的版本字段契约。
+
+管理员可通过 `DELETE /api/incentives/admin/previews` 删除版本预告，请求体为 `{ "id": "<preview-id>" }`（也支持查询参数 `?id=`）。请求必须通过同源校验和管理员会话；成功后返回被删除的 `preview`，找不到记录返回 404。管理端必须在确认提示中显示版本号及“立即从前台移除”的影响。删除预告只删除该预告记录，不会删除同版本的新功能内容；内部功能内容记录会被服务端拒绝删除。
 
 为兼容既有数据库记录，繁中缺失时服务端回退简中；日文缺失时依次回退英文、简中。管理端 `POST`/`PATCH /api/incentives/admin/previews` 可选接收 `body_zh_tw`、`body_ja`；未传字段不会在更新时被清空。`POST /api/incentives/admin/translate` 支持同一次请求指定 `en`、`zh-tw`、`ja` 目标语言，并按目标语言键分别返回翻译结果。公开预告接口支持游标分页：`preview_limit` 可选（默认 20，最大 50），`preview_cursor` 使用上一页返回的 `next_preview_cursor`；响应始终返回 `next_preview_cursor`（无下一页时为 `null`）。分页只作用于预告，建议数据保持原有返回方式。公开页面必须继续经上述接口读取，且由官网前台线程负责将 `zh-TW`、`ja` 路由映射到对应字段并在分页结果中按 `major_version` 分组。
 

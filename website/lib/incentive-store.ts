@@ -556,6 +556,24 @@ export async function updateReleasePreview(
   return normalizeReleasePreview(rows[0]);
 }
 
+export async function deleteReleasePreview(id: string) {
+  const existingRows = await supabase<ReleasePreview[]>(
+    `/rest/v1/release_previews?id=eq.${encodeURIComponent(id)}&limit=1`
+  );
+  const existing = existingRows[0];
+  if (!existing) throw new Error("Release preview not found");
+  if (existing.version.startsWith("__")) throw new Error("Internal content cannot be deleted");
+  const rows = await supabase<ReleasePreview[]>(
+    `/rest/v1/release_previews?id=eq.${encodeURIComponent(id)}`,
+    {
+      method: "DELETE",
+      headers: headers("return=representation")
+    }
+  );
+  if (!rows[0]) throw new Error("Release preview not found");
+  return normalizeReleasePreview(rows[0]);
+}
+
 async function getFeatureContentRow() {
   const rows = await supabase<StoredFeatureRow[]>(
     `/rest/v1/release_previews?select=*&version=eq.${encodeURIComponent(FEATURE_CONTENT_VERSION)}&order=updated_at.desc&limit=1`

@@ -243,6 +243,18 @@ globalThis.fetch = async (input, init = {}) => {
     }
     return response([row], 201);
   }
+  if (url.includes("/rest/v1/release_previews?id=eq.") && (!init.method || init.method === "GET")) {
+    const id = decodeURIComponent(url.split("id=eq.")[1].split("&")[0]);
+    if (id === "__FEATURE_CONTENT_V1__" || (featureRow && id === featureRow.id)) return response(featureRow ? [featureRow] : []);
+    return response(releasePreviewRows.filter((row) => row.id === id));
+  }
+  if (url.includes("/rest/v1/release_previews?id=eq.") && init.method === "DELETE") {
+    const id = decodeURIComponent(url.split("id=eq.")[1]);
+    const previewIndex = releasePreviewRows.findIndex((row) => row.id === id);
+    if (previewIndex < 0) return response([]);
+    const [deleted] = releasePreviewRows.splice(previewIndex, 1);
+    return response([deleted]);
+  }
   if (url.includes(`release_previews?version=eq.${encodeURIComponent("__AUDIT_LOG_V1__")}`) && init.method === "PATCH") {
     const body = JSON.parse(init.body);
     const severity = new URL(url).searchParams.get("title_en");
@@ -851,6 +863,69 @@ try {
     new Request("https://lyric-island.top/api/incentives/public")
   );
   assert.equal((await multiplePublicPreviews.json()).previews.length, 2, "every published preview must be returned to the public page");
+
+  const unauthenticatedPreviewDelete = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/previews", {
+      method: "DELETE",
+      headers: { Origin: "https://lyric-island.top", "Content-Type": "application/json" },
+      body: JSON.stringify({ id: previewData.preview.id })
+    })
+  );
+  assert.equal(unauthenticatedPreviewDelete.status, 401, "preview deletion requires an authenticated admin session");
+
+  const publishedPreviewDelete = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/previews", {
+      method: "DELETE",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({ id: previewData.preview.id })
+    })
+  );
+  assert.equal(publishedPreviewDelete.status, 200, "an authenticated admin can delete a published preview");
+  assert.equal(releasePreviewRows.some((row) => row.id === previewData.preview.id), false);
+
+  const draftPreviewForDeleteResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/previews", {
+      method: "POST",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({ version: "v2.3 Preview", body_zh: "待删除草稿。", body_en: "Draft to delete.", status: "draft" })
+    })
+  );
+  assert.equal(draftPreviewForDeleteResponse.status, 201);
+  const draftPreviewForDelete = await draftPreviewForDeleteResponse.json();
+  const draftPreviewDelete = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/previews", {
+      method: "DELETE",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({ id: draftPreviewForDelete.preview.id })
+    })
+  );
+  assert.equal(draftPreviewDelete.status, 200, "an authenticated admin can delete a draft preview");
+
+  const protectedFeatureDelete = featureRow && await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/previews", {
+      method: "DELETE",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({ id: featureRow.id })
+    })
+  );
+  assert.equal(protectedFeatureDelete?.status, 400, "preview deletion cannot remove the independent feature-content record");
+  assert.ok(featureRow, "deleting a preview must not remove same-version feature content");
 
   const form = new FormData();
   form.set("kind", "feature");

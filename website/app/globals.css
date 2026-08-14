@@ -5249,6 +5249,47 @@ button.danger,
   gap: 18px;
 }
 
+.featureLocaleTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--canvas);
+}
+
+.featureLocaleTabs button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.featureLocaleTabs button.isActive {
+  border-color: var(--line);
+  background: var(--white);
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(38, 35, 31, 0.08);
+}
+
+.featureLocaleFields {
+  display: grid;
+  gap: 12px;
+}
+
+.featureSectionEditor {
+  display: grid;
+  gap: 12px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+
 .featureLanguageGrid > div {
   display: grid;
   align-content: start;
@@ -5280,6 +5321,21 @@ button.danger,
 
 .featureAdminList article > header > div:first-child > strong {
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.featureAdminList article > header > div:first-child > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.featureAdminList article > header > div:first-child small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
