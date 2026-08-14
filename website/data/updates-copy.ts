@@ -8,6 +8,7 @@ export type UpdatesCopy = {
   languageHref: string;
   eyebrow: string;
   title: string;
+  subtitle?: string;
   intro: string;
   version: string;
   versionPickerLabel: string;
@@ -34,10 +35,11 @@ const rawUpdatesByLocale: Record<"zh" | "en", UpdatesCopy> = {
     menuLabel: "更新页导航",
     languageName: "EN",
     languageHref: "/en/updates",
-    eyebrow: "版本说明",
-    title: "版本更新\n每一次，都更贴近你",
+    eyebrow: "更新",
+    title: "Lyric Hover的更新",
+    subtitle: "新功能与改进，一目了然。",
     intro:
-      "在这里查看每个已发布版本带来的新功能、改进与修复。选择一个版本，了解那一次更新的全部重点。",
+      "选择一个版本，了解本次更新的全部内容，包括功能升级、体验优化与问题修复。",
     version: "版本更新",
     versionPickerLabel: "选择版本",
     noPublishedVersions: "暂无已发布的版本更新。",
@@ -244,6 +246,7 @@ export const updatesByLocale: Record<Locale, UpdatesCopy> = {
     languageHref: "/zh-hant/updates",
     eyebrow: "版本說明",
     title: "版本更新\n每一次，都更貼近你",
+    subtitle: undefined,
     intro: "在這裡查看每個已發布版本帶來的新功能、改進與修正。選擇一個版本，了解那一次更新的全部重點。",
     version: "版本更新",
     versionPickerLabel: "選擇版本",

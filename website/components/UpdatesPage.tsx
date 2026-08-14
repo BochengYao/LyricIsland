@@ -40,6 +40,7 @@ export function UpdatesPage({ locale }: Props) {
           locale={locale}
           heroEyebrow={copy.eyebrow}
           heroTitle={copy.title}
+          heroSubtitle={copy.subtitle}
           heroIntro={copy.intro}
           releaseLabel={copy.version}
           versionPickerLabel={copy.versionPickerLabel}

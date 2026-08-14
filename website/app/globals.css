@@ -1989,6 +1989,15 @@ html[lang="en"] :where(
   white-space: pre-line;
 }
 
+.updatesHeroSubtitle {
+  max-width: 760px;
+  margin: 28px 0 0;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.35;
+}
+
 .updatesLead {
   max-width: 760px;
   margin-top: 40px;
@@ -2868,6 +2877,11 @@ html[lang="en"] :where(
   .updatesLead {
     margin-top: 28px;
     font-size: 18px;
+  }
+
+  .updatesHeroSubtitle {
+    margin-top: 20px;
+    font-size: 24px;
   }
 
   .updatesSummary {

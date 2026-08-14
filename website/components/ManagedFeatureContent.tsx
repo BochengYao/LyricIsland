@@ -11,6 +11,7 @@ type Props = {
   locale: Locale;
   heroEyebrow: string;
   heroTitle: string;
+  heroSubtitle?: string;
   heroIntro: string;
   releaseLabel: string;
   versionPickerLabel: string;
@@ -189,6 +190,7 @@ export function ManagedFeatureContent({
   locale,
   heroEyebrow,
   heroTitle,
+  heroSubtitle,
   heroIntro,
   releaseLabel,
   versionPickerLabel,
@@ -224,7 +226,7 @@ export function ManagedFeatureContent({
     return (
       <>
         <section className="updatesOverviewSnap" id="updates-overview" data-snap-section>
-          <div className="updatesHero sectionContainer"><Eyebrow reveal>{heroEyebrow}</Eyebrow><h1 data-text-reveal="title">{heroTitle}</h1><p className="updatesLead">{heroIntro}</p></div>
+          <div className="updatesHero sectionContainer"><Eyebrow reveal>{heroEyebrow}</Eyebrow><h1 data-text-reveal="title">{heroTitle}</h1>{heroSubtitle ? <p className="updatesHeroSubtitle">{heroSubtitle}</p> : null}<p className="updatesLead">{heroIntro}</p></div>
           <div className={`databaseLoading updatesOverviewDatabaseLoading sectionContainer${loadFailed ? " isError" : ""}`} aria-busy={!loadFailed} role="status"><span className="databaseLoadingLabel">{loadingText}</span></div>
         </section>
         <section className="updatesDetailsSnap" id="updates-details" data-snap-section>
@@ -242,7 +244,7 @@ export function ManagedFeatureContent({
   return (
     <>
       <section className="updatesOverviewSnap databaseContentReveal" id="updates-overview" data-snap-section>
-        <div className="updatesHero sectionContainer"><Eyebrow reveal>{heroEyebrow}</Eyebrow><h1 data-text-reveal="title">{heroTitle}</h1><p className="updatesLead">{heroIntro}</p></div>
+        <div className="updatesHero sectionContainer"><Eyebrow reveal>{heroEyebrow}</Eyebrow><h1 data-text-reveal="title">{heroTitle}</h1>{heroSubtitle ? <p className="updatesHeroSubtitle">{heroSubtitle}</p> : null}<p className="updatesLead">{heroIntro}</p></div>
         {localizedSummary.summaryVisible ? <div className="updatesSummary sectionContainer"><span>{localizedSummary.summaryLabel}</span><ul>{localizedSummary.summary.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul></div> : null}
       </section>
 
