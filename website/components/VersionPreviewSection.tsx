@@ -29,8 +29,56 @@ type PublicIncentivesResponse = { previews?: ReleasePreview[] };
 
 const publicIncentivesPreload = preloadClientJson<PublicIncentivesResponse>("/api/incentives/public");
 
+function pickText(...values: string[]) {
+  return values.find((value) => value?.trim()) ?? "";
+}
+
+function pickItems(...values: string[][]) {
+  return values.find((value) => value?.length) ?? [];
+}
+
+function localizedPreview(preview: ReleasePreview, locale: Locale) {
+  if (locale === "zh") {
+    return {
+      title: preview.title_zh,
+      body: preview.body_zh,
+      highlights: preview.highlights_zh
+    };
+  }
+
+  if (locale === "zhHant") {
+    return {
+      title: pickText(preview.title_zh_tw, preview.title_zh),
+      body: pickText(preview.body_zh_tw, preview.body_zh),
+      highlights: pickItems(preview.highlights_zh_tw, preview.highlights_zh)
+    };
+  }
+
+  if (locale === "ja") {
+    return {
+      title: pickText(preview.title_ja, preview.title_en, preview.title_zh),
+      body: pickText(preview.body_ja, preview.body_en, preview.body_zh),
+      highlights: pickItems(preview.highlights_ja, preview.highlights_en, preview.highlights_zh)
+    };
+  }
+
+  return {
+    title: pickText(preview.title_en, preview.title_zh),
+    body: pickText(preview.body_en, preview.body_zh),
+    highlights: pickItems(preview.highlights_en, preview.highlights_zh)
+  };
+}
+
+function previewStateCopy(locale: Locale) {
+  if (locale === "zh") return { loading: "正在载入", failed: "版本预告暂时无法载入，请稍后刷新。", tbd: "待定" };
+  if (locale === "zhHant") return { loading: "正在載入", failed: "版本預告暫時無法載入，請稍後重新整理。", tbd: "待定" };
+  if (locale === "ja") return { loading: "読み込んでいます", failed: "リリース予定を読み込めません。しばらくしてから再読み込みしてください。", tbd: "未定" };
+  return { loading: "Loading", failed: "Release previews could not be loaded. Please refresh later.", tbd: "TBD" };
+}
+
 export function VersionPreviewSection({ locale }: { locale: Locale }) {
   const copy = incentivesByLocale[locale].preview;
+  const stateCopy = previewStateCopy(locale);
   const [previews, setPreviews] = useState<ReleasePreview[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -67,19 +115,13 @@ export function VersionPreviewSection({ locale }: { locale: Locale }) {
       </div>
       <div className={`previewList${loading ? "" : " databaseContentReveal"}`} aria-live="polite">
         {previews.length ? [...previews].sort(comparePreviewVersions).map((preview) => {
-          const title = locale === "zh" ? preview.title_zh : preview.title_en || preview.title_zh;
-          const body = locale === "zh" ? preview.body_zh : preview.body_en || preview.body_zh;
-          const highlights = locale === "zh"
-            ? preview.highlights_zh
-            : preview.highlights_en.length
-              ? preview.highlights_en
-              : preview.highlights_zh;
+          const { title, body, highlights } = localizedPreview(preview, locale);
           const items = [...splitPreviewItems(body), ...highlights.map((item) => item.trim()).filter(Boolean)];
           return (
             <article className="previewCard" key={preview.id}>
               <div className="previewCardMeta">
                 <strong>{preview.version}</strong>
-                <small>{copy.target} {preview.target_date ?? (locale === "zh" ? "待定" : "TBD")}</small>
+                <small>{copy.target} {preview.target_date ?? stateCopy.tbd}</small>
               </div>
               <div className="previewCardContent">
                 {title !== preview.version && <h3>{title}</h3>}
@@ -95,9 +137,9 @@ export function VersionPreviewSection({ locale }: { locale: Locale }) {
             </article>
           );
         }) : <p className="previewEmpty">{loading
-          ? (locale === "zh" ? "正在载入" : "Loading")
+          ? stateCopy.loading
           : loadFailed
-            ? (locale === "zh" ? "版本预告暂时无法载入，请稍后刷新。" : "Release previews could not be loaded. Please refresh later.")
+            ? stateCopy.failed
             : copy.empty}</p>}
       </div>
     </section>

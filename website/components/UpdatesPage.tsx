@@ -5,6 +5,7 @@ import { ManagedFeatureContent } from "@/components/ManagedFeatureContent";
 import { Eyebrow, LogoLockup, PrimaryNavigation } from "@/components/SitePage";
 import { SelectiveTextReveal } from "@/components/SelectiveTextReveal";
 import { SmoothSectionScroll } from "@/components/SmoothSectionScroll";
+import { VersionPreviewSection } from "@/components/VersionPreviewSection";
 import {
   copyByLocale,
   displayBrand,
@@ -28,6 +29,7 @@ export function UpdatesPage({ locale }: Props) {
   return (
     <>
       <DatabasePreload href="/api/features" />
+      <DatabasePreload href="/api/incentives/public" />
       <a className="skipLink" href="#updates-main">
         {locale === "zh" ? "跳到更新内容" : locale === "zhHant" ? "跳至更新內容" : locale === "ja" ? "更新内容へ移動" : "Skip to updates"}
       </a>
@@ -47,6 +49,8 @@ export function UpdatesPage({ locale }: Props) {
           noPublishedVersions={copy.noPublishedVersions}
           releaseVersionUnavailable={copy.releaseVersionUnavailable}
         />
+
+        <VersionPreviewSection locale={locale} />
       </main>
 
       <section
