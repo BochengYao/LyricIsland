@@ -2,12 +2,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import { localeDetails, localePath, type Locale, type LocalizedPage } from "@/data/site-copy";
+import { localePreferenceKey, resolveBrowserLocale } from "@/components/locale-preference";
 
 const languageSwitcherLabels: Record<Locale, string> = {
   zh: "选择语言",
   zhHant: "選擇語言",
   en: "Choose language",
   ja: "言語を選択"
+};
+
+const automaticLanguageLabels: Record<Locale, string> = {
+  zh: "跟随设备语言",
+  zhHant: "跟隨裝置語言",
+  en: "Follow device language",
+  ja: "端末の言語に従う"
 };
 
 const locales = Object.keys(localeDetails) as Locale[];
@@ -22,7 +30,7 @@ export function LanguageSwitcher({
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const optionRefs = useRef<(HTMLAnchorElement | null)[]>([]);
+  const optionRefs = useRef<(HTMLElement | null)[]>([]);
   const current = localeDetails[locale];
 
   useEffect(() => {
@@ -43,6 +51,42 @@ export function LanguageSwitcher({
     focusOption(index);
   };
 
+  const handleOptionKeyDown = (event: React.KeyboardEvent<HTMLElement>, index: number) => {
+    const optionCount = locales.length + 1;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setIsOpen(false);
+      triggerRef.current?.focus();
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      focusOption((index + 1) % optionCount);
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      focusOption((index - 1 + optionCount) % optionCount);
+    }
+    if (event.key === "Home") {
+      event.preventDefault();
+      focusOption(0);
+    }
+    if (event.key === "End") {
+      event.preventDefault();
+      focusOption(optionCount - 1);
+    }
+  };
+
+  const followDeviceLanguage = () => {
+    try {
+      window.localStorage.removeItem(localePreferenceKey);
+    } catch {
+      // Keep working when privacy settings block storage.
+    }
+
+    setIsOpen(false);
+    window.location.assign(localePath(resolveBrowserLocale(navigator.languages, navigator.language), page));
+  };
+
   return (
     <div className="languageMenu" ref={menuRef}>
       <button
@@ -61,7 +105,7 @@ export function LanguageSwitcher({
           }
           if (event.key === "ArrowUp") {
             event.preventDefault();
-            openAndFocus(locales.length - 1);
+            openAndFocus(locales.length);
           }
         }}
       >
@@ -85,30 +129,15 @@ export function LanguageSwitcher({
                 role="menuitem"
                 aria-current={isCurrent ? "page" : undefined}
                 data-current={isCurrent || undefined}
-                onClick={() => setIsOpen(false)}
-                onKeyDown={(event) => {
-                  if (event.key === "Escape") {
-                    event.preventDefault();
-                    setIsOpen(false);
-                    triggerRef.current?.focus();
+                onClick={() => {
+                  try {
+                    window.localStorage.setItem(localePreferenceKey, option);
+                  } catch {
+                    // Navigation still works when storage is unavailable.
                   }
-                  if (event.key === "ArrowDown") {
-                    event.preventDefault();
-                    focusOption((index + 1) % locales.length);
-                  }
-                  if (event.key === "ArrowUp") {
-                    event.preventDefault();
-                    focusOption((index - 1 + locales.length) % locales.length);
-                  }
-                  if (event.key === "Home") {
-                    event.preventDefault();
-                    focusOption(0);
-                  }
-                  if (event.key === "End") {
-                    event.preventDefault();
-                    focusOption(locales.length - 1);
-                  }
+                  setIsOpen(false);
                 }}
+                onKeyDown={(event) => handleOptionKeyDown(event, index)}
               >
                 <span>{detail.label}</span>
                 {isCurrent ? (
@@ -117,6 +146,16 @@ export function LanguageSwitcher({
               </a>
             );
           })}
+          <button
+            ref={(element) => { optionRefs.current[locales.length] = element; }}
+            type="button"
+            className="languageMenuOption languageMenuAuto"
+            role="menuitem"
+            onClick={followDeviceLanguage}
+            onKeyDown={(event) => handleOptionKeyDown(event, locales.length)}
+          >
+            <span>{automaticLanguageLabels[locale]}</span>
+          </button>
         </div>
       ) : null}
     </div>

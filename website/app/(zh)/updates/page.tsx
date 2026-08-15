@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { UpdatesPage } from "@/components/UpdatesPage";
+import { UnprefixedLocaleRedirect } from "@/components/UnprefixedLocaleRedirect";
 
 export const metadata: Metadata = {
   title: "v2.0 更新内容",
@@ -18,5 +19,5 @@ export const metadata: Metadata = {
 };
 
 export default function ChineseUpdatesPage() {
-  return <UpdatesPage locale="zh" />;
+  return <><UnprefixedLocaleRedirect /><UpdatesPage locale="zh" /></>;
 }

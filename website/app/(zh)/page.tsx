@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SitePage } from "@/components/SitePage";
+import { UnprefixedLocaleRedirect } from "@/components/UnprefixedLocaleRedirect";
 
 export const metadata: Metadata = {
   alternates: {
@@ -15,5 +16,5 @@ export const metadata: Metadata = {
 };
 
 export default function HomePage() {
-  return <SitePage locale="zh" />;
+  return <><UnprefixedLocaleRedirect /><SitePage locale="zh" /></>;
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IncentivePage } from "@/components/IncentivePage";
 import { incentivesByLocale } from "@/data/incentives-copy";
+import { UnprefixedLocaleRedirect } from "@/components/UnprefixedLocaleRedirect";
 
 export const metadata: Metadata = {
   title: incentivesByLocale.zh.pageTitle,
@@ -18,5 +19,5 @@ export const metadata: Metadata = {
 };
 
 export default function ChineseIncentivesPage() {
-  return <IncentivePage locale="zh" />;
+  return <><UnprefixedLocaleRedirect /><IncentivePage locale="zh" /></>;
 }

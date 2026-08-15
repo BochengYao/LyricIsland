@@ -802,6 +802,18 @@ html[lang="en"] :where(
   stroke-width: 1.75;
 }
 
+.languageMenuAuto {
+  width: 100%;
+  margin-top: 4px;
+  border: 0;
+  border-top: 1px solid rgba(20, 20, 19, 0.1);
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: start;
+}
+
 .button {
   display: inline-flex;
   align-items: center;
