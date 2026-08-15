@@ -5870,8 +5870,13 @@ button.danger,
   }
 
   .adminSidebar nav {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     margin-top: 24px;
+  }
+
+  .adminSidebar nav button {
+    width: 100%;
+    min-width: 0;
   }
 
   .adminSidebarBottom {
@@ -5885,9 +5890,25 @@ button.danger,
   }
 
   .adminPageHeader,
-  .previewAdminList article {
+  .previewAdminList article,
+  .featureAdminSummary > header,
+  .featureAdminList article > header {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .featureAdminActions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .featureAdminActions > span {
+    margin-right: 0;
+  }
+
+  .featureAdminActions .button {
+    width: 100%;
   }
 
   .adminPageHeader h2 {
@@ -5950,12 +5971,33 @@ button.danger,
 
   .previewRowActions {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: 1fr;
     width: 100%;
   }
 
   .previewRowActions .button {
     width: 100%;
+  }
+
+  .previewEditorActions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .previewEditorActions .button {
+    width: 100%;
+  }
+
+  .featureRowActions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .featureRowActions button,
+  .reviewButtonGroup button,
+  .featureLocaleTabs button {
+    min-height: 44px;
   }
 }
 
