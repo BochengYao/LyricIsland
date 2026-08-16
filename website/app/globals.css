@@ -2426,6 +2426,37 @@ html[lang="en"] :where(
 }
 
 @media (max-width: 1023px) {
+  .playerOrbit {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 10px;
+    height: auto;
+    min-height: 0;
+    margin-top: 48px;
+    overflow: visible;
+  }
+
+  .playerArcLines,
+  .playerPillDuplicate {
+    display: none;
+  }
+
+  .playerPill {
+    position: static;
+    max-width: 100%;
+    min-height: 48px;
+    padding: 0 18px;
+    font-size: 14px;
+    white-space: normal;
+  }
+
+  .playerPill7 {
+    background: var(--ink);
+    color: var(--canvas);
+    transform: none;
+  }
+
   .sectionContainer {
     width: min(calc(100% - 64px), var(--content));
   }
@@ -2516,6 +2547,10 @@ html[lang="en"] :where(
 }
 
 @media (max-width: 767px) {
+  .demoSection {
+    display: none;
+  }
+
   .sectionContainer {
     width: min(calc(100% - 32px), var(--content));
   }
@@ -5818,10 +5853,12 @@ button.danger,
   }
 
   .acceptedCard {
+    box-sizing: border-box;
     width: min(calc(100% - 10px), 168px);
     height: 210px;
     gap: 6px;
     padding: 16px 14px 13px;
+    overflow: hidden;
     border-radius: 24px;
   }
 
@@ -5848,6 +5885,8 @@ button.danger,
   }
 
   .acceptedLikeButton {
+    flex: 0 0 auto;
+    max-width: 100%;
     min-width: 44px;
     min-height: 44px;
     padding: 0 8px;
@@ -5963,7 +6002,7 @@ button.danger,
   }
 
   .previewSection.sectionContainer {
-    width: min(calc(100% - 16px), var(--content));
+    width: min(calc(100% - 48px), var(--content));
   }
 
   .previewCard {
@@ -5975,6 +6014,14 @@ button.danger,
   .previewItems li {
     grid-template-columns: 34px minmax(0, 1fr);
     gap: 8px;
+    min-width: 0;
+  }
+
+  .previewCardContent,
+  .previewCardMeta,
+  .previewItems p {
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   .previewCard h3 {
