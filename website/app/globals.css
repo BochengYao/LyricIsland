@@ -2426,6 +2426,10 @@ html[lang="en"] :where(
 }
 
 @media (max-width: 1023px) {
+  .updatesDetailsSnap .releaseSections.sectionContainer {
+    width: min(calc(100% - 48px), var(--content));
+  }
+
   .playerOrbit {
     display: flex;
     flex-wrap: wrap;
@@ -5885,15 +5889,54 @@ button.danger,
   }
 
   .acceptedLikeButton {
+    position: relative;
     flex: 0 0 auto;
-    max-width: 100%;
-    min-width: 44px;
+    width: 52px;
+    min-width: 52px;
+    height: 44px;
     min-height: 44px;
-    padding: 0 8px;
+    padding: 0;
+    border: 0;
+    background: transparent;
     font-size: 10px;
   }
 
-  .acceptedLikeButton svg { width: 15px; }
+  .acceptedLikeButton::before {
+    position: absolute;
+    inset: 9px 0;
+    border: 1px solid rgba(20, 20, 19, 0.28);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.64);
+    content: "";
+  }
+
+  .acceptedLikeButton svg,
+  .acceptedLikeButton span {
+    position: relative;
+    z-index: 1;
+  }
+
+  .acceptedLikeButton svg { width: 14px; }
+
+  .acceptedLikeButton:hover,
+  .acceptedLikeButton:focus-visible {
+    background: transparent;
+  }
+
+  .acceptedLikeButton:hover::before,
+  .acceptedLikeButton:focus-visible::before {
+    border-color: var(--ink);
+    background: var(--white);
+  }
+
+  .acceptedLikeButton.isLiked {
+    background: transparent;
+  }
+
+  .acceptedLikeButton.isLiked::before {
+    border-color: var(--orbit);
+    background: var(--orbit);
+  }
 
   .ticketModal { padding: 8px; }
 
