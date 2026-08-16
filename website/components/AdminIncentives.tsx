@@ -1403,7 +1403,7 @@ export function AdminIncentives() {
               <div><span className="severityBadge critical">高风险</span><strong>明确跨站或越权特征</strong><p>外部来源向后台登录、修改或删除接口发起请求，具备跨站请求或主动探测特征，应优先检查。</p></div>
             </section>
             <div className="accessResultMeta">当前显示 <strong>{visibleLogs.length}</strong> / {accessLogs.length} 条；“未确认异常”仅统计异常和高风险事件。</div>
-            <div className="adminTableWrap">
+            <div className="adminTableWrap accessTableWrap">
               <table className="adminDataTable accessTable">
                 <colgroup><col className="accessTimeColumn" /><col className="accessEventColumn" /><col className="accessDetailColumn" /><col className="accessVisitorColumn" /><col className="accessDeviceColumn" /></colgroup>
                 <thead><tr><th>时间 / 级别</th><th>访问事件 / 接口</th><th>具体内容</th><th>访客</th><th>设备与来源</th></tr></thead>
@@ -1417,6 +1417,36 @@ export function AdminIncentives() {
                   </tr>
                 ))}</tbody>
               </table>
+              {!visibleLogs.length && <p className="adminEmpty">当前筛选条件下没有访问记录。</p>}
+            </div>
+            <div className="accessMobileList" aria-label="移动端访问日志">
+              {visibleLogs.map((item) => (
+                <article className={`accessMobileCard severity-${item.severity}`} key={item.id}>
+                  <header className="accessMobileCardHeader">
+                    <div>
+                      <time>{formatDate(item.created_at)}</time>
+                      <span className={`severityBadge ${item.severity}`}>
+                        {item.severity === "critical" ? "高风险" : item.severity === "warning" ? "异常" : "正常"}
+                        {item.acknowledged_at ? " · 已确认" : ""}
+                      </span>
+                    </div>
+                    <span className="accessMobileScope">{item.scope === "admin" ? "后台" : "前台"}</span>
+                  </header>
+                  <div className="accessMobileEvent">
+                    <strong>{eventLabels[item.event_type] ?? item.event_type}</strong>
+                    <code title={item.path}>{item.path}</code>
+                    <small>{item.method} · 状态 {item.status_code ?? "—"}</small>
+                  </div>
+                  <div className="accessMobileDetails"><AccessEventDetail item={item} /></div>
+                  <dl className="accessMobileMeta">
+                    <div><dt>IP 地址</dt><dd><code title={item.ip_source ? `来源字段：${item.ip_source}` : undefined}>{item.ip_address ?? "IP 未记录"}</code></dd></div>
+                    <div><dt>地区 / 访客</dt><dd>{[item.country, item.region, item.city].filter(Boolean).join(" · ") || "未知地区"} · {item.visitor_hash.slice(0, 12)}</dd></div>
+                    <div><dt>设备 / 来源</dt><dd>{deviceSummary(item.user_agent)} · {item.referrer || "直接访问"}</dd></div>
+                    <div><dt>语言 / 请求</dt><dd>{item.accept_language || "语言未知"}{item.request_id ? ` · ${item.request_id.slice(0, 12)}` : ""}</dd></div>
+                    {item.user_agent && <div><dt>User-Agent</dt><dd>{item.user_agent}</dd></div>}
+                  </dl>
+                </article>
+              ))}
               {!visibleLogs.length && <p className="adminEmpty">当前筛选条件下没有访问记录。</p>}
             </div>
           </>

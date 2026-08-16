@@ -4794,6 +4794,122 @@ button.danger,
 .accessTable tr.severity-warning td:first-child { box-shadow: inset 3px 0 #e2a52b; }
 .accessTable tr.severity-critical td:first-child { box-shadow: inset 3px 0 #d9483e; }
 
+.accessMobileList {
+  display: none;
+}
+
+.accessMobileCard {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--white);
+}
+
+.accessMobileCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.accessMobileCardHeader > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.accessMobileCardHeader time {
+  color: var(--charcoal);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.accessMobileScope {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--canvas);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.accessMobileEvent {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.accessMobileEvent strong {
+  color: var(--charcoal);
+  font-size: 14px;
+}
+
+.accessMobileEvent code,
+.accessMobileMeta code {
+  color: var(--muted);
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.accessMobileEvent small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.accessMobileDetails {
+  min-width: 0;
+}
+
+.accessMobileDetails .accessEventDetail > strong {
+  white-space: normal;
+}
+
+.accessMobileDetails .accessEventDetail > p {
+  -webkit-line-clamp: unset;
+}
+
+.accessMobileDetails pre {
+  max-width: 100% !important;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.accessMobileMeta {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding-top: 2px;
+}
+
+.accessMobileMeta > div {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+}
+
+.accessMobileMeta dt {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.accessMobileMeta dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--charcoal);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .accessEventDetail {
   display: grid;
   gap: 5px;
@@ -5963,7 +6079,34 @@ button.danger,
 
   .accessSummary { grid-template-columns: 1fr; }
   .severityRules { grid-template-columns: 1fr; }
-  .accessTable { min-width: 920px; }
+
+  .accessFilters {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    align-items: stretch !important;
+  }
+
+  .accessFilters label,
+  .accessFilters button,
+  .accessFilters input,
+  .accessFilters select {
+    width: 100%;
+    min-width: 0 !important;
+    box-sizing: border-box;
+  }
+
+  .accessFilters input,
+  .accessFilters select,
+  .accessFilters button {
+    min-height: 44px;
+  }
+
+  .accessTableWrap { display: none; }
+
+  .accessMobileList {
+    display: grid;
+    gap: 12px;
+  }
 
   .editFormGrid { grid-template-columns: 1fr; }
   .editFormGrid .wide { grid-column: auto; }
@@ -6157,5 +6300,41 @@ button.danger,
   .featureVersionActions label,
   .featureVersionActions .button {
     width: 100%;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .accessTableWrap {
+    display: none;
+  }
+
+  .accessMobileList {
+    display: grid;
+    gap: 12px;
+  }
+
+  .accessFilters {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch !important;
+  }
+
+  .accessFilters label:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .accessFilters label,
+  .accessFilters button,
+  .accessFilters input,
+  .accessFilters select {
+    width: 100%;
+    min-width: 0 !important;
+    box-sizing: border-box;
+  }
+
+  .accessFilters input,
+  .accessFilters select,
+  .accessFilters button {
+    min-height: 44px;
   }
 }
