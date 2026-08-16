@@ -3551,6 +3551,14 @@ html[lang="en"] :where(
   gap: 8px;
 }
 
+.acceptedCardHeader,
+.acceptedCardContent {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .acceptedKind {
   display: inline-flex;
   min-height: 24px;
@@ -5858,6 +5866,8 @@ button.danger,
 
   .acceptedCard {
     box-sizing: border-box;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) 44px;
     width: min(calc(100% - 10px), 168px);
     height: 210px;
     gap: 6px;
@@ -5867,10 +5877,25 @@ button.danger,
   }
 
   .acceptedCard h3 {
+    display: -webkit-box;
+    overflow: hidden;
     font-size: 13px;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
   }
 
-  .acceptedCard p {
+  .acceptedCardHeader,
+  .acceptedCardContent {
+    gap: 6px;
+  }
+
+  .acceptedCardContent {
+    overflow: hidden;
+  }
+
+  .acceptedCardContent > p {
+    flex: 1 1 auto;
+    min-height: 0;
     font-size: 10px;
     -webkit-line-clamp: 3;
   }
@@ -5890,14 +5915,13 @@ button.danger,
 
   .acceptedMeta {
     flex: 0 0 auto;
-    min-height: 56px;
-    padding: 0 60px 12px 0;
+    min-width: 0;
+    height: 44px;
+    margin-top: 0;
   }
 
   .acceptedLikeButton {
-    position: absolute;
-    right: 20px;
-    bottom: 25px;
+    position: relative;
     flex: 0 0 auto;
     width: 52px;
     min-width: 52px;

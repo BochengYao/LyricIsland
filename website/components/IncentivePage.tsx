@@ -325,34 +325,38 @@ function AcceptedRail({
                       aria-hidden={!accessible}
                     >
                       <div className="acceptedCard">
-                        <div className="acceptedCardTop">
-                          <time className="acceptedTime" dateTime={item.created_at}>
-                            {new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US", {
-                              year: "numeric",
-                              month: locale === "zh" ? "2-digit" : "short",
-                              day: "2-digit"
-                            }).format(new Date(item.created_at))}
-                          </time>
-                          <span className={`acceptedKind ${item.kind}`}>{item.kind === "bug" ? "Bug" : locale === "zh" ? "建议" : "Idea"}</span>
+                        <div className="acceptedCardHeader">
+                          <div className="acceptedCardTop">
+                            <time className="acceptedTime" dateTime={item.created_at}>
+                              {new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US", {
+                                year: "numeric",
+                                month: locale === "zh" ? "2-digit" : "short",
+                                day: "2-digit"
+                              }).format(new Date(item.created_at))}
+                            </time>
+                            <span className={`acceptedKind ${item.kind}`}>{item.kind === "bug" ? "Bug" : locale === "zh" ? "建议" : "Idea"}</span>
+                          </div>
+                          <h3>{item.title}</h3>
                         </div>
-                        <h3>{item.title}</h3>
-                        <p>{item.body}</p>
-                        {item.developer_reply && <div className="acceptedDeveloperReply"><strong>{locale === "zh" ? "开发者回复" : "Developer reply"}</strong><p>{item.developer_reply}</p></div>}
-                        {item.attachment && (
-                          <a
-                            className={`acceptedAttachment ${item.attachment.type.startsWith("video/") ? "isVideo" : "isImage"}`}
-                            href={item.attachment.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            tabIndex={accessible ? 0 : -1}
-                          >
-                            {item.attachment.type.startsWith("image/") ? (
-                              <img src={item.attachment.url} alt={accessible ? item.attachment.name : ""} />
-                            ) : (
-                              <><span aria-hidden="true">▶</span>{locale === "zh" ? "视频附件" : "Video attachment"}</>
-                            )}
-                          </a>
-                        )}
+                        <div className="acceptedCardContent">
+                          <p>{item.body}</p>
+                          {item.developer_reply && <div className="acceptedDeveloperReply"><strong>{locale === "zh" ? "开发者回复" : "Developer reply"}</strong><p>{item.developer_reply}</p></div>}
+                          {item.attachment && (
+                            <a
+                              className={`acceptedAttachment ${item.attachment.type.startsWith("video/") ? "isVideo" : "isImage"}`}
+                              href={item.attachment.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              tabIndex={accessible ? 0 : -1}
+                            >
+                              {item.attachment.type.startsWith("image/") ? (
+                                <img src={item.attachment.url} alt={accessible ? item.attachment.name : ""} />
+                              ) : (
+                                <><span aria-hidden="true">▶</span>{locale === "zh" ? "视频附件" : "Video attachment"}</>
+                              )}
+                            </a>
+                          )}
+                        </div>
                         <div className="acceptedMeta">
                           <span className="acceptedAuthor">@{item.nickname}</span>
                           <button
