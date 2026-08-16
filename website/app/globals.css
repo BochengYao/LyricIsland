@@ -5888,8 +5888,16 @@ button.danger,
     font-size: 11px;
   }
 
+  .acceptedMeta {
+    flex: 0 0 auto;
+    min-height: 56px;
+    padding: 0 60px 12px 0;
+  }
+
   .acceptedLikeButton {
-    position: relative;
+    position: absolute;
+    right: 20px;
+    bottom: 25px;
     flex: 0 0 auto;
     width: 52px;
     min-width: 52px;
@@ -5897,6 +5905,7 @@ button.danger,
     min-height: 44px;
     padding: 0;
     border: 0;
+    border-radius: 0;
     background: transparent;
     font-size: 10px;
   }
