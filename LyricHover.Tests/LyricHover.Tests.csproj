@@ -9,4 +9,12 @@
     <ProjectReference Include="..\LyricHover.Core\LyricHover.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="..\LyricHover.App\Modules\IslandRenderState.cs" Link="TaskbarLyrics\IslandRenderState.cs" />
+    <Compile Include="..\LyricHover.App\TaskbarLyrics\ITaskbarEnvironment.cs" Link="TaskbarLyrics\ITaskbarEnvironment.cs" />
+    <Compile Include="..\LyricHover.App\TaskbarLyrics\LyricsPresentationSnapshot.cs" Link="TaskbarLyrics\LyricsPresentationSnapshot.cs" />
+    <Compile Include="..\LyricHover.App\TaskbarLyrics\WidgetVisibilityLease.cs" Link="TaskbarLyrics\WidgetVisibilityLease.cs" />
+    <Compile Include="..\LyricHover.App\TaskbarLyrics\TaskbarLyricsController.cs" Link="TaskbarLyrics\TaskbarLyricsController.cs" />
+  </ItemGroup>
+
 </Project>

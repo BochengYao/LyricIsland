@@ -157,6 +157,7 @@ namespace LyricHover.App
             SingleLineRadioButton.IsChecked = !settings.UseMultiLineDisplay;
             MultiLineRadioButton.IsChecked = settings.UseMultiLineDisplay;
             ShowTranslationCheckBox.IsChecked = settings.ShowTranslation;
+            TaskbarLyricsEnabledCheckBox.IsChecked = settings.TaskbarLyricsEnabled;
             ScreenComboBox.SelectedValue = string.IsNullOrWhiteSpace(settings.ScreenName)
                 ? this.screens.FirstOrDefault()?.Name
                 : settings.ScreenName;
@@ -226,6 +227,13 @@ namespace LyricHover.App
             ApplyCurrentSettings();
         }
 
+        public void FocusTaskbarLyricsSettings()
+        {
+            ShowSection("Lyrics");
+            LyricsSectionButton.IsChecked = true;
+            TaskbarLyricsEnabledCheckBox.Focus();
+        }
+
         private void PlacementSettingsWindow_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape && tryExitTutorial?.Invoke() == true)
@@ -283,6 +291,7 @@ namespace LyricHover.App
                 SingleLineRadioButton,
                 MultiLineRadioButton,
                 ShowTranslationCheckBox,
+                TaskbarLyricsEnabledCheckBox,
                 PassThroughOnHoverCheckBox,
                 LightThemeRadioButton,
                 DarkThemeRadioButton,
@@ -561,6 +570,7 @@ namespace LyricHover.App
             settings.LockedSourceAppUserModelId = PlayerSelectionComboBox.SelectedValue as string ?? string.Empty;
             settings.UseMultiLineDisplay = ReadUseMultiLineDisplay();
             settings.ShowTranslation = ShowTranslationCheckBox.IsChecked == true;
+            settings.TaskbarLyricsEnabled = TaskbarLyricsEnabledCheckBox.IsChecked == true;
             settings.LyricOffsetHotkeys = new HotkeySettings
             {
                 Earlier = EarlierHotkeyTextBox.Text,

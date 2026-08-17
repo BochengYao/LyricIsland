@@ -12,6 +12,7 @@ using System.Windows.Interop;
 using System.Windows.Threading;
 using LyricHover.App.LayoutEditing;
 using LyricHover.App.Modules;
+using LyricHover.App.TaskbarLyrics;
 using LyricHover.Core;
 using LyricHover.App.Media;
 using LyricHover.Core.Layout;
@@ -39,6 +40,8 @@ namespace LyricHover.App
         private int lyricLoadGeneration;
         private readonly LyricsCache cache;
         private readonly OverlaySettingsStore settingsStore;
+        private readonly WindowsTaskbarEnvironment taskbarEnvironment;
+        private readonly TaskbarLyricsController taskbarLyricsController;
         private readonly ScreenCatalog screenCatalog = new ScreenCatalog();
         private ILyricsClient lyricsClient;
         private TimedLyrics currentLyrics = new TimedLyrics(new LyricLine[0]);
@@ -150,6 +153,17 @@ namespace LyricHover.App
                 Dispatcher.BeginInvoke(new Action(async () => await RefreshAsync()));
             settingsStore = new OverlaySettingsStore(settingsPath);
             placementSettings = settingsStore.Load();
+            taskbarEnvironment = new WindowsTaskbarEnvironment();
+            var taskbarLease = new WidgetVisibilityLease(
+                taskbarEnvironment,
+                System.IO.Path.Combine(productDataRoot, "taskbar-widgets-lease.txt"));
+            taskbarLyricsController = new TaskbarLyricsController(
+                taskbarEnvironment,
+                taskbarLease,
+                new TaskbarLyricsWindow());
+            taskbarLyricsController.SettingsRequested += (sender, args) =>
+                Dispatcher.BeginInvoke(new Action(() => OpenPlacementSettingsWindow(true)));
+            taskbarLyricsController.Start(placementSettings.TaskbarLyricsEnabled, placementSettings.ScreenName);
             shouldStartFirstRunTutorial = !settingsFileExisted;
             if (settingsFileExisted && !placementSettings.HasSeenTutorial)
             {
@@ -207,6 +221,8 @@ namespace LyricHover.App
                 tutorialCancellation?.Cancel();
                 CloseTutorialWindows();
                 hotkeyService?.Dispose();
+                taskbarLyricsController?.Dispose();
+                taskbarEnvironment?.Dispose();
                 mediaSessions.Dispose();
                 DisposeTrayIcon();
             };
@@ -220,9 +236,9 @@ namespace LyricHover.App
                 Icon = LoadTrayIcon(),
                 ContextMenuStrip = new Forms.ContextMenuStrip()
             };
-            trayIcon.ContextMenuStrip.Items.Add("偏好设置", null, (sender, args) => Dispatcher.BeginInvoke(new Action(OpenPlacementSettingsWindow)));
+            trayIcon.ContextMenuStrip.Items.Add("偏好设置", null, (sender, args) => Dispatcher.BeginInvoke(new Action(() => OpenPlacementSettingsWindow())));
             trayIcon.ContextMenuStrip.Items.Add("退出", null, (sender, args) => Dispatcher.BeginInvoke(new Action(() => System.Windows.Application.Current.Shutdown())));
-            trayIcon.DoubleClick += (sender, args) => Dispatcher.BeginInvoke(new Action(OpenPlacementSettingsWindow));
+            trayIcon.DoubleClick += (sender, args) => Dispatcher.BeginInvoke(new Action(() => OpenPlacementSettingsWindow()));
             trayIcon.Visible = true;
         }
 
@@ -1028,6 +1044,7 @@ namespace LyricHover.App
             selectedLyricsSource = placementSettings.LyricsSource;
             lyricsClient = CreateLyricsClient(selectedLyricsSource);
             settingsStore.Save(placementSettings);
+            taskbarLyricsController.Configure(placementSettings.TaskbarLyricsEnabled, placementSettings.ScreenName);
             RegisterGlobalHotkeys();
             UpdateIslandShape();
             if (currentTrack != null && previousSource != placementSettings.LyricsSource)
@@ -1451,17 +1468,20 @@ namespace LyricHover.App
         private void RenderCurrentModuleState()
         {
             var tutorialActive = tutorialFlow.IsActive;
-            ModuleHost.Update(new IslandRenderState
+            var snapshot = new LyricsPresentationSnapshot
             {
                 Session = currentSession,
                 PendingPlaybackStatus = playbackIntents.GetDesiredStatus(currentSession?.SessionId),
-                PrimaryLyric = tutorialActive ? tutorialPrimaryText : currentPrimaryText,
-                SecondaryLyric = tutorialActive ? tutorialSecondaryText : currentSecondaryText,
-                PrimaryAccent = tutorialActive ? tutorialAccentText : string.Empty,
+                PrimaryText = tutorialActive ? tutorialPrimaryText : currentPrimaryText,
+                SecondaryText = tutorialActive ? tutorialSecondaryText : currentSecondaryText,
+                AccentText = tutorialActive ? tutorialAccentText : string.Empty,
                 TimelineReliability = currentTimelineReliability,
                 EffectivePosition = currentEffectivePosition,
-                LineDuration = currentLineDuration
-            });
+                LineDuration = currentLineDuration,
+                IsWaitingForPlayback = currentSession == null
+            };
+            ModuleHost.Update(snapshot.ToIslandRenderState());
+            taskbarLyricsController?.Present(snapshot);
         }
 
         private Task PreviousRequested()
@@ -1665,13 +1685,14 @@ namespace LyricHover.App
             _ = LoadLyricsAsync(currentTrack, forceRefresh, ++lyricLoadGeneration);
         }
 
-        private void OpenPlacementSettingsWindow()
+        private void OpenPlacementSettingsWindow(bool focusTaskbarLyrics = false)
         {
             if (settingsWindow != null)
             {
                 SetSettingsWindowHoverSuppressed(true);
                 ShowIsland();
                 settingsWindow.Activate();
+                if (focusTaskbarLyrics) settingsWindow.FocusTaskbarLyricsSettings();
                 return;
             }
 
@@ -1703,6 +1724,7 @@ namespace LyricHover.App
             SetSettingsWindowHoverSuppressed(true);
             ShowIsland();
             settingsWindow.Show();
+            if (focusTaskbarLyrics) settingsWindow.FocusTaskbarLyricsSettings();
             OnTutorialSettingsOpened();
             BringTutorialSurfacesForward();
         }

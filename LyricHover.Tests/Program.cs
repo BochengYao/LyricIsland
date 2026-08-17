@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using LyricHover.Core;
 using LyricHover.Core.Layout;
 using LyricHover.Core.Media;
+using LyricHover.App.TaskbarLyrics;
 
 namespace LyricHover.Tests
 {
@@ -80,6 +81,11 @@ namespace LyricHover.Tests
             suite.Run("tracks normalized settings dirty state", TracksNormalizedSettingsDirtyState);
             suite.Run("layout draft snapshots are isolated", LayoutDraftSnapshotsAreIsolated);
             suite.Run("settings store backs up corrupt JSON", SettingsStoreBacksUpCorruptJson);
+            suite.Run("taskbar Widgets lease restores absent, disabled, and enabled states", TaskbarWidgetsLeaseRestoresOriginalStates);
+            suite.Run("taskbar Widgets lease rolls back after refresh failure", TaskbarWidgetsLeaseRollsBackAfterRefreshFailure);
+            suite.Run("taskbar controller shares a snapshot and honors width limits", TaskbarControllerSharesSnapshotAndHonorsWidthLimits);
+            suite.Run("taskbar settings schema defaults to disabled", TaskbarSettingsSchemaDefaultsToDisabled);
+            suite.Run("taskbar setting remains disabled when loading legacy settings", TaskbarSettingIsCompatibleWithLegacySettings);
             suite.Run("builds island geometry for measured module size", BuildsIslandGeometryForMeasuredModuleSize);
             suite.Run("module host exposes all v2 module views", ModuleHostExposesAllV2ModuleViews);
             suite.Run("track info shows title and artist without album", TrackInfoShowsTitleAndArtistWithoutAlbum);
@@ -3697,6 +3703,68 @@ namespace LyricHover.Tests
             Assert.True(method.Contains("JsonSerializer.Serialize"));
         }
 
+        static void TaskbarWidgetsLeaseRestoresOriginalStates()
+        {
+            foreach (var initial in new[] { TaskbarDaValueState.Absent, TaskbarDaValueState.Disabled, TaskbarDaValueState.Enabled })
+            {
+                var environment = new FakeTaskbarEnvironment { TaskbarDa = initial };
+                var recoveryPath = Path.Combine(Path.GetTempPath(), "lyrichover-taskbar-" + Guid.NewGuid() + ".txt");
+                var lease = new WidgetVisibilityLease(environment, recoveryPath);
+                Assert.True(lease.TryAcquire());
+                Assert.Equal(TaskbarDaValueState.Disabled, environment.TaskbarDa);
+                Assert.True(lease.TryRestore());
+                Assert.Equal(initial, environment.TaskbarDa);
+                Assert.False(File.Exists(recoveryPath));
+            }
+        }
+
+        static void TaskbarWidgetsLeaseRollsBackAfterRefreshFailure()
+        {
+            var environment = new FakeTaskbarEnvironment { TaskbarDa = TaskbarDaValueState.Enabled, FailNextRefresh = true };
+            var recoveryPath = Path.Combine(Path.GetTempPath(), "lyrichover-taskbar-" + Guid.NewGuid() + ".txt");
+            var lease = new WidgetVisibilityLease(environment, recoveryPath);
+            Assert.False(lease.TryAcquire());
+            Assert.Equal(TaskbarDaValueState.Enabled, environment.TaskbarDa);
+            Assert.False(File.Exists(recoveryPath));
+        }
+
+        static void TaskbarControllerSharesSnapshotAndHonorsWidthLimits()
+        {
+            var environment = new FakeTaskbarEnvironment
+            {
+                TaskbarDa = TaskbarDaValueState.Enabled,
+                Placement = new TaskbarLyricsPlacement { IsVisible = true, Width = 640, Height = 48, DpiScale = 1.5 }
+            };
+            var recoveryPath = Path.Combine(Path.GetTempPath(), "lyrichover-taskbar-" + Guid.NewGuid() + ".txt");
+            var surface = new FakeTaskbarSurface();
+            using var controller = new TaskbarLyricsController(environment, new WidgetVisibilityLease(environment, recoveryPath), surface);
+            Assert.True(controller.Start(true, "DISPLAY1"));
+            var snapshot = new LyricsPresentationSnapshot { PrimaryText = "primary", SecondaryText = "secondary", LineDuration = TimeSpan.FromSeconds(5) };
+            controller.Present(snapshot);
+            Assert.True(surface.IsVisible);
+            Assert.Equal(360.0, surface.LastWidth);
+            Assert.True(object.ReferenceEquals(snapshot, surface.LastSnapshot));
+            Assert.Equal("primary", surface.LastSnapshot.ToIslandRenderState().PrimaryLyric);
+        }
+
+        static void TaskbarSettingsSchemaDefaultsToDisabled()
+        {
+            var source = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "OverlayPlacementSettings.cs"));
+            Assert.True(source.Contains("SchemaVersion { get; set; } = 3"));
+            Assert.True(source.Contains("TaskbarLyricsEnabled { get; set; }"));
+            var settingsView = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "PlacementSettingsWindow.xaml"));
+            Assert.True(settingsView.Contains("TaskbarLyricsEnabledCheckBox"));
+        }
+
+        static void TaskbarSettingIsCompatibleWithLegacySettings()
+        {
+            var source = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "OverlayPlacementSettings.cs"));
+            Assert.True(source.Contains("public bool TaskbarLyricsEnabled { get; set; }"));
+            Assert.True(source.Contains("SchemaVersion = 3"));
+            Assert.True(source.Contains("originalSchemaVersion"));
+            Assert.False(source.Contains("TaskbarLyricsEnabled { get; set; } = true"));
+        }
+
         static string GetSolutionRoot()
         {
             var directory = new DirectoryInfo(AppContext.BaseDirectory);
@@ -3731,6 +3799,47 @@ namespace LyricHover.Tests
     {
         public TimeSpan Elapsed { get; private set; }
         public void Advance(TimeSpan value) { Elapsed += value; }
+    }
+
+    sealed class FakeTaskbarEnvironment : ITaskbarEnvironment
+    {
+        public bool IsWindows11 { get; set; } = true;
+        public TaskbarDaValueState TaskbarDa { get; set; }
+        public bool FailNextRefresh { get; set; }
+        public TaskbarLyricsPlacement Placement { get; set; } = new TaskbarLyricsPlacement
+        {
+            IsVisible = true,
+            Width = 300,
+            Height = 48,
+            DpiScale = 1
+        };
+
+        public event EventHandler Changed;
+        public bool TryGetPlacement(string screenName, out TaskbarLyricsPlacement placement) { placement = Placement; return placement != null; }
+        public bool TryReadTaskbarDa(out TaskbarDaValueState state) { state = TaskbarDa; return true; }
+        public bool TryWriteTaskbarDa(TaskbarDaValueState state) { TaskbarDa = state; return true; }
+        public bool TryRefreshTaskbar()
+        {
+            if (!FailNextRefresh) return true;
+            FailNextRefresh = false;
+            return false;
+        }
+
+        public void RaiseChanged() { Changed?.Invoke(this, EventArgs.Empty); }
+    }
+
+    sealed class FakeTaskbarSurface : ITaskbarLyricsSurface
+    {
+        public event EventHandler SettingsRequested;
+        public bool IsVisible { get; private set; }
+        public LyricsPresentationSnapshot LastSnapshot { get; private set; }
+        public double LastWidth { get; private set; }
+        public TaskbarLyricsPlacement LastPlacement { get; private set; }
+        public void Show() { IsVisible = true; }
+        public void Hide() { IsVisible = false; }
+        public void Present(LyricsPresentationSnapshot snapshot) { LastSnapshot = snapshot; }
+        public void Place(TaskbarLyricsPlacement placement, double width) { LastPlacement = placement; LastWidth = width; }
+        public void RaiseSettingsRequested() { SettingsRequested?.Invoke(this, EventArgs.Empty); }
     }
 
     sealed class FakeLyricsClient : ILyricsClient

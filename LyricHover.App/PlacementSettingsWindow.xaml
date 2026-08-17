@@ -863,6 +863,7 @@
                                  <RowDefinition Height="Auto" />
                                  <RowDefinition Height="Auto" />
                                  <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
                              </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="112" />
@@ -960,6 +961,23 @@
                                       Checked="ShowTranslationCheckBox_Changed"
                                       Unchecked="ShowTranslationCheckBox_Changed"
                                       Content="显示歌词库里的中文翻译" />
+
+                            <TextBlock Grid.Row="4"
+                                       Grid.Column="0"
+                                       Margin="0,16,16,0"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="任务栏歌词" />
+                            <StackPanel Grid.Row="4"
+                                        Grid.Column="1"
+                                        Margin="0,16,0,0">
+                                <CheckBox x:Name="TaskbarLyricsEnabledCheckBox"
+                                          Content="在 Windows 11 任务栏显示歌词" />
+                                <TextBlock Margin="24,5,0,0"
+                                           Foreground="{DynamicResource SettingsSecondaryForegroundBrush}"
+                                           FontSize="12"
+                                           TextWrapping="Wrap"
+                                           Text="首次开启会暂时隐藏系统小组件；仅在所选屏幕具备安全空间时显示，可随时关闭并自动恢复。" />
+                            </StackPanel>
                         </Grid>
 
                         <Grid x:Name="PositionSettingsPanel"

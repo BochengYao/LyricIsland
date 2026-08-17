@@ -32,7 +32,7 @@ namespace LyricHover.App
         public const int MinNoPlaybackAutoRetractSeconds = 0;
         public const int MaxAutoRetractSeconds = 300;
 
-        public int SchemaVersion { get; set; } = 2;
+        public int SchemaVersion { get; set; } = 3;
 
         public IslandLayoutSettings IslandLayouts { get; set; } = IslandLayoutDefaults.Create();
 
@@ -63,6 +63,8 @@ namespace LyricHover.App
         public bool UseMultiLineDisplay { get; set; } = true;
 
         public bool ShowTranslation { get; set; } = true;
+
+        public bool TaskbarLyricsEnabled { get; set; }
 
         public HotkeySettings LyricOffsetHotkeys { get; set; } = HotkeySettings.CreateDefault();
 
@@ -109,7 +111,7 @@ namespace LyricHover.App
             ExpandedAutoCollapseSeconds = Math.Max(
                 MinAutoRetractSeconds,
                 Math.Min(MaxAutoRetractSeconds, ExpandedAutoCollapseSeconds));
-            SchemaVersion = 2;
+            SchemaVersion = 3;
             OffsetRatio = Math.Max(0, Math.Min(1, OffsetRatio));
             CacheLimitMegabytes = Math.Max(MinCacheLimitMegabytes, Math.Min(MaxCacheLimitMegabytes, CacheLimitMegabytes));
             HoverAuraSize = Math.Max(MinHoverAuraSize, Math.Min(MaxHoverAuraSize, HoverAuraSize));
@@ -198,6 +200,7 @@ namespace LyricHover.App
                 }
 
                 var settings = JsonSerializer.Deserialize<OverlayPlacementSettings>(File.ReadAllText(path)) ?? new OverlayPlacementSettings();
+                var originalSchemaVersion = settings.SchemaVersion;
                 var originalEdge = settings.Edge;
                 var originalOffset = settings.OffsetRatio;
                 var originalCacheLimit = settings.CacheLimitMegabytes;
@@ -211,8 +214,10 @@ namespace LyricHover.App
                 var originalLyricsSource = settings.LyricsSource;
                 var originalUseMultiLineDisplay = settings.UseMultiLineDisplay;
                 var originalShowTranslation = settings.ShowTranslation;
+                var originalTaskbarLyricsEnabled = settings.TaskbarLyricsEnabled;
                 settings.Normalize();
-                if (settings.Edge != originalEdge ||
+                if (settings.SchemaVersion != originalSchemaVersion ||
+                    settings.Edge != originalEdge ||
                     Math.Abs(settings.OffsetRatio - originalOffset) > 0.0001 ||
                     settings.CacheLimitMegabytes != originalCacheLimit ||
                     settings.HoverAuraSize != originalHoverAuraSize ||
@@ -224,7 +229,8 @@ namespace LyricHover.App
                     settings.SettingsTheme != originalSettingsTheme ||
                     settings.LyricsSource != originalLyricsSource ||
                     settings.UseMultiLineDisplay != originalUseMultiLineDisplay ||
-                    settings.ShowTranslation != originalShowTranslation)
+                    settings.ShowTranslation != originalShowTranslation ||
+                    settings.TaskbarLyricsEnabled != originalTaskbarLyricsEnabled)
                 {
                     Save(settings);
                 }
