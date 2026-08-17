@@ -22,6 +22,7 @@ namespace LyricHover.App.TaskbarLyrics
         private bool enabled;
         private bool requestedEnabled;
         private string screenName;
+        private TaskbarLyricsAlignment alignment;
         private LyricsPresentationSnapshot snapshot = new LyricsPresentationSnapshot { IsWaitingForPlayback = true };
 
         public TaskbarLyricsController(ITaskbarEnvironment environment, WidgetVisibilityLease widgetLease, ITaskbarLyricsSurface surface)
@@ -34,20 +35,27 @@ namespace LyricHover.App.TaskbarLyrics
         }
 
         public event EventHandler SettingsRequested;
+        public event EventHandler<TaskbarLyricsFailureReason> FeatureDisabled;
         public bool IsEnabled => enabled;
+        public TaskbarLyricsFailureReason LastFailureReason { get; private set; }
 
         // An old crash may have left Widgets suppressed.  This must occur before the persisted setting is honored.
-        public bool Start(bool requestedEnabled, string requestedScreenName)
+        public bool Start(bool requestedEnabled, string requestedScreenName, TaskbarLyricsAlignment requestedAlignment)
         {
-            if (!widgetLease.RestoreResidualLease()) return false;
-            Configure(requestedEnabled, requestedScreenName);
-            return !requestedEnabled || enabled;
+            if (!widgetLease.RestoreResidualLease())
+            {
+                LastFailureReason = TaskbarLyricsFailureReason.RegistryOrRefreshFailed;
+                return false;
+            }
+            return Configure(requestedEnabled, requestedScreenName, requestedAlignment);
         }
 
-        public bool Configure(bool requestedEnabled, string requestedScreenName)
+        public bool Configure(bool requestedEnabled, string requestedScreenName, TaskbarLyricsAlignment requestedAlignment)
         {
             this.requestedEnabled = requestedEnabled;
             screenName = requestedScreenName ?? string.Empty;
+            alignment = requestedAlignment;
+            LastFailureReason = TaskbarLyricsFailureReason.None;
             if (!requestedEnabled)
             {
                 enabled = false;
@@ -55,49 +63,48 @@ namespace LyricHover.App.TaskbarLyrics
                 return true;
             }
 
-            if (!environment.IsWindows11 ||
-                !environment.TryGetPlacement(screenName, out var initialPlacement) ||
-                initialPlacement == null || !initialPlacement.IsVisible || initialPlacement.IsFullscreenCovered ||
-                initialPlacement.Width < MinimumWidth || initialPlacement.Height <= 0 || initialPlacement.DpiScale <= 0 ||
-                !widgetLease.TryAcquire())
+            if (!environment.IsWindows11)
             {
-                enabled = false;
-                HideAndRestore();
+                Disable(TaskbarLyricsFailureReason.Windows11Required);
+                return false;
+            }
+            if (!environment.TryGetPlacement(screenName, alignment, out var initialPlacement, out var reason) || !CanUse(initialPlacement))
+            {
+                Disable(reason == TaskbarLyricsFailureReason.None ? TaskbarLyricsFailureReason.TaskbarNotFound : reason);
+                return false;
+            }
+            if (!widgetLease.TryAcquire())
+            {
+                Disable(TaskbarLyricsFailureReason.RegistryOrRefreshFailed);
                 return false;
             }
 
             enabled = true;
-            Present(snapshot);
-            return enabled;
+            Show(initialPlacement);
+            return true;
         }
 
         public void Present(LyricsPresentationSnapshot value)
         {
             snapshot = value ?? new LyricsPresentationSnapshot { IsWaitingForPlayback = true };
+            if (snapshot.IsWaitingForPlayback && string.IsNullOrWhiteSpace(snapshot.PrimaryText)) snapshot.PrimaryText = "等待播放";
             RefreshPlacement();
         }
 
         public void RefreshPlacement()
         {
             if (!enabled) return;
-            if (!environment.TryGetPlacement(screenName, out var placement) || placement == null || !placement.IsVisible || placement.IsFullscreenCovered)
+            if (!environment.TryGetPlacement(screenName, alignment, out var placement, out var reason) || !CanUse(placement))
             {
-                surface.Hide();
+                if (reason == TaskbarLyricsFailureReason.TaskbarAutoHiddenOrFullscreen)
+                {
+                    surface.Hide();
+                    return;
+                }
+                Disable(reason == TaskbarLyricsFailureReason.None ? TaskbarLyricsFailureReason.TaskbarChanged : reason);
                 return;
             }
-
-            var width = Math.Min(MaximumWidth, placement.Width);
-            if (width < MinimumWidth || placement.Height <= 0 || placement.DpiScale <= 0)
-            {
-                // Fail closed: do not draw in an uncertain taskbar region.  Keep the lease until the
-                // user explicitly disables the feature or the process exits, so an environment change can recover.
-                surface.Hide();
-                return;
-            }
-
-            surface.Place(placement, width);
-            surface.Present(snapshot);
-            if (!surface.IsVisible) surface.Show();
+            Show(placement);
         }
 
         public void Dispose()
@@ -109,8 +116,22 @@ namespace LyricHover.App.TaskbarLyrics
 
         private void EnvironmentChanged(object sender, EventArgs args)
         {
-            if (!enabled && requestedEnabled) Configure(true, screenName);
-            else RefreshPlacement();
+            RefreshPlacement();
+        }
+        private bool CanUse(TaskbarLyricsPlacement placement) => placement != null && placement.IsVisible && !placement.IsFullscreenCovered && placement.Width >= MinimumWidth && placement.Height > 0 && placement.DpiScale > 0;
+        private void Show(TaskbarLyricsPlacement placement)
+        {
+            surface.Place(placement, Math.Min(MaximumWidth, placement.Width));
+            surface.Present(snapshot);
+            if (!surface.IsVisible) surface.Show();
+        }
+        private void Disable(TaskbarLyricsFailureReason reason)
+        {
+            LastFailureReason = reason;
+            enabled = false;
+            requestedEnabled = false;
+            HideAndRestore();
+            FeatureDisabled?.Invoke(this, reason);
         }
         private void HideAndRestore()
         {

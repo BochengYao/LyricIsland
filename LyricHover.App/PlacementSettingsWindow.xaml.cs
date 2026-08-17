@@ -19,6 +19,7 @@ using Microsoft.Win32;
 using Windows.Services.Store;
 using LyricHover.App.LayoutEditing;
 using LyricHover.App.Media;
+using LyricHover.App.TaskbarLyrics;
 using LyricHover.Core;
 using LyricHover.Core.Layout;
 using LyricHover.Core.Media;
@@ -48,6 +49,7 @@ namespace LyricHover.App
         private SettingsDirtyStateTracker<OverlayPlacementSettings> dirtyStateTracker;
         private SettingsThemePreference selectedThemePreference = SettingsThemePreference.System;
         private bool initializingSettings = true;
+        private bool suppressTaskbarLyricsConfirmation;
         private bool settingsDirty;
         private bool dirtyStateUpdateQueued;
         private bool layoutEditingActive;
@@ -158,6 +160,7 @@ namespace LyricHover.App
             MultiLineRadioButton.IsChecked = settings.UseMultiLineDisplay;
             ShowTranslationCheckBox.IsChecked = settings.ShowTranslation;
             TaskbarLyricsEnabledCheckBox.IsChecked = settings.TaskbarLyricsEnabled;
+            TaskbarLyricsAlignmentComboBox.SelectedIndex = settings.TaskbarLyricsAlignment == TaskbarLyricsAlignment.Left ? 1 : 0;
             ScreenComboBox.SelectedValue = string.IsNullOrWhiteSpace(settings.ScreenName)
                 ? this.screens.FirstOrDefault()?.Name
                 : settings.ScreenName;
@@ -249,6 +252,7 @@ namespace LyricHover.App
                 LyricsSourceComboBox,
                 ScreenComboBox,
                 PlayerSelectionComboBox
+                ,TaskbarLyricsAlignmentComboBox
             })
             {
                 selector.SelectionChanged += SettingsSelector_SelectionChanged;
@@ -571,6 +575,7 @@ namespace LyricHover.App
             settings.UseMultiLineDisplay = ReadUseMultiLineDisplay();
             settings.ShowTranslation = ShowTranslationCheckBox.IsChecked == true;
             settings.TaskbarLyricsEnabled = TaskbarLyricsEnabledCheckBox.IsChecked == true;
+            settings.TaskbarLyricsAlignment = TaskbarLyricsAlignmentComboBox.SelectedIndex == 1 ? TaskbarLyricsAlignment.Left : TaskbarLyricsAlignment.Center;
             settings.LyricOffsetHotkeys = new HotkeySettings
             {
                 Earlier = EarlierHotkeyTextBox.Text,
@@ -1068,6 +1073,29 @@ namespace LyricHover.App
                 updateDividerSettings?.Invoke(mode, DividerOpacitySlider.Value, DividerSpacingSlider.Value);
             }
             UpdateSettingValueLabels();
+        }
+
+        private void TaskbarLyricsEnabledCheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            if (initializingSettings || suppressTaskbarLyricsConfirmation || workingSettings?.TaskbarLyricsEnabled == true)
+            {
+                return;
+            }
+
+            var answer = MessageBox.Show(
+                "任务栏歌词会临时隐藏当前用户的 Windows Widgets（小组件），这是全局任务栏设置。关闭任务栏歌词、正常退出或下次启动恢复时会还原原状态。是否继续？",
+                "确认开启任务栏歌词",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning,
+                MessageBoxResult.No);
+            if (answer == MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            suppressTaskbarLyricsConfirmation = true;
+            TaskbarLyricsEnabledCheckBox.IsChecked = false;
+            suppressTaskbarLyricsConfirmation = false;
         }
 
         private void ShowTranslationCheckBox_Changed(object sender, RoutedEventArgs e)

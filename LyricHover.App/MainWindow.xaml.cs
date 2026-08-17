@@ -163,7 +163,9 @@ namespace LyricHover.App
                 new TaskbarLyricsWindow());
             taskbarLyricsController.SettingsRequested += (sender, args) =>
                 Dispatcher.BeginInvoke(new Action(() => OpenPlacementSettingsWindow(true)));
-            taskbarLyricsController.Start(placementSettings.TaskbarLyricsEnabled, placementSettings.ScreenName);
+            taskbarLyricsController.FeatureDisabled += (sender, reason) =>
+                Dispatcher.BeginInvoke(new Action(() => DisableTaskbarLyrics(reason)));
+            taskbarLyricsController.Start(placementSettings.TaskbarLyricsEnabled, placementSettings.ScreenName, placementSettings.TaskbarLyricsAlignment);
             shouldStartFirstRunTutorial = !settingsFileExisted;
             if (settingsFileExisted && !placementSettings.HasSeenTutorial)
             {
@@ -1043,8 +1045,14 @@ namespace LyricHover.App
             cache.SetMaxBytes(GetCacheLimitBytes(placementSettings));
             selectedLyricsSource = placementSettings.LyricsSource;
             lyricsClient = CreateLyricsClient(selectedLyricsSource);
+            var taskbarWasRequested = placementSettings.TaskbarLyricsEnabled;
+            if (!taskbarLyricsController.Configure(placementSettings.TaskbarLyricsEnabled, placementSettings.ScreenName, placementSettings.TaskbarLyricsAlignment) && taskbarWasRequested)
+            {
+                placementSettings.TaskbarLyricsEnabled = false;
+                settings.TaskbarLyricsEnabled = false;
+                ShowTaskbarLyricsFailure(taskbarLyricsController.LastFailureReason);
+            }
             settingsStore.Save(placementSettings);
-            taskbarLyricsController.Configure(placementSettings.TaskbarLyricsEnabled, placementSettings.ScreenName);
             RegisterGlobalHotkeys();
             UpdateIslandShape();
             if (currentTrack != null && previousSource != placementSettings.LyricsSource)
@@ -1468,20 +1476,27 @@ namespace LyricHover.App
         private void RenderCurrentModuleState()
         {
             var tutorialActive = tutorialFlow.IsActive;
-            var snapshot = new LyricsPresentationSnapshot
+            var taskbarSnapshot = new LyricsPresentationSnapshot
             {
                 Session = currentSession,
                 PendingPlaybackStatus = playbackIntents.GetDesiredStatus(currentSession?.SessionId),
-                PrimaryText = tutorialActive ? tutorialPrimaryText : currentPrimaryText,
-                SecondaryText = tutorialActive ? tutorialSecondaryText : currentSecondaryText,
-                AccentText = tutorialActive ? tutorialAccentText : string.Empty,
+                PrimaryText = currentPrimaryText,
+                SecondaryText = currentSecondaryText,
+                AccentText = string.Empty,
                 TimelineReliability = currentTimelineReliability,
                 EffectivePosition = currentEffectivePosition,
                 LineDuration = currentLineDuration,
                 IsWaitingForPlayback = currentSession == null
             };
-            ModuleHost.Update(snapshot.ToIslandRenderState());
-            taskbarLyricsController?.Present(snapshot);
+            var islandState = taskbarSnapshot.ToIslandRenderState();
+            if (tutorialActive)
+            {
+                islandState.PrimaryLyric = tutorialPrimaryText;
+                islandState.SecondaryLyric = tutorialSecondaryText;
+                islandState.PrimaryAccent = tutorialAccentText;
+            }
+            ModuleHost.Update(islandState);
+            taskbarLyricsController?.Present(taskbarSnapshot);
         }
 
         private Task PreviousRequested()
@@ -1683,6 +1698,32 @@ namespace LyricHover.App
             SetIslandText(FormatTrack(currentTrack), "正在搜索同步歌词...");
             ShowIsland();
             _ = LoadLyricsAsync(currentTrack, forceRefresh, ++lyricLoadGeneration);
+        }
+
+        private void DisableTaskbarLyrics(TaskbarLyricsFailureReason reason)
+        {
+            if (!placementSettings.TaskbarLyricsEnabled)
+            {
+                return;
+            }
+
+            placementSettings.TaskbarLyricsEnabled = false;
+            settingsStore.Save(placementSettings);
+            ShowTaskbarLyricsFailure(reason);
+        }
+
+        private static void ShowTaskbarLyricsFailure(TaskbarLyricsFailureReason reason)
+        {
+            var message = reason switch
+            {
+                TaskbarLyricsFailureReason.Windows11Required => "任务栏歌词仅支持 Windows 11，已保持关闭。",
+                TaskbarLyricsFailureReason.WidgetsNotFound => "未能可靠找到所选屏幕的 Windows Widgets 按钮，已关闭任务栏歌词并恢复 Widgets。",
+                TaskbarLyricsFailureReason.InsufficientSafeSpace => "所选任务栏没有至少 220 px 的连续安全空间，已关闭任务栏歌词并恢复 Widgets。",
+                TaskbarLyricsFailureReason.RegistryOrRefreshFailed => "Windows Widgets 设置未能写入或验证生效，已关闭任务栏歌词并尝试恢复原状态。",
+                TaskbarLyricsFailureReason.TaskbarNotFound => "未找到所选屏幕的任务栏，已关闭任务栏歌词并恢复 Widgets。",
+                _ => "任务栏环境已改变且无法安全恢复，已关闭任务栏歌词并恢复 Widgets。"
+            };
+            MessageBox.Show(message, "任务栏歌词已关闭", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void OpenPlacementSettingsWindow(bool focusTaskbarLyrics = false)

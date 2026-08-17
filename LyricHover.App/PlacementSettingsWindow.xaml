@@ -971,7 +971,15 @@
                                         Grid.Column="1"
                                         Margin="0,16,0,0">
                                 <CheckBox x:Name="TaskbarLyricsEnabledCheckBox"
+                                          Checked="TaskbarLyricsEnabledCheckBox_Checked"
                                           Content="在 Windows 11 任务栏显示歌词" />
+                                <StackPanel Margin="24,7,0,0" Orientation="Horizontal">
+                                    <TextBlock VerticalAlignment="Center" Margin="0,0,10,0" Text="对齐" />
+                                    <ComboBox x:Name="TaskbarLyricsAlignmentComboBox" Width="116" SelectedIndex="0">
+                                        <ComboBoxItem Content="居中" />
+                                        <ComboBoxItem Content="左对齐" />
+                                    </ComboBox>
+                                </StackPanel>
                                 <TextBlock Margin="24,5,0,0"
                                            Foreground="{DynamicResource SettingsSecondaryForegroundBrush}"
                                            FontSize="12"

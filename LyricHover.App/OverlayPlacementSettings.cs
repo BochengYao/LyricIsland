@@ -5,6 +5,7 @@ using System.IO;
 using System.Text.Json;
 using LyricHover.Core;
 using LyricHover.Core.Layout;
+using LyricHover.App.TaskbarLyrics;
 
 namespace LyricHover.App
 {
@@ -65,6 +66,8 @@ namespace LyricHover.App
         public bool ShowTranslation { get; set; } = true;
 
         public bool TaskbarLyricsEnabled { get; set; }
+
+        public TaskbarLyricsAlignment TaskbarLyricsAlignment { get; set; } = global::LyricHover.App.TaskbarLyrics.TaskbarLyricsAlignment.Center;
 
         public HotkeySettings LyricOffsetHotkeys { get; set; } = HotkeySettings.CreateDefault();
 
@@ -127,6 +130,11 @@ namespace LyricHover.App
             if (!Enum.IsDefined(typeof(SettingsThemePreference), SettingsTheme))
             {
                 SettingsTheme = SettingsThemePreference.System;
+            }
+
+            if (!Enum.IsDefined(typeof(TaskbarLyricsAlignment), TaskbarLyricsAlignment))
+            {
+                TaskbarLyricsAlignment = global::LyricHover.App.TaskbarLyrics.TaskbarLyricsAlignment.Center;
             }
 
             if (ShowTranslation)
@@ -215,6 +223,7 @@ namespace LyricHover.App
                 var originalUseMultiLineDisplay = settings.UseMultiLineDisplay;
                 var originalShowTranslation = settings.ShowTranslation;
                 var originalTaskbarLyricsEnabled = settings.TaskbarLyricsEnabled;
+                var originalTaskbarLyricsAlignment = settings.TaskbarLyricsAlignment;
                 settings.Normalize();
                 if (settings.SchemaVersion != originalSchemaVersion ||
                     settings.Edge != originalEdge ||
@@ -230,7 +239,8 @@ namespace LyricHover.App
                     settings.LyricsSource != originalLyricsSource ||
                     settings.UseMultiLineDisplay != originalUseMultiLineDisplay ||
                     settings.ShowTranslation != originalShowTranslation ||
-                    settings.TaskbarLyricsEnabled != originalTaskbarLyricsEnabled)
+                    settings.TaskbarLyricsEnabled != originalTaskbarLyricsEnabled ||
+                    settings.TaskbarLyricsAlignment != originalTaskbarLyricsAlignment)
                 {
                     Save(settings);
                 }

@@ -15,6 +15,7 @@
     <Compile Include="..\LyricHover.App\TaskbarLyrics\LyricsPresentationSnapshot.cs" Link="TaskbarLyrics\LyricsPresentationSnapshot.cs" />
     <Compile Include="..\LyricHover.App\TaskbarLyrics\WidgetVisibilityLease.cs" Link="TaskbarLyrics\WidgetVisibilityLease.cs" />
     <Compile Include="..\LyricHover.App\TaskbarLyrics\TaskbarLyricsController.cs" Link="TaskbarLyrics\TaskbarLyricsController.cs" />
+    <Compile Include="..\LyricHover.App\TaskbarLyrics\TaskbarSafeSlotCalculator.cs" Link="TaskbarLyrics\TaskbarSafeSlotCalculator.cs" />
   </ItemGroup>
 
 </Project>
