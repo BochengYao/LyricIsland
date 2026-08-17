@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -103,7 +104,9 @@ namespace LyricHover.Tests
             suite.Run("Pro entitlement presents all three support page states", ProEntitlementPresentsAllThreeSupportPageStates);
             suite.Run("support developer page exposes Pro and free support actions", SupportDeveloperPageExposesProAndFreeSupportActions);
             suite.Run("formats the public Beta version", FormatsThePublicBetaVersion);
-            suite.Run("release version has one source and auto increments", ReleaseVersionHasOneSourceAndAutoIncrements);
+            suite.Run("release version has one source and controlled candidate generation", ReleaseVersionHasOneSourceAndAutoIncrements);
+            suite.Run("release version mutation is transactional and serialized", ReleaseVersionMutationIsTransactionalAndSerialized);
+            suite.Run("about file and MSIX versions share the V3 four segment mapping", AboutFileAndMsixVersionsShareTheV3FourSegmentMapping);
             suite.Run("store package reuses the reserved product identity", StorePackageReusesReservedProductIdentity);
             suite.Run("tutorial waits for required user actions", TutorialWaitsForRequiredUserActions);
             suite.Run("tutorial rejects control click without temporary interaction", TutorialRejectsControlClickWithoutTemporaryInteraction);
@@ -1978,14 +1981,211 @@ namespace LyricHover.Tests
                 props,
                 "<VersionPrefix>\\d+\\.\\d+\\.\\d+</VersionPrefix>");
             Assert.True(versionMatch.Success);
+            Assert.True(props.Contains("<VersionPrefix>3.0.0</VersionPrefix>"));
             Assert.True(props.Contains("<VersionSuffix>Beta</VersionSuffix>"));
+            Assert.True(props.Contains("<AssemblyVersion>$(VersionPrefix).0</AssemblyVersion>"));
+            Assert.True(props.Contains("<FileVersion>$(VersionPrefix).0</FileVersion>"));
             Assert.False(appProject.Contains("<Version>"));
             Assert.False(appProject.Contains("<FileVersion>"));
             Assert.True(publishScript.Contains("$nextPatch = $currentPatch + 1"));
+            Assert.True(publishScript.Contains("LyricsIsland.PublishNextVersion"));
+            Assert.True(publishScript.Contains("$mutex.WaitOne(0)"));
+            Assert.True(publishScript.Contains("-KeepVersion 只能复现已有候选"));
             Assert.True(publishScript.Contains("dotnet run"));
             Assert.True(publishScript.Contains("dotnet publish"));
             Assert.True(publishScript.Contains("WaitForExit"));
             Assert.True(publishScript.Contains("Move-DirectoryWithRetry"));
+        }
+
+        static void ReleaseVersionMutationIsTransactionalAndSerialized()
+        {
+            var root = GetSolutionRoot();
+            var fixtureRoot = Path.Combine(Path.GetTempPath(), "LyricHover.PublishVersion." + Guid.NewGuid().ToString("N"));
+
+            try
+            {
+                var fixture = CreatePublishVersionFixture(root, fixtureRoot);
+                RestorePublishVersionFixture(fixture.Root);
+
+                Assert.Equal(0, RunPublishVersionTest(fixture.ScriptPath, "-NoLaunch"));
+                Assert.Equal("3.0.1", ReadVersionPrefix(fixture.PropsPath));
+                Assert.Equal("3.0.1.0", FileVersionInfo.GetVersionInfo(
+                    Path.Combine(fixture.Root, "publish", "current", "LyricHover.App.dll")).FileVersion);
+
+                var versionAfterCandidate = File.ReadAllText(fixture.PropsPath);
+                Assert.Equal(0, RunPublishVersionTest(fixture.ScriptPath, "-KeepVersion -NoLaunch"));
+                Assert.Equal(versionAfterCandidate, File.ReadAllText(fixture.PropsPath));
+
+                File.WriteAllText(fixture.PropsPath, fixture.BaselineProps);
+                Directory.Delete(Path.Combine(fixture.Root, "publish"), true);
+                File.WriteAllText(fixture.AppProgramPath, "this will not compile");
+                var beforeFailure = File.ReadAllText(fixture.PropsPath);
+                Assert.True(RunPublishVersionTest(fixture.ScriptPath, "-NoLaunch") != 0);
+                Assert.Equal(beforeFailure, File.ReadAllText(fixture.PropsPath));
+                File.WriteAllText(fixture.AppProgramPath, fixture.AppProgram);
+
+                File.WriteAllText(fixture.PropsPath, fixture.BaselineProps);
+                var first = StartPublishVersionTest(fixture.ScriptPath, "-NoLaunch");
+                try
+                {
+                    WaitForVersionPrefix(fixture.PropsPath, "3.0.1");
+                    var secondExitCode = RunPublishVersionTest(fixture.ScriptPath, "-NoLaunch");
+                    Assert.True(first.WaitForExit(30000));
+                    Assert.Equal(0, first.ExitCode);
+                    Assert.True(secondExitCode != 0);
+                    Assert.Equal("3.0.1", ReadVersionPrefix(fixture.PropsPath));
+                }
+                finally
+                {
+                    first.Dispose();
+                }
+
+                File.WriteAllText(fixture.PropsPath, fixture.BaselineProps);
+                Directory.Delete(Path.Combine(fixture.Root, "publish"), true);
+                var beforeKeepVersion = File.ReadAllText(fixture.PropsPath);
+                Assert.True(RunPublishVersionTest(fixture.ScriptPath, "-KeepVersion -NoLaunch") != 0);
+                Assert.Equal(beforeKeepVersion, File.ReadAllText(fixture.PropsPath));
+            }
+            finally
+            {
+                if (Directory.Exists(fixtureRoot))
+                {
+                    Directory.Delete(fixtureRoot, true);
+                }
+            }
+        }
+
+        static void AboutFileAndMsixVersionsShareTheV3FourSegmentMapping()
+        {
+            var root = GetSolutionRoot();
+            var coreAssembly = typeof(ProductVersion).Assembly;
+            var buildScript = File.ReadAllText(Path.Combine(root, "store", "msix", "build-msix.ps1"));
+            var manifest = File.ReadAllText(Path.Combine(root, "store", "msix", "AppxManifest.template.xml"));
+
+            Assert.Equal("v3.0.0 Beta", ProductVersion.DisplayVersion);
+            Assert.Equal(new Version(3, 0, 0, 0), coreAssembly.GetName().Version);
+            Assert.Equal("3.0.0.0", FileVersionInfo.GetVersionInfo(coreAssembly.Location).FileVersion);
+            Assert.True(buildScript.Contains("$packageVersion = \"$productVersion.0\""));
+            Assert.True(manifest.Contains("Version=\"__PACKAGE_VERSION__\""));
+        }
+
+        static Process StartPublishVersionTest(string scriptPath, string arguments)
+        {
+            var process = Process.Start(new ProcessStartInfo
+            {
+                FileName = "powershell.exe",
+                Arguments = "-NoProfile -ExecutionPolicy Bypass -File \"" + scriptPath + "\" " + arguments,
+                CreateNoWindow = true,
+                UseShellExecute = false
+            });
+            if (process == null)
+            {
+                throw new InvalidOperationException("Could not start the isolated PowerShell version test.");
+            }
+
+            return process;
+        }
+
+        static int RunPublishVersionTest(string scriptPath, string arguments)
+        {
+            using (var process = StartPublishVersionTest(scriptPath, arguments))
+            {
+                if (!process.WaitForExit(60000))
+                {
+                    process.Kill();
+                    throw new InvalidOperationException("The isolated PowerShell version test timed out.");
+                }
+
+                return process.ExitCode;
+            }
+        }
+
+        static string ReadVersionPrefix(string propsPath)
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(
+                File.ReadAllText(propsPath),
+                "<VersionPrefix>(?<version>\\d+\\.\\d+\\.\\d+)</VersionPrefix>");
+            if (!match.Success)
+            {
+                throw new InvalidOperationException("The isolated version fixture does not contain VersionPrefix.");
+            }
+
+            return match.Groups["version"].Value;
+        }
+
+        static void WaitForVersionPrefix(string propsPath, string expectedVersion)
+        {
+            for (var attempt = 0; attempt < 200; attempt++)
+            {
+                if (File.Exists(propsPath) && ReadVersionPrefix(propsPath) == expectedVersion)
+                {
+                    return;
+                }
+
+                Thread.Sleep(50);
+            }
+
+            throw new InvalidOperationException("The first isolated generator did not acquire the mutex in time.");
+        }
+
+        static PublishVersionFixture CreatePublishVersionFixture(string sourceRoot, string fixtureRoot)
+        {
+            var tools = Path.Combine(fixtureRoot, "tools");
+            var tests = Path.Combine(fixtureRoot, "LyricHover.Tests");
+            var app = Path.Combine(fixtureRoot, "LyricHover.App");
+            Directory.CreateDirectory(tools);
+            Directory.CreateDirectory(tests);
+            Directory.CreateDirectory(app);
+
+            var baselineProps = File.ReadAllText(Path.Combine(sourceRoot, "Directory.Build.props"));
+            var appProgram = "namespace LyricHover.App { internal static class Program { private static void Main() { } } }";
+            var appProject = "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>netcoreapp3.1</TargetFramework><AssemblyName>LyricHover.App</AssemblyName></PropertyGroup></Project>";
+            var testsProject = "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>netcoreapp3.1</TargetFramework></PropertyGroup></Project>";
+
+            File.Copy(Path.Combine(sourceRoot, "tools", "publish-next-version.ps1"), Path.Combine(tools, "publish-next-version.ps1"));
+            File.WriteAllText(Path.Combine(fixtureRoot, "Directory.Build.props"), baselineProps);
+            File.WriteAllText(Path.Combine(app, "LyricHover.App.csproj"), appProject);
+            File.WriteAllText(Path.Combine(app, "Program.cs"), appProgram);
+            File.WriteAllText(Path.Combine(tests, "LyricHover.Tests.csproj"), testsProject);
+            File.WriteAllText(Path.Combine(tests, "Program.cs"), "internal static class Program { private static int Main() { return 0; } }");
+
+            return new PublishVersionFixture(
+                fixtureRoot,
+                Path.Combine(tools, "publish-next-version.ps1"),
+                Path.Combine(fixtureRoot, "Directory.Build.props"),
+                Path.Combine(app, "Program.cs"),
+                baselineProps,
+                appProgram);
+        }
+
+        static void RestorePublishVersionFixture(string fixtureRoot)
+        {
+            Assert.Equal(0, RunProcess("dotnet", "restore \"" + Path.Combine(fixtureRoot, "LyricHover.Tests", "LyricHover.Tests.csproj") + "\""));
+            Assert.Equal(0, RunProcess("dotnet", "restore --runtime win-x64 \"" + Path.Combine(fixtureRoot, "LyricHover.App", "LyricHover.App.csproj") + "\""));
+        }
+
+        static int RunProcess(string fileName, string arguments)
+        {
+            using (var process = Process.Start(new ProcessStartInfo
+            {
+                FileName = fileName,
+                Arguments = arguments,
+                CreateNoWindow = true,
+                UseShellExecute = false
+            }))
+            {
+                if (process == null)
+                {
+                    throw new InvalidOperationException("Could not start " + fileName + ".");
+                }
+                if (!process.WaitForExit(60000))
+                {
+                    process.Kill();
+                    throw new InvalidOperationException(fileName + " timed out.");
+                }
+
+                return process.ExitCode;
+            }
         }
 
         static void StorePackageReusesReservedProductIdentity()
@@ -3579,6 +3779,32 @@ namespace LyricHover.Tests
                 Console.WriteLine(ex.Message);
             }
         }
+    }
+
+    sealed class PublishVersionFixture
+    {
+        public PublishVersionFixture(
+            string root,
+            string scriptPath,
+            string propsPath,
+            string appProgramPath,
+            string baselineProps,
+            string appProgram)
+        {
+            Root = root;
+            ScriptPath = scriptPath;
+            PropsPath = propsPath;
+            AppProgramPath = appProgramPath;
+            BaselineProps = baselineProps;
+            AppProgram = appProgram;
+        }
+
+        public string Root { get; }
+        public string ScriptPath { get; }
+        public string PropsPath { get; }
+        public string AppProgramPath { get; }
+        public string BaselineProps { get; }
+        public string AppProgram { get; }
     }
 
     static class Assert

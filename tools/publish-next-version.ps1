@@ -10,26 +10,12 @@ $publishRoot = Join-Path $root 'publish'
 $currentPath = Join-Path $publishRoot 'current'
 $archiveRoot = Join-Path $publishRoot 'archive'
 $readmePath = Join-Path $publishRoot 'README.md'
-$originalProps = [System.IO.File]::ReadAllText($propsPath)
-$versionMatch = [regex]::Match($originalProps, '<VersionPrefix>(?<version>\d+\.\d+\.(?<patch>\d+))</VersionPrefix>')
-
-if (-not $versionMatch.Success) {
-    throw 'Directory.Build.props 中没有有效的 VersionPrefix。'
-}
-
-$currentVersion = $versionMatch.Groups['version'].Value
-$currentPatch = [int]$versionMatch.Groups['patch'].Value
-$nextPatch = $currentPatch + 1
-$targetVersion = if ($KeepVersion) {
-    $currentVersion
-} else {
-    $currentVersion.Substring(0, $currentVersion.LastIndexOf('.') + 1) + $nextPatch
-}
-$labelMatch = [regex]::Match($originalProps, '<VersionSuffix>(?<label>[^<]+)</VersionSuffix>')
-$label = if ($labelMatch.Success) { $labelMatch.Groups['label'].Value.Trim() } else { 'Beta' }
-$releaseName = "v$targetVersion $label"
-$directoryName = "v$targetVersion-$label"
-$stagingPath = Join-Path $publishRoot "staging-$directoryName"
+$mutexName = 'Local\LyricsIsland.PublishNextVersion'
+$mutex = [System.Threading.Mutex]::new($false, $mutexName)
+$hasMutex = $false
+$originalProps = $null
+$stagingPath = $null
+$exitCode = 0
 
 function Assert-ChildPath([string]$candidate, [string]$parent) {
     $resolvedCandidate = [System.IO.Path]::GetFullPath($candidate)
@@ -54,11 +40,51 @@ function Move-DirectoryWithRetry([string]$source, [string]$destination) {
     }
 }
 
-Assert-ChildPath $stagingPath $publishRoot
-Assert-ChildPath $currentPath $publishRoot
-Assert-ChildPath $archiveRoot $publishRoot
-
 try {
+    # Version reads and mutation must be protected by the same process-wide
+    # mutex. A second generator fails instead of reading an already bumped value.
+    $hasMutex = $mutex.WaitOne(0)
+    if (-not $hasMutex) {
+        throw '已有另一个发布候选生成正在进行；本次未读取或递增版本。'
+    }
+
+    $originalProps = [System.IO.File]::ReadAllText($propsPath)
+    $versionMatch = [regex]::Match($originalProps, '<VersionPrefix>(?<version>\d+\.\d+\.(?<patch>\d+))</VersionPrefix>')
+    if (-not $versionMatch.Success) {
+        throw 'Directory.Build.props 中没有有效的 VersionPrefix。'
+    }
+
+    $currentVersion = $versionMatch.Groups['version'].Value
+    $currentPatch = [int]$versionMatch.Groups['patch'].Value
+    $nextPatch = $currentPatch + 1
+    $targetVersion = if ($KeepVersion) {
+        $currentVersion
+    } else {
+        $currentVersion.Substring(0, $currentVersion.LastIndexOf('.') + 1) + $nextPatch
+    }
+    $labelMatch = [regex]::Match($originalProps, '<VersionSuffix>(?<label>[^<]+)</VersionSuffix>')
+    $label = if ($labelMatch.Success) { $labelMatch.Groups['label'].Value.Trim() } else { 'Beta' }
+    $releaseName = "v$targetVersion $label"
+    $directoryName = "v$targetVersion-$label"
+    $stagingPath = Join-Path $publishRoot "staging-$directoryName"
+
+    Assert-ChildPath $stagingPath $publishRoot
+    Assert-ChildPath $currentPath $publishRoot
+    Assert-ChildPath $archiveRoot $publishRoot
+
+    if ($KeepVersion) {
+        $existingCandidate = Join-Path $currentPath 'LyricHover.App.dll'
+        if (-not (Test-Path -LiteralPath $existingCandidate)) {
+            throw "-KeepVersion 只能复现已有候选：未找到 $existingCandidate。"
+        }
+
+        $existingFileVersion = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($existingCandidate).FileVersion
+        $existingVersionMatch = [regex]::Match($existingFileVersion, '^(?<version>\d+\.\d+\.\d+)\.\d+')
+        if (-not $existingVersionMatch.Success -or $existingVersionMatch.Groups['version'].Value -ne $targetVersion) {
+            throw "-KeepVersion 只能复现当前 $targetVersion 候选，现有产物版本为 $existingFileVersion。"
+        }
+    }
+
     if (-not $KeepVersion) {
         $updatedProps = [regex]::Replace(
             $originalProps,
@@ -126,13 +152,22 @@ try {
     }
 
     Write-Host "发布完成：$releaseName"
-    exit 0
 }
 catch {
-    [System.IO.File]::WriteAllText($propsPath, $originalProps, [System.Text.UTF8Encoding]::new($false))
-    if (Test-Path -LiteralPath $stagingPath) {
+    if ($null -ne $originalProps) {
+        [System.IO.File]::WriteAllText($propsPath, $originalProps, [System.Text.UTF8Encoding]::new($false))
+    }
+    if ($null -ne $stagingPath -and (Test-Path -LiteralPath $stagingPath)) {
         Remove-Item -LiteralPath $stagingPath -Recurse -Force
     }
     Write-Error $_
-    exit 1
+    $exitCode = 1
 }
+finally {
+    if ($hasMutex) {
+        $mutex.ReleaseMutex()
+    }
+    $mutex.Dispose()
+}
+
+exit $exitCode
