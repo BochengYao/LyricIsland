@@ -20,6 +20,7 @@ type CanonicalField =
   | "microsoft_code_id"
   | "raw_order_id"
   | "order_name"
+  | "product_name"
   | "given_to"
   | "microsoft_available"
   | "microsoft_redeemed"
@@ -47,6 +48,21 @@ const HEADER_ALIASES: Record<string, CanonicalField> = {
   "expiration date": "microsoft_expire_at",
   expirationdate: "microsoft_expire_at",
   "expiry date": "microsoft_expire_at",
+  // ── Partner Center 中文区域导出表头（简体中文，与上方英文别名映射同一字段）──
+  "产品名称": "product_name",
+  "订单名称": "order_name",
+  "促销代码": "code",
+  "可兑换的 url": "redeem_url",
+  "开始日期": "microsoft_start_at",
+  "到期日期": "microsoft_expire_at",
+  "代码 id": "microsoft_code_id",
+  "代码id": "microsoft_code_id",
+  "订单 id": "raw_order_id",
+  "订单id": "raw_order_id",
+  "可兑换的url": "redeem_url",
+  "提供给": "given_to",
+  "可用": "microsoft_available",
+  "已兑换": "microsoft_redeemed",
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -67,6 +83,10 @@ function parseDate(
   const trimmed = value.trim();
   if (trimmed === "") return null;
 
+  // Partner Center sentinel for "never expires": 0001/1/1 (with any time suffix).
+  // Treat it as "no expiration" instead of reporting an error.
+  if (/^0001\//.test(trimmed)) return null;
+
   // Try ISO: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS
   const isoMatch = trimmed.match(
     /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2}))?$/
@@ -76,14 +96,25 @@ function parseDate(
     if (!isNaN(d.getTime())) return trimmed;
   }
 
-  // Try US format: MM/DD/YYYY
-  const usMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (usMatch) {
-    const month = usMatch[1].padStart(2, "0");
-    const day = usMatch[2].padStart(2, "0");
-    const year = usMatch[3];
-    const iso = `${year}-${month}-${day}`;
-    const d = new Date(iso);
+  // Try slash formats with optional time (Partner Center exports):
+  // YYYY/M/D, YYYY/M/D H:mm, M/D/YYYY, M/D/YYYY H:mm
+  const slashMatch = trimmed.match(
+    /^(?:(\d{4})\/(\d{1,2})\/(\d{1,2})|(\d{1,2})\/(\d{1,2})\/(\d{4}))(?:\s+(\d{1,2}):(\d{2}))?$/
+  );
+  if (slashMatch) {
+    const year = slashMatch[1] ?? slashMatch[6];
+    const month = slashMatch[1] !== undefined ? slashMatch[2] : slashMatch[4];
+    const day = slashMatch[1] !== undefined ? slashMatch[3] : slashMatch[5];
+    const isoDate = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    const hasTime = slashMatch[7] !== undefined;
+    const iso = hasTime
+      ? `${isoDate}T${slashMatch[7].padStart(2, "0")}:${slashMatch[8]}`
+      : isoDate;
+    // Validate via local-time component construction (consistent with the
+    // parser's local-time handling of slash dates).
+    const d = hasTime
+      ? new Date(Number(year), Number(month) - 1, Number(day), Number(slashMatch[7]), Number(slashMatch[8]))
+      : new Date(Number(year), Number(month) - 1, Number(day));
     if (!isNaN(d.getTime())) return iso;
   }
 
@@ -257,6 +288,7 @@ export function parseTsv(text: string): TsvParseResult {
       redeem_url: getCell(cells, "redeem_url") || null,
       raw_order_id: getCell(cells, "raw_order_id") || null,
       order_name: getCell(cells, "order_name") || null,
+      product_name: getCell(cells, "product_name") || null,
       given_to: getCell(cells, "given_to") || null,
       microsoft_available: parseBoolean(getCell(cells, "microsoft_available")),
       microsoft_redeemed: parseBoolean(getCell(cells, "microsoft_redeemed")),

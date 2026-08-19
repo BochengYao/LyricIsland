@@ -96,6 +96,8 @@ export type TsvParsedRow = {
   redeem_url: string | null;
   raw_order_id: string | null;
   order_name: string | null;
+  /** Partner Center 中文导出“产品名称”列；无对应列时为 null */
+  product_name: string | null;
   microsoft_available: boolean | null;
   microsoft_redeemed: boolean | null;
   microsoft_start_at: string | null;
