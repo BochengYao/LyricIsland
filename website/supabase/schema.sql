@@ -256,8 +256,7 @@ create index if not exists promo_codes_available_queue
   on public.promo_codes (created_at)
   where distribution_status = 'available'
     and (microsoft_redeemed is null or microsoft_redeemed = false)
-    and (microsoft_available is null or microsoft_available = true)
-    and (microsoft_expire_at is null or microsoft_expire_at > now());
+    and (microsoft_available is null or microsoft_available = true);
 
 -- A.4 PL/pgSQL Functions
 
@@ -495,9 +494,9 @@ begin
         or pc.redeem_url           is distinct from excluded.redeem_url
         or pc.raw_order_id         is distinct from excluded.raw_order_id;
 
-      get diagnostics v_just_inserted = result;
+      get diagnostics v_just_inserted = row_count;
 
-      if v_just_inserted = 1 then
+      if v_just_inserted = 1 and not v_existing_differs then
         -- Fresh insert (no conflict)
         v_new_count := v_new_count + 1;
       elsif v_existing_differs then
