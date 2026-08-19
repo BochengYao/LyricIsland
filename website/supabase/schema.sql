@@ -164,3 +164,421 @@ on conflict (id) do update set
 
 -- No anonymous table or storage policies are created. The website route handlers
 -- use the server-only service role, and the browser never receives that key.
+
+-- ---------------------------------------------------------------------------
+-- Microsoft Store Promo Code Management
+-- ---------------------------------------------------------------------------
+
+-- A.1 promo_code_logs (created first — referenced by name only, no FK)
+create table if not exists public.promo_code_logs (
+  id uuid primary key default gen_random_uuid(),
+  promo_code_id uuid,
+  operator_user_id text,
+  operator_email text,
+  action text not null check (action in (
+    'TSV_IMPORT','CREATE','ASSIGN','REASSIGN','REVOKE','EDIT','DELETE','MICROSOFT_STATUS_UPDATE'
+  )),
+  previous_data jsonb,
+  new_data jsonb,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists promo_code_logs_promo_code_id
+  on public.promo_code_logs (promo_code_id) where promo_code_id is not null;
+create index if not exists promo_code_logs_action
+  on public.promo_code_logs (action, created_at desc);
+
+-- A.2 promo_code_orders
+create table if not exists public.promo_code_orders (
+  id uuid primary key default gen_random_uuid(),
+  microsoft_order_id text,
+  order_name text,
+  product_name text,
+  product_id text,
+  source text not null default 'microsoft_store',
+  code_count integer not null default 0,
+  imported_at timestamptz,
+  microsoft_synced_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create unique index if not exists promo_code_orders_microsoft_order_id
+  on public.promo_code_orders (microsoft_order_id) where microsoft_order_id is not null;
+
+-- A.3 promo_codes
+create table if not exists public.promo_codes (
+  id uuid primary key default gen_random_uuid(),
+  microsoft_code_id text not null,
+  order_id uuid references public.promo_code_orders(id) on delete set null,
+  raw_order_id text,
+  code text not null,
+  redeem_url text,
+  -- Microsoft status
+  microsoft_available boolean,
+  microsoft_redeemed boolean,
+  microsoft_start_at timestamptz,
+  microsoft_expire_at timestamptz,
+  microsoft_synced_at timestamptz,
+  -- LyricHover internal management
+  distribution_status text not null default 'available'
+    check (distribution_status in ('available','assigned','revoked','expired')),
+  assigned_to_user_id uuid,
+  assigned_to_name text,
+  assigned_to_email text,
+  assigned_channel text,
+  campaign text,
+  assigned_at timestamptz,
+  revoked_at timestamptz,
+  note text,
+  -- System fields
+  imported_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create unique index if not exists promo_codes_microsoft_code_id_key
+  on public.promo_codes (microsoft_code_id);
+create index if not exists promo_codes_distribution_status
+  on public.promo_codes (distribution_status);
+create index if not exists promo_codes_microsoft_redeemed
+  on public.promo_codes (microsoft_redeemed) where microsoft_redeemed = true;
+create index if not exists promo_codes_microsoft_expire_at
+  on public.promo_codes (microsoft_expire_at) where microsoft_expire_at is not null;
+create index if not exists promo_codes_order_id
+  on public.promo_codes (order_id);
+create index if not exists promo_codes_campaign
+  on public.promo_codes (campaign) where campaign is not null;
+create index if not exists promo_codes_assigned_to_user_id
+  on public.promo_codes (assigned_to_user_id) where assigned_to_user_id is not null;
+create index if not exists promo_codes_available_queue
+  on public.promo_codes (created_at)
+  where distribution_status = 'available'
+    and (microsoft_redeemed is null or microsoft_redeemed = false)
+    and (microsoft_available is null or microsoft_available = true)
+    and (microsoft_expire_at is null or microsoft_expire_at > now());
+
+-- A.4 PL/pgSQL Functions
+
+-- allocate_promo_code: atomic allocation with FOR UPDATE SKIP LOCKED
+create or replace function public.allocate_promo_code(
+  p_assigned_name    text,
+  p_assigned_email   text,
+  p_assigned_channel text,
+  p_campaign         text,
+  p_note             text,
+  p_specific_code_id text default null
+)
+returns table(id uuid, code text, redeem_url text, microsoft_code_id text)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_code_id        uuid;
+  v_prev_status    text;
+  v_action         text;
+  v_prev_data      jsonb;
+  v_new_data       jsonb;
+begin
+  if p_specific_code_id is not null then
+    -- Specific code assignment: lock and validate
+    select pc.id, pc.distribution_status
+      into v_code_id, v_prev_status
+    from public.promo_codes pc
+    where pc.microsoft_code_id = p_specific_code_id
+    for update;
+
+    if v_code_id is null then
+      raise exception 'Promo code not found: %', p_specific_code_id;
+    end if;
+
+    if v_prev_status <> 'available' then
+      raise exception 'Promo code % is not available (status: %)', p_specific_code_id, v_prev_status;
+    end if;
+
+    -- Check Microsoft-side availability
+    if exists (
+      select 1 from public.promo_codes
+      where id = v_code_id
+        and (microsoft_redeemed = true)
+    ) then
+      raise exception 'Promo code % has already been redeemed on Microsoft', p_specific_code_id;
+    end if;
+
+    if exists (
+      select 1 from public.promo_codes
+      where id = v_code_id
+        and microsoft_expire_at is not null
+        and microsoft_expire_at <= now()
+    ) then
+      raise exception 'Promo code % has expired', p_specific_code_id;
+    end if;
+
+    v_action := 'ASSIGN';
+  else
+    -- Auto-allocate: pick the oldest available code
+    select pc.id
+      into v_code_id
+    from public.promo_codes pc
+    where pc.distribution_status = 'available'
+      and (pc.microsoft_redeemed is null or pc.microsoft_redeemed = false)
+      and (pc.microsoft_available is null or pc.microsoft_available = true)
+      and (pc.microsoft_expire_at is null or pc.microsoft_expire_at > now())
+    order by pc.created_at
+    limit 1
+    for update skip locked;
+
+    if v_code_id is null then
+      raise exception 'No available promo codes to allocate';
+    end if;
+
+    v_action := 'ASSIGN';
+  end if;
+
+  -- Capture previous state for log
+  select row_to_json(sub)::jsonb
+    into v_prev_data
+  from (
+    select pc.distribution_status, pc.assigned_to_name, pc.assigned_to_email,
+           pc.assigned_channel, pc.campaign, pc.note, pc.assigned_at
+    from public.promo_codes pc where pc.id = v_code_id
+  ) sub;
+
+  -- Perform the assignment
+  update public.promo_codes
+  set distribution_status = 'assigned',
+      assigned_to_name    = p_assigned_name,
+      assigned_to_email   = p_assigned_email,
+      assigned_channel    = p_assigned_channel,
+      campaign            = p_campaign,
+      note                = p_note,
+      assigned_at         = now(),
+      updated_at          = now()
+  where id = v_code_id;
+
+  -- Capture new state for log
+  select row_to_json(sub)::jsonb
+    into v_new_data
+  from (
+    select pc.distribution_status, pc.assigned_to_name, pc.assigned_to_email,
+           pc.assigned_channel, pc.campaign, pc.note, pc.assigned_at
+    from public.promo_codes pc where pc.id = v_code_id
+  ) sub;
+
+  -- Write audit log
+  insert into public.promo_code_logs(promo_code_id, action, previous_data, new_data, metadata)
+  values (v_code_id, v_action, v_prev_data, v_new_data, jsonb_build_object(
+    'assigned_name', p_assigned_name,
+    'assigned_email', p_assigned_email,
+    'assigned_channel', p_assigned_channel,
+    'campaign', p_campaign
+  ));
+
+  return query
+  select pc.id, pc.code, pc.redeem_url, pc.microsoft_code_id
+  from public.promo_codes pc
+  where pc.id = v_code_id;
+end;
+$$;
+
+-- bulk_import_promo_codes: UPSERT batch import from TSV rows
+create or replace function public.bulk_import_promo_codes(
+  p_rows       jsonb,
+  p_order_info jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_order_id        uuid;
+  v_microsoft_oid   text;
+  v_new_count       integer := 0;
+  v_updated_count   integer := 0;
+  v_unchanged_count integer := 0;
+  v_row             jsonb;
+  v_just_inserted   integer;
+begin
+  v_microsoft_oid := p_order_info ->> 'microsoft_order_id';
+
+  -- Find or create the order
+  if v_microsoft_oid is not null then
+    insert into public.promo_code_orders(microsoft_order_id, order_name, product_name, product_id, source, code_count, imported_at)
+    values (
+      v_microsoft_oid,
+      p_order_info ->> 'order_name',
+      p_order_info ->> 'product_name',
+      p_order_info ->> 'product_id',
+      coalesce(p_order_info ->> 'source', 'microsoft_store'),
+      jsonb_array_length(p_rows),
+      now()
+    )
+    on conflict (microsoft_order_id) where microsoft_order_id is not null
+    do update set
+      order_name    = coalesce(excluded.order_name, public.promo_code_orders.order_name),
+      product_name  = coalesce(excluded.product_name, public.promo_code_orders.product_name),
+      product_id    = coalesce(excluded.product_id, public.promo_code_orders.product_id),
+      code_count    = excluded.code_count,
+      imported_at   = excluded.imported_at,
+      updated_at    = now()
+    returning id into v_order_id;
+  else
+    insert into public.promo_code_orders(order_name, product_name, product_id, source, code_count, imported_at)
+    values (
+      p_order_info ->> 'order_name',
+      p_order_info ->> 'product_name',
+      p_order_info ->> 'product_id',
+      coalesce(p_order_info ->> 'source', 'microsoft_store'),
+      jsonb_array_length(p_rows),
+      now()
+    )
+    returning id into v_order_id;
+  end if;
+
+  -- Process each row via INSERT … ON CONFLICT (atomic upsert, no TOCTOU race).
+  -- LyricHover internal fields (distribution_status, assigned_*, campaign, note,
+  -- assigned_at, revoked_at) are NEVER touched — only Microsoft-side fields are synced.
+  for v_row in select * from jsonb_array_elements(p_rows) loop
+    -- Before the upsert, check if the existing row's data differs from incoming data.
+    -- This lets us distinguish "actually updated" from "conflict but unchanged".
+    declare
+      v_existing_differs boolean := false;
+    begin
+      select exists (
+        select 1 from public.promo_codes pc2
+        where pc2.microsoft_code_id = v_row ->> 'microsoft_code_id'
+          and (
+            pc2.microsoft_available  is distinct from (v_row ->> 'microsoft_available')::boolean
+            or pc2.microsoft_redeemed   is distinct from (v_row ->> 'microsoft_redeemed')::boolean
+            or pc2.microsoft_start_at   is distinct from (v_row ->> 'microsoft_start_at')::timestamptz
+            or pc2.microsoft_expire_at  is distinct from (v_row ->> 'microsoft_expire_at')::timestamptz
+            or pc2.redeem_url           is distinct from v_row ->> 'redeem_url'
+            or pc2.raw_order_id         is distinct from v_row ->> 'raw_order_id'
+          )
+      ) into v_existing_differs;
+
+      insert into public.promo_codes as pc (
+        microsoft_code_id, order_id, raw_order_id, code, redeem_url,
+        microsoft_available, microsoft_redeemed, microsoft_start_at, microsoft_expire_at,
+        microsoft_synced_at, imported_at
+      )
+      values (
+        v_row ->> 'microsoft_code_id',
+        v_order_id,
+        v_row ->> 'raw_order_id',
+        v_row ->> 'code',
+        v_row ->> 'redeem_url',
+        (v_row ->> 'microsoft_available')::boolean,
+        (v_row ->> 'microsoft_redeemed')::boolean,
+        (v_row ->> 'microsoft_start_at')::timestamptz,
+        (v_row ->> 'microsoft_expire_at')::timestamptz,
+        now(),
+        now()
+      )
+      on conflict (microsoft_code_id) do update set
+        microsoft_available  = excluded.microsoft_available,
+        microsoft_redeemed   = excluded.microsoft_redeemed,
+        microsoft_start_at   = excluded.microsoft_start_at,
+        microsoft_expire_at  = excluded.microsoft_expire_at,
+        redeem_url           = excluded.redeem_url,
+        microsoft_synced_at  = excluded.microsoft_synced_at,
+        raw_order_id         = excluded.raw_order_id,
+        updated_at           = excluded.microsoft_synced_at
+      where
+        pc.microsoft_available  is distinct from excluded.microsoft_available
+        or pc.microsoft_redeemed   is distinct from excluded.microsoft_redeemed
+        or pc.microsoft_start_at   is distinct from excluded.microsoft_start_at
+        or pc.microsoft_expire_at  is distinct from excluded.microsoft_expire_at
+        or pc.redeem_url           is distinct from excluded.redeem_url
+        or pc.raw_order_id         is distinct from excluded.raw_order_id;
+
+      get diagnostics v_just_inserted = result;
+
+      if v_just_inserted = 1 then
+        -- Fresh insert (no conflict)
+        v_new_count := v_new_count + 1;
+      elsif v_existing_differs then
+        -- Conflict matched an existing row AND data was actually different → updated
+        v_updated_count := v_updated_count + 1;
+      else
+        -- Conflict matched but data was identical → unchanged
+        v_unchanged_count := v_unchanged_count + 1;
+      end if;
+    end;
+  end loop;
+
+  -- Log the import
+  insert into public.promo_code_logs(action, metadata)
+  values ('TSV_IMPORT', jsonb_build_object(
+    'order_id', v_order_id,
+    'microsoft_order_id', v_microsoft_oid,
+    'row_count', jsonb_array_length(p_rows),
+    'new_count', v_new_count,
+    'updated_count', v_updated_count,
+    'unchanged_count', v_unchanged_count
+  ));
+
+  return jsonb_build_object(
+    'new_count', v_new_count,
+    'updated_count', v_updated_count,
+    'unchanged_count', v_unchanged_count,
+    'order_id', v_order_id
+  );
+end;
+$$;
+
+-- promo_code_dashboard_stats: single-query stats
+create or replace function public.promo_code_dashboard_stats()
+returns table(
+  total              integer,
+  available          integer,
+  assigned           integer,
+  microsoft_redeemed integer,
+  expired            integer,
+  expiring_soon      integer
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return query
+  select
+    count(*)                                                filter (where true)::integer,
+    count(*)                                                filter (where pc.distribution_status = 'available')::integer,
+    count(*)                                                filter (where pc.distribution_status = 'assigned')::integer,
+    count(*)                                                filter (where pc.microsoft_redeemed = true)::integer,
+    count(*)                                                filter (where pc.distribution_status = 'expired'
+                                                                       or (pc.microsoft_expire_at is not null and pc.microsoft_expire_at <= now()))::integer,
+    count(*)                                                filter (where pc.microsoft_expire_at is not null
+                                                                       and pc.microsoft_expire_at > now()
+                                                                       and pc.microsoft_expire_at <= now() + interval '30 days')::integer
+  from public.promo_codes pc;
+end;
+$$;
+
+-- A.5 RLS & Permissions
+alter table public.promo_codes enable row level security;
+alter table public.promo_code_orders enable row level security;
+alter table public.promo_code_logs enable row level security;
+
+-- No browser-side policies (consistent with existing pattern)
+-- All access through service_role + API routes
+
+revoke all on function public.allocate_promo_code(text,text,text,text,text,text) from public;
+revoke all on function public.allocate_promo_code(text,text,text,text,text,text) from anon;
+revoke all on function public.allocate_promo_code(text,text,text,text,text,text) from authenticated;
+grant execute on function public.allocate_promo_code(text,text,text,text,text,text) to service_role;
+
+revoke all on function public.bulk_import_promo_codes(jsonb,jsonb) from public;
+revoke all on function public.bulk_import_promo_codes(jsonb,jsonb) from anon;
+revoke all on function public.bulk_import_promo_codes(jsonb,jsonb) from authenticated;
+grant execute on function public.bulk_import_promo_codes(jsonb,jsonb) to service_role;
+
+revoke all on function public.promo_code_dashboard_stats() from public;
+revoke all on function public.promo_code_dashboard_stats() from anon;
+revoke all on function public.promo_code_dashboard_stats() from authenticated;
+grant execute on function public.promo_code_dashboard_stats() to service_role;

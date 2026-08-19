@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { AdminNav } from "@/components/AdminNav";
 import { ExternalArrow } from "@/components/ExternalArrow";
 import { LogoLockup } from "@/components/SitePage";
 import {
@@ -1014,22 +1015,20 @@ export function AdminIncentives() {
 
   return (
     <div className="adminShell">
-      <aside className="adminSidebar">
-        <LogoLockup />
-        <p className="eyebrow"><span aria-hidden="true">•</span>维护者后台</p>
-        <h1>用户反馈</h1>
-        <nav aria-label="后台导航">
-          <button className={panel === "submissions" ? "isActive" : ""} onClick={() => setPanel("submissions")}>反馈管理 {pendingSubmissionCount > 0 && <span>{pendingSubmissionCount}</span>}</button>
-          <button className={panel === "features" ? "isActive" : ""} onClick={() => setPanel("features")}>新功能内容</button>
-          <button className={panel === "previews" ? "isActive" : ""} onClick={() => setPanel("previews")}>版本预告</button>
-          <button className={panel === "access" ? "isActive" : ""} onClick={() => setPanel("access")}>访问日志 {unreadAlerts > 0 && <span className="alertCount">{unreadAlerts}</span>}</button>
-        </nav>
-        <div className="adminSidebarBottom">
-          <Link href="/incentives" target="_blank">查看前台 <ExternalArrow /></Link>
-          <Link href="/updates" target="_blank">查看新功能页 <ExternalArrow /></Link>
-          <button onClick={logout}>退出登录</button>
-        </div>
-      </aside>
+      <AdminNav
+        active="feedback"
+        activePanel={panel}
+        pendingCount={pendingSubmissionCount}
+        unreadAlerts={unreadAlerts}
+        onNavigate={(navPanel) => {
+          if (navPanel === "promo-codes") {
+            window.location.href = "/admin/promo-codes";
+          } else {
+            setPanel(navPanel as Panel);
+          }
+        }}
+        onLogout={logout}
+      />
 
       <main className="adminMain">
         {unreadAlerts > 0 && (

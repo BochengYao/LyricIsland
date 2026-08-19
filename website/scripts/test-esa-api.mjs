@@ -49,6 +49,11 @@ let auditRows = [];
 let insertedSubmissions = [];
 let featureRow = null;
 let releasePreviewRows = [];
+let promoCodeRows = [];
+let promoCodeLogRows = [];
+let promoCodeRpcStats = null;
+let promoCodeAllocateResult = null;
+let promoCodeBulkImportResult = null;
 
 function publicPreviewRow(id, version, publishedAt) {
   return {
@@ -262,6 +267,114 @@ globalThis.fetch = async (input, init = {}) => {
     featureRow = { ...featureRow, ...body };
     return response([featureRow]);
   }
+  // ── Promo Code Supabase mock handlers ──
+
+  // List promo codes (supabaseRaw with Prefer: count=exact)
+  if (url.includes("/rest/v1/promo_codes?select=*&order=created_at.desc") && !init.method) {
+    const parsed = new URL(url);
+    const limit = Number(parsed.searchParams.get("limit") || 20);
+    const offset = Number(parsed.searchParams.get("offset") || 0);
+    const statusFilter = parsed.searchParams.get("distribution_status");
+    const searchOr = parsed.searchParams.get("or");
+    let rows = [...promoCodeRows];
+    if (statusFilter) {
+      const statusValue = statusFilter.replace("eq.", "");
+      rows = rows.filter((r) => r.distribution_status === statusValue);
+    }
+    if (searchOr) {
+      const match = searchOr.match(/code\.ilike\.\*([^*]+)\*/);
+      if (match) {
+        const term = match[1].toLowerCase();
+        rows = rows.filter((r) =>
+          [r.code, r.microsoft_code_id, r.assigned_to_name, r.assigned_to_email, r.campaign, r.raw_order_id, r.note]
+            .some((v) => v && String(v).toLowerCase().includes(term))
+        );
+      }
+    }
+    const total = rows.length;
+    const sliced = rows.slice(offset, offset + limit);
+    return new Response(JSON.stringify(sliced), {
+      status: 200,
+      headers: { "Content-Type": "application/json", "Content-Range": `${offset}-${offset + sliced.length - 1}/${total}` }
+    });
+  }
+
+  // RPC: promo_code_dashboard_stats
+  if (url.includes("/rest/v1/rpc/promo_code_dashboard_stats")) {
+    const stats = promoCodeRpcStats || {
+      total_codes: promoCodeRows.length,
+      available: promoCodeRows.filter((r) => r.distribution_status === "available").length,
+      allocated: promoCodeRows.filter((r) => r.distribution_status === "allocated").length,
+      redeemed: promoCodeRows.filter((r) => r.distribution_status === "redeemed").length
+    };
+    return response([stats]);
+  }
+
+  // RPC: bulk_import_promo_codes
+  if (url.includes("/rest/v1/rpc/bulk_import_promo_codes")) {
+    const result = promoCodeBulkImportResult || { created: 0, updated: 0, unchanged: 0 };
+    return response(result);
+  }
+
+  // RPC: allocate_promo_code
+  if (url.includes("/rest/v1/rpc/allocate_promo_code")) {
+    if (promoCodeAllocateResult) return response([promoCodeAllocateResult]);
+    return response([]);
+  }
+
+  // GET promo code logs for a specific code
+  if (url.includes("/rest/v1/promo_code_logs?promo_code_id=eq.") && !init.method) {
+    const id = decodeURIComponent(url.split("promo_code_id=eq.")[1].split("&")[0]);
+    const logs = promoCodeLogRows.filter((r) => r.promo_code_id === id);
+    return response(logs);
+  }
+
+  // POST promo code log
+  if (url.endsWith("/rest/v1/promo_code_logs") && init.method === "POST") {
+    const body = JSON.parse(init.body);
+    promoCodeLogRows.push(body);
+    return response([body], 201);
+  }
+
+  // GET promo codes by microsoft_code_id IN (...)
+  if (url.includes("/rest/v1/promo_codes?select=*&microsoft_code_id=in.")) {
+    return response([]);
+  }
+
+  // GET single promo code for delete check (select=id,distribution_status)
+  if (url.includes("/rest/v1/promo_codes?select=id,distribution_status&id=eq.")) {
+    const id = decodeURIComponent(url.split("id=eq.")[1].split("&")[0]);
+    const found = promoCodeRows.filter((r) => r.id === id);
+    return response(found);
+  }
+
+  // GET single promo code detail
+  if (url.includes("/rest/v1/promo_codes?select=*&id=eq.") && !init.method) {
+    const id = decodeURIComponent(url.split("id=eq.")[1].split("&")[0]);
+    const found = promoCodeRows.filter((r) => r.id === id);
+    return response(found);
+  }
+
+  // PATCH promo code
+  if (url.includes("/rest/v1/promo_codes?id=eq.") && init.method === "PATCH") {
+    const id = decodeURIComponent(url.split("id=eq.")[1]);
+    const body = JSON.parse(init.body);
+    const idx = promoCodeRows.findIndex((r) => r.id === id);
+    if (idx >= 0) {
+      promoCodeRows[idx] = { ...promoCodeRows[idx], ...body };
+      return response([promoCodeRows[idx]]);
+    }
+    return response([]);
+  }
+
+  // DELETE promo code
+  if (url.includes("/rest/v1/promo_codes?id=eq.") && init.method === "DELETE") {
+    const id = decodeURIComponent(url.split("id=eq.")[1]);
+    const idx = promoCodeRows.findIndex((r) => r.id === id);
+    if (idx >= 0) promoCodeRows.splice(idx, 1);
+    return new Response(null, { status: 204 });
+  }
+
   throw new Error(`Unexpected fetch in ESA API test: ${url}`);
 };
 
@@ -810,6 +923,557 @@ try {
     })
   );
   assert.equal(crossOriginResponse.status, 403);
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // ── Promo Code API Tests ──
+  // ──────────────────────────────────────────────────────────────────────────
+
+  const promoBase = "https://lyric-island.top/api/incentives/admin/promo-codes";
+  const adminAuthCookie = adminCookie.split(";")[0];
+
+  // ── 1. Authentication tests ──
+
+  const promoNoAuthGetResponse = await api.fetch(
+    new Request(promoBase)
+  );
+  assert.equal(promoNoAuthGetResponse.status, 401, "GET promo codes without auth must return 401");
+
+  const promoNoAuthAllocateResponse = await api.fetch(
+    new Request(`${promoBase}/allocate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ assigned_name: "Test" })
+    })
+  );
+  assert.equal(promoNoAuthAllocateResponse.status, 401, "POST allocate without auth must return 401");
+
+  // ── 2. List & Stats tests ──
+
+  // Empty list should work gracefully
+  promoCodeRows = [];
+  calls.length = 0;
+  const promoListEmptyResponse = await api.fetch(
+    new Request(promoBase, { headers: { cookie: adminAuthCookie } })
+  );
+  assert.equal(promoListEmptyResponse.status, 200);
+  const promoListEmptyData = await promoListEmptyResponse.json();
+  assert.ok(Array.isArray(promoListEmptyData.codes), "response must have codes array");
+  assert.equal(promoListEmptyData.codes.length, 0, "empty database returns empty codes array");
+  assert.equal(promoListEmptyData.page, 1, "default page is 1");
+  assert.equal(promoListEmptyData.pageSize, 20, "default pageSize is 20");
+  assert.equal(promoListEmptyData.total, 0);
+  assert.ok(promoListEmptyData.stats !== undefined, "response must have stats object");
+
+  // Seed some promo code data for subsequent tests
+  promoCodeRows = [
+    {
+      id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      code: "PROMO-TEST-001-XXXXX",
+      microsoft_code_id: "MS-001",
+      distribution_status: "available",
+      microsoft_available: true,
+      microsoft_redeemed: false,
+      raw_order_id: "ORD-001",
+      campaign: "summer-sale",
+      assigned_to_name: null,
+      assigned_to_email: null,
+      assigned_channel: null,
+      assigned_at: null,
+      microsoft_expire_at: "2027-01-01T00:00:00.000Z",
+      note: "Test code 1",
+      created_at: "2026-08-01T00:00:00.000Z",
+      updated_at: "2026-08-01T00:00:00.000Z"
+    },
+    {
+      id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      code: "PROMO-TEST-002-YYYYY",
+      microsoft_code_id: "MS-002",
+      distribution_status: "allocated",
+      microsoft_available: true,
+      microsoft_redeemed: false,
+      raw_order_id: "ORD-002",
+      campaign: "winter-promo",
+      assigned_to_name: "Alice",
+      assigned_to_email: "alice@example.com",
+      assigned_channel: "discord",
+      assigned_at: "2026-08-05T00:00:00.000Z",
+      microsoft_expire_at: "2027-06-01T00:00:00.000Z",
+      note: "Test code 2",
+      created_at: "2026-08-02T00:00:00.000Z",
+      updated_at: "2026-08-05T00:00:00.000Z"
+    },
+    {
+      id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      code: "PROMO-TEST-003-ZZZZZ",
+      microsoft_code_id: "MS-003",
+      distribution_status: "available",
+      microsoft_available: false,
+      microsoft_redeemed: false,
+      raw_order_id: "ORD-003",
+      campaign: "summer-sale",
+      assigned_to_name: null,
+      assigned_to_email: null,
+      assigned_channel: null,
+      assigned_at: null,
+      microsoft_expire_at: "2027-03-01T00:00:00.000Z",
+      note: "Another available code",
+      created_at: "2026-08-03T00:00:00.000Z",
+      updated_at: "2026-08-03T00:00:00.000Z"
+    }
+  ];
+
+  // List with seeded data
+  calls.length = 0;
+  const promoListResponse = await api.fetch(
+    new Request(promoBase, { headers: { cookie: adminAuthCookie } })
+  );
+  assert.equal(promoListResponse.status, 200);
+  const promoListData = await promoListResponse.json();
+  assert.equal(promoListData.codes.length, 3, "should return all 3 seeded codes");
+  assert.equal(promoListData.total, 3);
+  assert.ok(promoListData.stats, "stats object must be present");
+
+  // Pagination test
+  const promoPage1Response = await api.fetch(
+    new Request(`${promoBase}?page=1&pageSize=2`, { headers: { cookie: adminAuthCookie } })
+  );
+  assert.equal(promoPage1Response.status, 200);
+  const promoPage1Data = await promoPage1Response.json();
+  assert.equal(promoPage1Data.codes.length, 2, "page 1 with pageSize=2 returns 2 items");
+  assert.equal(promoPage1Data.page, 1);
+  assert.equal(promoPage1Data.pageSize, 2);
+  assert.equal(promoPage1Data.total, 3);
+
+  const promoPage2Response = await api.fetch(
+    new Request(`${promoBase}?page=2&pageSize=2`, { headers: { cookie: adminAuthCookie } })
+  );
+  assert.equal(promoPage2Response.status, 200);
+  const promoPage2Data = await promoPage2Response.json();
+  assert.equal(promoPage2Data.codes.length, 1, "page 2 with pageSize=2 returns remaining 1 item");
+
+  // Status filter test
+  const promoStatusResponse = await api.fetch(
+    new Request(`${promoBase}?status=available`, { headers: { cookie: adminAuthCookie } })
+  );
+  assert.equal(promoStatusResponse.status, 200);
+  const promoStatusData = await promoStatusResponse.json();
+  assert.equal(promoStatusData.codes.length, 2, "status=available filters to 2 codes");
+  assert.ok(
+    promoStatusData.codes.every((c) => c.distribution_status === "available"),
+    "all returned codes must match the status filter"
+  );
+
+  // Search query test
+  const promoSearchResponse = await api.fetch(
+    new Request(`${promoBase}?search=alice`, { headers: { cookie: adminAuthCookie } })
+  );
+  assert.equal(promoSearchResponse.status, 200);
+  const promoSearchData = await promoSearchResponse.json();
+  assert.equal(promoSearchData.codes.length, 1, "search for 'alice' finds 1 code");
+  assert.equal(promoSearchData.codes[0].assigned_to_name, "Alice");
+
+  // ── 3. Import tests ──
+
+  // Valid import
+  promoCodeBulkImportResult = { created: 5, updated: 1, unchanged: 2 };
+  const promoImportResponse = await api.fetch(
+    new Request(promoBase, {
+      method: "POST",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminAuthCookie
+      },
+      body: JSON.stringify({
+        rows: [
+          { microsoft_code_id: "MS-NEW-001", code: "NEW-CODE-001", microsoft_available: true },
+          { microsoft_code_id: "MS-NEW-002", code: "NEW-CODE-002", microsoft_available: true }
+        ],
+        orderInfo: { order_id: "ORD-IMPORT-1" }
+      })
+    })
+  );
+  assert.equal(promoImportResponse.status, 200);
+  const promoImportData = await promoImportResponse.json();
+  assert.equal(promoImportData.created, 5);
+  assert.equal(promoImportData.updated, 1);
+  assert.equal(promoImportData.unchanged, 2);
+
+  // Import without same-origin → 403
+  const promoImportCrossOriginResponse = await api.fetch(
+    new Request(promoBase, {
+      method: "POST",
+      headers: {
+        Origin: "https://attacker.example",
+        "Content-Type": "application/json",
+        cookie: adminAuthCookie
+      },
+      body: JSON.stringify({ rows: [] })
+    })
+  );
+  assert.equal(promoImportCrossOriginResponse.status, 403, "import from wrong origin must return 403");
+
+  // ── 4. Preview tests ──
+
+  const promoPreviewResponse = await api.fetch(
+    new Request(`${promoBase}/preview`, {
+      method: "POST",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminAuthCookie
+      },
+      body: JSON.stringify({
+        rows: [
+          { microsoft_code_id: "MS-001", microsoft_available: true, microsoft_redeemed: false },
+          { microsoft_code_id: "MS-NEW-PREVIEW", microsoft_available: true, microsoft_redeemed: false }
+        ]
+      })
+    })
+  );
+  assert.equal(promoPreviewResponse.status, 200);
+  const promoPreviewData = await promoPreviewResponse.json();
+  assert.equal(promoPreviewData.total_detected, 2);
+  assert.ok(typeof promoPreviewData.new_count === "number", "preview must include new_count");
+  assert.ok(typeof promoPreviewData.existing_count === "number", "preview must include existing_count");
+  assert.ok(typeof promoPreviewData.unchanged_count === "number", "preview must include unchanged_count");
+  assert.ok(Array.isArray(promoPreviewData.errors), "preview must include errors array");
+  assert.ok(Array.isArray(promoPreviewData.warnings), "preview must include warnings array");
+
+  // Preview without auth → 401
+  const promoPreviewNoAuthResponse = await api.fetch(
+    new Request(`${promoBase}/preview`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rows: [] })
+    })
+  );
+  assert.equal(promoPreviewNoAuthResponse.status, 401, "preview without auth must return 401");
+
+  // ── 5. Allocate tests ──
+
+  // Allocate with no available code → 409
+  promoCodeAllocateResult = null;
+  const promoAllocateEmptyResponse = await api.fetch(
+    new Request(`${promoBase}/allocate`, {
+      method: "POST",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminAuthCookie
+      },
+      body: JSON.stringify({ assigned_name: "Bob", assigned_email: "bob@example.com", assigned_channel: "email", campaign: "test" })
+    })
+  );
+  assert.equal(promoAllocateEmptyResponse.status, 409, "allocate with no inventory must return 409");
+
+  // Allocate with available code → 200
+  promoCodeAllocateResult = {
+    id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    code: "PROMO-TEST-001-XXXXX",
+    distribution_status: "allocated",
+    assigned_to_name: "Bob",
+    assigned_to_email: "bob@example.com",
+    assigned_channel: "email",
+    campaign: "test"
+  };
+  calls.length = 0;
+  const promoAllocateResponse = await api.fetch(
+    new Request(`${promoBase}/allocate`, {
+      method: "POST",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminAuthCookie
+      },
+      body: JSON.stringify({ assigned_name: "Bob", assigned_email: "bob@example.com", assigned_channel: "email", campaign: "test" })
+    })
+  );
+  assert.equal(promoAllocateResponse.status, 200);
+  const promoAllocateData = await promoAllocateResponse.json();
+  assert.equal(promoAllocateData.id, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+  assert.equal(promoAllocateData.assigned_to_name, "Bob");
+
+  // Allocate without auth → 401 (already tested above, verify allocate cross-origin)
+  const promoAllocateCrossOriginResponse = await api.fetch(
+    new Request(`${promoBase}/allocate`, {
+      method: "POST",
+      headers: {
+        Origin: "https://attacker.example",
+        "Content-Type": "application/json",
+        cookie: adminAuthCookie
+      },
+      body: JSON.stringify({ assigned_name: "Eve" })
+    })
+  );
+  assert.equal(promoAllocateCrossOriginResponse.status, 403, "allocate from wrong origin must return 403");
+
+  // ── 6. Export tests ──
+
+  const promoExportResponse = await api.fetch(
+    new Request(`${promoBase}/export`, {
+      method: "POST",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminAuthCookie
+      },
+      body: JSON.stringify({ filters: {}, includeFullCode: false })
+    })
+  );
+  assert.equal(promoExportResponse.status, 200);
+  const exportContentType = promoExportResponse.headers.get("Content-Type");
+  assert.match(exportContentType, /text\/plain/, "export must return text/csv content");
+  const exportCsv = await promoExportResponse.text();
+  assert.ok(exportCsv.includes("Code"), "CSV must contain header row with 'Code'");
+  assert.ok(exportCsv.includes("Distribution Status"), "CSV must contain 'Distribution Status' header");
+
+  // Export without auth → 401
+  const promoExportNoAuthResponse = await api.fetch(
+    new Request(`${promoBase}/export`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filters: {} })
+    })
+  );
+  assert.equal(promoExportNoAuthResponse.status, 401, "export without auth must return 401");
+
+  // ── 7. Detail tests ──
+
+  // Detail for existing code
+  const promoDetailResponse = await api.fetch(
+    new Request(`${promoBase}/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa`, {
+      headers: { cookie: adminAuthCookie }
+    })
+  );
+  assert.equal(promoDetailResponse.status, 200);
+  const promoDetailData = await promoDetailResponse.json();
+  assert.equal(promoDetailData.code.id, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+  assert.equal(promoDetailData.code.code, "PROMO-TEST-001-XXXXX");
+  assert.ok(Array.isArray(promoDetailData.logs), "detail must include logs array");
+
+  // Detail for non-existent code → 404
+  const promoDetailMissingResponse = await api.fetch(
+    new Request(`${promoBase}/ffffffff-ffff-4fff-8fff-ffffffffffff`, {
+      headers: { cookie: adminAuthCookie }
+    })
+  );
+  assert.equal(promoDetailMissingResponse.status, 404, "detail for missing code must return 404");
+
+  // Detail without auth → 401
+  const promoDetailNoAuthResponse = await api.fetch(
+    new Request(`${promoBase}/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa`)
+  );
+  assert.equal(promoDetailNoAuthResponse.status, 401, "detail without auth must return 401");
+
+  // ── 8. Update tests ──
+
+  // Single update with valid fields
+  promoCodeLogRows = [];
+  const promoUpdateResponse = await api.fetch(
+    new Request(promoBase, {
+      method: "PATCH",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminAuthCookie
+      },
+      body: JSON.stringify({
+        id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        changes: { note: "Updated via test", campaign: "updated-campaign" }
+      })
+    })
+  );
+  assert.equal(promoUpdateResponse.status, 200);
+  const promoUpdateData = await promoUpdateResponse.json();
+  assert.equal(promoUpdateData.note, "Updated via test");
+  assert.equal(promoUpdateData.campaign, "updated-campaign");
+  assert.ok(promoCodeLogRows.length >= 1, "update must create an audit log entry");
+  assert.equal(promoCodeLogRows.at(-1).action, "EDIT");
+
+  // Update non-existent code → 404
+  const promoUpdateMissingResponse = await api.fetch(
+    new Request(promoBase, {
+      method: "PATCH",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminAuthCookie
+      },
+      body: JSON.stringify({
+        id: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+        changes: { note: "no such code" }
+      })
+    })
+  );
+  assert.equal(promoUpdateMissingResponse.status, 404, "update for missing code must return 404");
+
+  // Update without id → 400
+  const promoUpdateNoIdResponse = await api.fetch(
+    new Request(promoBase, {
+      method: "PATCH",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminAuthCookie
+      },
+      body: JSON.stringify({ changes: { note: "no id provided" } })
+    })
+  );
+  assert.equal(promoUpdateNoIdResponse.status, 400, "update without id must return 400");
+
+  // Batch update with mass assignment attempt → only allowed fields applied
+  const promoBatchUpdateResponse = await api.fetch(
+    new Request(promoBase, {
+      method: "PATCH",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminAuthCookie
+      },
+      body: JSON.stringify({
+        ids: ["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "cccccccc-cccc-4ccc-8ccc-cccccccccccc"],
+        changes: {
+          note: "Batch updated",
+          campaign: "batch-campaign",
+          assigned_channel: "email",
+          distribution_status: "redeemed",
+          code: "HACKED-CODE"
+        }
+      })
+    })
+  );
+  assert.equal(promoBatchUpdateResponse.status, 200);
+  const promoBatchUpdateData = await promoBatchUpdateResponse.json();
+  assert.equal(promoBatchUpdateData.updated, 2, "batch update must report 2 updated codes");
+  // Verify that disallowed fields (distribution_status, code) were NOT applied
+  const codeRow = promoCodeRows.find((r) => r.id === "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+  assert.equal(codeRow.note, "Batch updated", "allowed field 'note' must be updated");
+  assert.equal(codeRow.campaign, "batch-campaign", "allowed field 'campaign' must be updated");
+  assert.equal(codeRow.assigned_channel, "email", "allowed field 'assigned_channel' must be updated");
+  assert.notEqual(codeRow.distribution_status, "redeemed", "disallowed field 'distribution_status' must NOT be updated");
+  assert.notEqual(codeRow.code, "HACKED-CODE", "disallowed field 'code' must NOT be updated");
+
+  // Batch update with no valid fields → 400
+  const promoBatchNoFieldsResponse = await api.fetch(
+    new Request(promoBase, {
+      method: "PATCH",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminAuthCookie
+      },
+      body: JSON.stringify({
+        ids: ["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"],
+        changes: { distribution_status: "redeemed" }
+      })
+    })
+  );
+  assert.equal(promoBatchNoFieldsResponse.status, 400, "batch update with only disallowed fields must return 400");
+
+  // Update cross-origin → 403
+  const promoUpdateCrossOriginResponse = await api.fetch(
+    new Request(promoBase, {
+      method: "PATCH",
+      headers: {
+        Origin: "https://attacker.example",
+        "Content-Type": "application/json",
+        cookie: adminAuthCookie
+      },
+      body: JSON.stringify({ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", changes: { note: "xss" } })
+    })
+  );
+  assert.equal(promoUpdateCrossOriginResponse.status, 403, "update from wrong origin must return 403");
+
+  // ── 9. Delete tests ──
+
+  // Delete available code → 200
+  promoCodeLogRows = [];
+  const promoDeleteResponse = await api.fetch(
+    new Request(promoBase, {
+      method: "DELETE",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminAuthCookie
+      },
+      body: JSON.stringify({ id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc" })
+    })
+  );
+  assert.equal(promoDeleteResponse.status, 200);
+  const promoDeleteData = await promoDeleteResponse.json();
+  assert.equal(promoDeleteData.ok, true);
+  assert.ok(promoCodeLogRows.length >= 1, "delete must create an audit log entry");
+  assert.equal(promoCodeLogRows.at(-1).action, "DELETE");
+
+  // Verify the code was actually removed from mock
+  assert.equal(
+    promoCodeRows.find((r) => r.id === "cccccccc-cccc-4ccc-8ccc-cccccccccccc"),
+    undefined,
+    "deleted code must no longer exist"
+  );
+
+  // Delete non-existent code → 404
+  const promoDeleteMissingResponse = await api.fetch(
+    new Request(promoBase, {
+      method: "DELETE",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminAuthCookie
+      },
+      body: JSON.stringify({ id: "ffffffff-ffff-4fff-8fff-ffffffffffff" })
+    })
+  );
+  assert.equal(promoDeleteMissingResponse.status, 404, "delete for missing code must return 404");
+
+  // Delete without id → 400
+  const promoDeleteNoIdResponse = await api.fetch(
+    new Request(promoBase, {
+      method: "DELETE",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminAuthCookie
+      },
+      body: JSON.stringify({})
+    })
+  );
+  assert.equal(promoDeleteNoIdResponse.status, 400, "delete without id must return 400");
+
+  // Delete allocated code → 400 (only available codes can be deleted)
+  const promoDeleteAllocatedResponse = await api.fetch(
+    new Request(promoBase, {
+      method: "DELETE",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminAuthCookie
+      },
+      body: JSON.stringify({ id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" })
+    })
+  );
+  assert.equal(promoDeleteAllocatedResponse.status, 400, "delete for non-available code must return 400");
+
+  // Delete cross-origin → 403
+  const promoDeleteCrossOriginResponse = await api.fetch(
+    new Request(promoBase, {
+      method: "DELETE",
+      headers: {
+        Origin: "https://attacker.example",
+        "Content-Type": "application/json",
+        cookie: adminAuthCookie
+      },
+      body: JSON.stringify({ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" })
+    })
+  );
+  assert.equal(promoDeleteCrossOriginResponse.status, 403, "delete from wrong origin must return 403");
+
+  // Reset promo code state
+  promoCodeRows = [];
+  promoCodeLogRows = [];
+  promoCodeAllocateResult = null;
+  promoCodeBulkImportResult = null;
 } finally {
   globalThis.fetch = originalFetch;
   await rm(buildDirectory, { recursive: true, force: true });
