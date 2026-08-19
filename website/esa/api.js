@@ -1737,6 +1737,417 @@ async function handleAdminFeatures(request) {
   return jsonError("Unauthorized", 401);
 }
 
+// ---------------------------------------------------------------------------
+// Promo Code helpers
+// ---------------------------------------------------------------------------
+
+function maskPromoCode(code) {
+  if (code.length <= 8) return code;
+  return code.slice(0, 5) + code.slice(5, -3).replace(/./g, "*") + code.slice(-3);
+}
+
+function escapeCsvField(value) {
+  if (value.includes(",") || value.includes('"') || value.includes("\n") || value.includes("\r")) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+async function supabaseRaw(path, init = {}) {
+  requireSupabase();
+  return fetch(`${normalizedSupabaseUrl()}${path}`, {
+    ...init,
+    headers: { ...supabaseHeaders(), ...(init.headers || {}) }
+  });
+}
+
+async function supabaseRpc(fnName, params) {
+  return supabase(`/rest/v1/rpc/${fnName}`, {
+    method: "POST",
+    body: JSON.stringify(params)
+  });
+}
+
+function buildPromoCodeFilters(url) {
+  const sp = url.searchParams;
+  const page = Math.max(1, Number(sp.get("page")) || 1);
+  const pageSize = Math.min(200, Math.max(1, Number(sp.get("pageSize")) || 20));
+  const status = sp.get("status") || undefined;
+  const orderId = sp.get("orderId") || undefined;
+  const channel = sp.get("channel") || undefined;
+  const search = sp.get("search") || undefined;
+  const dateFrom = sp.get("dateFrom") || undefined;
+  const dateTo = sp.get("dateTo") || undefined;
+  const dateField = sp.get("dateField") || undefined;
+  return { page, pageSize, status, orderId, channel, search, dateFrom, dateTo, dateField };
+}
+
+function applyPromoCodeFilters(params, filters) {
+  const { status, orderId, channel, search, dateFrom, dateTo, dateField } = filters;
+  if (status && status !== "all") params.set("distribution_status", `eq.${status}`);
+  if (orderId) params.set("order_id", `eq.${orderId}`);
+  if (channel) params.set("assigned_channel", `eq.${channel}`);
+  if (search && search.trim()) {
+    const term = search.trim();
+    const cols = ["code", "microsoft_code_id", "assigned_to_name", "assigned_to_email", "campaign", "raw_order_id", "note"];
+    params.set("or", `(${cols.map((c) => `${c}.ilike.*${term}*`).join(",")})`);
+  }
+  if (dateFrom && dateTo && dateField) {
+    params.set("and", `(${dateField}.gte.${dateFrom},${dateField}.lte.${dateTo})`);
+  } else if (dateFrom && dateField) {
+    params.set(dateField, `gte.${dateFrom}`);
+  } else if (dateTo && dateField) {
+    params.set(dateField, `lte.${dateTo}`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Promo Code handlers
+// ---------------------------------------------------------------------------
+
+async function handleAdminPromoCodes(request) {
+  if (!(await isAdminRequest(request))) return jsonError("Unauthorized", 401);
+
+  if (request.method === "GET") {
+    try {
+      const url = new URL(request.url);
+      const filters = buildPromoCodeFilters(url);
+      const { page, pageSize } = filters;
+
+      const params = new URLSearchParams({
+        select: "*",
+        order: "created_at.desc",
+        limit: String(pageSize),
+        offset: String((page - 1) * pageSize)
+      });
+      applyPromoCodeFilters(params, filters);
+
+      const raw = await supabaseRaw(`/rest/v1/promo_codes?${params}`, {
+        headers: { Prefer: "count=exact" }
+      });
+      if (!raw.ok) {
+        const detail = await raw.text();
+        throw new Error(`List failed (${raw.status}): ${detail.slice(0, 200)}`);
+      }
+      const codes = await raw.json();
+      let total = 0;
+      const cr = raw.headers.get("content-range");
+      if (cr) {
+        const m = cr.match(/\/(\d+|\*)/);
+        if (m && m[1] !== "*") total = Number(m[1]);
+      }
+
+      let stats;
+      try {
+        stats = await supabaseRpc("promo_code_dashboard_stats", {});
+        if (Array.isArray(stats)) stats = stats[0];
+      } catch { stats = null; }
+
+      return json({ codes, total, page, pageSize, stats });
+    } catch (e) {
+      console.error("Promo code list error:", e);
+      return jsonError("Internal server error", 500);
+    }
+  }
+
+  if (request.method === "POST") {
+    if (!isSameOrigin(request)) return jsonError("Cross-origin request rejected", 403);
+    try {
+      const body = await request.json();
+      const result = await supabaseRpc("bulk_import_promo_codes", {
+        p_rows: body.rows,
+        p_order_info: body.orderInfo || {}
+      });
+      return json(result);
+    } catch (e) {
+      console.error("Promo code import error:", e);
+      return jsonError("Internal server error", 500);
+    }
+  }
+
+  if (request.method === "PATCH") {
+    if (!isSameOrigin(request)) return jsonError("Cross-origin request rejected", 403);
+    try {
+      const body = await request.json();
+
+      // Batch update mode
+      if (body.ids && Array.isArray(body.ids)) {
+        const ALLOWED_BATCH_FIELDS = new Set(["note", "campaign", "assigned_channel"]);
+        const sanitized = {};
+        for (const [key, value] of Object.entries(body.changes || {})) {
+          if (ALLOWED_BATCH_FIELDS.has(key)) sanitized[key] = value;
+        }
+        if (Object.keys(sanitized).length === 0) return jsonError("没有可修改的字段", 400);
+
+        let updated = 0;
+        for (const id of body.ids) {
+          const existing = await supabase(
+            `/rest/v1/promo_codes?select=*&id=eq.${encodeURIComponent(id)}&limit=1`
+          );
+          if (!existing || existing.length === 0) continue;
+          const oldData = existing[0];
+
+          const rows = await supabase(
+            `/rest/v1/promo_codes?id=eq.${encodeURIComponent(id)}`,
+            {
+              method: "PATCH",
+              headers: { Prefer: "return=representation" },
+              body: JSON.stringify({ ...sanitized, updated_at: new Date().toISOString() })
+            }
+          );
+          if (rows && rows.length > 0) {
+            updated++;
+            await supabase("/rest/v1/promo_code_logs", {
+              method: "POST",
+              headers: supabaseHeaders("return=minimal"),
+              body: JSON.stringify({
+                promo_code_id: id,
+                action: "EDIT",
+                previous_data: oldData,
+                new_data: sanitized,
+                metadata: { changed_fields: Object.keys(sanitized) }
+              })
+            });
+          }
+        }
+        return json({ updated });
+      }
+
+      // Single update mode
+      const { id, changes } = body;
+      if (!id) return jsonError("缺少 id", 400);
+
+      // Fetch old data for audit log
+      const existing = await supabase(
+        `/rest/v1/promo_codes?select=*&id=eq.${encodeURIComponent(id)}&limit=1`
+      );
+      if (!existing || existing.length === 0) return jsonError("未找到该兑换码", 404);
+      const oldData = existing[0];
+
+      const rows = await supabase(
+        `/rest/v1/promo_codes?id=eq.${encodeURIComponent(id)}`,
+        {
+          method: "PATCH",
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify({ ...changes, updated_at: new Date().toISOString() })
+        }
+      );
+      if (!rows || rows.length === 0) return jsonError("未找到该兑换码", 404);
+
+      // Insert audit log
+      await supabase("/rest/v1/promo_code_logs", {
+        method: "POST",
+        headers: supabaseHeaders("return=minimal"),
+        body: JSON.stringify({
+          promo_code_id: id,
+          action: "EDIT",
+          previous_data: oldData,
+          new_data: changes,
+          metadata: { changed_fields: Object.keys(changes) }
+        })
+      });
+
+      return json(rows[0]);
+    } catch (e) {
+      console.error("Promo code update error:", e);
+      return jsonError("Internal server error", 500);
+    }
+  }
+
+  if (request.method === "DELETE") {
+    if (!isSameOrigin(request)) return jsonError("Cross-origin request rejected", 403);
+    try {
+      const body = await request.json();
+      const { id } = body;
+      if (!id) return jsonError("缺少 id", 400);
+      const existing = await supabase(
+        `/rest/v1/promo_codes?select=id,distribution_status&id=eq.${encodeURIComponent(id)}&limit=1`
+      );
+      if (!existing || existing.length === 0) return jsonError("未找到该兑换码", 404);
+      if (existing[0].distribution_status !== "available") {
+        return jsonError(`无法删除状态为 "${existing[0].distribution_status}" 的兑换码`, 400);
+      }
+      const oldData = existing[0];
+      await supabase(`/rest/v1/promo_codes?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
+
+      // Insert audit log
+      await supabase("/rest/v1/promo_code_logs", {
+        method: "POST",
+        headers: supabaseHeaders("return=minimal"),
+        body: JSON.stringify({
+          promo_code_id: id,
+          action: "DELETE",
+          previous_data: oldData,
+          new_data: null,
+          metadata: {}
+        })
+      });
+
+      return json({ ok: true });
+    } catch (e) {
+      console.error("Promo code delete error:", e);
+      return jsonError("Internal server error", 500);
+    }
+  }
+
+  return jsonError("Method not allowed", 405);
+}
+
+async function handleAdminPromoCodeAllocate(request) {
+  if (!(await isAdminRequest(request))) return jsonError("Unauthorized", 401);
+  if (request.method !== "POST") return jsonError("Method not allowed", 405);
+  if (!isSameOrigin(request)) return jsonError("Cross-origin request rejected", 403);
+  try {
+    const body = await request.json();
+    const rows = await supabaseRpc("allocate_promo_code", {
+      p_assigned_name: body.assigned_name,
+      p_assigned_email: body.assigned_email,
+      p_assigned_channel: body.assigned_channel,
+      p_campaign: body.campaign,
+      p_note: body.note || null,
+      p_specific_code_id: body.specific_code_id || null
+    });
+    if (!rows || rows.length === 0) return jsonError("没有可用的兑换码", 409);
+    return json(Array.isArray(rows) ? rows[0] : rows);
+  } catch (e) {
+    console.error("Promo code allocate error:", e);
+    if (e instanceof Error && e.message.includes("No available")) return jsonError("没有可用的兑换码", 409);
+    return jsonError("Internal server error", 500);
+  }
+}
+
+async function handleAdminPromoCodeExport(request) {
+  if (!(await isAdminRequest(request))) return jsonError("Unauthorized", 401);
+  if (request.method !== "POST") return jsonError("Method not allowed", 405);
+  if (!isSameOrigin(request)) return jsonError("Cross-origin request rejected", 403);
+  try {
+    const body = await request.json();
+    const filters = body.filters || {};
+    const includeFullCode = !!body.includeFullCode;
+
+    const params = new URLSearchParams({ select: "*", order: "created_at.desc", limit: "100000" });
+    applyPromoCodeFilters(params, filters);
+
+    const codes = await supabase(`/rest/v1/promo_codes?${params}`);
+    const csvHeaders = [
+      "Code", "Code ID", "Distribution Status", "Microsoft Available",
+      "Microsoft Redeemed", "Order", "Campaign", "Assigned To",
+      "Channel", "Assigned At", "Expire At", "Note"
+    ];
+
+    const dataRows = (codes || []).map((c) => {
+      const codeValue = includeFullCode ? c.code : maskPromoCode(c.code);
+      const assignedTo = [c.assigned_to_name, c.assigned_to_email].filter(Boolean).join(" / ");
+      return [
+        escapeCsvField(codeValue),
+        escapeCsvField(c.microsoft_code_id),
+        c.distribution_status,
+        c.microsoft_available == null ? "" : String(c.microsoft_available),
+        c.microsoft_redeemed == null ? "" : String(c.microsoft_redeemed),
+        escapeCsvField(c.raw_order_id || ""),
+        escapeCsvField(c.campaign || ""),
+        escapeCsvField(assignedTo),
+        escapeCsvField(c.assigned_channel || ""),
+        c.assigned_at || "",
+        c.microsoft_expire_at || "",
+        escapeCsvField(c.note || "")
+      ].join(",");
+    });
+
+    const csv = [csvHeaders.join(","), ...dataRows].join("\n");
+    return new Response(csv, {
+      status: 200,
+      headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" }
+    });
+  } catch (e) {
+    console.error("Promo code export error:", e);
+    return jsonError("Internal server error", 500);
+  }
+}
+
+async function handleAdminPromoCodePreview(request) {
+  if (!(await isAdminRequest(request))) return jsonError("Unauthorized", 401);
+  if (request.method !== "POST") return jsonError("Method not allowed", 405);
+  if (!isSameOrigin(request)) return jsonError("Cross-origin request rejected", 403);
+  try {
+    const body = await request.json();
+    const rows = body.rows || [];
+    const microsoftCodeIds = rows.map((r) => r.microsoft_code_id);
+
+    // Query existing codes that match the incoming microsoft_code_ids
+    let existingCodes = [];
+    if (microsoftCodeIds.length > 0) {
+      const inValues = microsoftCodeIds
+        .map((id) => `"${String(id).replace(/"/g, '\\"')}"`)
+        .join(",");
+      existingCodes = await supabase(
+        `/rest/v1/promo_codes?select=*&microsoft_code_id=in.(${inValues})`
+      );
+    }
+
+    const existingMap = new Map();
+    for (const code of existingCodes) {
+      existingMap.set(code.microsoft_code_id, code);
+    }
+
+    let newCount = 0;
+    let existingCount = 0;
+    let microsoftStatusChanges = 0;
+    let unchangedCount = 0;
+
+    for (const row of rows) {
+      const existing = existingMap.get(row.microsoft_code_id);
+      if (!existing) {
+        newCount++;
+      } else {
+        existingCount++;
+        const hasChanges =
+          existing.microsoft_available !== row.microsoft_available ||
+          existing.microsoft_redeemed !== row.microsoft_redeemed ||
+          existing.microsoft_start_at !== row.microsoft_start_at ||
+          existing.microsoft_expire_at !== row.microsoft_expire_at ||
+          existing.redeem_url !== row.redeem_url ||
+          existing.raw_order_id !== row.raw_order_id;
+        if (hasChanges) {
+          microsoftStatusChanges++;
+        } else {
+          unchangedCount++;
+        }
+      }
+    }
+
+    return json({
+      filename: "",
+      total_detected: rows.length,
+      new_count: newCount,
+      existing_count: existingCount,
+      microsoft_status_changes: microsoftStatusChanges,
+      unchanged_count: unchangedCount,
+      errors: [],
+      warnings: []
+    });
+  } catch (e) {
+    console.error("Promo code preview error:", e);
+    return jsonError("导入预览失败", 500);
+  }
+}
+
+async function handleAdminPromoCodeDetail(request, id) {
+  if (!(await isAdminRequest(request))) return jsonError("Unauthorized", 401);
+  if (request.method !== "GET") return jsonError("Method not allowed", 405);
+  try {
+    const [codes, logs] = await Promise.all([
+      supabase(`/rest/v1/promo_codes?select=*&id=eq.${encodeURIComponent(id)}&limit=1`),
+      supabase(`/rest/v1/promo_code_logs?promo_code_id=eq.${encodeURIComponent(id)}&order=created_at.desc`)
+    ]);
+    if (!codes || codes.length === 0) return jsonError("未找到该兑换码", 404);
+    return json({ code: codes[0], logs: logs || [] });
+  } catch (e) {
+    console.error("Promo code detail error:", e);
+    return jsonError("Internal server error", 500);
+  }
+}
+
 async function handleRequest(request) {
   const path = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
   if (path === "/api/access" && request.method === "POST") {
@@ -1768,6 +2179,24 @@ async function handleRequest(request) {
   }
   if (path === "/api/incentives/admin/features") {
     return handleAdminFeatures(request);
+  }
+  if (path === "/api/incentives/admin/promo-codes") {
+    return handleAdminPromoCodes(request);
+  }
+  if (path === "/api/incentives/admin/promo-codes/allocate") {
+    return handleAdminPromoCodeAllocate(request);
+  }
+  if (path === "/api/incentives/admin/promo-codes/export") {
+    return handleAdminPromoCodeExport(request);
+  }
+  if (path === "/api/incentives/admin/promo-codes/preview") {
+    return handleAdminPromoCodePreview(request);
+  }
+  if (path.startsWith("/api/incentives/admin/promo-codes/")) {
+    const id = path.split("/").pop();
+    if (id && id.length > 0) {
+      return handleAdminPromoCodeDetail(request, id);
+    }
   }
   if (path === "/api/incentives/admin/translate") {
     return handleAdminTranslation(request);
