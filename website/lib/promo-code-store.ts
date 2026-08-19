@@ -478,8 +478,23 @@ export async function getPromoCodeDetail(
 // ---------------------------------------------------------------------------
 
 export async function getPromoCodeOrders(): Promise<PromoCodeOrder[]> {
+  // Metadata columns only (must match the ESA api.js orders select); no redeem
+  // codes are exposed to the admin list response.
+  const columns = [
+    "id",
+    "microsoft_order_id",
+    "order_name",
+    "product_name",
+    "product_id",
+    "source",
+    "code_count",
+    "imported_at",
+    "microsoft_synced_at",
+    "created_at",
+    "updated_at",
+  ].join(",");
   return supabase<PromoCodeOrder[]>(
-    "/rest/v1/promo_code_orders?select=*&order=created_at.desc"
+    `/rest/v1/promo_code_orders?select=${columns}&order=order_name.asc`
   );
 }
 

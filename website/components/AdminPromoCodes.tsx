@@ -170,8 +170,18 @@ export function AdminPromoCodes() {
       `/api/incentives/admin/promo-codes?${params}`,
       { cache: "no-store" },
     );
-    if (response.status === 401) { setAuth("login"); return; }
-    if (!response.ok) throw new Error("数据加载失败");
+    if (response.status === 401) { setError(""); setAuth("login"); return; }
+    if (!response.ok) {
+      let body: { code?: string } | null = null;
+      try { body = (await response.json()) as { code?: string }; } catch { /* non-JSON error body */ }
+      if (response.status === 503 && body?.code === "TABLE_NOT_INITIALIZED") {
+        throw new Error("促销代码数据表尚未初始化，请先在 Supabase 执行 supabase/schema.sql");
+      }
+      if (response.status >= 500) {
+        throw new Error("促销代码数据服务异常，请稍后重试");
+      }
+      throw new Error("数据加载失败");
+    }
     const data = (await response.json()) as {
       codes: PromoCode[];
       total: number;
@@ -184,13 +194,16 @@ export function AdminPromoCodes() {
     setStats(data.stats);
     setCurrentPage(data.page);
     if (data.orders) setOrders(data.orders);
+    setError("");
     setAuth("ready");
   }
 
   useEffect(() => {
     loadData().catch((err: unknown) => {
+      // 401 已由 loadData 内部处理（不会 throw 到这里）；
+      // 数据层错误保持已认证状态，只展示错误横幅，不回弹登录页。
       setError(err instanceof Error ? err.message : "数据加载失败");
-      setAuth("login");
+      setAuth((current) => (current === "checking" ? "ready" : current));
     });
   }, []);
 
@@ -208,7 +221,7 @@ export function AdminPromoCodes() {
       prev.dateTo !== dateTo;
     if (changed && auth === "ready") {
       prevFilters.current = { statusFilter, orderFilter, channelFilter, search, dateField, dateFrom, dateTo };
-      loadData(1).catch(() => {});
+      loadData(1).catch((err: unknown) => setError(err instanceof Error ? err.message : "数据加载失败"));
     }
   }, [statusFilter, orderFilter, channelFilter, search, dateField, dateFrom, dateTo, auth]);
 
@@ -223,7 +236,14 @@ export function AdminPromoCodes() {
     const result = (await response.json()) as { error?: string };
     if (!response.ok) { setError(result.error ?? "登录失败"); return; }
     setPassword("");
-    await loadData();
+    try {
+      await loadData();
+    } catch (err: unknown) {
+      // 认证成功（cookie 已建立）但数据加载失败：转入 ready 态展示错误横幅 + 重试，
+      // 而不是回到已清空密码的登录表单。
+      setError(err instanceof Error ? err.message : "数据加载失败");
+      setAuth("ready");
+    }
   }
 
   async function logout() {
@@ -249,7 +269,7 @@ export function AdminPromoCodes() {
 
   function goToPage(page: number) {
     const clamped = Math.max(1, Math.min(page, totalPages));
-    loadData(clamped).catch(() => {});
+    loadData(clamped).catch((err: unknown) => setError(err instanceof Error ? err.message : "数据加载失败"));
   }
 
   /* ── Import ───────────────────────────────────────────────────────────── */
@@ -504,7 +524,12 @@ export function AdminPromoCodes() {
       />
 
       <main className="adminMain">
-        {error && <p className="adminError" role="alert">{error}</p>}
+        {error && (
+          <div className="adminError" role="alert">
+            <p>{error}</p>
+            <button className="button buttonSecondary" onClick={() => loadData(currentPage).catch((err: unknown) => setError(err instanceof Error ? err.message : "数据加载失败"))}>重试</button>
+          </div>
+        )}
 
         {/* Stats cards */}
         {stats && (

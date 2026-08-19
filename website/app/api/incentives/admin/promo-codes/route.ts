@@ -4,6 +4,7 @@ import { isAdminRequest, isSameOrigin } from "@/lib/admin-auth";
 import {
   listPromoCodes,
   getPromoCodeStats,
+  getPromoCodeOrders,
   importPromoCodes,
   updatePromoCode,
   deletePromoCode,
@@ -57,9 +58,12 @@ export async function GET(request: Request) {
         : undefined,
     };
 
-    const [pageResult, stats] = await Promise.all([
+    const [pageResult, stats, orders] = await Promise.all([
       listPromoCodes(filter),
       getPromoCodeStats(),
+      // Order metadata for the filter dropdown; tolerate a missing table so
+      // the list stays usable (matches the ESA api.js contract).
+      getPromoCodeOrders().catch(() => []),
     ]);
 
     const maskedCodes = pageResult.codes.map(c => ({
@@ -72,6 +76,7 @@ export async function GET(request: Request) {
       page: pageResult.page,
       pageSize: pageResult.pageSize,
       stats,
+      orders,
     });
   } catch {
     return Response.json({ error: "无法读取兑换码列表" }, { status: 500 });
