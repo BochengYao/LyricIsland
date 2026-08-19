@@ -51,6 +51,8 @@ let featureRow = null;
 let releasePreviewRows = [];
 let promoCodeRows = [];
 let promoCodeLogRows = [];
+let promoCodeOrderRows = [];
+let promoCodesTableMissing = false;
 let promoCodeRpcStats = null;
 let promoCodeAllocateResult = null;
 let promoCodeBulkImportResult = null;
@@ -269,6 +271,14 @@ globalThis.fetch = async (input, init = {}) => {
   }
   // ── Promo Code Supabase mock handlers ──
 
+  // Missing promo_codes table (PostgREST reports 404 + PGRST205)
+  if (promoCodesTableMissing && url.includes("/rest/v1/promo_codes") && !init.method) {
+    return new Response(
+      JSON.stringify({ code: "PGRST205", message: "Could not find the table 'public.promo_codes' in the schema cache" }),
+      { status: 404, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   // List promo codes (supabaseRaw with Prefer: count=exact)
   if (url.includes("/rest/v1/promo_codes?select=*&order=created_at.desc") && !init.method) {
     const parsed = new URL(url);
@@ -302,12 +312,19 @@ globalThis.fetch = async (input, init = {}) => {
   // RPC: promo_code_dashboard_stats
   if (url.includes("/rest/v1/rpc/promo_code_dashboard_stats")) {
     const stats = promoCodeRpcStats || {
-      total_codes: promoCodeRows.length,
+      total: promoCodeRows.length,
       available: promoCodeRows.filter((r) => r.distribution_status === "available").length,
-      allocated: promoCodeRows.filter((r) => r.distribution_status === "allocated").length,
-      redeemed: promoCodeRows.filter((r) => r.distribution_status === "redeemed").length
+      assigned: promoCodeRows.filter((r) => r.distribution_status === "assigned").length,
+      microsoft_redeemed: promoCodeRows.filter((r) => r.microsoft_redeemed === true).length,
+      expired: promoCodeRows.filter((r) => r.distribution_status === "expired").length,
+      expiring_soon: 0
     };
     return response([stats]);
+  }
+
+  // Order metadata list for the admin filter dropdown
+  if (url.includes("/rest/v1/promo_code_orders?") && !init.method) {
+    return response(promoCodeOrderRows);
   }
 
   // RPC: bulk_import_promo_codes
@@ -963,6 +980,7 @@ try {
   assert.equal(promoListEmptyData.pageSize, 20, "default pageSize is 20");
   assert.equal(promoListEmptyData.total, 0);
   assert.ok(promoListEmptyData.stats !== undefined, "response must have stats object");
+  assert.ok(Array.isArray(promoListEmptyData.orders), "response must have orders array");
 
   // Seed some promo code data for subsequent tests
   promoCodeRows = [
@@ -1032,6 +1050,59 @@ try {
   assert.equal(promoListData.codes.length, 3, "should return all 3 seeded codes");
   assert.equal(promoListData.total, 3);
   assert.ok(promoListData.stats, "stats object must be present");
+  assert.deepEqual(
+    Object.keys(promoListData.stats).sort(),
+    ["assigned", "available", "expired", "expiring_soon", "microsoft_redeemed", "total"],
+    "stats must follow the promo_code_dashboard_stats RPC contract"
+  );
+  assert.ok(Array.isArray(promoListData.orders), "list response must include the orders array");
+
+  // Order metadata is returned for the filter dropdown
+  promoCodeOrderRows = [
+    {
+      id: "99999999-9999-4999-8999-999999999999",
+      microsoft_order_id: "MS-ORDER-1",
+      order_name: "Summer Sale Order",
+      product_name: "LyricHover Pro",
+      product_id: "9PROD00001",
+      source: "microsoft_store",
+      code_count: 3,
+      imported_at: "2026-08-01T00:00:00.000Z",
+      microsoft_synced_at: "2026-08-02T00:00:00.000Z",
+      created_at: "2026-08-01T00:00:00.000Z",
+      updated_at: "2026-08-01T00:00:00.000Z"
+    }
+  ];
+  const promoOrdersResponse = await api.fetch(
+    new Request(promoBase, { headers: { cookie: adminAuthCookie } })
+  );
+  assert.equal(promoOrdersResponse.status, 200);
+  const promoOrdersData = await promoOrdersResponse.json();
+  assert.ok(Array.isArray(promoOrdersData.orders) && promoOrdersData.orders.length >= 1, "orders must contain seeded order metadata");
+  assert.deepEqual(promoOrdersData.orders[0], {
+    id: "99999999-9999-4999-8999-999999999999",
+    microsoft_order_id: "MS-ORDER-1",
+    order_name: "Summer Sale Order",
+    product_name: "LyricHover Pro",
+    product_id: "9PROD00001",
+    source: "microsoft_store",
+    code_count: 3,
+    imported_at: "2026-08-01T00:00:00.000Z",
+    microsoft_synced_at: "2026-08-02T00:00:00.000Z",
+    created_at: "2026-08-01T00:00:00.000Z",
+    updated_at: "2026-08-01T00:00:00.000Z"
+  });
+
+  // Missing promo_codes table (PGRST205) must surface as 503 TABLE_NOT_INITIALIZED,
+  // not a generic 500 that the frontend cannot distinguish from an auth failure.
+  promoCodesTableMissing = true;
+  const promoMissingTableResponse = await api.fetch(
+    new Request(promoBase, { headers: { cookie: adminAuthCookie } })
+  );
+  assert.equal(promoMissingTableResponse.status, 503, "a missing promo_codes table must return 503");
+  const promoMissingTableData = await promoMissingTableResponse.json();
+  assert.equal(promoMissingTableData.code, "TABLE_NOT_INITIALIZED", "503 body must carry the TABLE_NOT_INITIALIZED code");
+  promoCodesTableMissing = false;
 
   // Pagination test
   const promoPage1Response = await api.fetch(
@@ -1472,6 +1543,8 @@ try {
   // Reset promo code state
   promoCodeRows = [];
   promoCodeLogRows = [];
+  promoCodeOrderRows = [];
+  promoCodesTableMissing = false;
   promoCodeAllocateResult = null;
   promoCodeBulkImportResult = null;
 } finally {

@@ -1673,17 +1673,23 @@ async function supabaseRpc(fnName, params) {
   });
 }
 
+// Whitelists must match the SSR route handler (app/api/incentives/admin/promo-codes/route.ts).
+const PROMO_CODE_VALID_STATUSES = ["available", "assigned", "revoked", "expired", "all"];
+const PROMO_CODE_VALID_DATE_FIELDS = ["imported_at", "assigned_at", "microsoft_expire_at"];
+
 function buildPromoCodeFilters(url) {
   const sp = url.searchParams;
   const page = Math.max(1, Number(sp.get("page")) || 1);
   const pageSize = Math.min(200, Math.max(1, Number(sp.get("pageSize")) || 20));
-  const status = sp.get("status") || undefined;
+  const statusParam = sp.get("status");
+  const status = statusParam && PROMO_CODE_VALID_STATUSES.includes(statusParam) ? statusParam : undefined;
   const orderId = sp.get("orderId") || undefined;
   const channel = sp.get("channel") || undefined;
   const search = sp.get("search") || undefined;
   const dateFrom = sp.get("dateFrom") || undefined;
   const dateTo = sp.get("dateTo") || undefined;
-  const dateField = sp.get("dateField") || undefined;
+  const dateFieldParam = sp.get("dateField");
+  const dateField = dateFieldParam && PROMO_CODE_VALID_DATE_FIELDS.includes(dateFieldParam) ? dateFieldParam : undefined;
   return { page, pageSize, status, orderId, channel, search, dateFrom, dateTo, dateField };
 }
 
@@ -1732,6 +1738,11 @@ async function handleAdminPromoCodes(request) {
       });
       if (!raw.ok) {
         const detail = await raw.text();
+        // PostgREST reports a missing table as 404 + PGRST205; surface it as an
+        // explicit "table not initialized" 503 instead of a generic 500.
+        if (raw.status === 404 && detail.includes("PGRST205")) {
+          return json({ error: "promo_codes table not initialized", code: "TABLE_NOT_INITIALIZED" }, 503);
+        }
         throw new Error(`List failed (${raw.status}): ${detail.slice(0, 200)}`);
       }
       const codes = await raw.json();
@@ -1748,7 +1759,17 @@ async function handleAdminPromoCodes(request) {
         if (Array.isArray(stats)) stats = stats[0];
       } catch { stats = null; }
 
-      return json({ codes, total, page, pageSize, stats });
+      // Metadata-only order list for the filter dropdown; the selected columns
+      // never contain redeem codes. Tolerate a missing table.
+      let orders = [];
+      try {
+        const orderRows = await supabase(
+          "/rest/v1/promo_code_orders?select=id,microsoft_order_id,order_name,product_name,product_id,source,code_count,imported_at,microsoft_synced_at,created_at,updated_at&order=order_name.asc"
+        );
+        if (Array.isArray(orderRows)) orders = orderRows;
+      } catch { orders = []; }
+
+      return json({ codes, total, page, pageSize, stats, orders });
     } catch (e) {
       console.error("Promo code list error:", e);
       return jsonError("Internal server error", 500);

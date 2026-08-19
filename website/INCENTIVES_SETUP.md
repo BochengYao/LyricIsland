@@ -7,6 +7,10 @@
 3. `ADMIN_PASSWORD` 用于 `/admin` 登录；`ADMIN_SESSION_SECRET` 建议使用 32 字节以上随机字符串。
 4. 本地开发把变量写入未提交的 `.env.local`。生产环境通过 ESA「函数和 Pages → 基本信息 → 构建信息 → 环境变量」保存，不能写入仓库。
 
+检查清单：
+
+- 新增数据表功能后必须在主 Supabase 项目（非支持者项目）重跑 `supabase/schema.sql`，否则依赖新表的后台功能（如促销代码管理）会因表缺失而返回 503 `TABLE_NOT_INITIALIZED`。
+
 ESA 部署会在构建期间生成仅供边缘函数使用的 `esa-dist/entry.js`。该文件不会进入静态资源目录，也被 Git 忽略；浏览器只能调用 `/api/incentives/*`，不能读取服务器密钥。
 
 数据安全边界：
