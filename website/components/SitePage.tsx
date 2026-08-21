@@ -3,13 +3,17 @@ import Link from "next/link";
 import { AnimatedFaqItem } from "@/components/AnimatedFaqItem";
 import { ExternalArrow } from "@/components/ExternalArrow";
 import { IslandDemo } from "@/components/IslandDemo";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ModuleComposer } from "@/components/ModuleComposer";
 import { PlayerOrbit } from "@/components/PlayerOrbit";
 import { SelectiveTextReveal } from "@/components/SelectiveTextReveal";
 import { SmoothSectionScroll } from "@/components/SmoothSectionScroll";
 import {
   copyByLocale,
+  displayBrand,
+  localePath,
   microsoftStoreUrl,
+  type LocalizedPage,
   type Locale
 } from "@/data/site-copy";
 
@@ -46,7 +50,7 @@ export function LogoLockup({ locale = "zh" }: { locale?: Locale }) {
         priority
       />
       <span>
-        <strong>歌词岛</strong>
+        <strong>{displayBrand(locale)}</strong>
         <small>Lyric Hover</small>
       </span>
     </span>
@@ -55,15 +59,14 @@ export function LogoLockup({ locale = "zh" }: { locale?: Locale }) {
 
 export function PrimaryNavigation({
   locale,
-  homeHref = locale === "zh" ? "/" : "/en",
-  languageHref
+  homeHref = localePath(locale, "home"),
+  page = "home"
 }: {
   locale: Locale;
   homeHref?: string;
-  languageHref?: string;
+  page?: LocalizedPage;
 }) {
   const copy = copyByLocale[locale];
-  const localizedLanguageHref = languageHref ?? copy.languageHref;
   const navigation = copy.nav.map((item) => item.href === "#main" ? { ...item, href: homeHref } : item);
 
   const renderLabel = (item: (typeof navigation)[number]) => (
@@ -84,7 +87,7 @@ export function PrimaryNavigation({
   return (
     <header className="siteHeader">
       <nav className="floatingNav" aria-label={copy.navLabel}>
-        <Link href={locale === "zh" ? "/" : "/en"} className="brandLink">
+        <Link href={localePath(locale, "home")} className="brandLink">
           <LogoLockup locale={locale} />
         </Link>
 
@@ -109,9 +112,7 @@ export function PrimaryNavigation({
         </div>
 
         <div className="navActions">
-          <Link className="languageLink" href={localizedLanguageHref} hrefLang={locale === "zh" ? "en" : "zh-CN"}>
-            {copy.languageName}
-          </Link>
+          <LanguageSwitcher locale={locale} page={page} />
           <details className="mobileMenu">
             <summary aria-label={copy.menuLabel}>
               <span />
@@ -135,9 +136,7 @@ export function PrimaryNavigation({
                   {renderLabel(item)}
                 </a>
               ))}
-              <Link href={localizedLanguageHref} hrefLang={locale === "zh" ? "en" : "zh-CN"}>
-                {copy.languageName}
-              </Link>
+              <LanguageSwitcher locale={locale} page={page} />
             </div>
           </details>
         </div>
@@ -152,7 +151,7 @@ export function SitePage({ locale }: Props) {
   return (
     <>
       <a className="skipLink" href="#main">
-        {locale === "zh" ? "跳到主要内容" : "Skip to main content"}
+        {locale === "zh" ? "跳到主要内容" : locale === "zhHant" ? "跳至主要內容" : locale === "ja" ? "メインコンテンツへ移動" : "Skip to main content"}
       </a>
 
       <SmoothSectionScroll />

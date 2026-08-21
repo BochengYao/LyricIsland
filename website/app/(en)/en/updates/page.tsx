@@ -9,7 +9,9 @@ export const metadata: Metadata = {
     canonical: "/en/updates/",
     languages: {
       "zh-CN": "/updates/",
+      "zh-Hant": "/zh-hant/updates/",
       en: "/en/updates/",
+      ja: "/ja/updates/",
       "x-default": "/updates/"
     }
   }

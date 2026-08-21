@@ -17,13 +17,14 @@ namespace LyricHover.Core
         public static LyricTextPlacement Calculate(
             double availableWidth,
             double textWidth,
-            double overflowPadding = 28)
+            double overflowPadding = 28,
+            bool leftAligned = false)
         {
             var available = Math.Max(0, availableWidth);
             var text = Math.Max(0, textWidth);
             if (text <= available)
             {
-                return new LyricTextPlacement((available - text) / 2, 0);
+                return new LyricTextPlacement(leftAligned ? 0 : (available - text) / 2, 0);
             }
 
             return new LyricTextPlacement(0, text - available + Math.Max(0, overflowPadding));

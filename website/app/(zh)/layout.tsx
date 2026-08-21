@@ -3,6 +3,7 @@ import "@fontsource-variable/sofia-sans/wght.css";
 import "../globals.css";
 import DevSourceLocator from "@/components/DevSourceLocator";
 import { AccessLogger } from "@/components/AccessLogger";
+import IncentiveNavFontPreloads from "@/components/IncentiveNavFontPreloads";
 import { SiteStructuredData } from "@/components/SiteStructuredData";
 
 export const metadata: Metadata = {
@@ -55,14 +56,8 @@ export default function ChineseRootLayout({
     <html lang="zh-CN">
       <head>
         <SiteStructuredData locale="zh" />
+        <IncentiveNavFontPreloads locale="zh" />
         <meta name="baidu-site-verification" content="codeva-x0GnwjHSeW" />
-        <link
-          rel="preload"
-          href="/fonts/xiaolai-nav-v2.woff2"
-          as="font"
-          type="font/woff2"
-          crossOrigin="anonymous"
-        />
       </head>
       <body>
         <AccessLogger />

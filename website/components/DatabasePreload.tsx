@@ -1,5 +1,5 @@
 type Props = {
-  href: "/api/features" | "/api/incentives/public";
+  href: "/api/features" | "/api/incentives/public" | "/api/incentives/public?preview_limit=50";
 };
 
 export function DatabasePreload({ href }: Props) {

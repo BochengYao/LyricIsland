@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -19,6 +19,7 @@ using Microsoft.Win32;
 using Windows.Services.Store;
 using LyricHover.App.LayoutEditing;
 using LyricHover.App.Media;
+using LyricHover.App.LyricDock;
 using LyricHover.Core;
 using LyricHover.Core.Layout;
 using LyricHover.Core.Media;
@@ -48,6 +49,7 @@ namespace LyricHover.App
         private SettingsDirtyStateTracker<OverlayPlacementSettings> dirtyStateTracker;
         private SettingsThemePreference selectedThemePreference = SettingsThemePreference.System;
         private bool initializingSettings = true;
+        private bool suppressTaskbarLyricsConfirmation;
         private bool settingsDirty;
         private bool dirtyStateUpdateQueued;
         private bool layoutEditingActive;
@@ -206,6 +208,8 @@ namespace LyricHover.App
             SingleLineRadioButton.IsChecked = !settings.UseMultiLineDisplay;
             MultiLineRadioButton.IsChecked = settings.UseMultiLineDisplay;
             ShowTranslationCheckBox.IsChecked = settings.ShowTranslation;
+            LyricDockEnabledCheckBox.IsChecked = settings.LyricDockEnabled;
+            LyricDockAlignmentComboBox.SelectedIndex = settings.LyricDockAlignment == LyricDockAlignment.Left ? 1 : 0;
             ScreenComboBox.SelectedValue = string.IsNullOrWhiteSpace(settings.ScreenName)
                 ? this.screens.FirstOrDefault()?.Name
                 : settings.ScreenName;
@@ -407,6 +411,13 @@ namespace LyricHover.App
             ApplyCurrentSettings();
         }
 
+        public void FocusTaskbarLyricsSettings()
+        {
+            ShowSection("Lyrics");
+            LyricsSectionButton.IsChecked = true;
+            LyricDockEnabledCheckBox.Focus();
+        }
+
         private void PlacementSettingsWindow_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape && tryExitTutorial?.Invoke() == true)
@@ -422,6 +433,7 @@ namespace LyricHover.App
                 LyricsSourceComboBox,
                 ScreenComboBox,
                 PlayerSelectionComboBox
+                ,LyricDockAlignmentComboBox
             })
             {
                 selector.SelectionChanged += SettingsSelector_SelectionChanged;
@@ -464,6 +476,7 @@ namespace LyricHover.App
                 SingleLineRadioButton,
                 MultiLineRadioButton,
                 ShowTranslationCheckBox,
+                LyricDockEnabledCheckBox,
                 PassThroughOnHoverCheckBox,
                 LightThemeRadioButton,
                 DarkThemeRadioButton,
@@ -818,6 +831,8 @@ namespace LyricHover.App
             settings.LockedSourceAppUserModelId = PlayerSelectionComboBox.SelectedValue as string ?? string.Empty;
             settings.UseMultiLineDisplay = ReadUseMultiLineDisplay();
             settings.ShowTranslation = ShowTranslationCheckBox.IsChecked == true;
+            settings.LyricDockEnabled = LyricDockEnabledCheckBox.IsChecked == true;
+            settings.LyricDockAlignment = LyricDockAlignmentComboBox.SelectedIndex == 1 ? LyricDockAlignment.Left : LyricDockAlignment.Center;
             settings.LyricOffsetHotkeys = new HotkeySettings
             {
                 Earlier = EarlierHotkeyTextBox.Text,
@@ -1318,6 +1333,25 @@ namespace LyricHover.App
                 updateDividerSettings?.Invoke(mode, DividerOpacitySlider.Value, DividerSpacingSlider.Value);
             }
             UpdateSettingValueLabels();
+        }
+
+        private void LyricDockEnabledCheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            if (initializingSettings || suppressTaskbarLyricsConfirmation || workingSettings?.LyricDockEnabled == true)
+            {
+                return;
+            }
+
+            var confirmationWindow = new TaskbarLyricsConfirmationWindow(Window.GetWindow(this));
+            var confirmed = confirmationWindow.ShowDialog() == true;
+            if (confirmed)
+            {
+                return;
+            }
+
+            suppressTaskbarLyricsConfirmation = true;
+            LyricDockEnabledCheckBox.IsChecked = false;
+            suppressTaskbarLyricsConfirmation = false;
         }
 
         private void ShowTranslationCheckBox_Changed(object sender, RoutedEventArgs e)
@@ -2714,3 +2748,5 @@ namespace LyricHover.App
 
     }
 }
+
+

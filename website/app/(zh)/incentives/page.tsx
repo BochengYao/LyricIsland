@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IncentivePage } from "@/components/IncentivePage";
 import { incentivesByLocale } from "@/data/incentives-copy";
+import { UnprefixedLocaleRedirect } from "@/components/UnprefixedLocaleRedirect";
 
 export const metadata: Metadata = {
   title: incentivesByLocale.zh.pageTitle,
@@ -9,12 +10,14 @@ export const metadata: Metadata = {
     canonical: "/incentives/",
     languages: {
       "zh-CN": "/incentives/",
+      "zh-Hant": "/zh-hant/incentives/",
       en: "/en/incentives/",
+      ja: "/ja/incentives/",
       "x-default": "/incentives/"
     }
   }
 };
 
 export default function ChineseIncentivesPage() {
-  return <IncentivePage locale="zh" />;
+  return <><UnprefixedLocaleRedirect /><IncentivePage locale="zh" /></>;
 }

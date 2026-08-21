@@ -9,7 +9,9 @@ export const metadata: Metadata = {
     canonical: "/en/incentives/",
     languages: {
       "zh-CN": "/incentives/",
+      "zh-Hant": "/zh-hant/incentives/",
       en: "/en/incentives/",
+      ja: "/ja/incentives/",
       "x-default": "/incentives/"
     }
   }

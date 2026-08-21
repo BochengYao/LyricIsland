@@ -10,4 +10,14 @@
     <ProjectReference Include="..\LyricHover.App\LyricHover.App.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="..\LyricHover.App\Modules\IslandRenderState.cs" Link="LyricDock\IslandRenderState.cs" />
+    <Compile Include="..\LyricHover.App\LyricDock\ILyricDockEnvironment.cs" Link="LyricDock\ILyricDockEnvironment.cs" />
+    <Compile Include="..\LyricHover.App\LyricDock\LyricsPresentationSnapshot.cs" Link="LyricDock\LyricsPresentationSnapshot.cs" />
+    <Compile Include="..\LyricHover.App\LyricDock\WidgetVisibilityLease.cs" Link="LyricDock\WidgetVisibilityLease.cs" />
+    <Compile Include="..\LyricHover.App\LyricDock\LyricDockController.cs" Link="LyricDock\LyricDockController.cs" />
+    <Compile Include="..\LyricHover.App\LyricDock\LyricDockSafeSlotCalculator.cs" Link="LyricDock\LyricDockSafeSlotCalculator.cs" />
+    <Compile Include="..\LyricHover.App\LyricDock\WidgetsElementMatcher.cs" Link="LyricDock\WidgetsElementMatcher.cs" />
+  </ItemGroup>
+
 </Project>

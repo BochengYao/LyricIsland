@@ -87,7 +87,15 @@ export type FeatureContentSection = {
   visible: boolean;
 };
 
+export type FeatureContentVersionOperation =
+  | { type: "create"; release_version: string }
+  | { type: "rename"; from: string; to: string }
+  | { type: "delete"; release_version: string; delete_sections?: boolean }
+  | { type: "migrate-legacy"; to: string };
+
 export type FeatureContent = {
+  /** Independently managed versions for the published feature-content page. */
+  versions: string[];
   summary: {
     label_zh: string;
     label_en: string;

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -12,6 +12,7 @@ using System.Windows.Interop;
 using System.Windows.Threading;
 using LyricHover.App.LayoutEditing;
 using LyricHover.App.Modules;
+using LyricHover.App.LyricDock;
 using LyricHover.Core;
 using LyricHover.App.Media;
 using LyricHover.Core.Layout;
@@ -39,6 +40,8 @@ namespace LyricHover.App
         private int lyricLoadGeneration;
         private readonly LyricsCache cache;
         private readonly OverlaySettingsStore settingsStore;
+        private readonly WindowsLyricDockEnvironment lyricDockEnvironment;
+        private readonly LyricDockController LyricDockController;
         private readonly ScreenCatalog screenCatalog = new ScreenCatalog();
         private ILyricsClient lyricsClient;
         private TimedLyrics currentLyrics = new TimedLyrics(new LyricLine[0]);
@@ -150,7 +153,21 @@ namespace LyricHover.App
                 Dispatcher.BeginInvoke(new Action(async () => await RefreshAsync()));
             settingsStore = new OverlaySettingsStore(settingsPath);
             placementSettings = settingsStore.Load();
-            UiLanguageService.SetPreference(placementSettings.Language);
+            lyricDockEnvironment = new WindowsLyricDockEnvironment();
+            var taskbarLease = new WidgetVisibilityLease(
+                lyricDockEnvironment,
+                System.IO.Path.Combine(productDataRoot, "taskbar-widgets-lease.txt"));
+            LyricDockController = new LyricDockController(
+                lyricDockEnvironment,
+                taskbarLease,
+                new LyricDockWindow());
+            LyricDockController.SettingsRequested += (sender, args) =>
+                Dispatcher.BeginInvoke(new Action(() => OpenPlacementSettingsWindow(true)));
+            LyricDockController.FeatureDisabled += (sender, reason) =>
+                Dispatcher.BeginInvoke(new Action(() => DisableTaskbarLyrics(reason)));
+            LyricDockController.WidgetsHidingDegraded += (sender, args) =>
+                Dispatcher.BeginInvoke(new Action(() => ShowWidgetsHidingDegradedNotice()));
+            LyricDockController.Start(placementSettings.LyricDockEnabled, placementSettings.ScreenName, placementSettings.LyricDockAlignment);
             shouldStartFirstRunTutorial = !settingsFileExisted;
             if (settingsFileExisted && !placementSettings.HasSeenTutorial)
             {
@@ -208,6 +225,8 @@ namespace LyricHover.App
                 tutorialCancellation?.Cancel();
                 CloseTutorialWindows();
                 hotkeyService?.Dispose();
+                LyricDockController?.Dispose();
+                lyricDockEnvironment?.Dispose();
                 mediaSessions.Dispose();
                 DisposeTrayIcon();
             };
@@ -221,9 +240,9 @@ namespace LyricHover.App
                 Icon = LoadTrayIcon(),
                 ContextMenuStrip = new Forms.ContextMenuStrip()
             };
-            trayIcon.ContextMenuStrip.Items.Add(UiLanguageService.Translate("偏好设置"), null, (sender, args) => Dispatcher.BeginInvoke(new Action(OpenPlacementSettingsWindow)));
-            trayIcon.ContextMenuStrip.Items.Add(UiLanguageService.Translate("退出"), null, (sender, args) => Dispatcher.BeginInvoke(new Action(() => System.Windows.Application.Current.Shutdown())));
-            trayIcon.DoubleClick += (sender, args) => Dispatcher.BeginInvoke(new Action(OpenPlacementSettingsWindow));
+            trayIcon.ContextMenuStrip.Items.Add("偏好设置", null, (sender, args) => Dispatcher.BeginInvoke(new Action(() => OpenPlacementSettingsWindow())));
+            trayIcon.ContextMenuStrip.Items.Add("退出", null, (sender, args) => Dispatcher.BeginInvoke(new Action(() => System.Windows.Application.Current.Shutdown())));
+            trayIcon.DoubleClick += (sender, args) => Dispatcher.BeginInvoke(new Action(() => OpenPlacementSettingsWindow()));
             trayIcon.Visible = true;
         }
 
@@ -328,7 +347,7 @@ namespace LyricHover.App
             milliseconds = Math.Max(-10000, Math.Min(10000, milliseconds));
             lyricOffset = TimeSpan.FromMilliseconds(milliseconds);
             ModuleHost.ShowTransientMessage(
-                FormatLocalizedText("歌词偏移 {0}s", (milliseconds / 1000.0).ToString("+0.0;-0.0;0.0")),
+                "歌词偏移 " + (milliseconds / 1000.0).ToString("+0.0;-0.0;0.0") + "s",
                 TimeSpan.FromSeconds(1.2));
         }
 
@@ -375,7 +394,7 @@ namespace LyricHover.App
                 "暂无播放内容",
                 autoRetractSeconds == 0
                     ? "未播放内容时，LyricHover将保持显示"
-                    : FormatLocalizedText("LyricHover将在 {0} 秒后自动收起", autoRetractSeconds));
+                    : "LyricHover将在 " + autoRetractSeconds + " 秒后自动收起");
             ShowIsland();
             if (startupHintTimer == null)
             {
@@ -1020,22 +1039,21 @@ namespace LyricHover.App
         {
             var previousSource = placementSettings.LyricsSource;
             var previousShowTranslation = placementSettings.ShowTranslation;
-            var previousLanguage = placementSettings.Language;
             var editedLayouts = placementSettings.IslandLayouts;
             placementSettings = settings ?? new OverlayPlacementSettings();
             placementSettings.IslandLayouts = editedLayouts ?? placementSettings.IslandLayouts;
             placementSettings.Normalize();
-            UiLanguageService.SetPreference(placementSettings.Language);
-            if (previousLanguage != placementSettings.Language && trayIcon?.ContextMenuStrip != null)
-            {
-                trayIcon.ContextMenuStrip.Items.Clear();
-                trayIcon.ContextMenuStrip.Items.Add(UiLanguageService.Translate("偏好设置"), null, (sender, args) => Dispatcher.BeginInvoke(new Action(OpenPlacementSettingsWindow)));
-                trayIcon.ContextMenuStrip.Items.Add(UiLanguageService.Translate("退出"), null, (sender, args) => Dispatcher.BeginInvoke(new Action(() => System.Windows.Application.Current.Shutdown())));
-            }
             interactionController.ExpandedDuration = TimeSpan.FromSeconds(placementSettings.ExpandedAutoCollapseSeconds);
             cache.SetMaxBytes(GetCacheLimitBytes(placementSettings));
             selectedLyricsSource = placementSettings.LyricsSource;
             lyricsClient = CreateLyricsClient(selectedLyricsSource);
+            var taskbarWasRequested = placementSettings.LyricDockEnabled;
+            if (!LyricDockController.Configure(placementSettings.LyricDockEnabled, placementSettings.ScreenName, placementSettings.LyricDockAlignment) && taskbarWasRequested)
+            {
+                placementSettings.LyricDockEnabled = false;
+                settings.LyricDockEnabled = false;
+                ShowTaskbarLyricsFailure(LyricDockController.LastFailureReason);
+            }
             settingsStore.Save(placementSettings);
             RegisterGlobalHotkeys();
             UpdateIslandShape();
@@ -1451,8 +1469,8 @@ namespace LyricHover.App
 
         private void SetIslandText(string primary, string secondary, TimeSpan lineDuration)
         {
-            currentPrimaryText = UiLanguageService.Translate(primary ?? string.Empty);
-            currentSecondaryText = UiLanguageService.Translate(secondary ?? string.Empty);
+            currentPrimaryText = primary ?? string.Empty;
+            currentSecondaryText = secondary ?? string.Empty;
             currentLineDuration = lineDuration;
             RenderCurrentModuleState();
         }
@@ -1460,17 +1478,27 @@ namespace LyricHover.App
         private void RenderCurrentModuleState()
         {
             var tutorialActive = tutorialFlow.IsActive;
-            ModuleHost.Update(new IslandRenderState
+            var taskbarSnapshot = new LyricsPresentationSnapshot
             {
                 Session = currentSession,
                 PendingPlaybackStatus = playbackIntents.GetDesiredStatus(currentSession?.SessionId),
-                PrimaryLyric = tutorialActive ? tutorialPrimaryText : currentPrimaryText,
-                SecondaryLyric = tutorialActive ? tutorialSecondaryText : currentSecondaryText,
-                PrimaryAccent = tutorialActive ? tutorialAccentText : string.Empty,
+                PrimaryText = currentPrimaryText,
+                SecondaryText = currentSecondaryText,
+                AccentText = string.Empty,
                 TimelineReliability = currentTimelineReliability,
                 EffectivePosition = currentEffectivePosition,
-                LineDuration = currentLineDuration
-            });
+                LineDuration = currentLineDuration,
+                IsWaitingForPlayback = currentSession == null
+            };
+            var islandState = taskbarSnapshot.ToIslandRenderState();
+            if (tutorialActive)
+            {
+                islandState.PrimaryLyric = tutorialPrimaryText;
+                islandState.SecondaryLyric = tutorialSecondaryText;
+                islandState.PrimaryAccent = tutorialAccentText;
+            }
+            ModuleHost.Update(islandState);
+            LyricDockController?.Present(taskbarSnapshot);
         }
 
         private Task PreviousRequested()
@@ -1674,13 +1702,52 @@ namespace LyricHover.App
             _ = LoadLyricsAsync(currentTrack, forceRefresh, ++lyricLoadGeneration);
         }
 
-        private void OpenPlacementSettingsWindow()
+        private void DisableTaskbarLyrics(LyricDockFailureReason reason)
+        {
+            if (!placementSettings.LyricDockEnabled)
+            {
+                return;
+            }
+
+            placementSettings.LyricDockEnabled = false;
+            settingsStore.Save(placementSettings);
+            ShowTaskbarLyricsFailure(reason);
+        }
+
+                private void ShowWidgetsHidingDegradedNotice()
+        {
+            // Security software with registry protection can block the TaskbarDa write that
+            // auto-hides Widgets.  Tell the user once per enable cycle instead of failing silently.
+            var message = "本机的安全软件（如火绒、联想电脑管家）阻止了任务栏小组件设置的自动修改，因此无法自动隐藏小组件。" +
+                "任务栏歌词已在小组件旁正常显示。\n\n如需自动隐藏：请在安全软件中关闭对应的注册表/系统防护规则后重新开启歌词；" +
+                "或手动在系统设置 > 个性化 > 任务栏中关闭小组件，歌词会自动使用腾出的空间。";
+            var dialog = new InformationDialog(this, "小组件保持可见", message);
+            dialog.ShowDialog();
+        }
+
+        private void ShowTaskbarLyricsFailure(LyricDockFailureReason reason)
+        {
+            var message = reason switch
+            {
+                LyricDockFailureReason.UnsupportedOS => "任务栏歌词仅支持 Windows 10 及以上版本，已保持关闭。",
+                LyricDockFailureReason.WidgetsNotFound => "未能可靠找到所选屏幕的 Windows Widgets 按钮，已关闭任务栏歌词并恢复 Widgets。",
+                LyricDockFailureReason.InsufficientSafeSpace => "所选任务栏没有至少 220 px 的连续安全空间，已关闭任务栏歌词。若任务栏开启了小组件，可在系统设置 > 个性化 > 任务栏中手动关闭以腾出空间后重试。",
+                LyricDockFailureReason.RegistryOrRefreshFailed => "Windows Widgets 设置未能写入或验证生效，已关闭任务栏歌词并尝试恢复原状态。",
+                LyricDockFailureReason.TaskbarNotFound => "未找到所选屏幕的任务栏，已关闭任务栏歌词并恢复 Widgets。",
+                _ => "任务栏环境已改变且无法安全恢复，已关闭任务栏歌词并恢复 Widgets。"
+            };
+            var dialog = new InformationDialog(this, "任务栏歌词已关闭", message);
+            dialog.ShowDialog();
+        }
+
+        private void OpenPlacementSettingsWindow(bool focusTaskbarLyrics = false)
         {
             if (settingsWindow != null)
             {
                 SetSettingsWindowHoverSuppressed(true);
                 ShowIsland();
                 settingsWindow.Activate();
+                if (focusTaskbarLyrics) settingsWindow.FocusTaskbarLyricsSettings();
                 return;
             }
 
@@ -1712,6 +1779,7 @@ namespace LyricHover.App
             SetSettingsWindowHoverSuppressed(true);
             ShowIsland();
             settingsWindow.Show();
+            if (focusTaskbarLyrics) settingsWindow.FocusTaskbarLyricsSettings();
             OnTutorialSettingsOpened();
             BringTutorialSurfacesForward();
         }
@@ -2213,7 +2281,7 @@ namespace LyricHover.App
 
                 SetTutorialText("该功能可方便看到岛下内容", "无需频繁拖动LyricHover，助你高效工作");
                 await DelayTutorialAsync(3200, cancellationToken);
-                SetTutorialText("可以透过岛直接左键点击控制岛下内容", string.Empty);
+                SetTutorialText("可以透过岛直接左键点击控制岛下内容", string.Empty, "（新功能！）");
                 await DelayTutorialAsync(3000, cancellationToken);
 
                 tutorialLayoutOverride = CreateTutorialProfile(IslandModuleType.Lyrics, IslandModuleType.Divider, IslandModuleType.PlaybackControls);
@@ -2226,7 +2294,7 @@ namespace LyricHover.App
                 SetTutorialText("新版本增加了音乐控制功能", string.Empty);
                 await DelayTutorialAsync(2200, cancellationToken);
 
-                SetTutorialText(FormatTutorialTextWithTemporaryInteraction("按下{0}可暂时关闭鼠标避让来点击控制按钮"), "来试试看！");
+                SetTutorialText("按下" + GetTemporaryInteractionGesture() + "可暂时关闭鼠标避让来点击控制按钮", "来试试看！");
                 tutorialFlow.BeginControlClickPractice();
             }
             catch (OperationCanceledException)
@@ -2319,11 +2387,11 @@ namespace LyricHover.App
 
                 // Keep the user's current horizontal layout visible while explaining the
                 // alternate hold-to-expand behavior; the tutorial should not switch modes.
-                SetTutorialText("自动折叠模式", FormatTutorialTextWithTemporaryInteraction("按住 {0} 即时展开，松开后自动折叠"));
+                SetTutorialText("自动折叠模式", "按住 " + GetTemporaryInteractionGesture() + " 即时展开，松开后自动折叠");
                 await DelayTutorialAsync(1800, cancellationToken);
                 SetTutorialText("平时保持紧凑，只显示核心模块", string.Empty);
                 await DelayTutorialAsync(2500, cancellationToken);
-                SetTutorialText(FormatTutorialTextWithTemporaryInteraction("按住 {0} 后显示你的完整模块布局"), "与水平积木布局独立");
+                SetTutorialText("按住 " + GetTemporaryInteractionGesture() + " 后显示你的完整模块布局", "与水平积木布局独立");
                 await DelayTutorialAsync(3500, cancellationToken);
                 SetTutorialText("🎉教学模式已结束！快去体验吧！！", string.Empty);
                 await DelayTutorialAsync(2300, cancellationToken);
@@ -2398,7 +2466,7 @@ namespace LyricHover.App
 
         private TutorialActionWindow CreateTutorialActionWindow(string text, Color color, bool topRight, Action clicked)
         {
-            var window = new TutorialActionWindow(UiLanguageService.Translate(text ?? string.Empty), color, clicked, () => TryExitTutorial(), !topRight);
+            var window = new TutorialActionWindow(text, color, clicked, () => TryExitTutorial(), !topRight);
             var screen = ResolveScreen();
             window.Left = screen.WorkLeft + screen.WorkWidth - window.Width - 24;
             window.Top = topRight ? screen.WorkTop + 24 : screen.WorkTop + (screen.WorkHeight - window.Height) / 2;
@@ -2452,21 +2520,11 @@ namespace LyricHover.App
 
         private void SetTutorialText(string primary, string secondary, string accent = "")
         {
-            tutorialPrimaryText = UiLanguageService.Translate(primary ?? string.Empty);
-            tutorialSecondaryText = UiLanguageService.Translate(secondary ?? string.Empty);
-            tutorialAccentText = UiLanguageService.Translate(accent ?? string.Empty);
+            tutorialPrimaryText = primary ?? string.Empty;
+            tutorialSecondaryText = secondary ?? string.Empty;
+            tutorialAccentText = accent ?? string.Empty;
             currentLineDuration = TimeSpan.FromSeconds(5);
             RenderCurrentModuleState();
-        }
-
-        private string FormatTutorialTextWithTemporaryInteraction(string template)
-        {
-            return FormatLocalizedText(template, GetTemporaryInteractionGesture());
-        }
-
-        private static string FormatLocalizedText(string template, params object[] values)
-        {
-            return string.Format(UiLanguageService.Translate(template ?? string.Empty), values ?? Array.Empty<object>());
         }
 
         private bool IsTutorialTemporaryInteractionHeld()
@@ -2712,3 +2770,5 @@ namespace LyricHover.App
         }
     }
 }
+
+

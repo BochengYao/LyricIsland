@@ -3,6 +3,7 @@ import "@fontsource-variable/sofia-sans/wght.css";
 import "../../globals.css";
 import DevSourceLocator from "@/components/DevSourceLocator";
 import { AccessLogger } from "@/components/AccessLogger";
+import IncentiveNavFontPreloads from "@/components/IncentiveNavFontPreloads";
 import { SiteStructuredData } from "@/components/SiteStructuredData";
 
 export const metadata: Metadata = {
@@ -45,13 +46,7 @@ export default function EnglishRootLayout({
     <html lang="en">
       <head>
         <SiteStructuredData locale="en" />
-        <link
-          rel="preload"
-          href="/fonts/xiaolai-nav-v2.woff2"
-          as="font"
-          type="font/woff2"
-          crossOrigin="anonymous"
-        />
+        <IncentiveNavFontPreloads locale="en" />
       </head>
       <body>
         <AccessLogger />

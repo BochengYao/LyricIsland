@@ -8,8 +8,12 @@ export type UpdatesCopy = {
   languageHref: string;
   eyebrow: string;
   title: string;
+  subtitle?: string;
   intro: string;
   version: string;
+  versionPickerLabel: string;
+  noPublishedVersions: string;
+  releaseVersionUnavailable: string;
   summaryLabel: string;
   summary: string[];
   sections: Array<{
@@ -25,17 +29,21 @@ export type UpdatesCopy = {
   footerNote: string;
 };
 
-const rawUpdatesByLocale: Record<Locale, UpdatesCopy> = {
+const rawUpdatesByLocale: Record<"zh" | "en", UpdatesCopy> = {
   zh: {
     backLabel: "返回官网",
     menuLabel: "更新页导航",
     languageName: "EN",
     languageHref: "/en/updates",
-    eyebrow: "版本说明",
-    title: "LyricHover V2.0\n一次更完整的重做",
+    eyebrow: "更新",
+    title: "Lyric Hover的更新",
+    subtitle: "新功能与改进，一目了然。",
     intro:
-      "LyricHover V2.0 支持更多 Windows 播放器与自由组合模块，并进一步优化歌词匹配、展开收起、快捷键、鼠标避让和运行稳定性，让整体体验更完整、更自然。",
-    version: "V 2.0.36",
+      "选择一个版本，了解本次更新的全部内容，包括功能升级、体验优化与问题修复。",
+    version: "版本更新",
+    versionPickerLabel: "选择版本",
+    noPublishedVersions: "暂无已发布的版本更新。",
+    releaseVersionUnavailable: "版本信息暂时无法提供，请稍后刷新。",
     summaryLabel: "本次重点",
     summary: [
       "A / C 两套独立模块布局",
@@ -130,10 +138,13 @@ const rawUpdatesByLocale: Record<Locale, UpdatesCopy> = {
     languageName: "中文",
     languageHref: "/updates",
     eyebrow: "Release notes",
-    title: "LyricHover V2.0\nA more complete rebuild",
+    title: "Version updates\nEvery release, closer to you",
     intro:
-      "LyricHover V2.0 supports more Windows players and freely configurable modules, with further improvements to lyric matching, expand-and-collapse behavior, shortcuts, mouse avoidance, and runtime stability for a more complete, more natural experience.",
-    version: "V 2.0.36",
+      "Explore the new features, improvements, and fixes in every published release. Choose a version to see what changed in that release.",
+    version: "Version updates",
+    versionPickerLabel: "Select a version",
+    noPublishedVersions: "There are no published version updates yet.",
+    releaseVersionUnavailable: "Release version details are temporarily unavailable. Please refresh later.",
     summaryLabel: "Release focus",
     summary: [
       "Independent A and C module layouts",
@@ -227,5 +238,42 @@ const rawUpdatesByLocale: Record<Locale, UpdatesCopy> = {
 
 export const updatesByLocale: Record<Locale, UpdatesCopy> = {
   zh: normalizeBrandCopy(rawUpdatesByLocale.zh, "zh"),
-  en: normalizeBrandCopy(rawUpdatesByLocale.en, "en")
+  zhHant: {
+    ...rawUpdatesByLocale.zh,
+    backLabel: "返回官網",
+    menuLabel: "更新頁導覽",
+    languageName: "繁體中文",
+    languageHref: "/zh-hant/updates",
+    eyebrow: "版本說明",
+    title: "版本更新\n每一次，都更貼近你",
+    subtitle: undefined,
+    intro: "在這裡查看每個已發布版本帶來的新功能、改進與修正。選擇一個版本，了解那一次更新的全部重點。",
+    version: "版本更新",
+    versionPickerLabel: "選擇版本",
+    noPublishedVersions: "暫無已發布的版本更新。",
+    releaseVersionUnavailable: "版本資訊暫時無法提供，請稍後重新整理。",
+    downloadsEyebrow: "取得 LyricHover",
+    downloadsTitle: "LyricHover，現已登上 Microsoft Store。",
+    downloadsBody: "在 Microsoft Store 下載並取得後續更新。原始碼可在 GitHub 查看。",
+    footerNote: "播放器與音樂服務名稱及商標歸各自權利人所有。"
+  },
+  en: normalizeBrandCopy(rawUpdatesByLocale.en, "en"),
+  ja: {
+    ...rawUpdatesByLocale.en,
+    backLabel: "サイトへ戻る",
+    menuLabel: "更新内容のナビゲーション",
+    languageName: "日本語",
+    languageHref: "/ja/updates",
+    eyebrow: "リリースノート",
+    title: "バージョン更新\n更新のたび、もっとあなたのそばに",
+    intro: "公開済みの各バージョンで追加された機能、改善、修正を確認できます。バージョンを選んで、その更新のポイントをご覧ください。",
+    version: "バージョン更新",
+    versionPickerLabel: "バージョンを選択",
+    noPublishedVersions: "公開済みのバージョン更新はまだありません。",
+    releaseVersionUnavailable: "リリースバージョン情報を読み込めません。しばらくしてから再読み込みしてください。",
+    downloadsEyebrow: "LyricHover を入手",
+    downloadsTitle: "LyricHover は Microsoft Store で配信中です。",
+    downloadsBody: "Microsoft Store からダウンロードして、今後の更新を受け取れます。ソースコードは GitHub で確認できます。",
+    footerNote: "プレーヤー名、音楽サービス名および商標は、各権利者に帰属します。"
+  }
 };

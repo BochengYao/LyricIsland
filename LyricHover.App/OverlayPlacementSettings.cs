@@ -1,10 +1,11 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
 using System.Text.Json;
 using LyricHover.Core;
 using LyricHover.Core.Layout;
+using LyricHover.App.LyricDock;
 
 namespace LyricHover.App
 {
@@ -32,7 +33,7 @@ namespace LyricHover.App
         public const int MinNoPlaybackAutoRetractSeconds = 0;
         public const int MaxAutoRetractSeconds = 300;
 
-        public int SchemaVersion { get; set; } = 2;
+        public int SchemaVersion { get; set; } = 3;
 
         public IslandLayoutSettings IslandLayouts { get; set; } = IslandLayoutDefaults.Create();
 
@@ -58,13 +59,15 @@ namespace LyricHover.App
 
         public SettingsThemePreference SettingsTheme { get; set; } = SettingsThemePreference.System;
 
-        public AppLanguagePreference Language { get; set; } = AppLanguagePreference.System;
-
         public LyricsSourcePreference LyricsSource { get; set; } = LyricsSourcePreference.Automatic;
 
         public bool UseMultiLineDisplay { get; set; } = true;
 
         public bool ShowTranslation { get; set; } = true;
+
+        public bool LyricDockEnabled { get; set; }
+
+        public LyricDockAlignment LyricDockAlignment { get; set; } = global::LyricHover.App.LyricDock.LyricDockAlignment.Center;
 
         public HotkeySettings LyricOffsetHotkeys { get; set; } = HotkeySettings.CreateDefault();
 
@@ -111,7 +114,7 @@ namespace LyricHover.App
             ExpandedAutoCollapseSeconds = Math.Max(
                 MinAutoRetractSeconds,
                 Math.Min(MaxAutoRetractSeconds, ExpandedAutoCollapseSeconds));
-            SchemaVersion = 2;
+            SchemaVersion = 3;
             OffsetRatio = Math.Max(0, Math.Min(1, OffsetRatio));
             CacheLimitMegabytes = Math.Max(MinCacheLimitMegabytes, Math.Min(MaxCacheLimitMegabytes, CacheLimitMegabytes));
             HoverAuraSize = Math.Max(MinHoverAuraSize, Math.Min(MaxHoverAuraSize, HoverAuraSize));
@@ -129,9 +132,9 @@ namespace LyricHover.App
                 SettingsTheme = SettingsThemePreference.System;
             }
 
-            if (!Enum.IsDefined(typeof(AppLanguagePreference), Language))
+            if (!Enum.IsDefined(typeof(LyricDockAlignment), LyricDockAlignment))
             {
-                Language = AppLanguagePreference.System;
+                LyricDockAlignment = global::LyricHover.App.LyricDock.LyricDockAlignment.Center;
             }
 
             if (ShowTranslation)
@@ -205,6 +208,7 @@ namespace LyricHover.App
                 }
 
                 var settings = JsonSerializer.Deserialize<OverlayPlacementSettings>(File.ReadAllText(path)) ?? new OverlayPlacementSettings();
+                var originalSchemaVersion = settings.SchemaVersion;
                 var originalEdge = settings.Edge;
                 var originalOffset = settings.OffsetRatio;
                 var originalCacheLimit = settings.CacheLimitMegabytes;
@@ -215,12 +219,14 @@ namespace LyricHover.App
                 var originalHoverSpectrum = SerializeHoverSpectrum(settings.HoverSpectrumStops);
                 var originalPassThroughOnHover = settings.PassThroughOnHover;
                 var originalSettingsTheme = settings.SettingsTheme;
-                var originalLanguage = settings.Language;
                 var originalLyricsSource = settings.LyricsSource;
                 var originalUseMultiLineDisplay = settings.UseMultiLineDisplay;
                 var originalShowTranslation = settings.ShowTranslation;
+                var originalLyricDockEnabled = settings.LyricDockEnabled;
+                var originalLyricDockAlignment = settings.LyricDockAlignment;
                 settings.Normalize();
-                if (settings.Edge != originalEdge ||
+                if (settings.SchemaVersion != originalSchemaVersion ||
+                    settings.Edge != originalEdge ||
                     Math.Abs(settings.OffsetRatio - originalOffset) > 0.0001 ||
                     settings.CacheLimitMegabytes != originalCacheLimit ||
                     settings.HoverAuraSize != originalHoverAuraSize ||
@@ -230,10 +236,11 @@ namespace LyricHover.App
                     SerializeHoverSpectrum(settings.HoverSpectrumStops) != originalHoverSpectrum ||
                     settings.PassThroughOnHover != originalPassThroughOnHover ||
                     settings.SettingsTheme != originalSettingsTheme ||
-                    settings.Language != originalLanguage ||
                     settings.LyricsSource != originalLyricsSource ||
                     settings.UseMultiLineDisplay != originalUseMultiLineDisplay ||
-                    settings.ShowTranslation != originalShowTranslation)
+                    settings.ShowTranslation != originalShowTranslation ||
+                    settings.LyricDockEnabled != originalLyricDockEnabled ||
+                    settings.LyricDockAlignment != originalLyricDockAlignment)
                 {
                     Save(settings);
                 }
@@ -284,13 +291,7 @@ namespace LyricHover.App
         Light,
         Dark
     }
-
-    public enum AppLanguagePreference
-    {
-        System,
-        SimplifiedChinese,
-        TraditionalChinese,
-        English,
-        Japanese
-    }
 }
+
+
+
