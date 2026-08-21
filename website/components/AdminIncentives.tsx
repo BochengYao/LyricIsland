@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AdminNav } from "@/components/AdminNav";
+import { AdminPromoCodes } from "@/components/AdminPromoCodes";
 import { ExternalArrow } from "@/components/ExternalArrow";
 import { LogoLockup } from "@/components/SitePage";
 import {
@@ -24,7 +25,7 @@ import type {
 } from "@/data/incentives-types";
 
 type AuthState = "checking" | "login" | "ready";
-type Panel = "submissions" | "features" | "previews" | "access";
+type Panel = "submissions" | "features" | "previews" | "access" | "promo-codes";
 type SaveFeedback = { tone: "pending" | "success" | "error"; message: string };
 type PreviewDraft = {
   id?: string;
@@ -1179,17 +1180,11 @@ export function AdminIncentives() {
   return (
     <div className="adminShell">
       <AdminNav
-        active="feedback"
+        active={panel === "promo-codes" ? "promo-codes" : "feedback"}
         activePanel={panel}
         pendingCount={pendingSubmissionCount}
         unreadAlerts={unreadAlerts}
-        onNavigate={(navPanel) => {
-          if (navPanel === "promo-codes") {
-            window.location.href = "/admin/promo-codes";
-          } else {
-            setPanel(navPanel as Panel);
-          }
-        }}
+        onNavigate={(navPanel) => setPanel(navPanel as Panel)}
         onLogout={logout}
       />
 
@@ -1449,6 +1444,10 @@ export function AdminIncentives() {
               {!visibleLogs.length && <p className="adminEmpty">当前筛选条件下没有访问记录。</p>}
             </div>
           </>
+        )}
+
+        {panel === "promo-codes" && (
+          <AdminPromoCodes embedded />
         )}
       </main>
 
