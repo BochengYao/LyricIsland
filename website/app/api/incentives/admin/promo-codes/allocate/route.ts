@@ -15,25 +15,20 @@ export async function POST(request: Request) {
   }
   try {
     const body = (await request.json()) as Partial<AssignPromoCodeInput>;
-    const assigned_name = typeof body.assigned_name === "string" ? body.assigned_name.trim() : "";
-    const assigned_email = typeof body.assigned_email === "string" ? body.assigned_email.trim() : "";
-    const assigned_channel = typeof body.assigned_channel === "string" ? body.assigned_channel.trim() : "";
-    const campaign = typeof body.campaign === "string" ? body.campaign.trim() : "";
+    // All metadata fields are optional (DB columns are nullable), matching the
+    // ESA api.js contract — allocation can happen first, details filled later.
+    const assigned_name = typeof body.assigned_name === "string" ? body.assigned_name.trim() : undefined;
+    const assigned_email = typeof body.assigned_email === "string" ? body.assigned_email.trim() : undefined;
+    const assigned_channel = typeof body.assigned_channel === "string" ? body.assigned_channel.trim() : undefined;
+    const campaign = typeof body.campaign === "string" ? body.campaign.trim() : undefined;
     const note = typeof body.note === "string" ? body.note.trim() : undefined;
     const specific_code_id = typeof body.specific_code_id === "string" ? body.specific_code_id.trim() : undefined;
 
-    if (!assigned_name || !assigned_email || !assigned_channel || !campaign) {
-      return Response.json(
-        { error: "缺少必填字段：assigned_name, assigned_email, assigned_channel, campaign" },
-        { status: 400 }
-      );
-    }
-
     const input: AssignPromoCodeInput = {
-      assigned_name,
-      assigned_email,
-      assigned_channel,
-      campaign,
+      ...(assigned_name ? { assigned_name } : {}),
+      ...(assigned_email ? { assigned_email } : {}),
+      ...(assigned_channel ? { assigned_channel } : {}),
+      ...(campaign ? { campaign } : {}),
       ...(note !== undefined ? { note } : {}),
       ...(specific_code_id !== undefined ? { specific_code_id } : {}),
     };
@@ -49,12 +44,13 @@ export async function POST(request: Request) {
       statusCode: 200,
       details: {
         promo_code_id: result.id,
-        assigned_to: assigned_name,
-        channel: assigned_channel,
+        assigned_to: assigned_name ?? null,
+        channel: assigned_channel ?? null,
       },
     });
 
-    return Response.json({ result });
+    // Flat shape, matching the ESA api.js contract ({ id, code, redeem_url, microsoft_code_id }).
+    return Response.json(result);
   } catch {
     return Response.json({ error: "分配兑换码失败" }, { status: 500 });
   }

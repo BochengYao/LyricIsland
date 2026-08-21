@@ -122,6 +122,7 @@ export async function POST(request: Request) {
 
 const ALLOWED_PATCH_FIELDS = new Set([
   "note", "campaign", "assigned_channel", "assigned_to_name", "assigned_to_email",
+  "assigned_at",
 ]);
 
 const ALLOWED_BATCH_FIELDS = new Set(["note", "campaign", "assigned_channel"]);

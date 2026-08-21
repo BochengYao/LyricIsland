@@ -138,10 +138,12 @@ export type TsvImportPreview = {
 };
 
 export type AssignPromoCodeInput = {
-  assigned_name: string;
-  assigned_email: string;
-  assigned_channel: string;
-  campaign: string;
+  // All metadata fields are optional (DB columns are nullable); the allocator
+  // only needs to know which code to hand out.
+  assigned_name?: string;
+  assigned_email?: string;
+  assigned_channel?: string;
+  campaign?: string;
   note?: string;
   /** microsoft_code_id for specific assignment (omit for auto-allocate) */
   specific_code_id?: string;

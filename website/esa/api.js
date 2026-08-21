@@ -1938,6 +1938,17 @@ async function handleAdminPromoCodes(request) {
       const { id, changes } = body;
       if (!id) return jsonError("缺少 id", 400);
 
+      // Whitelist editable metadata columns; never pass client-supplied changes
+      // through raw (would allow overwriting distribution_status, code, etc.).
+      const ALLOWED_SINGLE_FIELDS = new Set([
+        "assigned_at", "assigned_to_name", "assigned_to_email", "assigned_channel", "note", "campaign"
+      ]);
+      const sanitized = {};
+      for (const [key, value] of Object.entries(changes || {})) {
+        if (ALLOWED_SINGLE_FIELDS.has(key)) sanitized[key] = value;
+      }
+      if (Object.keys(sanitized).length === 0) return jsonError("没有可修改的字段", 400);
+
       // Fetch old data for audit log
       const existing = await supabase(
         `/rest/v1/promo_codes?select=*&id=eq.${encodeURIComponent(id)}&limit=1`
@@ -1950,7 +1961,7 @@ async function handleAdminPromoCodes(request) {
         {
           method: "PATCH",
           headers: { Prefer: "return=representation" },
-          body: JSON.stringify({ ...changes, updated_at: new Date().toISOString() })
+          body: JSON.stringify({ ...sanitized, updated_at: new Date().toISOString() })
         }
       );
       if (!rows || rows.length === 0) return jsonError("未找到该兑换码", 404);
@@ -1963,8 +1974,8 @@ async function handleAdminPromoCodes(request) {
           promo_code_id: id,
           action: "EDIT",
           previous_data: oldData,
-          new_data: changes,
-          metadata: { changed_fields: Object.keys(changes) }
+          new_data: sanitized,
+          metadata: { changed_fields: Object.keys(sanitized) }
         })
       });
 

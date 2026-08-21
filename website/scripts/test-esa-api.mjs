@@ -56,6 +56,7 @@ let promoCodesTableMissing = false;
 let promoCodeRpcStats = null;
 let promoCodeAllocateResult = null;
 let promoCodeBulkImportResult = null;
+let promoCodeLastPatchBody = null;
 
 function publicPreviewRow(id, version, publishedAt) {
   return {
@@ -388,6 +389,7 @@ globalThis.fetch = async (input, init = {}) => {
   if (url.includes("/rest/v1/promo_codes?id=eq.") && init.method === "PATCH") {
     const id = decodeURIComponent(url.split("id=eq.")[1]);
     const body = JSON.parse(init.body);
+    promoCodeLastPatchBody = body;
     const idx = promoCodeRows.findIndex((r) => r.id === id);
     if (idx >= 0) {
       promoCodeRows[idx] = { ...promoCodeRows[idx], ...body };
@@ -1534,6 +1536,75 @@ try {
   assert.ok(promoCodeLogRows.length >= 1, "update must create an audit log entry");
   assert.equal(promoCodeLogRows.at(-1).action, "EDIT");
 
+  // Single update with mass assignment attempt → non-whitelisted fields must
+  // be dropped before the PATCH ever reaches Supabase.
+  promoCodeLastPatchBody = null;
+  const promoSingleMassResponse = await api.fetch(
+    new Request(promoBase, {
+      method: "PATCH",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminAuthCookie
+      },
+      body: JSON.stringify({
+        id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        changes: { note: "x", distribution_status: "revoked" }
+      })
+    })
+  );
+  assert.equal(promoSingleMassResponse.status, 200);
+  assert.ok(promoCodeLastPatchBody, "single update must reach Supabase");
+  assert.ok(
+    !("distribution_status" in promoCodeLastPatchBody),
+    "non-whitelisted field 'distribution_status' must be dropped before Supabase"
+  );
+  assert.equal(promoCodeLastPatchBody.note, "x", "whitelisted field 'note' must pass through");
+  const singleMassRow = promoCodeRows.find((r) => r.id === "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+  assert.notEqual(singleMassRow.distribution_status, "revoked", "distribution_status must not be overwritten via single update");
+
+  // Single update with only non-whitelisted fields → 400
+  const promoSingleNoFieldsResponse = await api.fetch(
+    new Request(promoBase, {
+      method: "PATCH",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminAuthCookie
+      },
+      body: JSON.stringify({
+        id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        changes: { distribution_status: "revoked" }
+      })
+    })
+  );
+  assert.equal(promoSingleNoFieldsResponse.status, 400, "single update with only non-whitelisted fields must return 400");
+
+  // Single update must allow assigned_at (used by the quick-allocate follow-up form)
+  promoCodeLastPatchBody = null;
+  const promoSingleAssignedAtResponse = await api.fetch(
+    new Request(promoBase, {
+      method: "PATCH",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminAuthCookie
+      },
+      body: JSON.stringify({
+        id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        changes: {
+          assigned_at: "2026-08-21T00:00:00.000Z",
+          assigned_to_name: "Quick User",
+          assigned_channel: "官网"
+        }
+      })
+    })
+  );
+  assert.equal(promoSingleAssignedAtResponse.status, 200);
+  assert.equal(promoCodeLastPatchBody.assigned_at, "2026-08-21T00:00:00.000Z", "assigned_at must be passed through to Supabase");
+  const assignedAtRow = promoCodeRows.find((r) => r.id === "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+  assert.equal(assignedAtRow.assigned_at, "2026-08-21T00:00:00.000Z", "assigned_at must be updatable via single PATCH");
+
   // Update non-existent code → 404
   const promoUpdateMissingResponse = await api.fetch(
     new Request(promoBase, {
@@ -1719,6 +1790,7 @@ try {
   promoCodesTableMissing = false;
   promoCodeAllocateResult = null;
   promoCodeBulkImportResult = null;
+  promoCodeLastPatchBody = null;
 } finally {
   globalThis.fetch = originalFetch;
   await rm(buildDirectory, { recursive: true, force: true });
