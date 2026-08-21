@@ -10,3 +10,10 @@ tools/__pycache__/
 .worktrees/
 *.user
 *.suo
+
+# 3D model assets and promotional materials (not for GitHub)
+artifacts/
+视觉宣传/
+.codegraph/
+*.glb
+*.blend
