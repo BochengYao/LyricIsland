@@ -1949,8 +1949,7 @@ async function handleAdminPromoCodeAllocate(request) {
   } catch (e) {
     console.error("Promo code allocate error:", e);
     if (e instanceof Error && e.message.includes("No available")) return jsonError("没有可用的兑换码", 409);
-    // TEMP DIAGNOSTIC: surface real error, revert to generic 500 after root cause fixed
-    return jsonError(`Allocate failed: ${e instanceof Error ? e.message.slice(0, 300) : "unknown error"}`, 500);
+    return jsonError("Internal server error", 500);
   }
 }
 

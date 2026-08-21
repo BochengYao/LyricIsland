@@ -132,6 +132,18 @@ export function AdminPromoCodes() {
   const [drawerCode, setDrawerCode] = useState<PromoCode | null>(null);
   const [drawerLogs, setDrawerLogs] = useState<PromoCodeLog[]>([]);
 
+  /* Drawer edit state */
+  const [drawerEditing, setDrawerEditing] = useState(false);
+  const [drawerEditSaving, setDrawerEditSaving] = useState(false);
+  const [detailEditForm, setDetailEditForm] = useState({
+    assigned_to_name: "",
+    assigned_to_email: "",
+    assigned_channel: channelOptions[0] as string,
+    campaign: "",
+    assigned_at: "",
+    note: "",
+  });
+
   /* Import state */
   const [importPreview, setImportPreview] = useState<TsvImportPreview | null>(null);
   const [importRows, setImportRows] = useState<TsvParsedRow[]>([]);
@@ -452,6 +464,7 @@ export function AdminPromoCodes() {
   async function openDrawer(code: PromoCode) {
     setDrawerCode(code);
     setDrawerLogs([]);
+    setDrawerEditing(false);
     try {
       const response = await fetchWithTimeout(
         `/api/incentives/admin/promo-codes/${code.id}`,
@@ -464,6 +477,67 @@ export function AdminPromoCodes() {
         setDrawerLogs(data.logs ?? []);
       }
     } catch { /* ignore */ }
+  }
+
+  function enterDrawerEdit() {
+    if (!drawerCode) return;
+    setDetailEditForm({
+      assigned_to_name: drawerCode.assigned_to_name ?? "",
+      assigned_to_email: drawerCode.assigned_to_email ?? "",
+      assigned_channel: drawerCode.assigned_channel ?? channelOptions[0],
+      campaign: drawerCode.campaign ?? "",
+      assigned_at: drawerCode.assigned_at ? drawerCode.assigned_at.slice(0, 10) : todayString(),
+      note: drawerCode.note ?? "",
+    });
+    setDrawerEditing(true);
+  }
+
+  async function saveDrawerEdit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!drawerCode) return;
+    const codeId = drawerCode.id;
+    setDrawerEditSaving(true);
+    try {
+      const changes: Record<string, string | null> = {
+        assigned_to_name: detailEditForm.assigned_to_name.trim(),
+        assigned_to_email: detailEditForm.assigned_to_email.trim(),
+        assigned_channel: detailEditForm.assigned_channel,
+        campaign: detailEditForm.campaign.trim(),
+        assigned_at: detailEditForm.assigned_at
+          ? new Date(`${detailEditForm.assigned_at}T00:00:00`).toISOString()
+          : null,
+        note: detailEditForm.note.trim(),
+      };
+      const response = await fetchWithTimeout("/api/incentives/admin/promo-codes", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: codeId, changes }),
+      });
+      if (response.status === 401) { setAuth("login"); return; }
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? "保存失败");
+      }
+      setDrawerEditing(false);
+      showToast("分配信息已更新");
+      await loadData(currentPage);
+      // Refresh drawer content with the latest single-code detail
+      try {
+        const detailResponse = await fetchWithTimeout(
+          `/api/incentives/admin/promo-codes/${codeId}`,
+          { cache: "no-store" },
+        );
+        if (detailResponse.ok) {
+          const data = (await detailResponse.json()) as { code: PromoCode; logs: PromoCodeLog[] };
+          setDrawerCode(data.code);
+          setDrawerLogs(data.logs ?? []);
+        }
+      } catch { /* drawer keeps last known data */ }
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : "保存失败");
+    } finally {
+      setDrawerEditSaving(false);
+    }
   }
 
   /* ── Export CSV ───────────────────────────────────────────────────────── */
@@ -960,16 +1034,49 @@ export function AdminPromoCodes() {
               </section>
 
               <section className="promoCodeDrawerSection">
-                <h3>歌词岛</h3>
-                <dl>
-                  <dt>状态</dt><dd><span className={statusBadgeClass[drawerCode.distribution_status]}>{statusLabels[drawerCode.distribution_status]}</span></dd>
-                  <dt>分配用户</dt><dd>{drawerCode.assigned_to_name ?? "—"}</dd>
-                  <dt>邮箱</dt><dd>{drawerCode.assigned_to_email ?? "—"}</dd>
-                  <dt>渠道</dt><dd>{drawerCode.assigned_channel ?? "—"}</dd>
-                  <dt>Campaign</dt><dd>{drawerCode.campaign ?? "—"}</dd>
-                  <dt>分配时间</dt><dd>{formatDate(drawerCode.assigned_at)}</dd>
-                  <dt>备注</dt><dd>{drawerCode.note ?? "—"}</dd>
-                </dl>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                  <h3>歌词岛</h3>
+                  {!drawerEditing && (
+                    <button className="button buttonSecondary" onClick={enterDrawerEdit}>编辑</button>
+                  )}
+                </div>
+                {drawerEditing ? (
+                  <>
+                    <p style={{ margin: "0 0 12px" }}>
+                      <span className={statusBadgeClass[drawerCode.distribution_status]}>{statusLabels[drawerCode.distribution_status]}</span>
+                    </p>
+                    <form onSubmit={saveDrawerEdit}>
+                      <div className="editFormGrid">
+                        <label><span>分配用户</span><input value={detailEditForm.assigned_to_name} onChange={(e) => setDetailEditForm({ ...detailEditForm, assigned_to_name: e.target.value })} placeholder="可选" /></label>
+                        <label><span>邮箱</span><input type="email" value={detailEditForm.assigned_to_email} onChange={(e) => setDetailEditForm({ ...detailEditForm, assigned_to_email: e.target.value })} placeholder="可选" /></label>
+                        <label><span>渠道</span>
+                          <select value={detailEditForm.assigned_channel} onChange={(e) => setDetailEditForm({ ...detailEditForm, assigned_channel: e.target.value })}>
+                            {channelOptions.map((ch) => <option value={ch} key={ch}>{ch}</option>)}
+                          </select>
+                        </label>
+                        <label><span>Campaign</span><input value={detailEditForm.campaign} onChange={(e) => setDetailEditForm({ ...detailEditForm, campaign: e.target.value })} placeholder="可选" /></label>
+                        <label><span>分配时间</span><input type="date" value={detailEditForm.assigned_at} onChange={(e) => setDetailEditForm({ ...detailEditForm, assigned_at: e.target.value })} /></label>
+                        <label className="wide"><span>备注</span><textarea rows={3} value={detailEditForm.note} onChange={(e) => setDetailEditForm({ ...detailEditForm, note: e.target.value })} placeholder="可选" /></label>
+                      </div>
+                      <footer>
+                        <button className="button buttonSecondary" type="button" onClick={() => setDrawerEditing(false)}>取消</button>
+                        <button className="button buttonPrimary" type="submit" disabled={drawerEditSaving}>
+                          {drawerEditSaving ? "保存中…" : "保存"}
+                        </button>
+                      </footer>
+                    </form>
+                  </>
+                ) : (
+                  <dl>
+                    <dt>状态</dt><dd><span className={statusBadgeClass[drawerCode.distribution_status]}>{statusLabels[drawerCode.distribution_status]}</span></dd>
+                    <dt>分配用户</dt><dd>{drawerCode.assigned_to_name ?? "—"}</dd>
+                    <dt>邮箱</dt><dd>{drawerCode.assigned_to_email ?? "—"}</dd>
+                    <dt>渠道</dt><dd>{drawerCode.assigned_channel ?? "—"}</dd>
+                    <dt>Campaign</dt><dd>{drawerCode.campaign ?? "—"}</dd>
+                    <dt>分配时间</dt><dd>{formatDate(drawerCode.assigned_at)}</dd>
+                    <dt>备注</dt><dd>{drawerCode.note ?? "—"}</dd>
+                  </dl>
+                )}
               </section>
 
               <section className="promoCodeDrawerSection">
