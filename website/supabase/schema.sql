@@ -299,18 +299,18 @@ begin
 
     -- Check Microsoft-side availability
     if exists (
-      select 1 from public.promo_codes
-      where id = v_code_id
-        and (microsoft_redeemed = true)
+      select 1 from public.promo_codes pc
+      where pc.id = v_code_id
+        and (pc.microsoft_redeemed = true)
     ) then
       raise exception 'Promo code % has already been redeemed on Microsoft', p_specific_code_id;
     end if;
 
     if exists (
-      select 1 from public.promo_codes
-      where id = v_code_id
-        and microsoft_expire_at is not null
-        and microsoft_expire_at <= now()
+      select 1 from public.promo_codes pc
+      where pc.id = v_code_id
+        and pc.microsoft_expire_at is not null
+        and pc.microsoft_expire_at <= now()
     ) then
       raise exception 'Promo code % has expired', p_specific_code_id;
     end if;
@@ -346,7 +346,7 @@ begin
   ) sub;
 
   -- Perform the assignment
-  update public.promo_codes
+  update public.promo_codes pc
   set distribution_status = 'assigned',
       assigned_to_name    = p_assigned_name,
       assigned_to_email   = p_assigned_email,
@@ -355,7 +355,7 @@ begin
       note                = p_note,
       assigned_at         = now(),
       updated_at          = now()
-  where id = v_code_id;
+  where pc.id = v_code_id;
 
   -- Capture new state for log
   select row_to_json(sub)::jsonb
