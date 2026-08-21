@@ -725,7 +725,7 @@ export function AdminPromoCodes({ embedded = false }: AdminPromoCodesProps = {})
             <p>PROMO CODE MANAGEMENT</p>
             <h2>促销代码管理</h2>
           </div>
-          <div className="adminToolbar">
+          <div className="adminToolbar promoToolbar">
             <button className="button buttonPrimary" disabled={quickAllocating} onClick={handleQuickAllocate}>
               {quickAllocating ? "发码中…" : "一键发码"}
             </button>
@@ -787,46 +787,50 @@ export function AdminPromoCodes({ embedded = false }: AdminPromoCodesProps = {})
         )}
 
         {/* Table */}
-        <div className="adminTableWrap">
-          <table className="adminDataTable">
+        <div className="adminTableWrap promoCodeTableWrap">
+          <table className="adminDataTable promoCodeTable">
             <thead>
               <tr>
-                <th style={{ width: 40 }}>
+                <th style={{ width: 36 }}>
                   <input type="checkbox" checked={codes.length > 0 && selectedIds.length === codes.length} onChange={toggleSelectAll} />
                 </th>
-                <th>Code</th>
-                <th>内部状态</th>
-                <th>Microsoft 状态</th>
-                <th>Order</th>
-                <th>Campaign</th>
-                <th>发放对象</th>
-                <th>渠道</th>
-                <th>到期时间</th>
-                <th>操作</th>
+                <th style={{ width: 172 }}>Code</th>
+                <th style={{ width: 84 }}>内部状态</th>
+                <th style={{ width: 96 }}>Microsoft 状态</th>
+                <th style={{ width: 140 }}>Order</th>
+                <th style={{ width: 120 }}>Campaign</th>
+                <th style={{ width: 104 }}>发放对象</th>
+                <th style={{ width: 72 }}>渠道</th>
+                <th style={{ width: 138 }}>到期时间</th>
+                <th style={{ width: 104 }}>操作</th>
               </tr>
             </thead>
             <tbody>
-              {codes.map((code) => (
-                <tr key={code.id}>
-                  <td>
-                    <input type="checkbox" checked={selectedIds.includes(code.id)} onChange={() => toggleSelect(code.id)} />
-                  </td>
-                  <td><code className="promoCodeMono">{maskCode(code.code)}</code></td>
-                  <td><span className={statusBadgeClass[code.distribution_status]}>{statusLabels[code.distribution_status]}</span></td>
-                  <td><span className={getMsBadgeClass(code)}>{msStatusLabels[getMsStatusLabel(code)]}</span></td>
-                  <td>{code.order_id ? (codes.find((c) => c.order_id === code.order_id) ? code.raw_order_id ?? code.order_id : code.raw_order_id ?? "—") : code.raw_order_id ?? "—"}</td>
-                  <td>{code.campaign ?? "—"}</td>
-                  <td>{code.assigned_to_name ?? "—"}</td>
-                  <td>{code.assigned_channel ?? "—"}</td>
-                  <td>{formatDate(code.microsoft_expire_at)}</td>
-                  <td className="promoCodeActions">
-                    <button className="button buttonSecondary" onClick={() => openDrawer(code)}>查看</button>
-                    <button className="button buttonSecondary" onClick={async () => {
-                      if (await copyToClipboard(code.code)) showToast("兑换码已复制");
-                    }}>复制</button>
-                  </td>
-                </tr>
-              ))}
+              {codes.map((code) => {
+                const maskedCode = maskCode(code.code);
+                const orderText = code.order_id ? (codes.find((c) => c.order_id === code.order_id) ? code.raw_order_id ?? code.order_id : code.raw_order_id ?? "—") : code.raw_order_id ?? "—";
+                return (
+                  <tr key={code.id}>
+                    <td>
+                      <input type="checkbox" checked={selectedIds.includes(code.id)} onChange={() => toggleSelect(code.id)} />
+                    </td>
+                    <td><code className="promoCodeMono" title={maskedCode}>{maskedCode}</code></td>
+                    <td><span className={statusBadgeClass[code.distribution_status]}>{statusLabels[code.distribution_status]}</span></td>
+                    <td><span className={getMsBadgeClass(code)}>{msStatusLabels[getMsStatusLabel(code)]}</span></td>
+                    <td className="promoCellClip" title={orderText}>{orderText}</td>
+                    <td className="promoCellClip" title={code.campaign ?? undefined}>{code.campaign ?? "—"}</td>
+                    <td className="promoCellClip" title={code.assigned_to_name ?? undefined}>{code.assigned_to_name ?? "—"}</td>
+                    <td className="promoCellClip" title={code.assigned_channel ?? undefined}>{code.assigned_channel ?? "—"}</td>
+                    <td>{formatDate(code.microsoft_expire_at)}</td>
+                    <td className="promoCodeActions">
+                      <button className="button buttonSecondary" onClick={() => openDrawer(code)}>查看</button>
+                      <button className="button buttonSecondary" onClick={async () => {
+                        if (await copyToClipboard(code.code)) showToast("兑换码已复制");
+                      }}>复制</button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           {codes.length === 0 && <p className="adminEmpty">当前筛选条件下没有促销代码。</p>}

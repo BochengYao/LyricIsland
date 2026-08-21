@@ -6538,6 +6538,61 @@ button.danger,
   border-radius: 6px;
 }
 
+/* CODE 列及长文本列：单行 + 截断，悬停 title 查看全文 */
+.promoCodeTable td .promoCodeMono {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.promoCellClip {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 批量操作条 */
+.promoCodeBatchBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  font-size: 13px;
+  color: var(--orbit);
+}
+
+.promoCodeBatchBar button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid #aaa49d;
+  border-radius: 10px;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.promoCodeBatchBar button:hover:not(:disabled) {
+  border-color: var(--link);
+}
+
+.promoCodeBatchBar button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* 工具栏按钮组允许换行 */
+.promoToolbar {
+  flex-wrap: wrap;
+}
+
 .promoCodeActions {
   display: flex;
   gap: 6px;
@@ -6932,5 +6987,54 @@ button.danger,
   .promoCodeFilters input,
   .promoCodeFilters select {
     width: 100%;
+  }
+
+  /* 表格横向滚动（标准管理表格做法，不做卡片式重排） */
+  .promoCodeTableWrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .promoCodeTableWrap .adminDataTable {
+    min-width: 1070px;
+  }
+
+  /* 工具栏按钮铺满可点 */
+  .promoToolbar {
+    width: 100%;
+  }
+
+  .promoToolbar .button {
+    flex: 1 1 auto;
+  }
+
+  /* 批量条与分页换行适配 */
+  .promoCodeBatchBar {
+    padding: 10px 12px;
+  }
+
+  .promoCodePagination {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  /* 弹窗/抽屉不超视口，表单改单列 */
+  .promoCodeImportModal,
+  .promoCodeAssignModal {
+    padding: 22px 18px;
+    max-width: calc(100vw - 32px);
+  }
+
+  .promoCodeAssignModal .editFormGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .promoCodeDrawer {
+    width: min(520px, calc(100vw - 16px));
+  }
+
+  .promoCodeDrawer .editFormGrid {
+    grid-template-columns: 1fr;
   }
 }
