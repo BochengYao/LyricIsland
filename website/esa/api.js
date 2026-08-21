@@ -1937,19 +1937,20 @@ async function handleAdminPromoCodeAllocate(request) {
   try {
     const body = await request.json();
     const rows = await supabaseRpc("allocate_promo_code", {
-      p_assigned_name: body.assigned_name,
-      p_assigned_email: body.assigned_email,
-      p_assigned_channel: body.assigned_channel,
-      p_campaign: body.campaign,
-      p_note: body.note || null,
-      p_specific_code_id: body.specific_code_id || null
+      p_assigned_name: body.assigned_name ?? null,
+      p_assigned_email: body.assigned_email ?? null,
+      p_assigned_channel: body.assigned_channel ?? null,
+      p_campaign: body.campaign ?? null,
+      p_note: body.note ?? null,
+      p_specific_code_id: body.specific_code_id ?? null
     });
     if (!rows || rows.length === 0) return jsonError("没有可用的兑换码", 409);
     return json(Array.isArray(rows) ? rows[0] : rows);
   } catch (e) {
     console.error("Promo code allocate error:", e);
     if (e instanceof Error && e.message.includes("No available")) return jsonError("没有可用的兑换码", 409);
-    return jsonError("Internal server error", 500);
+    // TEMP DIAGNOSTIC: surface real error, revert to generic 500 after root cause fixed
+    return jsonError(`Allocate failed: ${e instanceof Error ? e.message.slice(0, 300) : "unknown error"}`, 500);
   }
 }
 
