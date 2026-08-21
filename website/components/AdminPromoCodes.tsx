@@ -97,7 +97,15 @@ const PAGE_SIZE = 50;
 
 /* ── Component ───────────────────────────────────────────────────────────── */
 
-export function AdminPromoCodes() {
+type AdminPromoCodesProps = {
+  /**
+   * embedded=true：作为 /admin 的面板内嵌渲染——不渲染自带的 AdminNav 侧边栏
+   * 与 adminShell 页面壳，只输出主内容区（由父级的 adminMain 容器包裹）。
+   */
+  embedded?: boolean;
+};
+
+export function AdminPromoCodes({ embedded = false }: AdminPromoCodesProps = {}) {
   /* Auth state */
   const [auth, setAuth] = useState<AuthState>("checking");
   const [password, setPassword] = useState("");
@@ -634,6 +642,8 @@ export function AdminPromoCodes() {
   /* ── Render: Auth checking ────────────────────────────────────────────── */
 
   if (auth === "checking") {
+    // embedded 模式由父级 /admin 统一展示身份验证状态（同一 Cookie）
+    if (embedded) return null;
     return (
       <div className="adminShell">
         <main className="adminMain" style={{ display: "grid", placeItems: "center", minHeight: "60vh" }}>
@@ -646,6 +656,8 @@ export function AdminPromoCodes() {
   /* ── Render: Login ────────────────────────────────────────────────────── */
 
   if (auth === "login") {
+    // embedded 模式下父级 /admin 自身维护登录页，不重复渲染
+    if (embedded) return null;
     return (
       <div className="adminShell">
         <main className="adminMain">
@@ -668,17 +680,8 @@ export function AdminPromoCodes() {
 
   /* ── Render: Ready ────────────────────────────────────────────────────── */
 
-  return (
-    <div className="adminShell">
-      <AdminNav
-        active="promo-codes"
-        onNavigate={(panel) => {
-          if (panel === "feedback") window.location.href = "/admin";
-        }}
-        onLogout={logout}
-      />
-
-      <main className="adminMain">
+  const promoMainContent = (
+    <>
         {error && (
           <div className="adminError" role="alert">
             <p>{error}</p>
@@ -840,8 +843,11 @@ export function AdminPromoCodes() {
             </div>
           </div>
         )}
-      </main>
+    </>
+  );
 
+  const promoOverlays = (
+    <>
       {/* Import Modal */}
       {importOpen && (
         <div className="adminModalBackdrop" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) closeImportModal(); }}>
@@ -1102,6 +1108,32 @@ export function AdminPromoCodes() {
 
       {/* Toast */}
       {toast && <div className="promoCodeToast">{toast}</div>}
+    </>
+  );
+
+  /* embedded 模式：只输出主内容区 + 弹层，侧边栏与页面壳由父级 /admin 提供 */
+  if (embedded) {
+    return (
+      <>
+        {promoMainContent}
+        {promoOverlays}
+      </>
+    );
+  }
+
+  return (
+    <div className="adminShell">
+      <AdminNav
+        active="promo-codes"
+        onNavigate={(panel) => {
+          if (panel === "feedback") window.location.href = "/admin";
+        }}
+        onLogout={logout}
+      />
+
+      <main className="adminMain">{promoMainContent}</main>
+
+      {promoOverlays}
     </div>
   );
 }
