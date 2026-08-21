@@ -10,12 +10,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="..\LyricHover.App\Modules\IslandRenderState.cs" Link="TaskbarLyrics\IslandRenderState.cs" />
-    <Compile Include="..\LyricHover.App\TaskbarLyrics\ITaskbarEnvironment.cs" Link="TaskbarLyrics\ITaskbarEnvironment.cs" />
-    <Compile Include="..\LyricHover.App\TaskbarLyrics\LyricsPresentationSnapshot.cs" Link="TaskbarLyrics\LyricsPresentationSnapshot.cs" />
-    <Compile Include="..\LyricHover.App\TaskbarLyrics\WidgetVisibilityLease.cs" Link="TaskbarLyrics\WidgetVisibilityLease.cs" />
-    <Compile Include="..\LyricHover.App\TaskbarLyrics\TaskbarLyricsController.cs" Link="TaskbarLyrics\TaskbarLyricsController.cs" />
-    <Compile Include="..\LyricHover.App\TaskbarLyrics\TaskbarSafeSlotCalculator.cs" Link="TaskbarLyrics\TaskbarSafeSlotCalculator.cs" />
+    <Compile Include="..\LyricHover.App\Modules\IslandRenderState.cs" Link="LyricDock\IslandRenderState.cs" />
+    <Compile Include="..\LyricHover.App\LyricDock\ILyricDockEnvironment.cs" Link="LyricDock\ILyricDockEnvironment.cs" />
+    <Compile Include="..\LyricHover.App\LyricDock\LyricsPresentationSnapshot.cs" Link="LyricDock\LyricsPresentationSnapshot.cs" />
+    <Compile Include="..\LyricHover.App\LyricDock\WidgetVisibilityLease.cs" Link="LyricDock\WidgetVisibilityLease.cs" />
+    <Compile Include="..\LyricHover.App\LyricDock\LyricDockController.cs" Link="LyricDock\LyricDockController.cs" />
+    <Compile Include="..\LyricHover.App\LyricDock\LyricDockSafeSlotCalculator.cs" Link="LyricDock\LyricDockSafeSlotCalculator.cs" />
+    <Compile Include="..\LyricHover.App\LyricDock\WidgetsElementMatcher.cs" Link="LyricDock\WidgetsElementMatcher.cs" />
   </ItemGroup>
 
 </Project>

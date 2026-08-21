@@ -1,0 +1,136 @@
+<Window x:Class="LyricHover.App.InformationDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="提示"
+        Width="480"
+        Height="240"
+        AllowsTransparency="True"
+        Background="Transparent"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        Loaded="Window_Loaded"
+        PreviewKeyDown="Window_PreviewKeyDown">
+    <Window.Resources>
+        <SolidColorBrush x:Key="SettingsRootBackgroundBrush" Color="#F4F3FA" />
+        <SolidColorBrush x:Key="SettingsControlForegroundBrush" Color="#1F2937" />
+        <SolidColorBrush x:Key="SettingsControlMutedForegroundBrush" Color="#667085" />
+        <SolidColorBrush x:Key="SettingsControlBorderBrush" Color="#D8DEE8" />
+        <SolidColorBrush x:Key="SettingsControlPressedBackgroundBrush" Color="#EEF2F7" />
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+            <Setter Property="MinWidth" Value="128" />
+            <Setter Property="Height" Value="38" />
+            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Background" Value="#1677FF" />
+            <Setter Property="BorderBrush" Value="#1677FF" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonRoot"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="9">
+                            <ContentPresenter Margin="14,0"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonRoot" Property="Background" Value="#0F6BEF" />
+                                <Setter TargetName="ButtonRoot" Property="BorderBrush" Value="#0F6BEF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonRoot" Property="Background" Value="#0B5FD7" />
+                                <Setter TargetName="ButtonRoot" Property="BorderBrush" Value="#0B5FD7" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border Background="{DynamicResource SettingsRootBackgroundBrush}"
+            BorderBrush="{DynamicResource SettingsControlBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="20">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="28"
+                              Color="#66000000"
+                              Direction="270"
+                              Opacity="0.26"
+                              ShadowDepth="8" />
+        </Border.Effect>
+        <Grid Margin="24,22,24,20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="42" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border Width="42"
+                        Height="42"
+                        Background="#1A1677FF"
+                        CornerRadius="14">
+                    <Path Width="22"
+                          Height="22"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          Data="M12,2 C17.52,2 22,6.48 22,12 C22,17.52 17.52,22 12,22 C6.48,22 2,17.52 2,12 C2,6.48 6.48,2 12,2 Z M12,7 L12,13 M12,16 L12,16.2"
+                          Fill="Transparent"
+                          Stroke="#1677FF"
+                          StrokeStartLineCap="Round"
+                          StrokeEndLineCap="Round"
+                          StrokeLineJoin="Round"
+                          StrokeThickness="1.8"
+                          Stretch="Uniform" />
+                </Border>
+                <TextBlock x:Name="TitleTextBlock"
+                           Grid.Column="2"
+                           VerticalAlignment="Center"
+                           FontFamily="Microsoft YaHei UI"
+                           FontSize="20"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource SettingsControlForegroundBrush}"
+                           Text="提示" />
+            </Grid>
+
+            <Border Grid.Row="1"
+                    Margin="0,22,0,20"
+                    Padding="18,16"
+                    Background="#F8FAFC"
+                    BorderBrush="{DynamicResource SettingsControlBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="14">
+                <TextBlock x:Name="MessageTextBlock"
+                           FontFamily="Microsoft YaHei UI"
+                           FontSize="14"
+                           Foreground="{DynamicResource SettingsControlForegroundBrush}"
+                           LineHeight="22"
+                           LineStackingStrategy="BlockLineHeight"
+                           Text="消息内容"
+                           TextWrapping="Wrap" />
+            </Border>
+
+            <Button Grid.Row="2"
+                    HorizontalAlignment="Right"
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    Click="OKButton_Click"
+                    Content="确定" />
+        </Grid>
+    </Border>
+</Window>

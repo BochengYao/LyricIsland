@@ -1,11 +1,11 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
 using System.Text.Json;
 using LyricHover.Core;
 using LyricHover.Core.Layout;
-using LyricHover.App.TaskbarLyrics;
+using LyricHover.App.LyricDock;
 
 namespace LyricHover.App
 {
@@ -65,9 +65,9 @@ namespace LyricHover.App
 
         public bool ShowTranslation { get; set; } = true;
 
-        public bool TaskbarLyricsEnabled { get; set; }
+        public bool LyricDockEnabled { get; set; }
 
-        public TaskbarLyricsAlignment TaskbarLyricsAlignment { get; set; } = global::LyricHover.App.TaskbarLyrics.TaskbarLyricsAlignment.Center;
+        public LyricDockAlignment LyricDockAlignment { get; set; } = global::LyricHover.App.LyricDock.LyricDockAlignment.Center;
 
         public HotkeySettings LyricOffsetHotkeys { get; set; } = HotkeySettings.CreateDefault();
 
@@ -132,9 +132,9 @@ namespace LyricHover.App
                 SettingsTheme = SettingsThemePreference.System;
             }
 
-            if (!Enum.IsDefined(typeof(TaskbarLyricsAlignment), TaskbarLyricsAlignment))
+            if (!Enum.IsDefined(typeof(LyricDockAlignment), LyricDockAlignment))
             {
-                TaskbarLyricsAlignment = global::LyricHover.App.TaskbarLyrics.TaskbarLyricsAlignment.Center;
+                LyricDockAlignment = global::LyricHover.App.LyricDock.LyricDockAlignment.Center;
             }
 
             if (ShowTranslation)
@@ -222,8 +222,8 @@ namespace LyricHover.App
                 var originalLyricsSource = settings.LyricsSource;
                 var originalUseMultiLineDisplay = settings.UseMultiLineDisplay;
                 var originalShowTranslation = settings.ShowTranslation;
-                var originalTaskbarLyricsEnabled = settings.TaskbarLyricsEnabled;
-                var originalTaskbarLyricsAlignment = settings.TaskbarLyricsAlignment;
+                var originalLyricDockEnabled = settings.LyricDockEnabled;
+                var originalLyricDockAlignment = settings.LyricDockAlignment;
                 settings.Normalize();
                 if (settings.SchemaVersion != originalSchemaVersion ||
                     settings.Edge != originalEdge ||
@@ -239,8 +239,8 @@ namespace LyricHover.App
                     settings.LyricsSource != originalLyricsSource ||
                     settings.UseMultiLineDisplay != originalUseMultiLineDisplay ||
                     settings.ShowTranslation != originalShowTranslation ||
-                    settings.TaskbarLyricsEnabled != originalTaskbarLyricsEnabled ||
-                    settings.TaskbarLyricsAlignment != originalTaskbarLyricsAlignment)
+                    settings.LyricDockEnabled != originalLyricDockEnabled ||
+                    settings.LyricDockAlignment != originalLyricDockAlignment)
                 {
                     Save(settings);
                 }
@@ -292,3 +292,6 @@ namespace LyricHover.App
         Dark
     }
 }
+
+
+

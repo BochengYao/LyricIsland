@@ -1,31 +1,33 @@
 using System;
 
-namespace LyricHover.App.TaskbarLyrics
+namespace LyricHover.App.LyricDock
 {
-    public interface ITaskbarLyricsSurface
+    public interface ILyricDockSurface
     {
         event EventHandler SettingsRequested;
         bool IsVisible { get; }
         void Show();
         void Hide();
         void Present(LyricsPresentationSnapshot snapshot);
-        void Place(TaskbarLyricsPlacement placement, double width);
+        void Place(LyricDockPlacement placement, double width);
     }
 
-    public sealed class TaskbarLyricsController : IDisposable
+    public sealed class LyricDockController : IDisposable
     {
         public const double MinimumWidth = 220;
         public const double MaximumWidth = 360;
-        private readonly ITaskbarEnvironment environment;
+        private readonly ILyricDockEnvironment environment;
         private readonly WidgetVisibilityLease widgetLease;
-        private readonly ITaskbarLyricsSurface surface;
+        private readonly ILyricDockSurface surface;
         private bool enabled;
         private bool requestedEnabled;
+        private bool widgetsHidingUnavailable;
+        private bool restoringStartup;
         private string screenName;
-        private TaskbarLyricsAlignment alignment;
+        private LyricDockAlignment alignment;
         private LyricsPresentationSnapshot snapshot = new LyricsPresentationSnapshot { IsWaitingForPlayback = true };
 
-        public TaskbarLyricsController(ITaskbarEnvironment environment, WidgetVisibilityLease widgetLease, ITaskbarLyricsSurface surface)
+        public LyricDockController(ILyricDockEnvironment environment, WidgetVisibilityLease widgetLease, ILyricDockSurface surface)
         {
             this.environment = environment ?? throw new ArgumentNullException(nameof(environment));
             this.widgetLease = widgetLease ?? throw new ArgumentNullException(nameof(widgetLease));
@@ -35,49 +37,68 @@ namespace LyricHover.App.TaskbarLyrics
         }
 
         public event EventHandler SettingsRequested;
-        public event EventHandler<TaskbarLyricsFailureReason> FeatureDisabled;
+        public event EventHandler<LyricDockFailureReason> FeatureDisabled;
+        public event EventHandler WidgetsHidingDegraded;
         public bool IsEnabled => enabled;
-        public TaskbarLyricsFailureReason LastFailureReason { get; private set; }
+        public LyricDockFailureReason LastFailureReason { get; private set; }
 
         // An old crash may have left Widgets suppressed.  This must occur before the persisted setting is honored.
-        public bool Start(bool requestedEnabled, string requestedScreenName, TaskbarLyricsAlignment requestedAlignment)
+        public bool Start(bool requestedEnabled, string requestedScreenName, LyricDockAlignment requestedAlignment)
         {
-            if (!widgetLease.RestoreResidualLease())
+            screenName = requestedScreenName ?? string.Empty;
+            alignment = requestedAlignment;
+            if (!widgetLease.RestoreResidualLease(screenName))
             {
-                LastFailureReason = TaskbarLyricsFailureReason.RegistryOrRefreshFailed;
+                Disable(LyricDockFailureReason.RegistryOrRefreshFailed, restoreWidgets: false);
                 return false;
             }
-            return Configure(requestedEnabled, requestedScreenName, requestedAlignment);
+            restoringStartup = true;
+            try
+            {
+                // Startup restoration must stay silent: the degraded notice is only useful
+                // when the user explicitly turns the feature on from settings.
+                return Configure(requestedEnabled, requestedScreenName, requestedAlignment);
+            }
+            finally
+            {
+                restoringStartup = false;
+            }
         }
 
-        public bool Configure(bool requestedEnabled, string requestedScreenName, TaskbarLyricsAlignment requestedAlignment)
+        public bool Configure(bool requestedEnabled, string requestedScreenName, LyricDockAlignment requestedAlignment)
         {
             this.requestedEnabled = requestedEnabled;
             screenName = requestedScreenName ?? string.Empty;
             alignment = requestedAlignment;
-            LastFailureReason = TaskbarLyricsFailureReason.None;
+            LastFailureReason = LyricDockFailureReason.None;
             if (!requestedEnabled)
             {
                 enabled = false;
+                // Re-arm the Widgets-hiding attempt for the next enable cycle.
+                widgetsHidingUnavailable = false;
                 HideAndRestore();
                 return true;
             }
 
-            if (!environment.IsWindows11)
+            if (!environment.IsSupported)
             {
-                Disable(TaskbarLyricsFailureReason.Windows11Required);
+                Disable(LyricDockFailureReason.UnsupportedOS);
                 return false;
             }
             if (!environment.TryGetPlacement(screenName, alignment, out var initialPlacement, out var reason) || !CanUse(initialPlacement))
             {
-                Disable(reason == TaskbarLyricsFailureReason.None ? TaskbarLyricsFailureReason.TaskbarNotFound : reason);
+                Disable(reason == LyricDockFailureReason.None ? LyricDockFailureReason.TaskbarNotFound : reason);
                 return false;
             }
-            if (!widgetLease.TryAcquire())
+            if (!widgetsHidingUnavailable && !widgetLease.TryAcquire())
             {
-                Disable(TaskbarLyricsFailureReason.RegistryOrRefreshFailed);
-                return false;
-            }
+                // Widgets hiding is an optional space enhancement, not a prerequisite.  Some
+                // machines (notably Win11 25H2 with registry write protection) block TaskbarDa
+                // writes entirely; keep the feature working with Widgets visible because the
+                // placement logic already accounts for them as occupied space.  Stop retrying
+                // for this session so refreshes don't repeat the slow acquisition timeout.
+                widgetsHidingUnavailable = true;
+                if (!restoringStartup) WidgetsHidingDegraded?.Invoke(this, EventArgs.Empty);            }
 
             enabled = true;
             Show(initialPlacement);
@@ -96,12 +117,12 @@ namespace LyricHover.App.TaskbarLyrics
             if (!enabled) return;
             if (!environment.TryGetPlacement(screenName, alignment, out var placement, out var reason) || !CanUse(placement))
             {
-                if (reason == TaskbarLyricsFailureReason.TaskbarAutoHiddenOrFullscreen)
+                if (reason == LyricDockFailureReason.TaskbarAutoHiddenOrFullscreen)
                 {
                     surface.Hide();
                     return;
                 }
-                Disable(reason == TaskbarLyricsFailureReason.None ? TaskbarLyricsFailureReason.TaskbarChanged : reason);
+                Disable(reason == LyricDockFailureReason.None ? LyricDockFailureReason.TaskbarChanged : reason);
                 return;
             }
             Show(placement);
@@ -118,19 +139,20 @@ namespace LyricHover.App.TaskbarLyrics
         {
             RefreshPlacement();
         }
-        private bool CanUse(TaskbarLyricsPlacement placement) => placement != null && placement.IsVisible && !placement.IsFullscreenCovered && placement.Width >= MinimumWidth && placement.Height > 0 && placement.DpiScale > 0;
-        private void Show(TaskbarLyricsPlacement placement)
+        private bool CanUse(LyricDockPlacement placement) => placement != null && placement.IsVisible && !placement.IsFullscreenCovered && placement.Width >= MinimumWidth && placement.Height > 0 && placement.DpiScale > 0;
+        private void Show(LyricDockPlacement placement)
         {
             surface.Place(placement, Math.Min(MaximumWidth, placement.Width));
             surface.Present(snapshot);
             if (!surface.IsVisible) surface.Show();
         }
-        private void Disable(TaskbarLyricsFailureReason reason)
+        private void Disable(LyricDockFailureReason reason, bool restoreWidgets = true)
         {
             LastFailureReason = reason;
             enabled = false;
             requestedEnabled = false;
-            HideAndRestore();
+            if (restoreWidgets) HideAndRestore();
+            else surface.Hide();
             FeatureDisabled?.Invoke(this, reason);
         }
         private void HideAndRestore()

@@ -1,8 +1,8 @@
-using System;
+﻿using System;
 using LyricHover.Core.Media;
 using LyricHover.App.Modules;
 
-namespace LyricHover.App.TaskbarLyrics
+namespace LyricHover.App.LyricDock
 {
     public sealed class LyricsPresentationSnapshot
     {
@@ -32,3 +32,4 @@ namespace LyricHover.App.TaskbarLyrics
         }
     }
 }
+

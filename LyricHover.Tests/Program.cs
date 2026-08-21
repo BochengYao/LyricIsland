@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 using LyricHover.Core;
 using LyricHover.Core.Layout;
 using LyricHover.Core.Media;
-using LyricHover.App.TaskbarLyrics;
+using LyricHover.App.LyricDock;
 
 namespace LyricHover.Tests
 {
@@ -21,6 +21,12 @@ namespace LyricHover.Tests
         static int Main(string[] args)
         {
             var suite = new TestSuite();
+            if (args.Length == 1 && string.Equals(args[0], "--release-version-fixture", StringComparison.Ordinal))
+            {
+                suite.Run("release version mutation is transactional and serialized", ReleaseVersionMutationIsTransactionalAndSerialized);
+                return suite.ExitCode;
+            }
+
             suite.Run("parses synced lrc lines and metadata", ParsesSyncedLrcLinesAndMetadata);
             suite.Run("selects the current lyric line by playback position", SelectsCurrentLyricLineByPlaybackPosition);
             suite.Run("selects the current lyric line with timing offset", SelectsCurrentLyricLineWithTimingOffset);
@@ -83,13 +89,20 @@ namespace LyricHover.Tests
             suite.Run("settings store backs up corrupt JSON", SettingsStoreBacksUpCorruptJson);
             suite.Run("taskbar Widgets lease restores absent, disabled, and enabled states", TaskbarWidgetsLeaseRestoresOriginalStates);
             suite.Run("taskbar Widgets lease rolls back after refresh failure", TaskbarWidgetsLeaseRollsBackAfterRefreshFailure);
+            suite.Run("taskbar Widgets lease fails fast when the OS blocks TaskbarDa writes", TaskbarWidgetsLeaseFailsFastWhenWritesAreBlocked);
+            suite.Run("taskbar controller keeps lyrics when Widgets hiding is unavailable", TaskbarControllerKeepsLyricsWhenWidgetsHidingUnavailable);
             suite.Run("taskbar controller shares a snapshot and honors width limits", TaskbarControllerSharesSnapshotAndHonorsWidthLimits);
             suite.Run("taskbar settings schema defaults to disabled", TaskbarSettingsSchemaDefaultsToDisabled);
             suite.Run("taskbar setting remains disabled when loading legacy settings", TaskbarSettingIsCompatibleWithLegacySettings);
             suite.Run("taskbar controller restores Widgets and reports unsafe placement", TaskbarControllerRestoresWidgetsForUnsafePlacement);
             suite.Run("taskbar lease fails closed for recovery file IO errors", TaskbarLeaseFailsClosedForIoErrors);
+            suite.Run("taskbar residual lease failure disables the feature and retains recovery", TaskbarResidualLeaseFailureDisablesFeature);
+            suite.Run("taskbar Widgets matcher prefers stable identity and recognizes Traditional Chinese", TaskbarWidgetsMatcherRecognizesStableAndTraditionalChinese);
             suite.Run("taskbar UI declares confirmation, alignment, theme, and no-activate behavior", TaskbarUiDeclaresSafetyBehaviors);
-            suite.Run("taskbar safe slot selection respects real occupied rectangles", TaskbarSafeSlotSelectionRespectsOccupiedRectangles);
+            suite.Run("taskbar safe slot remains anchored to the Widgets footprint", TaskbarSafeSlotSelectionRespectsOccupiedRectangles);
+            suite.Run("taskbar safe slot falls back to the widest gap when Widgets are manually hidden", TaskbarSafeSlotFallsBackToWidestGapWhenWidgetsManuallyHidden);
+            suite.Run("lyric dock transition, marquee, and single-line centering match the island", LyricDockWindowMatchesIslandLyricsBehaviors);
+            suite.Run("taskbar alignment positions lyric text inside the viewport", LyricDockAlignmentPositionsTextInsideViewport);
             suite.Run("builds island geometry for measured module size", BuildsIslandGeometryForMeasuredModuleSize);
             suite.Run("module host exposes all v2 module views", ModuleHostExposesAllV2ModuleViews);
             suite.Run("track info shows title and artist without album", TrackInfoShowsTitleAndArtistWithoutAlbum);
@@ -1989,9 +2002,11 @@ namespace LyricHover.Tests
 
             var versionMatch = System.Text.RegularExpressions.Regex.Match(
                 props,
-                "<VersionPrefix>\\d+\\.\\d+\\.\\d+</VersionPrefix>");
+                "<VersionPrefix>(?<major>\\d+)\\.\\d+\\.\\d+</VersionPrefix>");
             Assert.True(versionMatch.Success);
-            Assert.True(props.Contains("<VersionPrefix>3.0.0</VersionPrefix>"));
+            // The major stays on the V3 baseline. The patch digit is bumped by the publish
+            // script before this suite runs during candidate generation, so it must not be pinned.
+            Assert.Equal("3", versionMatch.Groups["major"].Value);
             Assert.True(props.Contains("<VersionSuffix>Beta</VersionSuffix>"));
             Assert.True(props.Contains("<AssemblyVersion>$(VersionPrefix).0</AssemblyVersion>"));
             Assert.True(props.Contains("<FileVersion>$(VersionPrefix).0</FileVersion>"));
@@ -2015,35 +2030,40 @@ namespace LyricHover.Tests
             try
             {
                 var fixture = CreatePublishVersionFixture(root, fixtureRoot);
-                RestorePublishVersionFixture(fixture.Root);
+                RestorePublishVersionFixture(fixture);
+                var expectedVersion = NextPatchVersion(ReadVersionPrefix(fixture.PropsPath));
 
-                Assert.Equal(0, RunPublishVersionTest(fixture.ScriptPath, "-NoLaunch"));
-                Assert.Equal("3.0.1", ReadVersionPrefix(fixture.PropsPath));
-                Assert.Equal("3.0.1.0", FileVersionInfo.GetVersionInfo(
+                AssertProcessExitCode(0, RunPublishVersionTest(fixture, "-NoLaunch"));
+                Assert.Equal(expectedVersion, ReadVersionPrefix(fixture.PropsPath));
+                Assert.Equal(expectedVersion + ".0", FileVersionInfo.GetVersionInfo(
                     Path.Combine(fixture.Root, "publish", "current", "LyricHover.App.dll")).FileVersion);
 
                 var versionAfterCandidate = File.ReadAllText(fixture.PropsPath);
-                Assert.Equal(0, RunPublishVersionTest(fixture.ScriptPath, "-KeepVersion -NoLaunch"));
+                AssertProcessExitCode(0, RunPublishVersionTest(fixture, "-KeepVersion -NoLaunch"));
                 Assert.Equal(versionAfterCandidate, File.ReadAllText(fixture.PropsPath));
 
                 File.WriteAllText(fixture.PropsPath, fixture.BaselineProps);
                 Directory.Delete(Path.Combine(fixture.Root, "publish"), true);
                 File.WriteAllText(fixture.AppProgramPath, "this will not compile");
                 var beforeFailure = File.ReadAllText(fixture.PropsPath);
-                Assert.True(RunPublishVersionTest(fixture.ScriptPath, "-NoLaunch") != 0);
+                var failedCandidate = RunPublishVersionTest(fixture, "-NoLaunch");
+                Assert.True(failedCandidate.ExitCode != 0);
+                Assert.True(!string.IsNullOrWhiteSpace(failedCandidate.Output));
                 Assert.Equal(beforeFailure, File.ReadAllText(fixture.PropsPath));
+                Assert.False(Directory.Exists(Path.Combine(fixture.Root, "publish")));
                 File.WriteAllText(fixture.AppProgramPath, fixture.AppProgram);
 
                 File.WriteAllText(fixture.PropsPath, fixture.BaselineProps);
-                var first = StartPublishVersionTest(fixture.ScriptPath, "-NoLaunch");
+                var first = StartPublishVersionTest(fixture, "-NoLaunch");
                 try
                 {
-                    WaitForVersionPrefix(fixture.PropsPath, "3.0.1");
-                    var secondExitCode = RunPublishVersionTest(fixture.ScriptPath, "-NoLaunch");
+                    WaitForVersionPrefix(fixture.PropsPath, expectedVersion);
+                    var second = RunPublishVersionTest(fixture, "-NoLaunch");
                     Assert.True(first.WaitForExit(30000));
-                    Assert.Equal(0, first.ExitCode);
-                    Assert.True(secondExitCode != 0);
-                    Assert.Equal("3.0.1", ReadVersionPrefix(fixture.PropsPath));
+                    AssertProcessExitCode(0, first.ToResult());
+                    Assert.True(second.ExitCode != 0);
+                    Assert.True(second.Output.Contains("已有另一个发布候选生成正在进行"));
+                    Assert.Equal(expectedVersion, ReadVersionPrefix(fixture.PropsPath));
                 }
                 finally
                 {
@@ -2053,7 +2073,9 @@ namespace LyricHover.Tests
                 File.WriteAllText(fixture.PropsPath, fixture.BaselineProps);
                 Directory.Delete(Path.Combine(fixture.Root, "publish"), true);
                 var beforeKeepVersion = File.ReadAllText(fixture.PropsPath);
-                Assert.True(RunPublishVersionTest(fixture.ScriptPath, "-KeepVersion -NoLaunch") != 0);
+                var missingCandidate = RunPublishVersionTest(fixture, "-KeepVersion -NoLaunch");
+                Assert.True(missingCandidate.ExitCode != 0);
+                Assert.True(missingCandidate.Output.Contains("-KeepVersion 只能复现已有候选"));
                 Assert.Equal(beforeKeepVersion, File.ReadAllText(fixture.PropsPath));
             }
             finally
@@ -2072,33 +2094,44 @@ namespace LyricHover.Tests
             var buildScript = File.ReadAllText(Path.Combine(root, "store", "msix", "build-msix.ps1"));
             var manifest = File.ReadAllText(Path.Combine(root, "store", "msix", "AppxManifest.template.xml"));
 
-            Assert.Equal("v3.0.0 Beta", ProductVersion.DisplayVersion);
-            Assert.Equal(new Version(3, 0, 0, 0), coreAssembly.GetName().Version);
-            Assert.Equal("3.0.0.0", FileVersionInfo.GetVersionInfo(coreAssembly.Location).FileVersion);
+            // Derive expectations from the single version source so the mapping holds for every
+            // generated candidate, not only the frozen baseline.
+            var props = File.ReadAllText(Path.Combine(root, "Directory.Build.props"));
+            var versionMatch = System.Text.RegularExpressions.Regex.Match(
+                props,
+                "<VersionPrefix>(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)</VersionPrefix>");
+            var labelMatch = System.Text.RegularExpressions.Regex.Match(props, "<VersionSuffix>(?<label>[^<]+)</VersionSuffix>");
+            Assert.True(versionMatch.Success);
+            Assert.True(labelMatch.Success);
+            var major = int.Parse(versionMatch.Groups["major"].Value);
+            var minor = int.Parse(versionMatch.Groups["minor"].Value);
+            var patch = int.Parse(versionMatch.Groups["patch"].Value);
+            var prefix = major + "." + minor + "." + patch;
+
+            Assert.Equal(ProductVersion.FormatDisplayVersion(prefix + "-" + labelMatch.Groups["label"].Value.Trim()), ProductVersion.DisplayVersion);
+            Assert.Equal(new Version(major, minor, patch, 0), coreAssembly.GetName().Version);
+            Assert.Equal(prefix + ".0", FileVersionInfo.GetVersionInfo(coreAssembly.Location).FileVersion);
             Assert.True(buildScript.Contains("$packageVersion = \"$productVersion.0\""));
             Assert.True(manifest.Contains("Version=\"__PACKAGE_VERSION__\""));
         }
 
-        static Process StartPublishVersionTest(string scriptPath, string arguments)
+        static CapturedProcess StartPublishVersionTest(PublishVersionFixture fixture, string arguments)
         {
-            var process = Process.Start(new ProcessStartInfo
-            {
-                FileName = "powershell.exe",
-                Arguments = "-NoProfile -ExecutionPolicy Bypass -File \"" + scriptPath + "\" " + arguments,
-                CreateNoWindow = true,
-                UseShellExecute = false
-            });
+            var process = Process.Start(CreateFixtureProcessStartInfo(
+                "powershell.exe",
+                "-NoProfile -ExecutionPolicy Bypass -File \"" + fixture.ScriptPath + "\" " + arguments,
+                fixture));
             if (process == null)
             {
                 throw new InvalidOperationException("Could not start the isolated PowerShell version test.");
             }
 
-            return process;
+            return new CapturedProcess(process);
         }
 
-        static int RunPublishVersionTest(string scriptPath, string arguments)
+        static ProcessResult RunPublishVersionTest(PublishVersionFixture fixture, string arguments)
         {
-            using (var process = StartPublishVersionTest(scriptPath, arguments))
+            using (var process = StartPublishVersionTest(fixture, arguments))
             {
                 if (!process.WaitForExit(60000))
                 {
@@ -2106,7 +2139,18 @@ namespace LyricHover.Tests
                     throw new InvalidOperationException("The isolated PowerShell version test timed out.");
                 }
 
-                return process.ExitCode;
+                return process.ToResult();
+            }
+        }
+
+        static void AssertProcessExitCode(int expectedExitCode, ProcessResult result)
+        {
+            if (result.ExitCode != expectedExitCode)
+            {
+                throw new InvalidOperationException(
+                    "Expected exit code <" + expectedExitCode + "> but got <" + result.ExitCode + "> for " + result.CommandLine + ".\n" +
+                    "stdout:\n" + result.StandardOutput + "\n" +
+                    "stderr:\n" + result.StandardError);
             }
         }
 
@@ -2121,6 +2165,12 @@ namespace LyricHover.Tests
             }
 
             return match.Groups["version"].Value;
+        }
+
+        static string NextPatchVersion(string version)
+        {
+            var parts = version.Split('.');
+            return parts[0] + "." + parts[1] + "." + (int.Parse(parts[2]) + 1);
         }
 
         static void WaitForVersionPrefix(string propsPath, string expectedVersion)
@@ -2143,9 +2193,11 @@ namespace LyricHover.Tests
             var tools = Path.Combine(fixtureRoot, "tools");
             var tests = Path.Combine(fixtureRoot, "LyricHover.Tests");
             var app = Path.Combine(fixtureRoot, "LyricHover.App");
+            var packageCachePath = ResolveFixturePackageCache();
             Directory.CreateDirectory(tools);
             Directory.CreateDirectory(tests);
             Directory.CreateDirectory(app);
+            PrepareFixtureEnvironment(fixtureRoot);
 
             var baselineProps = File.ReadAllText(Path.Combine(sourceRoot, "Directory.Build.props"));
             var appProgram = "namespace LyricHover.App { internal static class Program { private static void Main() { } } }";
@@ -2153,6 +2205,15 @@ namespace LyricHover.Tests
             var testsProject = "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>netcoreapp3.1</TargetFramework></PropertyGroup></Project>";
 
             File.Copy(Path.Combine(sourceRoot, "tools", "publish-next-version.ps1"), Path.Combine(tools, "publish-next-version.ps1"));
+            // The fixture must serialize only against its own runs. An outer candidate generation
+            // legitimately holds the production mutex while this suite executes, and any leftover
+            // production mutex from a crashed generator must not block the fixture either.
+            var fixtureScript = File.ReadAllText(Path.Combine(tools, "publish-next-version.ps1"));
+            File.WriteAllText(
+                Path.Combine(tools, "publish-next-version.ps1"),
+                fixtureScript.Replace(
+                    "$mutexName = 'Local\\LyricsIsland.PublishNextVersion'",
+                    "$mutexName = 'Local\\LyricsIsland.PublishNextVersion.Fixture." + Guid.NewGuid().ToString("N") + "'"));
             File.WriteAllText(Path.Combine(fixtureRoot, "Directory.Build.props"), baselineProps);
             File.WriteAllText(Path.Combine(app, "LyricHover.App.csproj"), appProject);
             File.WriteAllText(Path.Combine(app, "Program.cs"), appProgram);
@@ -2165,37 +2226,100 @@ namespace LyricHover.Tests
                 Path.Combine(fixtureRoot, "Directory.Build.props"),
                 Path.Combine(app, "Program.cs"),
                 baselineProps,
-                appProgram);
+                appProgram,
+                packageCachePath);
         }
 
-        static void RestorePublishVersionFixture(string fixtureRoot)
+        static void RestorePublishVersionFixture(PublishVersionFixture fixture)
         {
-            Assert.Equal(0, RunProcess("dotnet", "restore \"" + Path.Combine(fixtureRoot, "LyricHover.Tests", "LyricHover.Tests.csproj") + "\""));
-            Assert.Equal(0, RunProcess("dotnet", "restore --runtime win-x64 \"" + Path.Combine(fixtureRoot, "LyricHover.App", "LyricHover.App.csproj") + "\""));
+            AssertProcessExitCode(0, RunProcess("dotnet", "restore \"" + Path.Combine(fixture.Root, "LyricHover.Tests", "LyricHover.Tests.csproj") + "\"", fixture));
+            AssertProcessExitCode(0, RunProcess("dotnet", "restore --runtime win-x64 \"" + Path.Combine(fixture.Root, "LyricHover.App", "LyricHover.App.csproj") + "\"", fixture));
         }
 
-        static int RunProcess(string fileName, string arguments)
+        static ProcessResult RunProcess(string fileName, string arguments, PublishVersionFixture fixture)
         {
-            using (var process = Process.Start(new ProcessStartInfo
-            {
-                FileName = fileName,
-                Arguments = arguments,
-                CreateNoWindow = true,
-                UseShellExecute = false
-            }))
+            var startInfo = CreateFixtureProcessStartInfo(fileName, arguments, fixture);
+            using (var process = Process.Start(startInfo))
             {
                 if (process == null)
                 {
                     throw new InvalidOperationException("Could not start " + fileName + ".");
                 }
-                if (!process.WaitForExit(60000))
+                using (var captured = new CapturedProcess(process))
                 {
-                    process.Kill();
-                    throw new InvalidOperationException(fileName + " timed out.");
+                    if (!captured.WaitForExit(60000))
+                    {
+                        captured.Kill();
+                        throw new InvalidOperationException(fileName + " timed out.");
+                    }
+
+                    return captured.ToResult();
+                }
+            }
+        }
+
+        static void PrepareFixtureEnvironment(string fixtureRoot)
+        {
+            foreach (var directory in new[]
+            {
+                Path.Combine(fixtureRoot, ".environment", "appdata"),
+                Path.Combine(fixtureRoot, ".environment", "localappdata"),
+                Path.Combine(fixtureRoot, ".environment", "userprofile"),
+                Path.Combine(fixtureRoot, ".environment", "dotnet"),
+                Path.Combine(fixtureRoot, ".environment", "nuget", "http-cache"),
+                Path.Combine(fixtureRoot, ".environment", "nuget", "plugins-cache"),
+                Path.Combine(fixtureRoot, ".environment", "temp")
+            })
+            {
+                Directory.CreateDirectory(directory);
+            }
+        }
+
+        static string ResolveFixturePackageCache()
+        {
+            var inheritedPackageCache = Environment.GetEnvironmentVariable("NUGET_PACKAGES");
+            var packageCache = string.IsNullOrWhiteSpace(inheritedPackageCache)
+                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages")
+                : inheritedPackageCache;
+            try
+            {
+                if (!Directory.Exists(packageCache))
+                {
+                    throw new DirectoryNotFoundException(packageCache);
                 }
 
-                return process.ExitCode;
+                Directory.EnumerateFileSystemEntries(packageCache).Take(1).ToArray();
+                return packageCache;
             }
+            catch (Exception exception)
+            {
+                throw new InvalidOperationException("The fixture requires a readable existing NuGet package cache at '" + packageCache + "'.", exception);
+            }
+        }
+
+        static ProcessStartInfo CreateFixtureProcessStartInfo(string fileName, string arguments, PublishVersionFixture fixture)
+        {
+            var environmentRoot = Path.Combine(fixture.Root, ".environment");
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = fileName,
+                Arguments = arguments,
+                WorkingDirectory = fixture.Root,
+                CreateNoWindow = true,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            startInfo.EnvironmentVariables["APPDATA"] = Path.Combine(environmentRoot, "appdata");
+            startInfo.EnvironmentVariables["LOCALAPPDATA"] = Path.Combine(environmentRoot, "localappdata");
+            startInfo.EnvironmentVariables["USERPROFILE"] = Path.Combine(environmentRoot, "userprofile");
+            startInfo.EnvironmentVariables["DOTNET_CLI_HOME"] = Path.Combine(environmentRoot, "dotnet");
+            startInfo.EnvironmentVariables["NUGET_PACKAGES"] = fixture.PackageCachePath;
+            startInfo.EnvironmentVariables["NUGET_HTTP_CACHE_PATH"] = Path.Combine(environmentRoot, "nuget", "http-cache");
+            startInfo.EnvironmentVariables["NUGET_PLUGINS_CACHE_PATH"] = Path.Combine(environmentRoot, "nuget", "plugins-cache");
+            startInfo.EnvironmentVariables["TEMP"] = Path.Combine(environmentRoot, "temp");
+            startInfo.EnvironmentVariables["TMP"] = Path.Combine(environmentRoot, "temp");
+            return startInfo;
         }
 
         static void StorePackageReusesReservedProductIdentity()
@@ -2613,7 +2737,13 @@ namespace LyricHover.Tests
             Assert.True(source.Contains("FadeOutTranslationModeToast"));
             Assert.True(source.Contains("TimeSpan.FromMilliseconds(320)"));
             Assert.False(source.Contains("TranslationModeToast.IsOpen"));
-            Assert.False(source.Contains("MessageBox.Show("));
+            // The single-line restriction path must stay toast based. Unrelated confirmations
+            // elsewhere in the settings window (badge imprint, taskbar lyrics) are out of scope.
+            var toastPathStart = source.IndexOf("private void SingleLineRadioButton_PreviewMouseLeftButtonDown", StringComparison.Ordinal);
+            var fadeOutStart = source.IndexOf("private void FadeOutTranslationModeToast", StringComparison.Ordinal);
+            var toastPathEnd = source.IndexOf("private void", fadeOutStart + 1, StringComparison.Ordinal);
+            Assert.True(toastPathStart >= 0 && fadeOutStart > toastPathStart && toastPathEnd > fadeOutStart);
+            Assert.False(source.Substring(toastPathStart, toastPathEnd - toastPathStart).Contains("MessageBox.Show("));
             Assert.False(source.Contains("SingleLineRadioButton.IsEnabled = false"));
         }
 
@@ -2960,7 +3090,8 @@ namespace LyricHover.Tests
 
         static void MouseAvoidanceSettingsFitWithoutScrolling()
         {
-            var xaml = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "PlacementSettingsWindow.xaml"));
+            // Normalize line endings so the layout assertions are stable across checkout EOL styles.
+            var xaml = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "PlacementSettingsWindow.xaml")).Replace("\r\n", "\n");
             var panelStart = xaml.IndexOf("x:Name=\"HoverSettingsPanel\"", StringComparison.Ordinal);
             var panelEnd = xaml.IndexOf("x:Name=\"HotkeySettingsPanel\"", panelStart, StringComparison.Ordinal);
             var panel = xaml.Substring(panelStart, panelEnd - panelStart);
@@ -3711,7 +3842,7 @@ namespace LyricHover.Tests
         {
             foreach (var initial in new[] { TaskbarDaValueState.Absent, TaskbarDaValueState.Disabled, TaskbarDaValueState.Enabled })
             {
-                var environment = new FakeTaskbarEnvironment { TaskbarDa = initial };
+                var environment = new FakeLyricDockEnvironment { TaskbarDa = initial };
                 var recoveryPath = Path.Combine(Path.GetTempPath(), "lyrichover-taskbar-" + Guid.NewGuid() + ".txt");
                 var lease = new WidgetVisibilityLease(environment, recoveryPath);
                 Assert.True(lease.TryAcquire());
@@ -3724,7 +3855,7 @@ namespace LyricHover.Tests
 
         static void TaskbarWidgetsLeaseRollsBackAfterRefreshFailure()
         {
-            var environment = new FakeTaskbarEnvironment { TaskbarDa = TaskbarDaValueState.Enabled, FailNextRefresh = true };
+            var environment = new FakeLyricDockEnvironment { TaskbarDa = TaskbarDaValueState.Enabled, FailNextRefresh = true };
             var recoveryPath = Path.Combine(Path.GetTempPath(), "lyrichover-taskbar-" + Guid.NewGuid() + ".txt");
             var lease = new WidgetVisibilityLease(environment, recoveryPath);
             Assert.False(lease.TryAcquire());
@@ -3732,79 +3863,190 @@ namespace LyricHover.Tests
             Assert.False(File.Exists(recoveryPath));
         }
 
+        static void TaskbarWidgetsLeaseFailsFastWhenWritesAreBlocked()
+        {
+            // Win11 25H2 with registry write protection: every TaskbarDa write is denied, so
+            // the registry never changes and the lease must fail without waiting on refresh.
+            var environment = new FakeLyricDockEnvironment { TaskbarDa = TaskbarDaValueState.Absent, RejectTaskbarDaWrites = true };
+            var recoveryPath = Path.Combine(Path.GetTempPath(), "lyrichover-taskbar-" + Guid.NewGuid() + ".txt");
+            var lease = new WidgetVisibilityLease(environment, recoveryPath);
+            Assert.False(lease.TryAcquire());
+            Assert.Equal(TaskbarDaValueState.Absent, environment.TaskbarDa);
+            Assert.Equal(0, environment.RefreshCalls);
+            Assert.False(File.Exists(recoveryPath));
+        }
+
+        static void TaskbarControllerKeepsLyricsWhenWidgetsHidingUnavailable()
+        {
+            // Widgets hiding is an optional enhancement: when the OS blocks TaskbarDa writes,
+            // the controller must still enable lyrics and keep Widgets visible.
+            var environment = new FakeLyricDockEnvironment { TaskbarDa = TaskbarDaValueState.Absent, RejectTaskbarDaWrites = true };
+            var recoveryPath = Path.Combine(Path.GetTempPath(), "lyrichover-taskbar-" + Guid.NewGuid() + ".txt");
+            var surface = new FakeTaskbarSurface();
+            using var controller = new LyricDockController(environment, new WidgetVisibilityLease(environment, recoveryPath), surface);
+            var notifications = 0;
+            controller.FeatureDisabled += (sender, reason) => notifications++;
+            Assert.True(controller.Start(true, "DISPLAY1", LyricDockAlignment.Center));
+            Assert.True(controller.IsEnabled);
+            Assert.True(surface.IsVisible);
+            Assert.Equal(0, notifications);
+            Assert.Equal(TaskbarDaValueState.Absent, environment.TaskbarDa);
+            // Re-enabling after a disable cycle re-arms the hiding attempt exactly once.
+            Assert.True(controller.Configure(false, "DISPLAY1", LyricDockAlignment.Center));
+            Assert.True(controller.Configure(true, "DISPLAY1", LyricDockAlignment.Center));
+            Assert.True(controller.IsEnabled);
+        }
+
         static void TaskbarControllerSharesSnapshotAndHonorsWidthLimits()
         {
-            var environment = new FakeTaskbarEnvironment
+            var environment = new FakeLyricDockEnvironment
             {
                 TaskbarDa = TaskbarDaValueState.Enabled,
-                Placement = new TaskbarLyricsPlacement { IsVisible = true, Width = 640, Height = 48, DpiScale = 1.5 }
+                Placement = new LyricDockPlacement { IsVisible = true, Width = 640, Height = 48, DpiScale = 1.5 }
             };
             var recoveryPath = Path.Combine(Path.GetTempPath(), "lyrichover-taskbar-" + Guid.NewGuid() + ".txt");
             var surface = new FakeTaskbarSurface();
-            using var controller = new TaskbarLyricsController(environment, new WidgetVisibilityLease(environment, recoveryPath), surface);
-            Assert.True(controller.Start(true, "DISPLAY1", TaskbarLyricsAlignment.Center));
+            using var controller = new LyricDockController(environment, new WidgetVisibilityLease(environment, recoveryPath), surface);
+            Assert.True(controller.Start(true, "DISPLAY1", LyricDockAlignment.Center));
             var snapshot = new LyricsPresentationSnapshot { PrimaryText = "primary", SecondaryText = "secondary", LineDuration = TimeSpan.FromSeconds(5) };
             controller.Present(snapshot);
             Assert.True(surface.IsVisible);
             Assert.Equal(360.0, surface.LastWidth);
             Assert.True(object.ReferenceEquals(snapshot, surface.LastSnapshot));
             Assert.Equal("primary", surface.LastSnapshot.ToIslandRenderState().PrimaryLyric);
-            Assert.Equal(TaskbarLyricsAlignment.Center, environment.LastAlignment);
+            Assert.Equal(LyricDockAlignment.Center, environment.LastAlignment);
         }
 
         static void TaskbarSettingsSchemaDefaultsToDisabled()
         {
             var source = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "OverlayPlacementSettings.cs"));
             Assert.True(source.Contains("SchemaVersion { get; set; } = 3"));
-            Assert.True(source.Contains("TaskbarLyricsEnabled { get; set; }"));
+            Assert.True(source.Contains("LyricDockEnabled { get; set; }"));
             var settingsView = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "PlacementSettingsWindow.xaml"));
-            Assert.True(settingsView.Contains("TaskbarLyricsEnabledCheckBox"));
+            Assert.True(settingsView.Contains("LyricDockEnabledCheckBox"));
         }
 
         static void TaskbarSettingIsCompatibleWithLegacySettings()
         {
             var source = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "OverlayPlacementSettings.cs"));
-            Assert.True(source.Contains("public bool TaskbarLyricsEnabled { get; set; }"));
+            Assert.True(source.Contains("public bool LyricDockEnabled { get; set; }"));
             Assert.True(source.Contains("SchemaVersion = 3"));
             Assert.True(source.Contains("originalSchemaVersion"));
-            Assert.False(source.Contains("TaskbarLyricsEnabled { get; set; } = true"));
+            Assert.False(source.Contains("LyricDockEnabled { get; set; } = true"));
         }
 
         static void TaskbarControllerRestoresWidgetsForUnsafePlacement()
         {
-            var environment = new FakeTaskbarEnvironment { TaskbarDa = TaskbarDaValueState.Enabled, PlacementFailure = TaskbarLyricsFailureReason.WidgetsNotFound };
+            var environment = new FakeLyricDockEnvironment { TaskbarDa = TaskbarDaValueState.Enabled, PlacementFailure = LyricDockFailureReason.WidgetsNotFound };
             var recoveryPath = Path.Combine(Path.GetTempPath(), "lyrichover-taskbar-" + Guid.NewGuid() + ".txt");
             var surface = new FakeTaskbarSurface();
-            using var controller = new TaskbarLyricsController(environment, new WidgetVisibilityLease(environment, recoveryPath), surface);
-            TaskbarLyricsFailureReason reported = TaskbarLyricsFailureReason.None;
+            using var controller = new LyricDockController(environment, new WidgetVisibilityLease(environment, recoveryPath), surface);
+            LyricDockFailureReason reported = LyricDockFailureReason.None;
             controller.FeatureDisabled += (sender, reason) => reported = reason;
-            Assert.False(controller.Start(true, "DISPLAY1", TaskbarLyricsAlignment.Left));
-            Assert.Equal(TaskbarLyricsFailureReason.WidgetsNotFound, reported);
+            Assert.False(controller.Start(true, "DISPLAY1", LyricDockAlignment.Left));
+            Assert.Equal(LyricDockFailureReason.WidgetsNotFound, reported);
             Assert.Equal(TaskbarDaValueState.Enabled, environment.TaskbarDa);
             Assert.False(surface.IsVisible);
         }
 
         static void TaskbarLeaseFailsClosedForIoErrors()
         {
-            var environment = new FakeTaskbarEnvironment { TaskbarDa = TaskbarDaValueState.Enabled };
+            var environment = new FakeLyricDockEnvironment { TaskbarDa = TaskbarDaValueState.Enabled };
             var lease = new WidgetVisibilityLease(environment, "\0");
             Assert.False(lease.TryAcquire());
             Assert.Equal(TaskbarDaValueState.Enabled, environment.TaskbarDa);
         }
 
+        static void TaskbarResidualLeaseFailureDisablesFeature()
+        {
+            var environment = new FakeLyricDockEnvironment { TaskbarDa = TaskbarDaValueState.Disabled, FailNextRefresh = true };
+            var recoveryPath = Path.Combine(Path.GetTempPath(), "lyrichover-taskbar-" + Guid.NewGuid() + ".txt");
+            File.WriteAllText(recoveryPath, TaskbarDaValueState.Enabled.ToString());
+            try
+            {
+                var surface = new FakeTaskbarSurface();
+                using var controller = new LyricDockController(environment, new WidgetVisibilityLease(environment, recoveryPath), surface);
+                var notifications = 0;
+                var reported = LyricDockFailureReason.None;
+                controller.FeatureDisabled += (sender, reason) => { notifications++; reported = reason; };
+
+                Assert.False(controller.Start(true, "DISPLAY1", LyricDockAlignment.Center));
+                Assert.False(controller.IsEnabled);
+                Assert.Equal(LyricDockFailureReason.RegistryOrRefreshFailed, reported);
+                Assert.Equal(1, notifications);
+                Assert.Equal(1, environment.PrepareRestoreCalls);
+                Assert.Equal(1, environment.RefreshCalls);
+                Assert.True(File.Exists(recoveryPath));
+            }
+            finally
+            {
+                if (File.Exists(recoveryPath)) File.Delete(recoveryPath);
+            }
+        }
+
+        static void TaskbarWidgetsMatcherRecognizesStableAndTraditionalChinese()
+        {
+            Assert.Equal(WidgetsElementMatchKind.AutomationId, WidgetsElementMatcher.GetMatchKind("TaskbarWidgetsButton", string.Empty, string.Empty));
+            Assert.Equal(WidgetsElementMatchKind.ClassName, WidgetsElementMatcher.GetMatchKind(string.Empty, "TaskbarWidgetsHost", string.Empty));
+            Assert.Equal(WidgetsElementMatchKind.LocalizedName, WidgetsElementMatcher.GetMatchKind(string.Empty, string.Empty, "小工具"));
+            Assert.Equal(WidgetsElementMatchKind.None, WidgetsElementMatcher.GetMatchKind(string.Empty, string.Empty, "任务视图"));
+        }
+
         static void TaskbarUiDeclaresSafetyBehaviors()
         {
             var root = GetSolutionRoot();
-            var environment = File.ReadAllText(Path.Combine(root, "LyricHover.App", "TaskbarLyrics", "WindowsTaskbarEnvironment.cs"));
-            var window = File.ReadAllText(Path.Combine(root, "LyricHover.App", "TaskbarLyrics", "TaskbarLyricsWindow.cs"));
-            var settings = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml.cs"));
+            var environment = File.ReadAllText(Path.Combine(root, "LyricHover.App", "LyricDock", "WindowsLyricDockEnvironment.cs"));
+            var window = File.ReadAllText(Path.Combine(root, "LyricHover.App", "LyricDock", "LyricDockWindow.cs"));
+            var confirmation = File.ReadAllText(Path.Combine(root, "LyricHover.App", "TaskbarLyricsConfirmationWindow.xaml"));
             Assert.False(environment.Contains("leftReserved"));
             Assert.True(environment.Contains("TryFindWidgetsBounds"));
             Assert.True(environment.Contains("TryGetOccupiedIntervals"));
+            Assert.True(environment.Contains("matches.Count != 1"));
+            Assert.True(environment.Contains("TryPrepareWidgetsRestore"));
+            Assert.True(environment.Contains("HasStableTaskbarDaValue"));
+            Assert.True(environment.Contains("expectedState == TaskbarDaValueState.Enabled || expectedState == TaskbarDaValueState.Absent"));
             Assert.True(window.Contains("WsExNoActivate"));
-            Assert.True(window.Contains("LoadAppIcon"));
+            Assert.False(window.Contains("LoadAppIcon"));
             Assert.True(window.Contains("IsDarkTheme"));
-            Assert.True(settings.Contains("确认开启任务栏歌词"));
+            Assert.True(confirmation.Contains("确认开启任务栏歌词"));
+        }
+
+        static void LyricDockAlignmentPositionsTextInsideViewport()
+        {
+            var window = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "LyricDock", "LyricDockWindow.cs"));
+            var placement = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.Core", "LyricTextPlacement.cs"));
+            // Alignment is a TEXT-level preference (like the island), not a window-position
+            // one: the window always starts at the gap's left edge, and each line is
+            // left-aligned or centered inside the viewport.
+            Assert.True(window.Contains("textLeftAligned = placement.IsLeftAligned"));
+            Assert.True(window.Contains("LyricTextPlacement.Calculate(availableWidth, textWidth, 28, textLeftAligned)"));
+            Assert.False(window.Contains("SafeGapWidth"));
+            Assert.True(placement.Contains("bool leftAligned = false"));
+            Assert.True(placement.Contains("leftAligned ? 0 : (available - text) / 2"));
+        }
+
+        static void LyricDockWindowMatchesIslandLyricsBehaviors()
+        {
+            var window = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "LyricDock", "LyricDockWindow.cs"));
+            // Lyric line changes replay the island's fade+slide transition (dual panels,
+            // tracker-driven, version-guarded) instead of swapping text in place.
+            Assert.True(window.Contains("LyricTextTransitionTracker"));
+            Assert.True(window.Contains("QuarticEase"));
+            Assert.True(window.Contains("currentPanel"));
+            Assert.True(window.Contains("incomingPanel"));
+            Assert.True(window.Contains("version != transitionVersion"));
+            // Overlong lines marquee horizontally at their natural width; ellipsis trimming
+            // must not appear anywhere in the surface.
+            Assert.False(window.Contains("CharacterEllipsis"));
+            Assert.True(window.Contains("TextTrimming.None"));
+            Assert.True(window.Contains("double.PositiveInfinity"));
+            Assert.True(window.Contains("LyricTextPlacement.Calculate"));
+            Assert.True(window.Contains("StartMarqueeIfNeeded(currentPrimary"));
+            Assert.True(window.Contains("StartMarqueeIfNeeded(currentSecondary"));
+            // Single-line snapshots collapse the secondary clip row so the remaining row is
+            // vertically centered by the panel's VerticalAlignment.
+            Assert.True(window.Contains("clip.Visibility = visible ? Visibility.Visible : Visibility.Collapsed"));
+            Assert.True(window.Contains("VerticalAlignment.Center"));
         }
 
         static void TaskbarSafeSlotSelectionRespectsOccupiedRectangles()
@@ -3814,14 +4056,32 @@ namespace LyricHover.Tests
             var occupied = new[]
             {
                 new TaskbarBounds { Left = 2, Top = 1000, Right = 250, Bottom = 1048 },
-                new TaskbarBounds { Left = 500, Top = 1000, Right = 650, Bottom = 1048 },
-                new TaskbarBounds { Left = 1000, Top = 1000, Right = 1150, Bottom = 1048 },
-                new TaskbarBounds { Left = 1250, Top = 1000, Right = 1598, Bottom = 1048 }
+                new TaskbarBounds { Left = 550, Top = 1000, Right = 600, Bottom = 1048 },
+                new TaskbarBounds { Left = 1400, Top = 1000, Right = 1598, Bottom = 1048 }
             };
-            Assert.True(TaskbarSafeSlotCalculator.TrySelect(taskbar, widgets, occupied, TaskbarLyricsAlignment.Left, out var left));
+            Assert.True(LyricDockSafeSlotCalculator.TrySelect(taskbar, widgets, occupied, LyricDockAlignment.Left, out var left));
             Assert.Equal(250.0, left.Left);
-            Assert.True(TaskbarSafeSlotCalculator.TrySelect(taskbar, widgets, occupied, TaskbarLyricsAlignment.Center, out var center));
-            Assert.Equal(650.0, center.Left);
+            Assert.True(LyricDockSafeSlotCalculator.TrySelect(taskbar, widgets, occupied, LyricDockAlignment.Center, out var center));
+            Assert.Equal(250.0, center.Left);
+            Assert.True(center.Left <= (widgets.Left + widgets.Right) / 2 && center.Right >= (widgets.Left + widgets.Right) / 2);
+        }
+
+        static void TaskbarSafeSlotFallsBackToWidestGapWhenWidgetsManuallyHidden()
+        {
+            var taskbar = new TaskbarBounds { Left = 0, Top = 1000, Right = 1600, Bottom = 1048 };
+            var occupied = new[]
+            {
+                new TaskbarBounds { Left = 2, Top = 1000, Right = 250, Bottom = 1048 },
+                new TaskbarBounds { Left = 550, Top = 1000, Right = 600, Bottom = 1048 },
+                new TaskbarBounds { Left = 1400, Top = 1000, Right = 1598, Bottom = 1048 }
+            };
+            // Widgets hidden manually via Windows Settings: no footprint exists, so the
+            // calculator must select the widest gap (600..1400) instead of failing closed.
+            Assert.True(LyricDockSafeSlotCalculator.TrySelect(taskbar, null, occupied, LyricDockAlignment.Center, out var widest));
+            Assert.Equal(600.0, widest.Left);
+            Assert.Equal(1400.0, widest.Right);
+            Assert.True(LyricDockSafeSlotCalculator.TrySelect(taskbar, null, occupied, LyricDockAlignment.Left, out var leftAligned));
+            Assert.Equal(600.0, leftAligned.Left);
         }
 
         static string GetSolutionRoot()
@@ -3860,14 +4120,18 @@ namespace LyricHover.Tests
         public void Advance(TimeSpan value) { Elapsed += value; }
     }
 
-    sealed class FakeTaskbarEnvironment : ITaskbarEnvironment
+    sealed class FakeLyricDockEnvironment : ILyricDockEnvironment
     {
-        public bool IsWindows11 { get; set; } = true;
+        public bool IsSupported { get; set; } = true;
         public TaskbarDaValueState TaskbarDa { get; set; }
         public bool FailNextRefresh { get; set; }
-        public TaskbarLyricsFailureReason PlacementFailure { get; set; }
-        public TaskbarLyricsAlignment LastAlignment { get; private set; }
-        public TaskbarLyricsPlacement Placement { get; set; } = new TaskbarLyricsPlacement
+        public bool RejectTaskbarDaWrites { get; set; }
+        public bool PrepareRestoreResult { get; set; } = true;
+        public int PrepareRestoreCalls { get; private set; }
+        public int RefreshCalls { get; private set; }
+        public LyricDockFailureReason PlacementFailure { get; set; }
+        public LyricDockAlignment LastAlignment { get; private set; }
+        public LyricDockPlacement Placement { get; set; } = new LyricDockPlacement
         {
             IsVisible = true,
             Width = 300,
@@ -3876,17 +4140,19 @@ namespace LyricHover.Tests
         };
 
         public event EventHandler Changed;
-        public bool TryGetPlacement(string screenName, TaskbarLyricsAlignment alignment, out TaskbarLyricsPlacement placement, out TaskbarLyricsFailureReason failureReason)
+        public bool TryGetPlacement(string screenName, LyricDockAlignment alignment, out LyricDockPlacement placement, out LyricDockFailureReason failureReason)
         {
             LastAlignment = alignment;
             failureReason = PlacementFailure;
             placement = Placement;
-            return placement != null && failureReason == TaskbarLyricsFailureReason.None;
+            return placement != null && failureReason == LyricDockFailureReason.None;
         }
         public bool TryReadTaskbarDa(out TaskbarDaValueState state) { state = TaskbarDa; return true; }
-        public bool TryWriteTaskbarDa(TaskbarDaValueState state) { TaskbarDa = state; return true; }
-        public bool TryRefreshTaskbarAndVerify(TaskbarDaValueState expectedState)
+        public bool TryWriteTaskbarDa(TaskbarDaValueState state) { if (RejectTaskbarDaWrites) return false; TaskbarDa = state; return true; }
+        public bool TryPrepareWidgetsRestore(string screenName) { PrepareRestoreCalls++; return PrepareRestoreResult; }
+        public bool TryRefreshTaskbarAndVerify(TaskbarDaValueState expectedState, bool forceHide = false)
         {
+            RefreshCalls++;
             if (!FailNextRefresh) return true;
             FailNextRefresh = false;
             return false;
@@ -3895,17 +4161,17 @@ namespace LyricHover.Tests
         public void RaiseChanged() { Changed?.Invoke(this, EventArgs.Empty); }
     }
 
-    sealed class FakeTaskbarSurface : ITaskbarLyricsSurface
+    sealed class FakeTaskbarSurface : ILyricDockSurface
     {
         public event EventHandler SettingsRequested;
         public bool IsVisible { get; private set; }
         public LyricsPresentationSnapshot LastSnapshot { get; private set; }
         public double LastWidth { get; private set; }
-        public TaskbarLyricsPlacement LastPlacement { get; private set; }
+        public LyricDockPlacement LastPlacement { get; private set; }
         public void Show() { IsVisible = true; }
         public void Hide() { IsVisible = false; }
         public void Present(LyricsPresentationSnapshot snapshot) { LastSnapshot = snapshot; }
-        public void Place(TaskbarLyricsPlacement placement, double width) { LastPlacement = placement; LastWidth = width; }
+        public void Place(LyricDockPlacement placement, double width) { LastPlacement = placement; LastWidth = width; }
         public void RaiseSettingsRequested() { SettingsRequested?.Invoke(this, EventArgs.Empty); }
     }
 
@@ -3965,7 +4231,8 @@ namespace LyricHover.Tests
             string propsPath,
             string appProgramPath,
             string baselineProps,
-            string appProgram)
+            string appProgram,
+            string packageCachePath)
         {
             Root = root;
             ScriptPath = scriptPath;
@@ -3973,6 +4240,7 @@ namespace LyricHover.Tests
             AppProgramPath = appProgramPath;
             BaselineProps = baselineProps;
             AppProgram = appProgram;
+            PackageCachePath = packageCachePath;
         }
 
         public string Root { get; }
@@ -3981,6 +4249,95 @@ namespace LyricHover.Tests
         public string AppProgramPath { get; }
         public string BaselineProps { get; }
         public string AppProgram { get; }
+        public string PackageCachePath { get; }
+    }
+
+    sealed class CapturedProcess : IDisposable
+    {
+        private readonly Process process;
+        private readonly StringBuilder standardOutput = new StringBuilder();
+        private readonly StringBuilder standardError = new StringBuilder();
+
+        public CapturedProcess(Process process)
+        {
+            this.process = process;
+            process.OutputDataReceived += (sender, eventArgs) => Append(standardOutput, eventArgs.Data);
+            process.ErrorDataReceived += (sender, eventArgs) => Append(standardError, eventArgs.Data);
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+        }
+
+        public bool WaitForExit(int milliseconds)
+        {
+            if (!process.WaitForExit(milliseconds))
+            {
+                return false;
+            }
+
+            process.WaitForExit();
+            return true;
+        }
+
+        public void Kill()
+        {
+            if (!process.HasExited)
+            {
+                process.Kill();
+                process.WaitForExit();
+            }
+        }
+
+        public ProcessResult ToResult()
+        {
+            return new ProcessResult(
+                process.ExitCode,
+                process.StartInfo.FileName + " " + process.StartInfo.Arguments,
+                Read(standardOutput),
+                Read(standardError));
+        }
+
+        public void Dispose()
+        {
+            process.Dispose();
+        }
+
+        private static void Append(StringBuilder builder, string value)
+        {
+            if (value == null)
+            {
+                return;
+            }
+
+            lock (builder)
+            {
+                builder.AppendLine(value);
+            }
+        }
+
+        private static string Read(StringBuilder builder)
+        {
+            lock (builder)
+            {
+                return builder.ToString();
+            }
+        }
+    }
+
+    sealed class ProcessResult
+    {
+        public ProcessResult(int exitCode, string commandLine, string standardOutput, string standardError)
+        {
+            ExitCode = exitCode;
+            CommandLine = commandLine;
+            StandardOutput = standardOutput;
+            StandardError = standardError;
+        }
+
+        public int ExitCode { get; }
+        public string CommandLine { get; }
+        public string StandardOutput { get; }
+        public string StandardError { get; }
+        public string Output { get { return StandardOutput + StandardError; } }
     }
 
     static class Assert
@@ -4010,3 +4367,6 @@ namespace LyricHover.Tests
         }
     }
 }
+
+
+

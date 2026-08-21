@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -12,7 +12,7 @@ using System.Windows.Interop;
 using System.Windows.Threading;
 using LyricHover.App.LayoutEditing;
 using LyricHover.App.Modules;
-using LyricHover.App.TaskbarLyrics;
+using LyricHover.App.LyricDock;
 using LyricHover.Core;
 using LyricHover.App.Media;
 using LyricHover.Core.Layout;
@@ -40,8 +40,8 @@ namespace LyricHover.App
         private int lyricLoadGeneration;
         private readonly LyricsCache cache;
         private readonly OverlaySettingsStore settingsStore;
-        private readonly WindowsTaskbarEnvironment taskbarEnvironment;
-        private readonly TaskbarLyricsController taskbarLyricsController;
+        private readonly WindowsLyricDockEnvironment lyricDockEnvironment;
+        private readonly LyricDockController LyricDockController;
         private readonly ScreenCatalog screenCatalog = new ScreenCatalog();
         private ILyricsClient lyricsClient;
         private TimedLyrics currentLyrics = new TimedLyrics(new LyricLine[0]);
@@ -153,19 +153,21 @@ namespace LyricHover.App
                 Dispatcher.BeginInvoke(new Action(async () => await RefreshAsync()));
             settingsStore = new OverlaySettingsStore(settingsPath);
             placementSettings = settingsStore.Load();
-            taskbarEnvironment = new WindowsTaskbarEnvironment();
+            lyricDockEnvironment = new WindowsLyricDockEnvironment();
             var taskbarLease = new WidgetVisibilityLease(
-                taskbarEnvironment,
+                lyricDockEnvironment,
                 System.IO.Path.Combine(productDataRoot, "taskbar-widgets-lease.txt"));
-            taskbarLyricsController = new TaskbarLyricsController(
-                taskbarEnvironment,
+            LyricDockController = new LyricDockController(
+                lyricDockEnvironment,
                 taskbarLease,
-                new TaskbarLyricsWindow());
-            taskbarLyricsController.SettingsRequested += (sender, args) =>
+                new LyricDockWindow());
+            LyricDockController.SettingsRequested += (sender, args) =>
                 Dispatcher.BeginInvoke(new Action(() => OpenPlacementSettingsWindow(true)));
-            taskbarLyricsController.FeatureDisabled += (sender, reason) =>
+            LyricDockController.FeatureDisabled += (sender, reason) =>
                 Dispatcher.BeginInvoke(new Action(() => DisableTaskbarLyrics(reason)));
-            taskbarLyricsController.Start(placementSettings.TaskbarLyricsEnabled, placementSettings.ScreenName, placementSettings.TaskbarLyricsAlignment);
+            LyricDockController.WidgetsHidingDegraded += (sender, args) =>
+                Dispatcher.BeginInvoke(new Action(() => ShowWidgetsHidingDegradedNotice()));
+            LyricDockController.Start(placementSettings.LyricDockEnabled, placementSettings.ScreenName, placementSettings.LyricDockAlignment);
             shouldStartFirstRunTutorial = !settingsFileExisted;
             if (settingsFileExisted && !placementSettings.HasSeenTutorial)
             {
@@ -223,8 +225,8 @@ namespace LyricHover.App
                 tutorialCancellation?.Cancel();
                 CloseTutorialWindows();
                 hotkeyService?.Dispose();
-                taskbarLyricsController?.Dispose();
-                taskbarEnvironment?.Dispose();
+                LyricDockController?.Dispose();
+                lyricDockEnvironment?.Dispose();
                 mediaSessions.Dispose();
                 DisposeTrayIcon();
             };
@@ -1045,12 +1047,12 @@ namespace LyricHover.App
             cache.SetMaxBytes(GetCacheLimitBytes(placementSettings));
             selectedLyricsSource = placementSettings.LyricsSource;
             lyricsClient = CreateLyricsClient(selectedLyricsSource);
-            var taskbarWasRequested = placementSettings.TaskbarLyricsEnabled;
-            if (!taskbarLyricsController.Configure(placementSettings.TaskbarLyricsEnabled, placementSettings.ScreenName, placementSettings.TaskbarLyricsAlignment) && taskbarWasRequested)
+            var taskbarWasRequested = placementSettings.LyricDockEnabled;
+            if (!LyricDockController.Configure(placementSettings.LyricDockEnabled, placementSettings.ScreenName, placementSettings.LyricDockAlignment) && taskbarWasRequested)
             {
-                placementSettings.TaskbarLyricsEnabled = false;
-                settings.TaskbarLyricsEnabled = false;
-                ShowTaskbarLyricsFailure(taskbarLyricsController.LastFailureReason);
+                placementSettings.LyricDockEnabled = false;
+                settings.LyricDockEnabled = false;
+                ShowTaskbarLyricsFailure(LyricDockController.LastFailureReason);
             }
             settingsStore.Save(placementSettings);
             RegisterGlobalHotkeys();
@@ -1496,7 +1498,7 @@ namespace LyricHover.App
                 islandState.PrimaryAccent = tutorialAccentText;
             }
             ModuleHost.Update(islandState);
-            taskbarLyricsController?.Present(taskbarSnapshot);
+            LyricDockController?.Present(taskbarSnapshot);
         }
 
         private Task PreviousRequested()
@@ -1700,30 +1702,42 @@ namespace LyricHover.App
             _ = LoadLyricsAsync(currentTrack, forceRefresh, ++lyricLoadGeneration);
         }
 
-        private void DisableTaskbarLyrics(TaskbarLyricsFailureReason reason)
+        private void DisableTaskbarLyrics(LyricDockFailureReason reason)
         {
-            if (!placementSettings.TaskbarLyricsEnabled)
+            if (!placementSettings.LyricDockEnabled)
             {
                 return;
             }
 
-            placementSettings.TaskbarLyricsEnabled = false;
+            placementSettings.LyricDockEnabled = false;
             settingsStore.Save(placementSettings);
             ShowTaskbarLyricsFailure(reason);
         }
 
-        private static void ShowTaskbarLyricsFailure(TaskbarLyricsFailureReason reason)
+                private void ShowWidgetsHidingDegradedNotice()
+        {
+            // Security software with registry protection can block the TaskbarDa write that
+            // auto-hides Widgets.  Tell the user once per enable cycle instead of failing silently.
+            var message = "本机的安全软件（如火绒、联想电脑管家）阻止了任务栏小组件设置的自动修改，因此无法自动隐藏小组件。" +
+                "任务栏歌词已在小组件旁正常显示。\n\n如需自动隐藏：请在安全软件中关闭对应的注册表/系统防护规则后重新开启歌词；" +
+                "或手动在系统设置 > 个性化 > 任务栏中关闭小组件，歌词会自动使用腾出的空间。";
+            var dialog = new InformationDialog(this, "小组件保持可见", message);
+            dialog.ShowDialog();
+        }
+
+        private void ShowTaskbarLyricsFailure(LyricDockFailureReason reason)
         {
             var message = reason switch
             {
-                TaskbarLyricsFailureReason.Windows11Required => "任务栏歌词仅支持 Windows 11，已保持关闭。",
-                TaskbarLyricsFailureReason.WidgetsNotFound => "未能可靠找到所选屏幕的 Windows Widgets 按钮，已关闭任务栏歌词并恢复 Widgets。",
-                TaskbarLyricsFailureReason.InsufficientSafeSpace => "所选任务栏没有至少 220 px 的连续安全空间，已关闭任务栏歌词并恢复 Widgets。",
-                TaskbarLyricsFailureReason.RegistryOrRefreshFailed => "Windows Widgets 设置未能写入或验证生效，已关闭任务栏歌词并尝试恢复原状态。",
-                TaskbarLyricsFailureReason.TaskbarNotFound => "未找到所选屏幕的任务栏，已关闭任务栏歌词并恢复 Widgets。",
+                LyricDockFailureReason.UnsupportedOS => "任务栏歌词仅支持 Windows 10 及以上版本，已保持关闭。",
+                LyricDockFailureReason.WidgetsNotFound => "未能可靠找到所选屏幕的 Windows Widgets 按钮，已关闭任务栏歌词并恢复 Widgets。",
+                LyricDockFailureReason.InsufficientSafeSpace => "所选任务栏没有至少 220 px 的连续安全空间，已关闭任务栏歌词。若任务栏开启了小组件，可在系统设置 > 个性化 > 任务栏中手动关闭以腾出空间后重试。",
+                LyricDockFailureReason.RegistryOrRefreshFailed => "Windows Widgets 设置未能写入或验证生效，已关闭任务栏歌词并尝试恢复原状态。",
+                LyricDockFailureReason.TaskbarNotFound => "未找到所选屏幕的任务栏，已关闭任务栏歌词并恢复 Widgets。",
                 _ => "任务栏环境已改变且无法安全恢复，已关闭任务栏歌词并恢复 Widgets。"
             };
-            MessageBox.Show(message, "任务栏歌词已关闭", MessageBoxButton.OK, MessageBoxImage.Information);
+            var dialog = new InformationDialog(this, "任务栏歌词已关闭", message);
+            dialog.ShowDialog();
         }
 
         private void OpenPlacementSettingsWindow(bool focusTaskbarLyrics = false)
@@ -2756,3 +2770,5 @@ namespace LyricHover.App
         }
     }
 }
+
+

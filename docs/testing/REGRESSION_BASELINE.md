@@ -36,6 +36,15 @@ dotnet run --project LyricHover.Tests -c Release --no-build
 
 这两项在后续变更中仍应单独报告：若失败信息、数量或关联行为改变，则视为需要调查的回归，而不是自动忽略。其他失败、超时、编译错误或环境错误都不是本基线的一部分。
 
+### 2026-08-21 基线解除记录
+
+上述两项失败已在 V3 任务栏歌词分支（`codex/feature/v3-taskbar-lyrics`）上定位并解除，均为测试自身缺陷而非产品行为缺陷，未为绿灯修改无关业务代码：
+
+1. `translation mode explains why single line is unavailable`：断言全文件不得出现 `MessageBox.Show(`，被徽章刻字与任务栏歌词确认弹窗等无关合法确认误中；已收窄为仅约束翻译单行限制提示路径（`SingleLineRadioButton_PreviewMouseLeftButtonDown` 至 `FadeOutTranslationModeToast` 区域）。
+2. `mouse avoidance settings fit without scrolling`：断言依赖 LF 换行的跨行精确匹配，在 CRLF 检出环境下必然失败；已先归一化换行再断言，断言语义不变。
+
+解除证据：同一 Release 构建下 `dotnet run --project LyricHover.Tests -c Release --no-build` 输出 192 项全部 PASS、0 项 FAIL。自本记录起，桌面端不再存在已登记的失败基线；后续任何失败都按新增回归处理。
+
 ## 交接要求
 
 将命令、退出码、关键输出、手动验收条件及已知失败的状态写入各任务独立的交接文件。模板见 [HANDOFF](../coordination/templates/HANDOFF.md)。

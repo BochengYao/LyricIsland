@@ -1,13 +1,13 @@
 using System;
 
-namespace LyricHover.App.TaskbarLyrics
+namespace LyricHover.App.LyricDock
 {
     public enum TaskbarDaValueState { Absent, Disabled, Enabled }
-    public enum TaskbarLyricsAlignment { Center, Left }
-    public enum TaskbarLyricsFailureReason
+    public enum LyricDockAlignment { Center, Left }
+    public enum LyricDockFailureReason
     {
         None,
-        Windows11Required,
+        UnsupportedOS,
         TaskbarNotFound,
         WidgetsNotFound,
         InsufficientSafeSpace,
@@ -16,7 +16,7 @@ namespace LyricHover.App.TaskbarLyrics
         TaskbarChanged
     }
 
-    public sealed class TaskbarLyricsPlacement
+    public sealed class LyricDockPlacement
     {
         public double Left { get; set; }
         public double Top { get; set; }
@@ -41,13 +41,14 @@ namespace LyricHover.App.TaskbarLyrics
         public double Height => Bottom - Top;
     }
 
-    public interface ITaskbarEnvironment
+    public interface ILyricDockEnvironment
     {
-        bool IsWindows11 { get; }
+        bool IsSupported { get; }
         event EventHandler Changed;
-        bool TryGetPlacement(string screenName, TaskbarLyricsAlignment alignment, out TaskbarLyricsPlacement placement, out TaskbarLyricsFailureReason failureReason);
+        bool TryGetPlacement(string screenName, LyricDockAlignment alignment, out LyricDockPlacement placement, out LyricDockFailureReason failureReason);
         bool TryReadTaskbarDa(out TaskbarDaValueState state);
         bool TryWriteTaskbarDa(TaskbarDaValueState state);
-        bool TryRefreshTaskbarAndVerify(TaskbarDaValueState expectedState);
+        bool TryPrepareWidgetsRestore(string screenName);
+        bool TryRefreshTaskbarAndVerify(TaskbarDaValueState expectedState, bool forceHide = false);
     }
 }
