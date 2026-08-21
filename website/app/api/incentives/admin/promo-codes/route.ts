@@ -113,7 +113,8 @@ export async function POST(request: Request) {
         order_id: result.order_id,
       },
     });
-    return Response.json({ result });
+    // Flat shape, matching the ESA api.js contract ({ new_count, updated_count, ... }).
+    return Response.json(result);
   } catch {
     return Response.json({ error: "导入兑换码失败" }, { status: 500 });
   }
