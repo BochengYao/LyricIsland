@@ -8,6 +8,8 @@ LyricHover 是一款为 Windows 10/11 打造的桌面歌词工具。音乐响起
 
 QQ 音乐、网易云音乐、酷狗音乐、酷我音乐、Spotify 以及 Apple Music，都可以在同一个轻盈、连贯的桌面体验中被识别和切换。
 
+![LyricHover 主视觉](视觉宣传/zh/1.png)
+
 **[前往 Microsoft Store 下载 →](https://apps.microsoft.com/detail/9NRXZP5HMXK2)**
 
 ## 核心功能
@@ -19,6 +21,27 @@ QQ 音乐、网易云音乐、酷狗音乐、酷我音乐、Spotify 以及 Apple
 - **歌词与翻译更可靠。** 多来源自动回退、智能翻译复用、稳定缓存与时间轴补偿共同减少缺词、闪烁和不同步。
 - **歌词坞 / Lyric Dock。** 在 Windows 任务栏显示实时歌词：支持左对齐/居中、长歌词跑马灯滚动，与歌词岛共享同款切换动画。
 - **主体功能始终免费。** 你可以自愿加入 LyricHover Pro 支持计划，帮助 LyricHover 继续生长。
+
+## 视觉预览
+
+<table>
+  <tr>
+    <td width="50%"><img src="视觉宣传/zh/2.png" alt="鼠标智能避让" /></td>
+    <td width="50%"><img src="视觉宣传/zh/3.png" alt="模块化歌词岛" /></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>鼠标靠近，内容仍是主角。</strong></td>
+    <td align="center"><strong>想怎么展开，就怎么呈现。</strong></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="视觉宣传/zh/4.png" alt="自动展开与收起" /></td>
+    <td width="50%"><img src="视觉宣传/zh/6.png" alt="多播放器支持" /></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>一开场，就在场。</strong></td>
+    <td align="center"><strong>换个播放器，歌词照常在场。</strong></td>
+  </tr>
+</table>
 
 ## 歌词坞 / Lyric Dock
 
@@ -85,6 +108,7 @@ LyricHover.Tests/  轻量自动化回归测试套件
 store/             Microsoft Store 身份、资源与 MSIX 构建脚本
 docs/              设计、计划、兼容性矩阵与项目资料
 website/           LyricHover 官方网站与相关 API
+视觉宣传/          中英文宣传海报
 ```
 
 ## 参与与支持
@@ -116,6 +140,8 @@ LyricHover is a desktop lyrics tool for Windows 10/11. Lyrics float elegantly at
 
 QQ Music, NetEase Cloud Music, KuGou, KuWo, Spotify, and Apple Music can all be recognized and switched between in the same lightweight, cohesive desktop experience.
 
+![LyricHover hero](视觉宣传/en/1.png)
+
 **[Download from Microsoft Store →](https://apps.microsoft.com/detail/9NRXZP5HMXK2)**
 
 ## Key Features
@@ -127,6 +153,19 @@ QQ Music, NetEase Cloud Music, KuGou, KuWo, Spotify, and Apple Music can all be 
 - **More reliable lyrics & translations.** Multi-source fallback, smart translation reuse, stable caching and timeline compensation reduce missing lyrics, flickering and desync.
 - **Lyric Dock.** Real-time lyrics in the Windows taskbar with left-aligned/centered text, marquee scrolling for long lines, and the same transition animation as the island.
 - **Core features always free.** Optionally join LyricHover Pro to support continued development.
+
+## Visual Preview
+
+<table>
+  <tr>
+    <td width="50%"><img src="视觉宣传/en/2.png" alt="Cursor-aware transparency" /></td>
+    <td width="50%"><img src="视觉宣传/en/3.png" alt="Modular LyricHover layouts" /></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="视觉宣传/en/4.png" alt="Automatic reveal and retract" /></td>
+    <td width="50%"><img src="视觉宣传/en/6.png" alt="Multiple music players" /></td>
+  </tr>
+</table>
 
 ## Player Compatibility
 
@@ -159,6 +198,7 @@ LyricHover.Tests/  Lightweight automated regression test suite
 store/             Microsoft Store identity, assets & MSIX build scripts
 docs/              Design, plans, compatibility matrices & project docs
 website/           LyricHover official website & related APIs
+视觉宣传/          Chinese and English campaign artwork
 ```
 
 ## License
