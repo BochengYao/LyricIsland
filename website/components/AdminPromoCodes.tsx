@@ -10,6 +10,7 @@ import type {
   PromoCodeLog,
   PromoCodeStats,
   TsvImportPreview,
+  TsvImportResult,
   TsvParsedRow,
   AssignPromoCodeResult,
   PromoCodeOrder,
@@ -309,9 +310,11 @@ export function AdminPromoCodes() {
         body: JSON.stringify({ rows: importRows }),
       });
       if (response.status === 401) { setAuth("login"); return; }
-      const result = (await response.json()) as { imported?: number; updated?: number; error?: string };
-      if (!response.ok) throw new Error(result.error ?? "导入失败");
-      setImportResult(`成功导入 ${result.imported ?? 0} 条新代码，更新 ${result.updated ?? 0} 条`);
+      // ESA 返回扁平 { new_count, updated_count, ... }；SSR 过渡期可能返回嵌套 { result }。
+      const body = (await response.json()) as Partial<TsvImportResult> & { result?: TsvImportResult; error?: string };
+      if (!response.ok) throw new Error(body.error ?? "导入失败");
+      const r = body.result ?? body;
+      setImportResult(`成功导入 ${r.new_count ?? 0} 条新代码，更新 ${r.updated_count ?? 0} 条`);
       await loadData(currentPage);
     } catch (err: unknown) {
       setImportResult(err instanceof Error ? err.message : "导入失败");

@@ -119,6 +119,13 @@ export type TsvParseError = {
   message: string;
 };
 
+export type TsvImportResult = {
+  new_count: number;
+  updated_count: number;
+  unchanged_count: number;
+  order_id: string;
+};
+
 export type TsvImportPreview = {
   filename: string;
   total_detected: number;
