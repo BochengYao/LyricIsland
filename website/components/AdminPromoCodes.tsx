@@ -62,6 +62,13 @@ async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
+function todayString(): string {
+  const d = new Date();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${month}-${day}`;
+}
+
 /* ── Constants ───────────────────────────────────────────────────────────── */
 
 const statusLabels: Record<DistributionStatus, string> = {
@@ -142,6 +149,17 @@ export function AdminPromoCodes() {
   });
   const [assigning, setAssigning] = useState(false);
   const [assignResult, setAssignResult] = useState<AssignPromoCodeResult | null>(null);
+
+  /* Quick allocate (一键发码) */
+  const [quickAllocating, setQuickAllocating] = useState(false);
+  const [quickResult, setQuickResult] = useState<AssignPromoCodeResult | null>(null);
+  const [quickSaving, setQuickSaving] = useState(false);
+  const [quickForm, setQuickForm] = useState({
+    assigned_to_name: "",
+    assigned_channel: channelOptions[0] as string,
+    assigned_at: "",
+    note: "",
+  });
 
   /* Toast */
   const [toast, setToast] = useState("");
@@ -369,6 +387,66 @@ export function AdminPromoCodes() {
     setAssignForm({ assigned_name: "", assigned_email: "", assigned_channel: "官网", campaign: "", note: "", specific_code_id: "" });
   }
 
+  /* ── Quick allocate (一键发码) ───────────────────────────────── */
+
+  async function handleQuickAllocate() {
+    setQuickAllocating(true);
+    try {
+      const response = await fetchWithTimeout("/api/incentives/admin/promo-codes/allocate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (response.status === 401) { setAuth("login"); return; }
+      const result = (await response.json()) as AssignPromoCodeResult & { error?: string };
+      if (response.status === 409) throw new Error("库存中没有可用代码，请先导入 TSV");
+      if (!response.ok) throw new Error(result.error ?? "分配失败");
+      setQuickResult(result);
+      setQuickForm({ assigned_to_name: "", assigned_channel: channelOptions[0], assigned_at: todayString(), note: "" });
+      await loadData(currentPage);
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : "分配失败");
+    } finally {
+      setQuickAllocating(false);
+    }
+  }
+
+  async function saveQuickInfo(event: React.FormEvent) {
+    event.preventDefault();
+    if (!quickResult) return;
+    setQuickSaving(true);
+    try {
+      const changes: Record<string, string | null> = {
+        assigned_to_name: quickForm.assigned_to_name.trim(),
+        assigned_channel: quickForm.assigned_channel,
+        assigned_at: quickForm.assigned_at
+          ? new Date(`${quickForm.assigned_at}T00:00:00`).toISOString()
+          : null,
+        note: quickForm.note.trim(),
+      };
+      const response = await fetchWithTimeout("/api/incentives/admin/promo-codes", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: quickResult.id, changes }),
+      });
+      if (response.status === 401) { setAuth("login"); return; }
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? "保存失败");
+      }
+      showToast("分配信息已保存");
+      await loadData(currentPage);
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : "保存失败");
+    } finally {
+      setQuickSaving(false);
+    }
+  }
+
+  function closeQuickModal() {
+    setQuickResult(null);
+  }
+
   /* ── Detail drawer ────────────────────────────────────────────────────── */
 
   async function openDrawer(code: PromoCode) {
@@ -571,6 +649,9 @@ export function AdminPromoCodes() {
             <h2>促销代码管理</h2>
           </div>
           <div className="adminToolbar">
+            <button className="button buttonPrimary" disabled={quickAllocating} onClick={handleQuickAllocate}>
+              {quickAllocating ? "发码中…" : "一键发码"}
+            </button>
             <button className="button buttonPrimary" onClick={() => setImportOpen(true)}>导入 TSV</button>
             <button className="button buttonSecondary" onClick={() => setAssignOpen(true)}>分配代码</button>
             <button className="button buttonSecondary" onClick={exportCsv}>导出 CSV</button>
@@ -798,6 +879,57 @@ export function AdminPromoCodes() {
                 </footer>
               </form>
             )}
+          </section>
+        </div>
+      )}
+
+      {/* Quick Allocate Modal (一键发码) */}
+      {quickResult && (
+        <div className="adminModalBackdrop" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) closeQuickModal(); }}>
+          <section className="promoCodeAssignModal" role="dialog" aria-modal="true" aria-labelledby="quick-modal-title">
+            <header>
+              <div><p>QUICK ALLOCATE</p><h2 id="quick-modal-title">一键发码</h2></div>
+              <button aria-label="关闭" onClick={closeQuickModal}>×</button>
+            </header>
+
+            <div className="promoCodeAssignResult">
+              <p>发码成功！</p>
+              <div className="promoCodeResultRow">
+                <label>兑换码</label>
+                <code>{quickResult.code}</code>
+                <button className="button buttonSecondary" onClick={async () => {
+                  if (await copyToClipboard(quickResult.code)) showToast("兑换码已复制");
+                }}>复制代码</button>
+              </div>
+              {quickResult.redeem_url && (
+                <div className="promoCodeResultRow">
+                  <label>兑换链接</label>
+                  <input type="text" readOnly value={quickResult.redeem_url} />
+                  <button className="button buttonSecondary" onClick={async () => {
+                    if (await copyToClipboard(quickResult.redeem_url!)) showToast("链接已复制");
+                  }}>复制链接</button>
+                </div>
+              )}
+            </div>
+
+            <form onSubmit={saveQuickInfo}>
+              <div className="editFormGrid">
+                <label><span>接收人</span><input value={quickForm.assigned_to_name} onChange={(e) => setQuickForm({ ...quickForm, assigned_to_name: e.target.value })} placeholder="可选" /></label>
+                <label><span>渠道</span>
+                  <select value={quickForm.assigned_channel} onChange={(e) => setQuickForm({ ...quickForm, assigned_channel: e.target.value })}>
+                    {channelOptions.map((ch) => <option value={ch} key={ch}>{ch}</option>)}
+                  </select>
+                </label>
+                <label><span>分配日期</span><input type="date" value={quickForm.assigned_at} onChange={(e) => setQuickForm({ ...quickForm, assigned_at: e.target.value })} /></label>
+                <label className="wide"><span>备注</span><textarea rows={3} value={quickForm.note} onChange={(e) => setQuickForm({ ...quickForm, note: e.target.value })} placeholder="可选" /></label>
+              </div>
+              <footer>
+                <button className="button buttonSecondary" type="button" onClick={closeQuickModal}>关闭</button>
+                <button className="button buttonPrimary" type="submit" disabled={quickSaving}>
+                  {quickSaving ? "保存中…" : "保存信息"}
+                </button>
+              </footer>
+            </form>
           </section>
         </div>
       )}
