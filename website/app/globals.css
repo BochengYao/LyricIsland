@@ -3739,6 +3739,7 @@ body:has(.incentivesFooter) {
 
 .adminMain {
   width: min(100% - 48px, 1480px);
+  min-width: 0; /* 防内容 max-content 撑宽（百分比宽度下内容仍可超出） */
   margin: 0 auto;
   padding: 42px 0 72px;
 }
@@ -4968,6 +4969,23 @@ button.danger,
     width: min(100% - 40px, 1200px);
   }
 
+  /* 防止 .logoLockup 全局 min-width:max-content（logo 图 naturalWidth 很大）
+     撑爆后台布局；仅限定后台作用域，不影响首页/营销页的 logo 布局 */
+  .adminSidebar,
+  .adminMain {
+    min-width: 0;
+  }
+
+  .adminSidebar .logoLockup {
+    min-width: 0;
+  }
+
+  .adminSidebar .logoLockup img,
+  .adminSidebar .logoImage {
+    max-width: 100%;
+    height: auto;
+  }
+
   .previewEditorLanguages {
     grid-template-columns: 1fr;
   }
@@ -5235,7 +5253,26 @@ button.danger,
   }
 
   .adminShell {
-    grid-template-columns: 1fr;
+    /* minmax(0, 1fr)：防止单列 grid track 被内容 max-content 撑宽导致页面级横向溢出 */
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* grid 子项 min-width:0，避免内容撑宽 track */
+  .adminSidebar,
+  .adminMain {
+    min-width: 0;
+  }
+
+  /* 覆盖 .logoLockup 全局 min-width:max-content，并约束 logo 图不溢出侧边栏；
+     仅限后台上下文，不影响首页/营销页 */
+  .adminSidebar .logoLockup {
+    min-width: 0;
+  }
+
+  .adminSidebar .logoLockup img,
+  .adminSidebar .logoImage {
+    max-width: 100%;
+    height: auto;
   }
 
   .adminSidebar {
