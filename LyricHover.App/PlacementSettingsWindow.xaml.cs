@@ -93,6 +93,8 @@ namespace LyricHover.App
         private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
         private const int DWMWA_MICA_EFFECT = 1029;
         private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+        private const int DWMWA_BORDER_COLOR = 34;
+        private const int DWMWA_COLOR_NONE = unchecked((int)0xFFFFFFFE);
         private const int DWMSBT_TRANSIENTWINDOW = 3;
         private const int DWMWCP_ROUND = 2;
         private const int WCA_ACCENT_POLICY = 19;
@@ -296,6 +298,23 @@ namespace LyricHover.App
 
             try
             {
+                var cornerPreference = DWMWCP_ROUND;
+                DwmSetWindowAttribute(
+                    source.Handle,
+                    DWMWA_WINDOW_CORNER_PREFERENCE,
+                    ref cornerPreference,
+                    sizeof(int));
+
+                // The XAML root has no stroke. Suppress the independent DWM
+                // non-client outline as well so the native outer turn and the
+                // RadiusLarge cards read as one borderless 8px geometry system.
+                var borderColor = DWMWA_COLOR_NONE;
+                DwmSetWindowAttribute(
+                    source.Handle,
+                    DWMWA_BORDER_COLOR,
+                    ref borderColor,
+                    sizeof(int));
+
                 if (SystemParameters.HighContrast)
                 {
                     ApplyAcrylicBlurBehind(source.Handle, ACCENT_DISABLED, 0);
@@ -307,13 +326,6 @@ namespace LyricHover.App
                         sizeof(int));
                     return false;
                 }
-
-                var cornerPreference = DWMWCP_ROUND;
-                DwmSetWindowAttribute(
-                    source.Handle,
-                    DWMWA_WINDOW_CORNER_PREFERENCE,
-                    ref cornerPreference,
-                    sizeof(int));
 
                 // WPF owns the client area of this borderless HWND. Extend the
                 // compositor frame before enabling an acrylic backdrop; otherwise

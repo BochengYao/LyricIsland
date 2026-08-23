@@ -3284,7 +3284,7 @@ namespace LyricHover.Tests
             var settingsSurfaces = string.Join("\n", settings, information, supporterConfirmation, taskbarConfirmation);
             var settingsDialogs = string.Join("\n", information, supporterConfirmation, taskbarConfirmation);
 
-            Assert.True(resources.Contains("x:Key=\"RadiusLarge\">18<"));
+            Assert.True(resources.Contains("x:Key=\"RadiusLarge\">8<"));
             Assert.True(resources.Contains("x:Key=\"RadiusMedium\">14<"));
             Assert.True(resources.Contains("x:Key=\"RadiusSmall\">10<"));
             Assert.True(resources.Contains("x:Key=\"RadiusToggleTrack\">12<"));
@@ -3301,6 +3301,11 @@ namespace LyricHover.Tests
             Assert.False(settingsSurfaces.Contains("CornerRadius=\"999\""));
             Assert.False(settingsDialogs.Contains("CornerRadius=\"20\""));
             Assert.False(settingsDialogs.Contains("CornerRadius=\"9\""));
+            var settingsCodeBehind = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml.cs"));
+            Assert.True(settingsCodeBehind.Contains("DWMWA_BORDER_COLOR = 34"));
+            Assert.True(settingsCodeBehind.Contains("DWMWA_COLOR_NONE = unchecked((int)0xFFFFFFFE)"));
+            Assert.True(settingsCodeBehind.Contains("DWMWA_BORDER_COLOR"));
+            Assert.True(settingsCodeBehind.Contains("ref borderColor"));
         }
 
         static void SettingsFirstOpenTextUsesThemeResources()
