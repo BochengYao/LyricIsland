@@ -31,6 +31,7 @@ namespace LyricHover.App.Modules
         private string previewSourceId;
         private int previewFinalIndex = -1;
         private ModuleDragGhostWindow dragGhost;
+        private bool animationsEnabled = true;
 
         public IslandModuleHost()
         {
@@ -69,6 +70,25 @@ namespace LyricHover.App.Modules
             }
         }
 
+        public void SetAnimationsEnabled(bool value)
+        {
+            if (animationsEnabled == value)
+            {
+                return;
+            }
+
+            animationsEnabled = value;
+            foreach (var lyrics in ModulePanel.Children.OfType<LyricsModuleView>())
+            {
+                lyrics.AnimationsEnabled = value;
+            }
+
+            foreach (var controls in ModulePanel.Children.OfType<PlaybackControlsModuleView>())
+            {
+                controls.AnimationsEnabled = value;
+            }
+        }
+
         public void ApplyLayout(IslandLayoutProfile profile)
         {
             profile = profile ?? IslandLayoutDefaults.CreateCollapsed();
@@ -97,6 +117,7 @@ namespace LyricHover.App.Modules
                 {
                     case IslandModuleType.Lyrics:
                         var lyrics = new LyricsModuleView();
+                        lyrics.AnimationsEnabled = animationsEnabled;
                         lyrics.ApplyModuleSettings(module.LyricsWidth);
                         view = lyrics;
                         break;
@@ -105,6 +126,7 @@ namespace LyricHover.App.Modules
                         break;
                     case IslandModuleType.PlaybackControls:
                         var controls = new PlaybackControlsModuleView();
+                        controls.AnimationsEnabled = animationsEnabled;
                         controls.SetInteractionEnabled(playbackInteractionEnabled);
                         controls.PreviousRequested += (sender, args) => PreviousRequested?.Invoke(this, EventArgs.Empty);
                         controls.PlayPauseRequested += (sender, args) => PlayPauseRequested?.Invoke(this, EventArgs.Empty);
@@ -233,6 +255,17 @@ namespace LyricHover.App.Modules
                 .ToList();
             if (modules.Count == 0)
             {
+                return;
+            }
+
+            if (!animationsEnabled)
+            {
+                foreach (var module in modules)
+                {
+                    module.BeginAnimation(OpacityProperty, null);
+                    module.Opacity = fadeIn ? 1 : 0;
+                }
+
                 return;
             }
 
@@ -633,7 +666,7 @@ namespace LyricHover.App.Modules
         private void AnimateModuleReflow(Dictionary<FrameworkElement, double> previousPositions)
         {
             ModulePanel.UpdateLayout();
-            if (previousPositions == null)
+            if (previousPositions == null || !animationsEnabled)
             {
                 return;
             }

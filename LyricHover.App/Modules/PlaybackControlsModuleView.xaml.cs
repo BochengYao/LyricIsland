@@ -12,6 +12,13 @@ namespace LyricHover.App.Modules
         private bool renderStateInitialized;
         private bool lastHasSession;
         private MediaPlaybackStatus? lastPlaybackStatus;
+        private bool animationsEnabled = true;
+
+        public bool AnimationsEnabled
+        {
+            get => animationsEnabled;
+            set => animationsEnabled = value;
+        }
 
         public PlaybackControlsModuleView()
         {
@@ -70,21 +77,25 @@ namespace LyricHover.App.Modules
 
         private void Button_MouseEnter(object sender, MouseEventArgs e)
         {
+            if (!animationsEnabled) return;
             AnimateButton((Button)sender, Color.FromArgb(0x24, 255, 255, 255), 1.0, 120);
         }
 
         private void Button_MouseLeave(object sender, MouseEventArgs e)
         {
+            if (!animationsEnabled) return;
             AnimateButton((Button)sender, Colors.Transparent, 1.0, 120);
         }
 
         private void Button_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            if (!animationsEnabled) return;
             AnimateButton((Button)sender, Color.FromArgb(0x3D, 255, 255, 255), 0.92, 80);
         }
 
         private void Button_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
+            if (!animationsEnabled) return;
             AnimateButton((Button)sender, Color.FromArgb(0x24, 255, 255, 255), 1.0, 140);
         }
 

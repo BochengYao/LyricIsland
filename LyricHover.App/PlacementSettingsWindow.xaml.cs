@@ -52,6 +52,7 @@ namespace LyricHover.App
         private bool suppressTaskbarLyricsConfirmation;
         private bool settingsDirty;
         private bool dirtyStateUpdateQueued;
+        private bool applyingAutoSave;
         private bool layoutEditingActive;
         private bool suppressLayoutSelectionChanged;
         private IslandLayoutMode selectedLayoutMode = IslandLayoutMode.HorizontalBlocks;
@@ -62,6 +63,7 @@ namespace LyricHover.App
         private ModuleDragGhostWindow moduleDragGhost;
         private bool suppressPlayerSelectionChanged;
         private DispatcherTimer translationModeToastTimer;
+        private Border activeTranslationModeToast;
         private Storyboard layoutModePreviewStoryboard;
         private int themeTransitionVersion;
         private bool systemBackdropApplied;
@@ -208,8 +210,14 @@ namespace LyricHover.App
             SingleLineRadioButton.IsChecked = !settings.UseMultiLineDisplay;
             MultiLineRadioButton.IsChecked = settings.UseMultiLineDisplay;
             ShowTranslationCheckBox.IsChecked = settings.ShowTranslation;
+            IslandEnabledSwitch.IsChecked = settings.IslandEnabled;
             LyricDockEnabledCheckBox.IsChecked = settings.LyricDockEnabled;
-            LyricDockAlignmentComboBox.SelectedIndex = settings.LyricDockAlignment == LyricDockAlignment.Left ? 1 : 0;
+            DockAlignmentCenterRadioButton.IsChecked = settings.LyricDockAlignment != LyricDockAlignment.Left;
+            DockAlignmentLeftRadioButton.IsChecked = settings.LyricDockAlignment == LyricDockAlignment.Left;
+            DockSingleLineRadioButton.IsChecked = !settings.LyricDockUseMultiLineDisplay;
+            DockMultiLineRadioButton.IsChecked = settings.LyricDockUseMultiLineDisplay;
+            DockShowTranslationCheckBox.IsChecked = settings.LyricDockShowTranslation;
+            PowerSavingModeCheckBox.IsChecked = settings.EnablePowerSavingMode;
             ScreenComboBox.SelectedValue = string.IsNullOrWhiteSpace(settings.ScreenName)
                 ? this.screens.FirstOrDefault()?.Name
                 : settings.ScreenName;
@@ -231,6 +239,7 @@ namespace LyricHover.App
             InitializeLayoutModePreviewAnimation();
             InitializePlayerSelection(settings);
             UpdateTranslationLineModeLock();
+            UpdateDockTranslationLineModeLock();
             UpdateSettingValueLabels();
             LyricsSectionButton.IsChecked = true;
             ShowSection("Lyrics");
@@ -247,6 +256,7 @@ namespace LyricHover.App
                 ApplySettingsTheme();
                 UiLanguageService.ApplyTo(this);
                 ScheduleLocalizedVisualRefresh();
+                InitializeSwitchKnobAnimations();
                 UpdateSegmentSelectionPositions(false);
                 CenterOnDesktop();
                 setHoverTransparencySuppressed?.Invoke(true);
@@ -413,9 +423,68 @@ namespace LyricHover.App
 
         public void FocusTaskbarLyricsSettings()
         {
-            ShowSection("Lyrics");
-            LyricsSectionButton.IsChecked = true;
+            ShowSection("LyricsAppearance");
+            LyricsAppearanceSectionButton.IsChecked = true;
             LyricDockEnabledCheckBox.Focus();
+        }
+
+        public void NotifyTaskbarLyricsDisabled()
+        {
+            if (LyricDockEnabledCheckBox.IsChecked != true)
+            {
+                return;
+            }
+
+            // The controller was disabled externally (taskbar environment failure); mirror it
+            // onto the switch so the window never shows an enabled state that is no longer real.
+            suppressTaskbarLyricsConfirmation = true;
+            LyricDockEnabledCheckBox.IsChecked = false;
+            suppressTaskbarLyricsConfirmation = false;
+            if (workingSettings != null)
+            {
+                workingSettings.LyricDockEnabled = false;
+            }
+        }
+
+        // The dock controls live in a panel that is collapsed by default; their segmented
+        // RadioButtons can lose group selection across visibility changes.  Re-assert the
+        // committed state whenever the section becomes visible so auto-save never captures
+        // a selection-less group.
+        private void EnsureLyricDockControlStates()
+        {
+            if (workingSettings == null ||
+                DockAlignmentCenterRadioButton == null ||
+                DockAlignmentLeftRadioButton == null)
+            {
+                return;
+            }
+
+            if (DockAlignmentCenterRadioButton.IsChecked != true && DockAlignmentLeftRadioButton.IsChecked != true)
+            {
+                DockAlignmentLeftRadioButton.IsChecked = workingSettings.LyricDockAlignment == LyricDockAlignment.Left;
+                DockAlignmentCenterRadioButton.IsChecked = workingSettings.LyricDockAlignment != LyricDockAlignment.Left;
+            }
+
+            if (DockSingleLineRadioButton.IsChecked != true && DockMultiLineRadioButton.IsChecked != true)
+            {
+                DockMultiLineRadioButton.IsChecked = workingSettings.LyricDockUseMultiLineDisplay;
+                DockSingleLineRadioButton.IsChecked = !workingSettings.LyricDockUseMultiLineDisplay;
+            }
+
+            UpdateDockAlignmentSelection(false);
+            UpdateDockLineModeSelection(false);
+        }
+
+        private void ReflectForcedDockState(OverlayPlacementSettings settings)
+        {
+            // applySettings can force-disable the taskbar dock when enablement fails; mirror
+            // the enforced state back onto the switch so a later auto-save cannot resurrect it.
+            if (LyricDockEnabledCheckBox.IsChecked == true && !settings.LyricDockEnabled)
+            {
+                suppressTaskbarLyricsConfirmation = true;
+                LyricDockEnabledCheckBox.IsChecked = false;
+                suppressTaskbarLyricsConfirmation = false;
+            }
         }
 
         private void PlacementSettingsWindow_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -433,7 +502,6 @@ namespace LyricHover.App
                 LyricsSourceComboBox,
                 ScreenComboBox,
                 PlayerSelectionComboBox
-                ,LyricDockAlignmentComboBox
             })
             {
                 selector.SelectionChanged += SettingsSelector_SelectionChanged;
@@ -473,11 +541,18 @@ namespace LyricHover.App
 
             foreach (var toggle in new ToggleButton[]
             {
+                IslandEnabledSwitch,
                 SingleLineRadioButton,
                 MultiLineRadioButton,
                 ShowTranslationCheckBox,
                 LyricDockEnabledCheckBox,
+                DockAlignmentCenterRadioButton,
+                DockAlignmentLeftRadioButton,
+                DockSingleLineRadioButton,
+                DockMultiLineRadioButton,
+                DockShowTranslationCheckBox,
                 PassThroughOnHoverCheckBox,
+                PowerSavingModeCheckBox,
                 LightThemeRadioButton,
                 DarkThemeRadioButton,
                 SystemThemeRadioButton
@@ -614,7 +689,7 @@ namespace LyricHover.App
 
         private void QueueDirtyStateUpdate()
         {
-            if (initializingSettings || dirtyStateTracker == null || dirtyStateUpdateQueued)
+            if (initializingSettings || dirtyStateTracker == null || dirtyStateUpdateQueued || applyingAutoSave)
             {
                 return;
             }
@@ -623,6 +698,11 @@ namespace LyricHover.App
             Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
             {
                 dirtyStateUpdateQueued = false;
+                if (applyingAutoSave)
+                {
+                    return;
+                }
+
                 var dirty = dirtyStateTracker.IsDirty(CaptureSettings());
                 if (dirty == settingsDirty)
                 {
@@ -631,6 +711,18 @@ namespace LyricHover.App
 
                 settingsDirty = dirty;
                 RefreshActionButtonVisuals(true);
+                if (dirty && !layoutEditingActive)
+                {
+                    applyingAutoSave = true;
+                    try
+                    {
+                        ApplyCurrentSettings();
+                    }
+                    finally
+                    {
+                        applyingAutoSave = false;
+                    }
+                }
             }));
         }
 
@@ -658,14 +750,14 @@ namespace LyricHover.App
             var neutralBackground = GetThemeColor("SettingsControlBackgroundBrush", Colors.Transparent);
             var neutralBorder = GetThemeColor("SettingsControlBorderBrush", Colors.Gray);
             var neutralForeground = GetThemeColor("SettingsControlForegroundBrush", Colors.White);
-            var accent = Color.FromRgb(22, 119, 255);
+            var accent = Color.FromRgb(10, 132, 255);
 
             AnimateBrush((SolidColorBrush)ApplyButton.Background, neutralBackground, animate);
             AnimateBrush((SolidColorBrush)ApplyButton.BorderBrush, settingsDirty ? accent : neutralBorder, animate);
             AnimateBrush((SolidColorBrush)ApplyButton.Foreground, neutralForeground, animate);
-            AnimateBrush((SolidColorBrush)SaveButton.Background, settingsDirty ? accent : neutralBackground, animate);
-            AnimateBrush((SolidColorBrush)SaveButton.BorderBrush, settingsDirty ? accent : neutralBorder, animate);
-            AnimateBrush((SolidColorBrush)SaveButton.Foreground, settingsDirty ? Colors.White : neutralForeground, animate);
+            AnimateBrush((SolidColorBrush)SaveButton.Background, accent, animate);
+            AnimateBrush((SolidColorBrush)SaveButton.BorderBrush, accent, animate);
+            AnimateBrush((SolidColorBrush)SaveButton.Foreground, Colors.White, animate);
         }
 
         private void EnsureMutableActionButtonBrushes()
@@ -789,11 +881,28 @@ namespace LyricHover.App
             Close();
         }
 
+        private void CacheDetailsToggle_Click(object sender, RoutedEventArgs e)
+        {
+            var expanded = CacheDetailsPanel.Visibility == Visibility.Visible;
+            CacheDetailsPanel.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
+            CacheDetailsToggleButton.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+            CacheDetailsCollapseButton.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        private void PowerSavingDetailsToggle_Click(object sender, RoutedEventArgs e)
+        {
+            var expanded = PowerSavingDetailsPanel.Visibility == Visibility.Visible;
+            PowerSavingDetailsPanel.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
+            PowerSavingDetailsToggleButton.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+            PowerSavingDetailsCollapseButton.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
+        }
+
         private void ApplyCurrentSettings()
         {
             var settings = CaptureSettings();
             SaveLayoutEditingIfActive();
             applySettings(settings);
+            ReflectForcedDockState(settings);
             workingSettings = settings.DeepClone();
             acceptedCacheLimitMegabytes = settings.CacheLimitMegabytes;
             dirtyStateTracker.Accept(settings);
@@ -831,8 +940,12 @@ namespace LyricHover.App
             settings.LockedSourceAppUserModelId = PlayerSelectionComboBox.SelectedValue as string ?? string.Empty;
             settings.UseMultiLineDisplay = ReadUseMultiLineDisplay();
             settings.ShowTranslation = ShowTranslationCheckBox.IsChecked == true;
+            settings.IslandEnabled = IslandEnabledSwitch.IsChecked == true;
             settings.LyricDockEnabled = LyricDockEnabledCheckBox.IsChecked == true;
-            settings.LyricDockAlignment = LyricDockAlignmentComboBox.SelectedIndex == 1 ? LyricDockAlignment.Left : LyricDockAlignment.Center;
+            settings.LyricDockAlignment = ReadDockAlignment();
+            settings.LyricDockUseMultiLineDisplay = ReadDockUseMultiLineDisplay();
+            settings.LyricDockShowTranslation = DockShowTranslationCheckBox.IsChecked == true;
+            settings.EnablePowerSavingMode = PowerSavingModeCheckBox.IsChecked == true;
             settings.LyricOffsetHotkeys = new HotkeySettings
             {
                 Earlier = EarlierHotkeyTextBox.Text,
@@ -988,6 +1101,133 @@ namespace LyricHover.App
 
             PlayerSelectionHintText.Text = selectionHint + Environment.NewLine +
                 UiLanguageService.Translate("注：网易云音乐由于接口限制无法实时同步歌曲进度（播放器内拖动进度条无法同步）");
+        }
+
+        private CheckBox[] GetAnimatedSwitches()
+        {
+            return new[]
+            {
+                PowerSavingModeCheckBox,
+                IslandEnabledSwitch,
+                ShowTranslationCheckBox,
+                LyricDockEnabledCheckBox,
+                DockShowTranslationCheckBox
+            };
+        }
+
+        private void InitializeSwitchKnobAnimations()
+        {
+            foreach (var checkBox in GetAnimatedSwitches())
+            {
+                if (checkBox == null)
+                {
+                    continue;
+                }
+
+                checkBox.Checked += SwitchKnobAnimationChanged;
+                checkBox.Unchecked += SwitchKnobAnimationChanged;
+                SyncSwitchVisualState(checkBox, animate: false);
+            }
+        }
+
+        private void SwitchKnobAnimationChanged(object sender, RoutedEventArgs e)
+        {
+            if (sender is CheckBox checkBox)
+            {
+                SyncSwitchVisualState(checkBox, animate: true);
+            }
+        }
+
+        private void SyncSwitchVisualState(CheckBox checkBox, bool animate)
+        {
+            if (checkBox == null)
+            {
+                return;
+            }
+
+            if (!checkBox.IsLoaded)
+            {
+                checkBox.ApplyTemplate();
+            }
+
+            var template = checkBox.Template;
+            if (template == null)
+            {
+                return;
+            }
+
+            var isChecked = checkBox.IsChecked == true;
+            var allowAnimation = animate && SystemParameters.ClientAreaAnimation;
+            var duration = TimeSpan.FromMilliseconds(160);
+
+            var knob = template.FindName("SwitchKnob", checkBox) as UIElement;
+            if (knob != null)
+            {
+                var transform = knob.RenderTransform as TranslateTransform;
+                if (transform == null || transform.IsFrozen || transform.IsSealed)
+                {
+                    var initialX = transform == null ? 0.0 : transform.X;
+                    transform = new TranslateTransform(initialX, 0.0);
+                    knob.RenderTransform = transform;
+                }
+
+                var targetX = isChecked ? 16.0 : 0.0;
+                transform.BeginAnimation(TranslateTransform.XProperty, null);
+                if (allowAnimation)
+                {
+                    transform.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(targetX, duration)
+                    {
+                        EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                    });
+                }
+                else
+                {
+                    transform.X = targetX;
+                }
+            }
+
+            var track = template.FindName("SwitchTrack", checkBox) as Border;
+            if (track != null)
+            {
+                var accentColor = Color.FromRgb(0x0A, 0x84, 0xFF);
+                var offColor = GetThemeColor("SettingsControlPressedBackgroundBrush", Color.FromRgb(0xE8, 0xE8, 0xED));
+                var offBorderColor = GetThemeColor("SettingsControlBorderBrush", Color.FromArgb(0x1F, 0x00, 0x00, 0x00));
+                var targetBackground = isChecked ? accentColor : offColor;
+                var targetBorder = isChecked ? accentColor : offBorderColor;
+
+                var backgroundBrush = track.Background as SolidColorBrush;
+                if (backgroundBrush == null || backgroundBrush.IsFrozen || backgroundBrush.IsSealed)
+                {
+                    backgroundBrush = new SolidColorBrush(targetBackground);
+                    track.Background = backgroundBrush;
+                }
+
+                var borderBrush = track.BorderBrush as SolidColorBrush;
+                if (borderBrush == null || borderBrush.IsFrozen || borderBrush.IsSealed)
+                {
+                    borderBrush = new SolidColorBrush(targetBorder);
+                    track.BorderBrush = borderBrush;
+                }
+
+                backgroundBrush.BeginAnimation(SolidColorBrush.ColorProperty, null);
+                borderBrush.BeginAnimation(SolidColorBrush.ColorProperty, null);
+                if (allowAnimation)
+                {
+                    backgroundBrush.BeginAnimation(SolidColorBrush.ColorProperty, new ColorAnimation(targetBackground, duration)
+                    {
+                        EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                    });
+                    borderBrush.BeginAnimation(SolidColorBrush.ColorProperty, new ColorAnimation(targetBorder, duration)
+                    {
+                        EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                    });
+                }
+                else
+                {
+                    backgroundBrush.Color = targetBackground;
+                    borderBrush.Color = targetBorder;
+                }
+            }
         }
 
         private static string NormalizePlayerSelection(string value)
@@ -1359,6 +1599,11 @@ namespace LyricHover.App
             UpdateTranslationLineModeLock();
         }
 
+        private void DockShowTranslationCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            UpdateDockTranslationLineModeLock();
+        }
+
         private void SingleLineRadioButton_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (ShowTranslationCheckBox.IsChecked != true)
@@ -1367,7 +1612,19 @@ namespace LyricHover.App
             }
 
             MultiLineRadioButton.IsChecked = true;
-            ShowTranslationModeToast();
+            ShowTranslationModeToast(TranslationModeToast);
+            e.Handled = true;
+        }
+
+        private void DockSingleLineRadioButton_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (DockShowTranslationCheckBox.IsChecked != true)
+            {
+                return;
+            }
+
+            DockMultiLineRadioButton.IsChecked = true;
+            ShowTranslationModeToast(DockTranslationModeToast);
             e.Handled = true;
         }
 
@@ -1376,9 +1633,21 @@ namespace LyricHover.App
             UpdateLineModeSelection(!initializingSettings);
         }
 
+        private void DockLineModeRadioButton_Checked(object sender, RoutedEventArgs e)
+        {
+            UpdateDockLineModeSelection(!initializingSettings);
+        }
+
+        private void DockAlignmentRadioButton_Checked(object sender, RoutedEventArgs e)
+        {
+            UpdateDockAlignmentSelection(!initializingSettings);
+        }
+
         private void UpdateSegmentSelectionPositions(bool animated)
         {
             UpdateLineModeSelection(animated);
+            UpdateDockLineModeSelection(animated);
+            UpdateDockAlignmentSelection(animated);
             UpdateThemeSelection(animated);
         }
 
@@ -1392,6 +1661,32 @@ namespace LyricHover.App
             AnimateSegmentSelection(
                 LineModeSelectionTransform,
                 MultiLineRadioButton.IsChecked == true ? 92 : 0,
+                animated);
+        }
+
+        private void UpdateDockLineModeSelection(bool animated)
+        {
+            if (DockLineModeSelectionTransform == null || DockMultiLineRadioButton == null)
+            {
+                return;
+            }
+
+            AnimateSegmentSelection(
+                DockLineModeSelectionTransform,
+                DockMultiLineRadioButton.IsChecked == true ? 92 : 0,
+                animated);
+        }
+
+        private void UpdateDockAlignmentSelection(bool animated)
+        {
+            if (DockAlignmentSelectionTransform == null || DockAlignmentLeftRadioButton == null)
+            {
+                return;
+            }
+
+            AnimateSegmentSelection(
+                DockAlignmentSelectionTransform,
+                DockAlignmentLeftRadioButton.IsChecked == true ? 92 : 0,
                 animated);
         }
 
@@ -1430,12 +1725,13 @@ namespace LyricHover.App
                 });
         }
 
-        private void ShowTranslationModeToast()
+        private void ShowTranslationModeToast(Border toast)
         {
-            TranslationModeToast.BeginAnimation(OpacityProperty, null);
-            TranslationModeToast.Visibility = Visibility.Visible;
-            TranslationModeToast.Opacity = 0;
-            TranslationModeToast.BeginAnimation(
+            activeTranslationModeToast = toast;
+            toast.BeginAnimation(OpacityProperty, null);
+            toast.Visibility = Visibility.Visible;
+            toast.Opacity = 0;
+            toast.BeginAnimation(
                 OpacityProperty,
                 new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(140)));
             if (translationModeToastTimer == null)
@@ -1457,17 +1753,23 @@ namespace LyricHover.App
 
         private void FadeOutTranslationModeToast()
         {
+            var toast = activeTranslationModeToast;
+            if (toast == null)
+            {
+                return;
+            }
+
             var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(320))
             {
                 FillBehavior = FillBehavior.Stop
             };
             fadeOut.Completed += (sender, args) =>
             {
-                TranslationModeToast.BeginAnimation(OpacityProperty, null);
-                TranslationModeToast.Opacity = 0;
-                TranslationModeToast.Visibility = Visibility.Collapsed;
+                toast.BeginAnimation(OpacityProperty, null);
+                toast.Opacity = 0;
+                toast.Visibility = Visibility.Collapsed;
             };
-            TranslationModeToast.BeginAnimation(OpacityProperty, fadeOut);
+            toast.BeginAnimation(OpacityProperty, fadeOut);
         }
 
         private void HotkeyTextBox_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
@@ -1989,40 +2291,46 @@ namespace LyricHover.App
         {
             var animate = IsLoaded && !initializingSettings;
             var transitionVersion = ++themeTransitionVersion;
-            SetBrushResource(
-                "SettingsRootBackgroundBrush",
-                systemBackdropApplied
-                    ? (dark ? "#14121318" : "#14F4F3FA")
-                    : (dark ? "#121318" : "#F4F3FA"),
-                animate,
-                transitionVersion);
+            var rootBackgroundHex = systemBackdropApplied
+                ? (dark ? "#261C1C1E" : "#14F5F5F7")
+                : (dark ? "#1C1C1E" : "#F5F5F7");
+            SetBrushResource("SettingsRootBackgroundBrush", rootBackgroundHex, animate, transitionVersion);
             SetBrushResource(
                 "SettingsSidebarBackgroundBrush",
                 systemBackdropApplied
-                    ? (dark ? "#36202126" : "#3CFBFBFD")
-                    : (dark ? "#202126" : "#FBFBFD"),
+                    ? (dark ? "#3C2C2C2E" : "#3CF2F2F7")
+                    : (dark ? "#242426" : "#F2F2F7"),
                 animate,
                 transitionVersion);
-            SetBrushResource("SettingsThemeToggleBackgroundBrush", dark ? "#2B2C32" : "#ECECF2", animate, transitionVersion);
-            SetBrushResource("SettingsControlBackgroundBrush", dark ? "#20252E" : "#F8FAFC", animate, transitionVersion);
-            SetBrushResource("SettingsControlForegroundBrush", dark ? "#F3F4F6" : "#1F2937", animate, transitionVersion);
-            SetBrushResource("SettingsControlMutedForegroundBrush", dark ? "#B4BDCA" : "#344054", animate, transitionVersion);
-            SetBrushResource("SettingsControlBorderBrush", dark ? "#3A4250" : "#D8DEE8", animate, transitionVersion);
-            SetBrushResource("SettingsControlHoverBackgroundBrush", dark ? "#28303B" : "#FFFFFF", animate, transitionVersion);
-            SetBrushResource("SettingsControlPressedBackgroundBrush", dark ? "#303846" : "#EEF2F7", animate, transitionVersion);
-            SetBrushResource("SettingsSelectedBackgroundBrush", dark ? "#2D3542" : "#FFFFFF", animate, transitionVersion);
-            SetBrushResource("SettingsSelectedForegroundBrush", dark ? "#F8FAFC" : "#111827", animate, transitionVersion);
-            SetBrushResource("SettingsSidebarHoverBackgroundBrush", dark ? "#2A2B31" : "#F0F0F4", animate, transitionVersion);
-            SetBrushResource("SettingsSidebarSelectedBackgroundBrush", dark ? "#34353C" : "#E5E5EA", animate, transitionVersion);
-            SetBrushResource("SettingsSidebarSelectedForegroundBrush", dark ? "#4B4C54" : "#1D2939", animate, transitionVersion);
-            SetBrushResource("SettingsTrackBackgroundBrush", dark ? "#303846" : "#E6EAF0", animate, transitionVersion);
-            SetBrushResource("SettingsToastBackgroundBrush", dark ? "#F020252E" : "#FFFFFFFF", animate, transitionVersion);
-            SetBrushResource("SettingsToastBorderBrush", dark ? "#664F9CFF" : "#C9D7EC", animate, transitionVersion);
+            SetBrushResource("SettingsThemeToggleBackgroundBrush", dark ? "#2C2C2E" : "#E9E9EB", animate, transitionVersion);
+            SetBrushResource("SettingsControlBackgroundBrush", dark ? "#2C2C2E" : "#FFFFFF", animate, transitionVersion);
+            SetBrushResource("SettingsControlForegroundBrush", dark ? "#F5F5F7" : "#1D1D1F", animate, transitionVersion);
+            SetBrushResource("SettingsControlMutedForegroundBrush", dark ? "#98989D" : "#6E6E73", animate, transitionVersion);
+            SetBrushResource("SettingsControlBorderBrush", dark ? "#22FFFFFF" : "#1F000000", animate, transitionVersion);
+            SetBrushResource("SettingsControlHoverBackgroundBrush", dark ? "#3A3A3C" : "#F5F5F7", animate, transitionVersion);
+            SetBrushResource("SettingsControlPressedBackgroundBrush", dark ? "#48484A" : "#E8E8ED", animate, transitionVersion);
+            SetBrushResource("SettingsSelectedBackgroundBrush", dark ? "#3A3A3C" : "#FFFFFF", animate, transitionVersion);
+            SetBrushResource("SettingsSelectedForegroundBrush", dark ? "#F5F5F7" : "#1D1D1F", animate, transitionVersion);
+            SetBrushResource("SettingsSidebarHoverBackgroundBrush", dark ? "#1FFFFFFF" : "#0F000000", animate, transitionVersion);
+            SetBrushResource("SettingsSidebarSelectedBackgroundBrush", dark ? "#1AFFFFFF" : "#0D000000", animate, transitionVersion);
+            SetBrushResource("SettingsSidebarSelectedForegroundBrush", dark ? "#F5F5F7" : "#1D1D1F", animate, transitionVersion);
+            SetBrushResource("SettingsTrackBackgroundBrush", dark ? "#3A3A3C" : "#E5E5EA", animate, transitionVersion);
+            SetBrushResource("SettingsCardBackgroundBrush", dark ? "#802C2C2E" : "#B3FFFFFF", animate, transitionVersion);
+            SetBrushResource("SettingsSecondaryForegroundBrush", dark ? "#636366" : "#86868B", animate, transitionVersion);
+            SetBrushResource("SettingsToastBackgroundBrush", dark ? "#F02C2C2E" : "#FFFFFFFF", animate, transitionVersion);
+            SetBrushResource("SettingsToastBorderBrush", dark ? "#660A84FF" : "#C9D7EC", animate, transitionVersion);
             SetBrushResource("SettingsToastForegroundBrush", dark ? "#FFFFFFFF" : "#243044", animate, transitionVersion);
-            SetBrushResource("SettingsDragGhostBackgroundBrush", dark ? "#F020252E" : "#F2FFFFFF", animate, transitionVersion);
-            SetBrushResource("SettingsDragGhostBorderBrush", dark ? "#884F9CFF" : "#7A8E9CAF", animate, transitionVersion);
-            SetBrushResource("SettingsDragGhostForegroundBrush", dark ? "#FFF3F4F6" : "#FF1F2937", animate, transitionVersion);
+            SetBrushResource("SettingsDragGhostBackgroundBrush", dark ? "#F02C2C2E" : "#F2FFFFFF", animate, transitionVersion);
+            SetBrushResource("SettingsDragGhostBorderBrush", dark ? "#880A84FF" : "#7A8E9CAF", animate, transitionVersion);
+            SetBrushResource("SettingsDragGhostForegroundBrush", dark ? "#FFF5F5F7" : "#FF1D1D1F", animate, transitionVersion);
             UpdateSupportProBadge(dark);
+            if (IsLoaded)
+            {
+                foreach (var checkBox in GetAnimatedSwitches())
+                {
+                    SyncSwitchVisualState(checkBox, animate: false);
+                }
+            }
         }
 
         private void UpdateSupportProBadge(bool dark)
@@ -2175,8 +2483,8 @@ namespace LyricHover.App
         private void ShowSection(string section)
         {
             if (LyricsSettingsPanel == null ||
+                LyricsAppearanceSettingsPanel == null ||
                 PositionSettingsPanel == null ||
-                CacheSettingsPanel == null ||
                 HoverSettingsPanel == null ||
                 HotkeySettingsPanel == null ||
                 LayoutSettingsPanel == null ||
@@ -2187,13 +2495,17 @@ namespace LyricHover.App
             }
 
             LyricsSettingsPanel.Visibility = section == "Lyrics" ? Visibility.Visible : Visibility.Collapsed;
+            LyricsAppearanceSettingsPanel.Visibility = section == "LyricsAppearance" ? Visibility.Visible : Visibility.Collapsed;
             PositionSettingsPanel.Visibility = section == "Position" ? Visibility.Visible : Visibility.Collapsed;
-            CacheSettingsPanel.Visibility = section == "Cache" ? Visibility.Visible : Visibility.Collapsed;
             HoverSettingsPanel.Visibility = section == "Hover" ? Visibility.Visible : Visibility.Collapsed;
             HotkeySettingsPanel.Visibility = section == "Hotkeys" ? Visibility.Visible : Visibility.Collapsed;
             LayoutSettingsPanel.Visibility = section == "Layout" ? Visibility.Visible : Visibility.Collapsed;
             SupportSettingsPanel.Visibility = section == "Support" ? Visibility.Visible : Visibility.Collapsed;
             AboutSettingsPanel.Visibility = section == "About" ? Visibility.Visible : Visibility.Collapsed;
+            if (section == "LyricsAppearance")
+            {
+                EnsureLyricDockControlStates();
+            }
             UiLanguageService.ApplyTo(this);
             ScheduleLocalizedVisualRefresh();
             if (section == "Support")
@@ -2206,6 +2518,61 @@ namespace LyricHover.App
                 layoutEditingActive = true;
                 beginLayoutEditing(ReadEditedLayoutMode(), false);
             }
+            AnimateSectionEntrance(GetSectionEntranceTarget(section));
+        }
+
+        private UIElement GetSectionEntranceTarget(string section)
+        {
+            FrameworkElement panel;
+            switch (section)
+            {
+                case "Lyrics": panel = LyricsSettingsPanel; break;
+                case "LyricsAppearance": panel = LyricsAppearanceSettingsPanel; break;
+                case "Position": panel = PositionSettingsPanel; break;
+                case "Hover": panel = HoverSettingsPanel; break;
+                case "Hotkeys": panel = HotkeySettingsPanel; break;
+                case "Layout": panel = LayoutSettingsPanel; break;
+                case "Support": panel = SupportSettingsPanel; break;
+                case "About": panel = AboutSettingsPanel; break;
+                default: return null;
+            }
+
+            if (panel == null)
+            {
+                return null;
+            }
+
+            return (panel.Parent as Border) ?? (UIElement)panel;
+        }
+
+        private void AnimateSectionEntrance(UIElement target)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            if (!SystemParameters.ClientAreaAnimation)
+            {
+                target.BeginAnimation(OpacityProperty, null);
+                target.Opacity = 1.0;
+                target.RenderTransform = null;
+                return;
+            }
+
+            var transform = new TranslateTransform(0, 8);
+            target.RenderTransform = transform;
+            var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
+            var duration = TimeSpan.FromMilliseconds(180);
+            var fade = new DoubleAnimation(0.0, 1.0, duration) { EasingFunction = easing };
+            fade.Completed += (sender, args) =>
+            {
+                target.BeginAnimation(OpacityProperty, null);
+                target.Opacity = 1.0;
+                target.RenderTransform = null;
+            };
+            target.BeginAnimation(OpacityProperty, fade);
+            transform.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(8.0, 0.0, duration) { EasingFunction = easing });
         }
 
         private void ScheduleLocalizedVisualRefresh()
@@ -2443,7 +2810,7 @@ namespace LyricHover.App
             card.BorderThickness = new Thickness(selected ? 1.5 : 1);
             if (selected)
             {
-                card.BorderBrush = new SolidColorBrush(Color.FromRgb(22, 119, 255));
+                card.BorderBrush = new SolidColorBrush(Color.FromRgb(10, 132, 255));
             }
             else
             {
@@ -2468,6 +2835,41 @@ namespace LyricHover.App
             return MultiLineRadioButton.IsChecked == true;
         }
 
+        private bool ReadDockUseMultiLineDisplay()
+        {
+            if (DockShowTranslationCheckBox.IsChecked == true)
+            {
+                return true;
+            }
+
+            if (DockMultiLineRadioButton.IsChecked == true)
+            {
+                return true;
+            }
+
+            // A selection-less segmented group must keep the committed value instead of
+            // silently falling back to single line.
+            return DockSingleLineRadioButton.IsChecked != true &&
+                (workingSettings?.LyricDockUseMultiLineDisplay ?? true);
+        }
+
+        private LyricDockAlignment ReadDockAlignment()
+        {
+            if (DockAlignmentLeftRadioButton.IsChecked == true)
+            {
+                return LyricDockAlignment.Left;
+            }
+
+            if (DockAlignmentCenterRadioButton.IsChecked == true)
+            {
+                return LyricDockAlignment.Center;
+            }
+
+            // A selection-less segmented group must keep the committed value instead of
+            // silently falling back to Center.
+            return workingSettings?.LyricDockAlignment ?? LyricDockAlignment.Center;
+        }
+
         private void UpdateTranslationLineModeLock()
         {
             if (SingleLineRadioButton == null || MultiLineRadioButton == null || ShowTranslationCheckBox == null)
@@ -2482,6 +2884,22 @@ namespace LyricHover.App
 
             SingleLineRadioButton.IsEnabled = true;
             MultiLineRadioButton.IsEnabled = true;
+        }
+
+        private void UpdateDockTranslationLineModeLock()
+        {
+            if (DockSingleLineRadioButton == null || DockMultiLineRadioButton == null || DockShowTranslationCheckBox == null)
+            {
+                return;
+            }
+
+            if (DockShowTranslationCheckBox.IsChecked == true)
+            {
+                DockMultiLineRadioButton.IsChecked = true;
+            }
+
+            DockSingleLineRadioButton.IsEnabled = true;
+            DockMultiLineRadioButton.IsEnabled = true;
         }
 
         private void UpdateSettingValueLabels()

@@ -59,13 +59,23 @@ namespace LyricHover.App
 
         public SettingsThemePreference SettingsTheme { get; set; } = SettingsThemePreference.System;
 
+        public AppLanguagePreference Language { get; set; } = AppLanguagePreference.System;
+
         public LyricsSourcePreference LyricsSource { get; set; } = LyricsSourcePreference.Automatic;
 
         public bool UseMultiLineDisplay { get; set; } = true;
 
         public bool ShowTranslation { get; set; } = true;
 
+        public bool IslandEnabled { get; set; } = true;
+
         public bool LyricDockEnabled { get; set; }
+
+        public bool LyricDockUseMultiLineDisplay { get; set; } = true;
+
+        public bool LyricDockShowTranslation { get; set; } = true;
+
+        public bool EnablePowerSavingMode { get; set; }
 
         public LyricDockAlignment LyricDockAlignment { get; set; } = global::LyricHover.App.LyricDock.LyricDockAlignment.Center;
 
@@ -132,6 +142,11 @@ namespace LyricHover.App
                 SettingsTheme = SettingsThemePreference.System;
             }
 
+            if (!Enum.IsDefined(typeof(AppLanguagePreference), Language))
+            {
+                Language = AppLanguagePreference.System;
+            }
+
             if (!Enum.IsDefined(typeof(LyricDockAlignment), LyricDockAlignment))
             {
                 LyricDockAlignment = global::LyricHover.App.LyricDock.LyricDockAlignment.Center;
@@ -140,6 +155,11 @@ namespace LyricHover.App
             if (ShowTranslation)
             {
                 UseMultiLineDisplay = true;
+            }
+
+            if (LyricDockShowTranslation)
+            {
+                LyricDockUseMultiLineDisplay = true;
             }
         }
 
@@ -219,11 +239,16 @@ namespace LyricHover.App
                 var originalHoverSpectrum = SerializeHoverSpectrum(settings.HoverSpectrumStops);
                 var originalPassThroughOnHover = settings.PassThroughOnHover;
                 var originalSettingsTheme = settings.SettingsTheme;
+                var originalLanguage = settings.Language;
                 var originalLyricsSource = settings.LyricsSource;
                 var originalUseMultiLineDisplay = settings.UseMultiLineDisplay;
                 var originalShowTranslation = settings.ShowTranslation;
+                var originalIslandEnabled = settings.IslandEnabled;
                 var originalLyricDockEnabled = settings.LyricDockEnabled;
                 var originalLyricDockAlignment = settings.LyricDockAlignment;
+                var originalLyricDockUseMultiLineDisplay = settings.LyricDockUseMultiLineDisplay;
+                var originalLyricDockShowTranslation = settings.LyricDockShowTranslation;
+                var originalEnablePowerSavingMode = settings.EnablePowerSavingMode;
                 settings.Normalize();
                 if (settings.SchemaVersion != originalSchemaVersion ||
                     settings.Edge != originalEdge ||
@@ -236,11 +261,16 @@ namespace LyricHover.App
                     SerializeHoverSpectrum(settings.HoverSpectrumStops) != originalHoverSpectrum ||
                     settings.PassThroughOnHover != originalPassThroughOnHover ||
                     settings.SettingsTheme != originalSettingsTheme ||
+                    settings.Language != originalLanguage ||
                     settings.LyricsSource != originalLyricsSource ||
                     settings.UseMultiLineDisplay != originalUseMultiLineDisplay ||
                     settings.ShowTranslation != originalShowTranslation ||
+                    settings.IslandEnabled != originalIslandEnabled ||
                     settings.LyricDockEnabled != originalLyricDockEnabled ||
-                    settings.LyricDockAlignment != originalLyricDockAlignment)
+                    settings.LyricDockAlignment != originalLyricDockAlignment ||
+                    settings.LyricDockUseMultiLineDisplay != originalLyricDockUseMultiLineDisplay ||
+                    settings.LyricDockShowTranslation != originalLyricDockShowTranslation ||
+                    settings.EnablePowerSavingMode != originalEnablePowerSavingMode)
                 {
                     Save(settings);
                 }
@@ -290,6 +320,15 @@ namespace LyricHover.App
         System,
         Light,
         Dark
+    }
+
+    public enum AppLanguagePreference
+    {
+        System,
+        SimplifiedChinese,
+        TraditionalChinese,
+        English,
+        Japanese
     }
 }
 

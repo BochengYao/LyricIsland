@@ -15,6 +15,13 @@ namespace LyricHover.App.Modules
         private string displayedAccent;
         private string displayedSecondary;
         private int lyricsTransitionVersion;
+        private bool animationsEnabled = true;
+
+        public bool AnimationsEnabled
+        {
+            get => animationsEnabled;
+            set => animationsEnabled = value;
+        }
 
         public LyricsModuleView()
         {
@@ -49,6 +56,13 @@ namespace LyricHover.App.Modules
             displayedSecondary = secondary;
             displayedAccent = accent;
             var transitionVersion = ++lyricsTransitionVersion;
+
+            if (!animationsEnabled)
+            {
+                ApplyCurrentLyricsText(primary, secondary, accent);
+                ResetLyricsAnimationState();
+                return;
+            }
 
             if (!shouldAnimate)
             {
@@ -153,7 +167,7 @@ namespace LyricHover.App.Modules
             }
 
             var placement = MeasureAndPositionElement(element, transform, clip);
-            if (!placement.RequiresMarquee)
+            if (!animationsEnabled || !placement.RequiresMarquee)
             {
                 return;
             }

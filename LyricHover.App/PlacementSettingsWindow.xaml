@@ -15,6 +15,15 @@
         Icon="Assets/app-logo.png"
         PreviewMouseLeftButtonDown="Window_MouseLeftButtonDown">
     <Window.Resources>
+        <!-- Corner Radius Design Tokens：整页统一圆角层级，禁止散落硬编码 -->
+        <!-- 大型容器：窗口底衬、侧边导航卡、页面大卡片（通用/缓存/模块布局/歌词外观等） -->
+        <CornerRadius x:Key="RadiusLarge">18</CornerRadius>
+        <!-- 选择卡片与分段控件容器：水平积木/自动折叠卡片、分段选择外框 -->
+        <CornerRadius x:Key="RadiusMedium">14</CornerRadius>
+        <!-- 设置项控件：按钮、输入框、下拉框、Slider 滑块、Toggle 内部、内嵌小卡片 -->
+        <CornerRadius x:Key="RadiusSmall">10</CornerRadius>
+        <!-- 胶囊：完成按钮、ToggleSwitch 轨道与滑块、胶囊形预览条 -->
+        <CornerRadius x:Key="RadiusPill">999</CornerRadius>
         <SolidColorBrush x:Key="SettingsControlBackgroundBrush" Color="#F8FAFC" />
         <SolidColorBrush x:Key="SettingsControlForegroundBrush" Color="#1F2937" />
         <SolidColorBrush x:Key="SettingsControlMutedForegroundBrush" Color="#344054" />
@@ -36,9 +45,105 @@
         <SolidColorBrush x:Key="SettingsRootBackgroundBrush" Color="#F4F3FA" />
         <SolidColorBrush x:Key="SettingsSidebarBackgroundBrush" Color="#FBFBFD" />
         <SolidColorBrush x:Key="SettingsThemeToggleBackgroundBrush" Color="#ECECF2" />
+        <SolidColorBrush x:Key="SettingsCardBackgroundBrush" Color="#B3FFFFFF" />
+        <SolidColorBrush x:Key="SettingsSecondaryForegroundBrush" Color="#86868B" />
+        <Style x:Key="SettingsOverlayScrollThumbStyle" TargetType="Thumb">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border Margin="0,2"
+                                Background="#4D8E8E93"
+                                CornerRadius="3" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SettingsOverlayScrollBarStyle" TargetType="ScrollBar">
+            <Setter Property="Width" Value="6" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="Transparent">
+                            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.PageUpCommand" Focusable="False" Opacity="0" />
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.PageDownCommand" Focusable="False" Opacity="0" />
+                                </Track.IncreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Style="{StaticResource SettingsOverlayScrollThumbStyle}" />
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SettingsHiddenScrollbarScrollViewerStyle" TargetType="ScrollViewer">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollViewer">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ScrollContentPresenter x:Name="PART_ScrollContentPresenter"
+                                                    CanContentScroll="{TemplateBinding CanContentScroll}"
+                                                    Content="{TemplateBinding Content}"
+                                                    ContentTemplate="{TemplateBinding ContentTemplate}" />
+                            <ScrollBar x:Name="PART_VerticalScrollBar"
+                                       Grid.Column="1"
+                                       Width="6"
+                                       Margin="8,4,0,4"
+                                       Maximum="{TemplateBinding ScrollableHeight}"
+                                       Opacity="0"
+                                       Orientation="Vertical"
+                                       Style="{StaticResource SettingsOverlayScrollBarStyle}"
+                                       ViewportSize="{TemplateBinding ViewportHeight}"
+                                       Value="{Binding VerticalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="PART_VerticalScrollBar"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             To="1"
+                                                             Duration="0:0:0.2">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut" />
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="PART_VerticalScrollBar"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             To="0"
+                                                             Duration="0:0:0.2">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut" />
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
-            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+            <Setter Property="FontFamily" Value="Segoe UI Variable Display, Microsoft YaHei UI" />
             <Setter Property="FontSize" Value="13" />
         </Style>
         <Style x:Key="CardStyle" TargetType="Border">
@@ -46,7 +151,7 @@
             <Setter Property="Background" Value="{DynamicResource SettingsControlBackgroundBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource SettingsControlBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusLarge}" />
         </Style>
         <Style x:Key="SettingLabel" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource SettingsControlMutedForegroundBrush}" />
@@ -66,6 +171,58 @@
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="HorizontalAlignment" Value="Right" />
         </Style>
+        <Style x:Key="SettingsModuleHeadingStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style x:Key="SettingsSwitchStyle" TargetType="CheckBox">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Border x:Name="SwitchTrack"
+                                Width="42"
+                                Height="24"
+                                Background="{DynamicResource SettingsControlPressedBackgroundBrush}"
+                                BorderBrush="{DynamicResource SettingsControlBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{StaticResource RadiusPill}">
+                            <Border x:Name="SwitchKnob"
+                                    Width="20"
+                                    Height="20"
+                                    Margin="2,0"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center"
+                                    Background="White"
+                                    BorderBrush="{DynamicResource SettingsControlBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="{StaticResource RadiusPill}">
+                                <Border.RenderTransform>
+                                    <TranslateTransform />
+                                </Border.RenderTransform>
+                            </Border>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SettingsGlassCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource SettingsCardBackgroundBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusLarge}" />
+            <Setter Property="Padding" Value="32,28" />
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect BlurRadius="26"
+                                      Direction="270"
+                                      Opacity="0.12"
+                                      Color="#000000"
+                                      ShadowDepth="2" />
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="SidebarKeyboardFocusVisualStyle" TargetType="Control">
             <Setter Property="Template">
                 <Setter.Value>
@@ -73,18 +230,19 @@
                         <Border Margin="1"
                                 BorderBrush="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"
                                 BorderThickness="2"
-                                CornerRadius="9" />
+                                CornerRadius="{StaticResource RadiusSmall}" />
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
         <Style x:Key="SidebarButtonStyle" TargetType="RadioButton">
-            <Setter Property="Height" Value="42" />
+            <Setter Property="Height" Value="32" />
             <Setter Property="Margin" Value="0,0,0,6" />
             <Setter Property="Padding" Value="14,0" />
-            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+            <Setter Property="FontFamily" Value="Segoe UI Variable Display, Microsoft YaHei UI" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Opacity" Value="0.5" />
             <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="Transparent" />
@@ -97,7 +255,7 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="10">
+                                CornerRadius="{StaticResource RadiusPill}">
                             <ContentPresenter Margin="{TemplateBinding Padding}"
                                               VerticalAlignment="Center" />
                         </Border>
@@ -106,8 +264,9 @@
                                 <Setter TargetName="SidebarRoot" Property="Background" Value="{DynamicResource SettingsSidebarHoverBackgroundBrush}" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Opacity" Value="1" />
                                 <Setter TargetName="SidebarRoot" Property="Background" Value="{DynamicResource SettingsSidebarSelectedBackgroundBrush}" />
-                                <Setter TargetName="SidebarRoot" Property="BorderBrush" Value="{DynamicResource SettingsSidebarSelectedForegroundBrush}" />
+                                <Setter TargetName="SidebarRoot" Property="BorderBrush" Value="Transparent" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -169,9 +328,9 @@
             </Setter>
         </Style>
         <Style x:Key="SidebarIconStyle" TargetType="Path">
-            <Setter Property="Width" Value="18" />
-            <Setter Property="Height" Value="18" />
-            <Setter Property="Margin" Value="0,0,12,0" />
+            <Setter Property="Width" Value="16" />
+            <Setter Property="Height" Value="16" />
+            <Setter Property="Margin" Value="0,0,10,0" />
             <Setter Property="Stretch" Value="Uniform" />
             <Setter Property="Fill" Value="Transparent" />
             <Setter Property="Stroke" Value="{DynamicResource SettingsControlMutedForegroundBrush}" />
@@ -184,7 +343,7 @@
             <Setter Property="MinWidth" Value="86" />
             <Setter Property="Height" Value="34" />
             <Setter Property="Padding" Value="16,0" />
-            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+            <Setter Property="FontFamily" Value="Segoe UI Variable Display, Microsoft YaHei UI" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
             <Setter Property="Background" Value="{DynamicResource SettingsControlBackgroundBrush}" />
@@ -197,7 +356,7 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="9">
+                                CornerRadius="{StaticResource RadiusSmall}">
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center" />
                         </Border>
@@ -217,11 +376,11 @@
             <Setter Property="MinWidth" Value="86" />
             <Setter Property="Height" Value="34" />
             <Setter Property="Padding" Value="16,0" />
-            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+            <Setter Property="FontFamily" Value="Segoe UI Variable Display, Microsoft YaHei UI" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="Foreground" Value="White" />
-            <Setter Property="Background" Value="#1677FF" />
-            <Setter Property="BorderBrush" Value="#1677FF" />
+            <Setter Property="Background" Value="#0A84FF" />
+            <Setter Property="BorderBrush" Value="#0A84FF" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -230,18 +389,18 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="9">
+                                CornerRadius="{StaticResource RadiusSmall}">
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ButtonRoot" Property="Background" Value="#0F6BEF" />
-                                <Setter TargetName="ButtonRoot" Property="BorderBrush" Value="#0F6BEF" />
+                                <Setter TargetName="ButtonRoot" Property="Background" Value="#0071EB" />
+                                <Setter TargetName="ButtonRoot" Property="BorderBrush" Value="#0071EB" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="ButtonRoot" Property="Background" Value="#0B5FD7" />
-                                <Setter TargetName="ButtonRoot" Property="BorderBrush" Value="#0B5FD7" />
+                                <Setter TargetName="ButtonRoot" Property="Background" Value="#0064D2" />
+                                <Setter TargetName="ButtonRoot" Property="BorderBrush" Value="#0064D2" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -252,7 +411,7 @@
             <Setter Property="MinWidth" Value="86" />
             <Setter Property="Height" Value="34" />
             <Setter Property="Padding" Value="16,0" />
-            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+            <Setter Property="FontFamily" Value="Segoe UI Variable Display, Microsoft YaHei UI" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Template">
@@ -262,7 +421,38 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="9">
+                                CornerRadius="{StaticResource RadiusSmall}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonRoot" Property="Opacity" Value="0.92" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonRoot" Property="Opacity" Value="0.82" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SettingsDoneButtonStyle" TargetType="Button">
+            <Setter Property="MinWidth" Value="96" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Padding" Value="28,0" />
+            <Setter Property="FontFamily" Value="Segoe UI Variable Display, Microsoft YaHei UI" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonRoot"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{StaticResource RadiusPill}">
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center" />
                         </Border>
@@ -322,7 +512,7 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="9">
+                                CornerRadius="{StaticResource RadiusSmall}">
                             <ScrollViewer x:Name="PART_ContentHost"
                                           Margin="{TemplateBinding Padding}"
                                           VerticalAlignment="Center" />
@@ -334,7 +524,7 @@
                                     <Setter.Value>
                                         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
                                             <GradientStop Offset="0" Color="#5AA7FF" />
-                                            <GradientStop Offset="0.5" Color="#1677FF" />
+                                            <GradientStop Offset="0.5" Color="#0A84FF" />
                                             <GradientStop Offset="1" Color="#7C5CFF" />
                                         </LinearGradientBrush>
                                     </Setter.Value>
@@ -372,7 +562,7 @@
                                                 Background="{TemplateBinding Background}"
                                                 BorderBrush="{TemplateBinding BorderBrush}"
                                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                                CornerRadius="9">
+                                                CornerRadius="{StaticResource RadiusSmall}">
                                             <Grid>
                                                 <Path HorizontalAlignment="Right"
                                                       Margin="0,0,13,0"
@@ -413,7 +603,7 @@
                                         Background="{DynamicResource SettingsControlBackgroundBrush}"
                                         BorderBrush="{DynamicResource SettingsControlBorderBrush}"
                                         BorderThickness="1"
-                                        CornerRadius="10">
+                                        CornerRadius="{StaticResource RadiusSmall}">
                                     <ScrollViewer MaxHeight="220"
                                                   CanContentScroll="True"
                                                   KeyboardNavigation.DirectionalNavigation="Contained">
@@ -438,7 +628,7 @@
                     <ControlTemplate TargetType="ComboBoxItem">
                         <Border x:Name="ItemRoot"
                                 Background="Transparent"
-                                CornerRadius="7">
+                                CornerRadius="{StaticResource RadiusSmall}">
                             <ContentPresenter Margin="{TemplateBinding Padding}" />
                         </Border>
                         <ControlTemplate.Triggers>
@@ -455,7 +645,7 @@
         </Style>
         <Style TargetType="CheckBox">
             <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
-            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+            <Setter Property="FontFamily" Value="Segoe UI Variable Display, Microsoft YaHei UI" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -467,7 +657,7 @@
                                     Background="#FFFFFF"
                                     BorderBrush="#CBD3DF"
                                     BorderThickness="1.4"
-                                    CornerRadius="6">
+                                    CornerRadius="{StaticResource RadiusSmall}">
                                 <Path x:Name="CheckGlyph"
                                       Width="11"
                                       Height="8"
@@ -485,12 +675,12 @@
                         </StackPanel>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="CheckRoot" Property="Background" Value="#1677FF" />
-                                <Setter TargetName="CheckRoot" Property="BorderBrush" Value="#1677FF" />
+                            <Setter TargetName="CheckRoot" Property="Background" Value="#0A84FF" />
+                                <Setter TargetName="CheckRoot" Property="BorderBrush" Value="#0A84FF" />
                                 <Setter TargetName="CheckGlyph" Property="Visibility" Value="Visible" />
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="CheckRoot" Property="BorderBrush" Value="#1677FF" />
+                                <Setter TargetName="CheckRoot" Property="BorderBrush" Value="#0A84FF" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.5" />
@@ -516,7 +706,7 @@
                                         <RepeatButton.Template>
                                             <ControlTemplate TargetType="RepeatButton">
                                                 <Border Height="5"
-                                                        Background="#1677FF"
+                                                        Background="#0A84FF"
                                                         CornerRadius="3" />
                                             </ControlTemplate>
                                         </RepeatButton.Template>
@@ -544,7 +734,7 @@
                                                         Background="#FFFFFF"
                                                         BorderBrush="#C8D1DC"
                                                         BorderThickness="1"
-                                                        CornerRadius="9">
+                                                        CornerRadius="{StaticResource RadiusPill}">
                                                     <Border.Effect>
                                                         <DropShadowEffect BlurRadius="7"
                                                                           Direction="270"
@@ -554,10 +744,10 @@
                                                 </Border>
                                                 <ControlTemplate.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="ThumbRoot" Property="BorderBrush" Value="#1677FF" />
+                                                        <Setter TargetName="ThumbRoot" Property="BorderBrush" Value="#0A84FF" />
                                                     </Trigger>
                                                     <Trigger Property="IsDragging" Value="True">
-                                                        <Setter TargetName="ThumbRoot" Property="BorderBrush" Value="#1677FF" />
+                                                        <Setter TargetName="ThumbRoot" Property="BorderBrush" Value="#0A84FF" />
                                                         <Setter TargetName="ThumbRoot" Property="Background" Value="#F8FAFF" />
                                                     </Trigger>
                                                 </ControlTemplate.Triggers>
@@ -575,7 +765,7 @@
             <Setter Property="Height" Value="30" />
             <Setter Property="MinWidth" Value="92" />
             <Setter Property="Padding" Value="14,0" />
-            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+            <Setter Property="FontFamily" Value="Segoe UI Variable Display, Microsoft YaHei UI" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="Foreground" Value="{DynamicResource SettingsControlMutedForegroundBrush}" />
             <Setter Property="Background" Value="Transparent" />
@@ -587,7 +777,7 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="1"
-                                CornerRadius="8">
+                                CornerRadius="{StaticResource RadiusSmall}">
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center" />
                         </Border>
@@ -618,7 +808,7 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="1"
-                                CornerRadius="9">
+                                CornerRadius="{StaticResource RadiusSmall}">
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center" />
                         </Border>
@@ -639,7 +829,7 @@
     <Border x:Name="RootChrome"
             Background="{DynamicResource SettingsRootBackgroundBrush}"
             BorderThickness="0"
-            CornerRadius="8">
+            CornerRadius="{StaticResource RadiusLarge}">
         <Grid Margin="22,20,24,20">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -660,7 +850,7 @@
                                               Opacity="0.32"
                                               ShadowDepth="0" />
                         </Border.Effect>
-                        <Border CornerRadius="15"
+                        <Border CornerRadius="{StaticResource RadiusLarge}"
                                 ClipToBounds="True">
                             <Image Source="Assets/app-logo.png"
                                    Stretch="UniformToFill" />
@@ -688,7 +878,7 @@
                         Grid.Column="0"
                         Background="{DynamicResource SettingsSidebarBackgroundBrush}"
                         BorderThickness="0"
-                        CornerRadius="20"
+                        CornerRadius="{StaticResource RadiusLarge}"
                         Style="{StaticResource CardStyle}">
                     <Border.Effect>
                         <DropShadowEffect BlurRadius="24"
@@ -711,7 +901,7 @@
                             <StackPanel Orientation="Horizontal">
                                 <Path Style="{StaticResource SidebarIconStyle}"
                                       Data="M2,4 L18,4 M2,10 L18,10 M2,16 L13,16" />
-                                <TextBlock VerticalAlignment="Center" Text="歌词显示" />
+                                <TextBlock VerticalAlignment="Center" Text="通用" />
                             </StackPanel>
                         </RadioButton>
                         <RadioButton x:Name="PositionSectionButton"
@@ -723,17 +913,6 @@
                                 <Path Style="{StaticResource SidebarIconStyle}"
                                       Data="M10,1 L10,4 M10,16 L10,19 M1,10 L4,10 M16,10 L19,10 M10,4 A6,6 0 1 1 9.99,4 M10,7 A3,3 0 1 1 9.99,7" />
                                 <TextBlock VerticalAlignment="Center" Text="位置与状态" />
-                            </StackPanel>
-                        </RadioButton>
-                        <RadioButton x:Name="CacheSectionButton"
-                                     GroupName="SettingsSection"
-                                     Tag="Cache"
-                                     Checked="SectionButton_Checked"
-                                     Style="{StaticResource SidebarButtonStyle}">
-                            <StackPanel Orientation="Horizontal">
-                                <Path Style="{StaticResource SidebarIconStyle}"
-                                      Data="M3,3 L17,3 L19,9 L19,17 L1,17 L1,9 Z M1,9 L19,9 M14,13 L16,13" />
-                                <TextBlock VerticalAlignment="Center" Text="缓存" />
                             </StackPanel>
                         </RadioButton>
                         <RadioButton x:Name="HoverSectionButton"
@@ -767,6 +946,17 @@
                                 <Path Style="{StaticResource SidebarIconStyle}"
                                       Data="M2,2 L18,2 L18,18 L2,18 Z M7.33,2 L7.33,18 M12.66,2 L12.66,18 M2,7.33 L18,7.33 M2,12.66 L18,12.66" />
                                 <TextBlock VerticalAlignment="Center" Text="模块布局" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="LyricsAppearanceSectionButton"
+                                     GroupName="SettingsSection"
+                                     Tag="LyricsAppearance"
+                                     Checked="SectionButton_Checked"
+                                     Style="{StaticResource SidebarButtonStyle}">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource SidebarIconStyle}"
+                                      Data="M4,16 C4,14 6,14 7,13 L13.5,6.5 L15.5,8.5 L9,15 C8,16 8,16 6,16 Z M13.5,6.5 L14.8,5.2 L16.8,7.2 L15.5,8.5" />
+                                <TextBlock VerticalAlignment="Center" Text="歌词外观" />
                             </StackPanel>
                         </RadioButton>
                         <RadioButton x:Name="AboutSectionButton"
@@ -806,7 +996,7 @@
                                     HorizontalAlignment="Left"
                                     Background="{DynamicResource SettingsThemeToggleBackgroundBrush}"
                                     ClipToBounds="True"
-                                    CornerRadius="12">
+                                    CornerRadius="{StaticResource RadiusMedium}">
                                 <Grid>
                                     <Border x:Name="ThemeSelectionThumb"
                                             Width="62.6666666667"
@@ -816,7 +1006,7 @@
                                             Background="{DynamicResource SettingsSelectedBackgroundBrush}"
                                             BorderBrush="{DynamicResource SettingsControlBorderBrush}"
                                             BorderThickness="1"
-                                            CornerRadius="9">
+                                            CornerRadius="{StaticResource RadiusSmall}">
                                         <Border.RenderTransform>
                                             <TranslateTransform x:Name="ThemeSelectionTransform" />
                                         </Border.RenderTransform>
@@ -865,60 +1055,77 @@
                 <Border x:Name="ContentCard"
                         Grid.Column="2"
                         Margin="0,0,0,54"
-                        Padding="4,0,8,8"
+                        Padding="4,0,0,8"
                         Background="Transparent"
                         BorderThickness="0"
                         CornerRadius="0"
+                        ClipToBounds="True"
                         Style="{StaticResource CardStyle}">
                     <Grid>
-                        <Grid x:Name="LyricsSettingsPanel">
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto"
+                                      Style="{StaticResource SettingsHiddenScrollbarScrollViewerStyle}">
+                            <Grid MinHeight="{Binding ViewportHeight, RelativeSource={RelativeSource AncestorType=ScrollViewer}}">
+                        <Grid x:Name="LyricsAppearanceSettingsPanel"
+                              Visibility="Collapsed">
                             <Grid.RowDefinitions>
-                                 <RowDefinition Height="Auto" />
-                                 <RowDefinition Height="Auto" />
-                                 <RowDefinition Height="Auto" />
-                                 <RowDefinition Height="Auto" />
-                                 <RowDefinition Height="Auto" />
-                                 <RowDefinition Height="Auto" />
-                             </Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0"
+                                       Margin="0,0,0,24"
+                                       FontSize="22"
+                                       FontWeight="SemiBold"
+                                       Text="歌词外观" />
+
+                            <Border Grid.Row="1"
+                                    Padding="40"
+                                    Style="{StaticResource SettingsGlassCardStyle}">
+                            <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="56" />
+                                <RowDefinition Height="56" />
+                                <RowDefinition Height="56" />
+                            </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="148" />
+                                <ColumnDefinition Width="160" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
 
-                             <TextBlock Grid.Row="0"
+                            <TextBlock Grid.Row="0"
                                        Grid.ColumnSpan="2"
-                                       Margin="0,0,0,22"
-                                       FontSize="17"
-                                       FontWeight="SemiBold"
-                                       Text="歌词显示" />
+                                       Margin="0,0,0,14"
+                                       Style="{StaticResource SettingsModuleHeadingStyle}"
+                                       Text="歌词岛" />
 
                             <TextBlock Grid.Row="1"
                                        Grid.Column="0"
-                                       Margin="0,0,16,16"
+                                       Margin="0,0,16,0"
                                        Style="{StaticResource SettingLabel}"
-                                       Text="首选歌词源" />
-                            <ComboBox x:Name="LyricsSourceComboBox"
+                                       Text="开启歌词岛" />
+                            <CheckBox x:Name="IslandEnabledSwitch"
                                       Grid.Row="1"
                                       Grid.Column="1"
-                                      Margin="0,0,0,16"
-                                      DisplayMemberPath="DisplayName"
-                                      SelectedValuePath="Value" />
+                                      HorizontalAlignment="Right"
+                                      Style="{StaticResource SettingsSwitchStyle}" />
 
                             <TextBlock Grid.Row="2"
                                        Grid.Column="0"
-                                       Margin="0,0,16,16"
+                                       Margin="0,0,16,0"
                                        Style="{StaticResource SettingLabel}"
                                        Text="行数" />
                             <StackPanel Grid.Row="2"
                                         Grid.Column="1"
-                                        Margin="0,0,0,16"
                                         Orientation="Horizontal">
                                 <Border x:Name="LineModeSegmentRoot"
                                         Padding="3"
                                         VerticalAlignment="Center"
                                         Background="{DynamicResource SettingsControlPressedBackgroundBrush}"
                                         ClipToBounds="True"
-                                        CornerRadius="10">
+                                        CornerRadius="{StaticResource RadiusMedium}">
                                     <Grid>
                                         <Border x:Name="LineModeSelectionThumb"
                                                 Width="92"
@@ -928,7 +1135,7 @@
                                                 Background="{DynamicResource SettingsSelectedBackgroundBrush}"
                                                 BorderBrush="{DynamicResource SettingsControlBorderBrush}"
                                                 BorderThickness="1"
-                                                CornerRadius="8">
+                                                CornerRadius="{StaticResource RadiusSmall}">
                                             <Border.RenderTransform>
                                                 <TranslateTransform x:Name="LineModeSelectionTransform" />
                                             </Border.RenderTransform>
@@ -957,7 +1164,7 @@
                                         Background="{DynamicResource SettingsToastBackgroundBrush}"
                                         BorderBrush="{DynamicResource SettingsToastBorderBrush}"
                                         BorderThickness="1"
-                                        CornerRadius="10"
+                                        CornerRadius="{StaticResource RadiusSmall}"
                                         IsHitTestVisible="False">
                                     <TextBlock FontSize="12.5"
                                                Foreground="{DynamicResource SettingsToastForegroundBrush}"
@@ -972,39 +1179,191 @@
                             <CheckBox x:Name="ShowTranslationCheckBox"
                                       Grid.Row="3"
                                       Grid.Column="1"
-                                      VerticalAlignment="Center"
+                                      HorizontalAlignment="Right"
+                                      Style="{StaticResource SettingsSwitchStyle}"
                                       Checked="ShowTranslationCheckBox_Changed"
-                                      Unchecked="ShowTranslationCheckBox_Changed"
-                                      Content="显示歌词库里的中文翻译" />
+                                      Unchecked="ShowTranslationCheckBox_Changed" />
+                            </Grid>
+                            </Border>
+
+                            <Border Grid.Row="2"
+                                    Margin="0,26,0,0"
+                                    Padding="40"
+                                    Style="{StaticResource SettingsGlassCardStyle}">
+                            <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="56" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="56" />
+                                <RowDefinition Height="56" />
+                                <RowDefinition Height="56" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="160" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Row="0"
+                                       Grid.ColumnSpan="2"
+                                       Margin="0,0,0,14"
+                                       Style="{StaticResource SettingsModuleHeadingStyle}"
+                                       Text="歌词坞" />
+
+                            <TextBlock Grid.Row="1"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,0"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="开启歌词坞" />
+                            <CheckBox x:Name="LyricDockEnabledCheckBox"
+                                      Grid.Row="1"
+                                      Grid.Column="1"
+                                      HorizontalAlignment="Right"
+                                      Style="{StaticResource SettingsSwitchStyle}"
+                                      Checked="LyricDockEnabledCheckBox_Checked" />
+                            <TextBlock Grid.Row="2"
+                                       Grid.ColumnSpan="2"
+                                       Margin="0,0,0,12"
+                                       Foreground="{DynamicResource SettingsSecondaryForegroundBrush}"
+                                       FontSize="12"
+                                       TextWrapping="Wrap"
+                                       Text="首次开启会暂时隐藏系统小组件；仅在所选屏幕具备安全空间时显示，可随时关闭并自动恢复。" />
+
+                            <TextBlock Grid.Row="3"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,0"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="对齐" />
+                            <Border x:Name="DockAlignmentSegmentRoot"
+                                    Grid.Row="3"
+                                    Grid.Column="1"
+                                    Padding="3"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center"
+                                    Background="{DynamicResource SettingsControlPressedBackgroundBrush}"
+                                    ClipToBounds="True"
+                                    CornerRadius="{StaticResource RadiusMedium}">
+                                <Grid>
+                                    <Border x:Name="DockAlignmentSelectionThumb"
+                                            Width="92"
+                                            Height="30"
+                                            HorizontalAlignment="Left"
+                                            IsHitTestVisible="False"
+                                            Background="{DynamicResource SettingsSelectedBackgroundBrush}"
+                                            BorderBrush="{DynamicResource SettingsControlBorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="{StaticResource RadiusSmall}">
+                                        <Border.RenderTransform>
+                                            <TranslateTransform x:Name="DockAlignmentSelectionTransform" />
+                                        </Border.RenderTransform>
+                                    </Border>
+                                    <StackPanel Panel.ZIndex="1" Orientation="Horizontal">
+                                    <RadioButton x:Name="DockAlignmentCenterRadioButton"
+                                                 GroupName="DockAlignment"
+                                                 Style="{StaticResource SegmentButtonStyle}"
+                                                 Checked="DockAlignmentRadioButton_Checked"
+                                                 Content="居中" />
+                                    <RadioButton x:Name="DockAlignmentLeftRadioButton"
+                                                 GroupName="DockAlignment"
+                                                 Style="{StaticResource SegmentButtonStyle}"
+                                                 Checked="DockAlignmentRadioButton_Checked"
+                                                 Content="左对齐" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
 
                             <TextBlock Grid.Row="4"
                                        Grid.Column="0"
-                                       Margin="0,16,16,0"
+                                       Margin="0,0,16,0"
                                        Style="{StaticResource SettingLabel}"
-                                       Text="任务栏歌词" />
+                                       Text="行数" />
                             <StackPanel Grid.Row="4"
                                         Grid.Column="1"
-                                        Margin="0,16,0,0">
-                                <CheckBox x:Name="LyricDockEnabledCheckBox"
-                                          Checked="LyricDockEnabledCheckBox_Checked"
-                                          Content="显示歌词坞" />
-                                <StackPanel Margin="24,7,0,0" Orientation="Horizontal">
-                                    <TextBlock VerticalAlignment="Center" Margin="0,0,10,0" Text="对齐" />
-                                    <ComboBox x:Name="LyricDockAlignmentComboBox" Width="116" SelectedIndex="0">
-                                        <ComboBoxItem Content="居中" />
-                                        <ComboBoxItem Content="左对齐" />
-                                    </ComboBox>
-                                </StackPanel>
-                                <TextBlock Margin="24,5,0,0"
-                                           Foreground="{DynamicResource SettingsSecondaryForegroundBrush}"
-                                           FontSize="12"
-                                           TextWrapping="Wrap"
-                                           Text="首次开启会暂时隐藏系统小组件；仅在所选屏幕具备安全空间时显示，可随时关闭并自动恢复。" />
+                                        Orientation="Horizontal">
+                                <Border x:Name="DockLineModeSegmentRoot"
+                                        Padding="3"
+                                        VerticalAlignment="Center"
+                                        Background="{DynamicResource SettingsControlPressedBackgroundBrush}"
+                                        ClipToBounds="True"
+                                        CornerRadius="{StaticResource RadiusMedium}">
+                                    <Grid>
+                                        <Border x:Name="DockLineModeSelectionThumb"
+                                                Width="92"
+                                                Height="30"
+                                                HorizontalAlignment="Left"
+                                                IsHitTestVisible="False"
+                                                Background="{DynamicResource SettingsSelectedBackgroundBrush}"
+                                                BorderBrush="{DynamicResource SettingsControlBorderBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="{StaticResource RadiusSmall}">
+                                            <Border.RenderTransform>
+                                                <TranslateTransform x:Name="DockLineModeSelectionTransform" />
+                                            </Border.RenderTransform>
+                                        </Border>
+                                        <StackPanel Panel.ZIndex="1" Orientation="Horizontal">
+                                        <RadioButton x:Name="DockSingleLineRadioButton"
+                                                     GroupName="DockLineMode"
+                                                     Style="{StaticResource SegmentButtonStyle}"
+                                                     Checked="DockLineModeRadioButton_Checked"
+                                                     PreviewMouseLeftButtonDown="DockSingleLineRadioButton_PreviewMouseLeftButtonDown"
+                                                     Content="单行" />
+                                        <RadioButton x:Name="DockMultiLineRadioButton"
+                                                     GroupName="DockLineMode"
+                                                     Style="{StaticResource SegmentButtonStyle}"
+                                                     Checked="DockLineModeRadioButton_Checked"
+                                                     Content="多行" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                                <Border x:Name="DockTranslationModeToast"
+                                        Margin="10,0,0,0"
+                                        Padding="12,7"
+                                        VerticalAlignment="Center"
+                                        Opacity="0"
+                                        Visibility="Collapsed"
+                                        Background="{DynamicResource SettingsToastBackgroundBrush}"
+                                        BorderBrush="{DynamicResource SettingsToastBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="{StaticResource RadiusSmall}"
+                                        IsHitTestVisible="False">
+                                    <TextBlock FontSize="12.5"
+                                               Foreground="{DynamicResource SettingsToastForegroundBrush}"
+                                               Text="翻译模式下仅支持多行模式" />
+                                </Border>
                             </StackPanel>
+
+                            <TextBlock Grid.Row="5"
+                                       Grid.Column="0"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="翻译" />
+                            <CheckBox x:Name="DockShowTranslationCheckBox"
+                                      Grid.Row="5"
+                                      Grid.Column="1"
+                                      HorizontalAlignment="Right"
+                                      Style="{StaticResource SettingsSwitchStyle}"
+                                      Checked="DockShowTranslationCheckBox_Changed"
+                                      Unchecked="DockShowTranslationCheckBox_Changed" />
+                            </Grid>
+                            </Border>
                         </Grid>
 
                         <Grid x:Name="PositionSettingsPanel"
                               Visibility="Collapsed">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0"
+                                       Margin="0,0,0,24"
+                                       FontSize="22"
+                                       FontWeight="SemiBold"
+                                       Text="位置与状态" />
+
+                            <Border Grid.Row="1"
+                                    VerticalAlignment="Top"
+                                    Style="{StaticResource SettingsGlassCardStyle}">
+                        <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
@@ -1018,17 +1377,10 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="148" />
+                                <ColumnDefinition Width="160" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="76" />
                             </Grid.ColumnDefinitions>
-
-                            <TextBlock Grid.Row="0"
-                                       Grid.ColumnSpan="3"
-                                       Margin="0,0,0,22"
-                                       FontSize="17"
-                                       FontWeight="SemiBold"
-                                       Text="位置与状态" />
 
                             <TextBlock Grid.Row="1"
                                        Grid.Column="0"
@@ -1104,70 +1456,35 @@
                                        TextAlignment="Center"
                                        Style="{StaticResource SettingValue}" />
                         </Grid>
-
-                        <Grid x:Name="CacheSettingsPanel"
-                              Visibility="Collapsed">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="148" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-
-                            <TextBlock Grid.Row="0"
-                                       Grid.ColumnSpan="2"
-                                       Margin="0,0,0,22"
-                                       FontSize="17"
-                                       FontWeight="SemiBold"
-                                       Text="缓存" />
-
-                            <TextBlock Grid.Row="1"
-                                       Grid.Column="0"
-                                       Style="{StaticResource SettingLabel}"
-                                       Text="缓存容量" />
-                            <DockPanel Grid.Row="1"
-                                       Grid.Column="1"
-                                       LastChildFill="False">
-                                <TextBox x:Name="CacheLimitTextBox"
-                                         Width="118"
-                                         TextAlignment="Center" />
-                                <TextBlock Margin="8,0,0,0"
-                                           Style="{StaticResource SettingLabel}"
-                                           Text="MB" />
-                            </DockPanel>
-
-                            <StackPanel Grid.Row="2"
-                                        Grid.ColumnSpan="2"
-                                        Margin="0,24,0,0">
-                                <TextBlock Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
-                                           FontSize="12.5"
-                                           LineHeight="18"
-                                           LineStackingStrategy="BlockLineHeight"
-                                           TextWrapping="Wrap"
-                                           Text="缓存用于保存已经下载过的同步歌词，下次播放同一首歌时可以直接读取，减少等待和重复请求" />
-                                <TextBlock Margin="0,10,0,0"
-                                           Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
-                                           FontSize="12.5"
-                                           LineHeight="18"
-                                           LineStackingStrategy="BlockLineHeight"
-                                           TextWrapping="Wrap"
-                                           Text="按每首约10KB计算:实际数量会随歌词长度变化&#x0a;1 MB≈100首&#x0a;500 MB≈50,000首&#x0a;1000 MB≈100,000首" />
-                                <TextBlock Margin="0,10,0,0"
-                                           Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
-                                           FontSize="12.5"
-                                           LineHeight="18"
-                                           LineStackingStrategy="BlockLineHeight"
-                                           TextWrapping="Wrap"
-                                           Text="写入歌词或修改容量后会检查总大小&#x0a;超过上限时优先删除最久未使用的歌词，直到低于容量上限" />
-                            </StackPanel>
+                        </Border>
                         </Grid>
 
                         <Grid x:Name="HoverSettingsPanel"
-                              ClipToBounds="True"
                               Visibility="Collapsed">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <Grid Grid.Row="0"
+                                  Margin="0,0,0,24">
+                                <TextBlock VerticalAlignment="Center"
+                                           FontSize="22"
+                                           FontWeight="SemiBold"
+                                           Text="鼠标避让" />
+                                <Button x:Name="ResetHoverDefaultsButton"
+                                        MinWidth="80"
+                                        Height="30"
+                                        Padding="14,0"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Center"
+                                        Click="ResetHoverDefaultsButton_Click"
+                                        Content="恢复默认" />
+                            </Grid>
+
+                            <Border Grid.Row="1"
+                                    Style="{StaticResource SettingsGlassCardStyle}">
+                        <Grid ClipToBounds="True">
                           <Grid x:Name="HoverSettingsContent"
                                 Margin="0">
                             <Grid.RowDefinitions>
@@ -1184,27 +1501,10 @@
                                 <RowDefinition Height="*" MinHeight="34" />
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="148" />
+                                <ColumnDefinition Width="160" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="64" />
                             </Grid.ColumnDefinitions>
-
-                            <Grid Grid.Row="0"
-                                  Grid.ColumnSpan="3"
-                                  Margin="0,0,0,14">
-                                <TextBlock VerticalAlignment="Center"
-                                           FontSize="17"
-                                           FontWeight="SemiBold"
-                                           Text="鼠标避让" />
-                                <Button x:Name="ResetHoverDefaultsButton"
-                                        MinWidth="80"
-                                        Height="30"
-                                        Padding="14,0"
-                                        HorizontalAlignment="Right"
-                                        VerticalAlignment="Center"
-                                        Click="ResetHoverDefaultsButton_Click"
-                                        Content="恢复默认" />
-                            </Grid>
 
                             <TextBlock Grid.Row="1"
                                        Grid.Column="0"
@@ -1291,7 +1591,7 @@
                                     Background="#15171C"
                                     BorderBrush="#E6EAF0"
                                     BorderThickness="1"
-                                    CornerRadius="14">
+                                    CornerRadius="{StaticResource RadiusMedium}">
                                 <Grid ClipToBounds="True">
                                     <Grid Margin="12">
                                         <Grid.RowDefinitions>
@@ -1313,7 +1613,7 @@
                                                     HorizontalAlignment="Center"
                                                     VerticalAlignment="Center"
                                                     Background="#000000"
-                                                    CornerRadius="22">
+                                                    CornerRadius="{StaticResource RadiusPill}">
                                                 <Border.OpacityMask>
                                                     <RadialGradientBrush x:Name="HoverPreviewAura"
                                                                          MappingMode="Absolute"
@@ -1374,7 +1674,7 @@
                                         Margin="0"
                                         VerticalAlignment="Center">
                                 <Border Height="20"
-                                        CornerRadius="12"
+                                        CornerRadius="{StaticResource RadiusPill}"
                                         Background="{DynamicResource SettingsTrackBackgroundBrush}"
                                         BorderBrush="{DynamicResource SettingsControlBorderBrush}"
                                         BorderThickness="1"
@@ -1488,9 +1788,31 @@
                                        Style="{StaticResource SettingValue}" />
                           </Grid>
                         </Grid>
+                        </Border>
+                        </Grid>
 
                         <Grid x:Name="HotkeySettingsPanel"
                               Visibility="Collapsed">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Grid.Row="0"
+                                        Margin="0,0,0,24">
+                                <TextBlock FontSize="22"
+                                           FontWeight="SemiBold"
+                                           Text="快捷键" />
+                                <TextBlock Margin="0,5,0,0"
+                                           Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                           FontSize="13"
+                                           Text="单击后，按下新的快捷键组合" />
+                            </StackPanel>
+
+                            <Border Grid.Row="1"
+                                    VerticalAlignment="Top"
+                                    Style="{StaticResource SettingsGlassCardStyle}">
+                        <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
@@ -1499,21 +1821,9 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="150" />
+                                <ColumnDefinition Width="160" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-
-                            <StackPanel Grid.Row="0"
-                                        Grid.ColumnSpan="2"
-                                        Margin="0,0,0,16">
-                                <TextBlock FontSize="17"
-                                           FontWeight="SemiBold"
-                                           Text="快捷键" />
-                                <TextBlock Margin="0,5,0,0"
-                                           Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
-                                           FontSize="13"
-                                           Text="单击后，按下新的快捷键组合" />
-                            </StackPanel>
 
                             <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,0,16,16" Style="{StaticResource SettingLabel}" Text="歌词提前 0.5 秒" />
                             <TextBox x:Name="EarlierHotkeyTextBox" Grid.Row="1" Grid.Column="1" Margin="0,0,0,16"
@@ -1536,51 +1846,61 @@
                                      PreviewKeyDown="HotkeyTextBox_PreviewKeyDown" GotKeyboardFocus="HotkeyTextBox_GotKeyboardFocus" />
 
                         </Grid>
+                        </Border>
+                        </Grid>
 
-                         <Grid x:Name="LayoutSettingsPanel"
-                               ClipToBounds="True"
-                               Visibility="Collapsed">
-                           <Grid Margin="0">
-                             <Grid.RowDefinitions>
-                                 <RowDefinition Height="Auto" />
-                                 <RowDefinition Height="2.2*" MinHeight="118" />
-                                 <RowDefinition Height="1.05*" MinHeight="54" />
-                                  <RowDefinition Height="1.35*" MinHeight="76" />
-                                  <RowDefinition Height="0.75*" MinHeight="34" />
-                                  <RowDefinition Height="1.35*" MinHeight="112" />
-                                 <RowDefinition Height="Auto" />
-                             </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="148" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
+                        <Grid x:Name="LayoutSettingsPanel"
+                              Visibility="Collapsed">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0"
-                                       Grid.ColumnSpan="2"
-                                       Margin="0,0,0,12"
-                                       FontSize="17"
+                                       Margin="0,0,0,24"
+                                       FontSize="22"
                                        FontWeight="SemiBold"
                                        Text="模块布局" />
 
+                            <Border Grid.Row="1"
+                                    Style="{StaticResource SettingsGlassCardStyle}">
+                         <Grid ClipToBounds="True">
+                           <Grid Margin="0">
+                             <Grid.RowDefinitions>
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="Auto" />
+                                 <RowDefinition Height="2.2*" MinHeight="118" />
+                                 <RowDefinition Height="1.05*" MinHeight="54" />
+                                 <RowDefinition Height="0.75*" MinHeight="34" />
+                                 <RowDefinition Height="1.35*" MinHeight="112" />
+                                 <RowDefinition Height="Auto" />
+                             </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="160" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
                             <Border x:Name="LayoutEditTutorialHighlight"
-                                    Grid.Row="1"
+                                    Grid.Row="2"
                                     Grid.ColumnSpan="2"
                                     Margin="-10,-8,-10,4"
                                     Background="#321677FF"
-                                    CornerRadius="16"
+                                    CornerRadius="{StaticResource RadiusLarge}"
                                     IsHitTestVisible="False"
                                     Opacity="0" />
 
                              <TextBlock Grid.Row="1"
                                        Grid.Column="0"
+                                       Grid.ColumnSpan="2"
                                        Margin="0,8,16,0"
                                        VerticalAlignment="Top"
                                        Style="{StaticResource CompoundSettingLabel}"
                                        Text="编辑布局" />
                             <Grid x:Name="LayoutModePreviewPanel"
-                                  Grid.Row="1"
-                                  Grid.Column="1"
-                                  Margin="0"
+                                  Grid.Row="2"
+                                  Grid.Column="0"
+                                  Grid.ColumnSpan="2"
+                                  Margin="0,16,0,0"
                                   VerticalAlignment="Top"
                                   IsHitTestVisible="True">
                                 <Grid.RowDefinitions>
@@ -1603,7 +1923,7 @@
                                             Background="{DynamicResource SettingsControlBackgroundBrush}"
                                             BorderBrush="{DynamicResource SettingsControlBorderBrush}"
                                             BorderThickness="1"
-                                            CornerRadius="12">
+                                            CornerRadius="{StaticResource RadiusMedium}">
                                         <StackPanel>
                                             <Border Height="54"
                                                     Background="#FF000000"
@@ -1665,7 +1985,7 @@
                                             Background="{DynamicResource SettingsControlBackgroundBrush}"
                                             BorderBrush="{DynamicResource SettingsControlBorderBrush}"
                                             BorderThickness="1"
-                                            CornerRadius="12">
+                                            CornerRadius="{StaticResource RadiusMedium}">
                                         <StackPanel>
                                             <Grid Height="54" ClipToBounds="True">
                                                 <Border x:Name="ExpandablePreviewIsland"
@@ -1729,33 +2049,6 @@
                                 </Button>
 
                             </Grid>
-
-                            <TextBlock Grid.Row="2"
-                                       Grid.Column="0"
-                                       Margin="0,7,16,0"
-                                       VerticalAlignment="Top"
-                                       Style="{StaticResource CompoundSettingLabel}"
-                                       Text="播放器" />
-                            <StackPanel x:Name="LayoutPlayerRowContent"
-                                        Grid.Row="2"
-                                        Grid.Column="1"
-                                        Margin="0"
-                                        VerticalAlignment="Top">
-                                <ComboBox x:Name="PlayerSelectionComboBox"
-                                          DisplayMemberPath="DisplayName"
-                                          IsSynchronizedWithCurrentItem="False"
-                                          SelectedValuePath="Value"
-                                          SelectionChanged="PlayerSelectionComboBox_SelectionChanged" />
-                                <TextBlock x:Name="PlayerSelectionHintText"
-                                           Margin="0,5,0,0"
-                                           Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
-                                           FontSize="12"
-                                           TextWrapping="Wrap">
-                                    <Run Text="自动选择会跟随最近活跃的播放器" />
-                                    <LineBreak />
-                                    <Run Text="注：网易云音乐由于接口限制无法实时同步歌曲进度（播放器内拖动进度条无法同步）" />
-                                </TextBlock>
-                            </StackPanel>
 
                             <TextBlock Grid.Row="3"
                                        Grid.Column="0"
@@ -1870,10 +2163,260 @@
                             </StackPanel>
                            </Grid>
                          </Grid>
+                        </Border>
+                        </Grid>
+
+                        <Grid x:Name="LyricsSettingsPanel"
+                              Margin="0,0,40,0"
+                              HorizontalAlignment="Stretch">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0"
+                                       Margin="0,0,0,24"
+                                       FontSize="22"
+                                       FontWeight="SemiBold"
+                                       Text="通用" />
+
+                            <StackPanel Grid.Row="1">
+                                <Border Style="{StaticResource SettingsGlassCardStyle}">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="56" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="160" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Row="0"
+                                               Grid.Column="0"
+                                               Margin="0,0,16,0"
+                                               Style="{StaticResource SettingLabel}"
+                                               Text="首选歌词源" />
+                                    <ComboBox x:Name="LyricsSourceComboBox"
+                                              Grid.Row="0"
+                                              Grid.Column="1"
+                                              DisplayMemberPath="DisplayName"
+                                              SelectedValuePath="Value" />
+
+                                    <TextBlock Grid.Row="1"
+                                               Grid.Column="0"
+                                               Margin="0,7,16,0"
+                                               VerticalAlignment="Top"
+                                               Style="{StaticResource CompoundSettingLabel}"
+                                               Text="播放器" />
+                                    <StackPanel x:Name="LayoutPlayerRowContent"
+                                                Grid.Row="1"
+                                                Grid.Column="1"
+                                                Margin="0"
+                                                VerticalAlignment="Top">
+                                        <ComboBox x:Name="PlayerSelectionComboBox"
+                                                  DisplayMemberPath="DisplayName"
+                                                  IsSynchronizedWithCurrentItem="False"
+                                                  SelectedValuePath="Value"
+                                                  SelectionChanged="PlayerSelectionComboBox_SelectionChanged" />
+                                    </StackPanel>
+                                    <TextBlock x:Name="PlayerSelectionHintText"
+                                               Grid.Row="2"
+                                               Grid.Column="1"
+                                               Margin="0,6,0,16"
+                                               Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                               FontSize="12"
+                                               TextWrapping="Wrap">
+                                        <Run Text="自动选择会跟随最近活跃的播放器" />
+                                        <LineBreak />
+                                        <Run Text="注：网易云音乐由于接口限制无法实时同步歌曲进度（播放器内拖动进度条无法同步）" />
+                                    </TextBlock>
+                                    </Grid>
+                                </Border>
+
+                                <Border Margin="0,26,0,0"
+                                        Style="{StaticResource SettingsGlassCardStyle}">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="56" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="160" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Grid.Row="0"
+                                                   Grid.Column="0"
+                                                   Style="{StaticResource SettingLabel}"
+                                                   Text="节能模式" />
+                                        <CheckBox x:Name="PowerSavingModeCheckBox"
+                                                  Grid.Row="0"
+                                                  Grid.Column="1"
+                                                  HorizontalAlignment="Right"
+                                                  VerticalAlignment="Center"
+                                                  Style="{StaticResource SettingsSwitchStyle}" />
+                                        <TextBlock Grid.Row="1"
+                                                   Grid.Column="1"
+                                                   Margin="0,2,0,0"
+                                                   Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                                   FontSize="12.5"
+                                                   TextWrapping="Wrap"
+                                                   Text="降低刷新频率并关闭过渡动画，显著降低CPU与GPU占用，但歌词岛会失去流畅感" />
+                                        <Button x:Name="PowerSavingDetailsToggleButton"
+                                                Grid.Row="2"
+                                                Grid.Column="1"
+                                                Margin="0,8,0,0"
+                                                FontSize="12.5"
+                                                Foreground="#FF0A84FF"
+                                                Style="{StaticResource TextLinkButtonStyle}"
+                                                Click="PowerSavingDetailsToggle_Click"
+                                                Content="查看详情" />
+                                        <Button x:Name="PowerSavingDetailsCollapseButton"
+                                                Grid.Row="2"
+                                                Grid.Column="1"
+                                                Margin="0,8,0,0"
+                                                FontSize="12.5"
+                                                Foreground="#FF0A84FF"
+                                                Style="{StaticResource TextLinkButtonStyle}"
+                                                Click="PowerSavingDetailsToggle_Click"
+                                                Content="收起详情"
+                                                Visibility="Collapsed" />
+                                        <StackPanel x:Name="PowerSavingDetailsPanel"
+                                                    Grid.Row="3"
+                                                    Grid.ColumnSpan="2"
+                                                    Margin="0,10,0,0"
+                                                    Visibility="Collapsed">
+                                        <TextBlock Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                                   FontSize="12.5"
+                                                   LineHeight="18"
+                                                   LineStackingStrategy="BlockLineHeight"
+                                                   TextWrapping="Wrap"
+                                                   Text="定时任务降频：歌词岛主刷新从每秒4次降至每秒1次，鼠标接近探测从每秒25次降至每秒2次" />
+                                        <TextBlock Margin="0,10,0,0"
+                                                   Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                                   FontSize="12.5"
+                                                   LineHeight="18"
+                                                   LineStackingStrategy="BlockLineHeight"
+                                                   TextWrapping="Wrap"
+                                                   Text="关闭过渡动画：歌词切换的淡入淡出与位移、窗口位置与尺寸动画、模块出现与消失动画、悬停光晕均改为即时切换" />
+                                        <TextBlock Margin="0,10,0,0"
+                                                   Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                                   FontSize="12.5"
+                                                   LineHeight="18"
+                                                   LineStackingStrategy="BlockLineHeight"
+                                                   TextWrapping="Wrap"
+                                                   Text="开启后的影响：歌词岛没有平滑过渡，悬停探测响应略迟钝，但功耗显著降低" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <Border Margin="0,26,0,0"
+                                        Style="{StaticResource SettingsGlassCardStyle}">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="160" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Grid.Row="0"
+                                                   Grid.Column="0"
+                                                   Margin="0,0,16,12"
+                                                   Style="{StaticResource SettingLabel}"
+                                                   Text="缓存容量" />
+                                        <DockPanel Grid.Row="0"
+                                                   Grid.Column="1"
+                                                   Margin="0,0,0,12"
+                                                   LastChildFill="False">
+                                            <TextBox x:Name="CacheLimitTextBox"
+                                                     Width="118"
+                                                     TextAlignment="Center" />
+                                            <TextBlock Margin="8,0,0,0"
+                                                       Style="{StaticResource SettingLabel}"
+                                                       Text="MB" />
+                                        </DockPanel>
+
+                                        <TextBlock Grid.Row="1"
+                                                   Grid.Column="1"
+                                                   Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                                   FontSize="12.5"
+                                                   TextWrapping="Wrap"
+                                                   Text="用于保存已下载歌词，提高播放切换速度" />
+                                        <Button x:Name="CacheDetailsToggleButton"
+                                                Grid.Row="2"
+                                                Grid.Column="1"
+                                                Margin="0,8,0,0"
+                                                FontSize="12.5"
+                                                Foreground="#FF0A84FF"
+                                                Style="{StaticResource TextLinkButtonStyle}"
+                                                Click="CacheDetailsToggle_Click"
+                                                Content="查看详情" />
+                                        <Button x:Name="CacheDetailsCollapseButton"
+                                                Grid.Row="2"
+                                                Grid.Column="1"
+                                                Margin="0,8,0,0"
+                                                FontSize="12.5"
+                                                Foreground="#FF0A84FF"
+                                                Style="{StaticResource TextLinkButtonStyle}"
+                                                Click="CacheDetailsToggle_Click"
+                                                Content="收起详情"
+                                                Visibility="Collapsed" />
+                                        <StackPanel x:Name="CacheDetailsPanel"
+                                                    Grid.Row="3"
+                                                    Grid.ColumnSpan="2"
+                                                    Margin="0,10,0,0"
+                                                    Visibility="Collapsed">
+                                        <TextBlock Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                                   FontSize="12.5"
+                                                   LineHeight="18"
+                                                   LineStackingStrategy="BlockLineHeight"
+                                                   TextWrapping="Wrap"
+                                                   Text="缓存用于保存已经下载过的同步歌词，下次播放同一首歌时可以直接读取，减少等待和重复请求" />
+                                        <TextBlock Margin="0,10,0,0"
+                                                   Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                                   FontSize="12.5"
+                                                   LineHeight="18"
+                                                   LineStackingStrategy="BlockLineHeight"
+                                                   TextWrapping="Wrap"
+                                                   Text="按每首约10KB计算:实际数量会随歌词长度变化&#x0a;1 MB≈100首&#x0a;500 MB≈50,000首&#x0a;1000 MB≈100,000首" />
+                                        <TextBlock Margin="0,10,0,0"
+                                                   Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                                   FontSize="12.5"
+                                                   LineHeight="18"
+                                                   LineStackingStrategy="BlockLineHeight"
+                                                   TextWrapping="Wrap"
+                                                   Text="写入歌词或修改容量后会检查总大小&#x0a;超过上限时优先删除最久未使用的歌词，直到低于容量上限" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+                        </Grid>
 
                         <Grid x:Name="SupportSettingsPanel"
-                              ClipToBounds="True"
                               Visibility="Collapsed">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0"
+                                       Margin="0,0,0,24"
+                                       FontSize="22"
+                                       FontWeight="SemiBold"
+                                       Text="支持" />
+
+                            <Border Grid.Row="1"
+                                    Style="{StaticResource SettingsGlassCardStyle}">
+                        <Grid ClipToBounds="True">
                             <Grid.Resources>
                                 <Style x:Key="SupportActionTitleStyle" TargetType="TextBlock">
                                     <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
@@ -1892,7 +2435,7 @@
                                     <Setter Property="Background" Value="{DynamicResource SettingsControlBackgroundBrush}" />
                                     <Setter Property="BorderBrush" Value="{DynamicResource SettingsControlBorderBrush}" />
                                     <Setter Property="BorderThickness" Value="1" />
-                                    <Setter Property="CornerRadius" Value="9" />
+                                    <Setter Property="CornerRadius" Value="{StaticResource RadiusSmall}" />
                                     <Setter Property="ClipToBounds" Value="True" />
                                 </Style>
                                 <!-- Icon paths: Lucide (ISC), except the GitHub mark from Primer Octicons (MIT). -->
@@ -1932,10 +2475,6 @@
                                     <RowDefinition Height="1.45*" MinHeight="198" />
                                 </Grid.RowDefinitions>
 
-                                <TextBlock Grid.Row="0"
-                                           FontSize="29"
-                                           FontWeight="SemiBold"
-                                           Text="支持开发者" />
                                 <TextBlock Grid.Row="1"
                                            Margin="0,8,0,0"
                                            Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
@@ -2346,7 +2885,7 @@
                                                 <Border Background="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"
                                                         BorderBrush="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"
                                                         BorderThickness="1"
-                                                        CornerRadius="9">
+                                                        CornerRadius="{StaticResource RadiusSmall}">
                                                     <TextBox x:Name="SupporterNicknameTextBox"
                                                              Padding="16,0"
                                                              VerticalContentAlignment="Center"
@@ -2390,9 +2929,10 @@
                                  </Border>
                             </Grid>
                         </Grid>
+                        </Border>
+                        </Grid>
 
                         <Grid x:Name="AboutSettingsPanel"
-                              ClipToBounds="True"
                               Visibility="Collapsed">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
@@ -2400,13 +2940,15 @@
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0"
-                                       Margin="0,0,0,14"
-                                       FontSize="28"
+                                       Margin="0,0,0,24"
+                                       FontSize="22"
                                        FontWeight="SemiBold"
                                        Text="关于" />
 
+                            <Border Grid.Row="1"
+                                    Style="{StaticResource SettingsGlassCardStyle}">
+                        <Grid ClipToBounds="True">
                             <Grid x:Name="AboutPageBody"
-                                  Grid.Row="1"
                                   HorizontalAlignment="Stretch"
                                   VerticalAlignment="Stretch">
                                 <Grid.RowDefinitions>
@@ -2428,7 +2970,7 @@
                                                 Width="56"
                                                 Height="56"
                                                 VerticalAlignment="Center"
-                                                CornerRadius="10"
+                                                CornerRadius="{StaticResource RadiusSmall}"
                                                 ClipToBounds="True">
                                             <Border.Effect>
                                                 <DropShadowEffect BlurRadius="14"
@@ -2440,12 +2982,12 @@
                                             <Image Source="Assets/app-logo.png" Stretch="UniformToFill" />
                                         </Border>
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                            <TextBlock FontSize="21"
+                                            <TextBlock FontSize="28"
                                                        FontWeight="SemiBold"
                                                        Text="LyricHover" />
                                             <TextBlock Margin="0,2,0,0"
                                                        Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
-                                                       FontSize="13"
+                                                       FontSize="21"
                                                        Text="桌面同步歌词与模块化媒体控制" />
                                             <WrapPanel Margin="0,5,0,0">
                                                 <TextBlock Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
@@ -2683,6 +3225,10 @@
                                     <TextBlock Grid.Row="6" Text="申请中" Visibility="Collapsed" />
                             </Grid>
                         </Grid>
+                        </Border>
+                        </Grid>
+                            </Grid>
+                        </ScrollViewer>
                     </Grid>
                 </Border>
             </Grid>
@@ -2696,6 +3242,7 @@
                         Margin="0,0,8,0"
                         Click="CancelButton_Click"
                         IsCancel="True"
+                        Visibility="Collapsed"
                         Content="取消" />
                 <Button x:Name="ApplyButton"
                         MinWidth="112"
@@ -2703,14 +3250,14 @@
                         Margin="0,0,8,0"
                         Style="{StaticResource ActionButtonStyle}"
                         Click="ApplyButton_Click"
+                        Visibility="Collapsed"
                         Content="应用" />
                 <Button x:Name="SaveButton"
-                        MinWidth="112"
-                        Padding="20,0"
+                        Padding="28,0"
                         IsDefault="True"
-                        Style="{StaticResource ActionButtonStyle}"
+                        Style="{StaticResource SettingsDoneButtonStyle}"
                         Click="SaveButton_Click"
-                        Content="保存" />
+                        Content="完成" />
             </StackPanel>
 
         </Grid>

@@ -27,6 +27,11 @@ namespace LyricHover.Tests
                 return suite.ExitCode;
             }
 
+            if (args.Length == 1 && string.Equals(args[0], "--render-settings-screenshot", StringComparison.Ordinal))
+            {
+                return RenderSettingsScreenshot();
+            }
+
             suite.Run("parses synced lrc lines and metadata", ParsesSyncedLrcLinesAndMetadata);
             suite.Run("selects the current lyric line by playback position", SelectsCurrentLyricLineByPlaybackPosition);
             suite.Run("selects the current lyric line with timing offset", SelectsCurrentLyricLineWithTimingOffset);
@@ -94,6 +99,7 @@ namespace LyricHover.Tests
             suite.Run("taskbar controller shares a snapshot and honors width limits", TaskbarControllerSharesSnapshotAndHonorsWidthLimits);
             suite.Run("taskbar settings schema defaults to disabled", TaskbarSettingsSchemaDefaultsToDisabled);
             suite.Run("taskbar setting remains disabled when loading legacy settings", TaskbarSettingIsCompatibleWithLegacySettings);
+            suite.Run("power saving mode schema defaults to disabled", PowerSavingModeSchemaDefaultsToDisabled);
             suite.Run("taskbar controller restores Widgets and reports unsafe placement", TaskbarControllerRestoresWidgetsForUnsafePlacement);
             suite.Run("taskbar lease fails closed for recovery file IO errors", TaskbarLeaseFailsClosedForIoErrors);
             suite.Run("taskbar residual lease failure disables the feature and retains recovery", TaskbarResidualLeaseFailureDisablesFeature);
@@ -3933,6 +3939,71 @@ namespace LyricHover.Tests
             Assert.True(source.Contains("SchemaVersion = 3"));
             Assert.True(source.Contains("originalSchemaVersion"));
             Assert.False(source.Contains("LyricDockEnabled { get; set; } = true"));
+        }
+
+        static int RenderSettingsScreenshot()
+        {
+            var result = 1;
+            var thread = new Thread(() =>
+            {
+                try
+                {
+                    foreach (var field in typeof(System.Windows.Application).GetFields(System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic))
+                    {
+                        if (field.FieldType == typeof(System.Reflection.Assembly))
+                        {
+                            field.SetValue(null, typeof(LyricHover.App.PlacementSettingsWindow).Assembly);
+                        }
+                    }
+
+                    var app = new System.Windows.Application();
+                    var screens = new[] { new OverlayScreenArea("RenderTest", 0, 0, 1920, 1080, 0, 0, 1920, 1040) };
+                    var settings = new LyricHover.App.OverlayPlacementSettings { SettingsTheme = LyricHover.App.SettingsThemePreference.Dark };
+                    var window = new LyricHover.App.PlacementSettingsWindow(screens, settings, applied => { });
+                    window.Width = 1040;
+                    window.Height = 720;
+                    window.UpdateLayout();
+                    var target = (System.Windows.FrameworkElement)window.Content;
+                    target.Measure(new System.Windows.Size(1040, 720));
+                    target.Arrange(new System.Windows.Rect(0, 0, 1040, 720));
+                    target.UpdateLayout();
+                    var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap(1040, 720, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+                    bitmap.Render(target);
+                    var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                    encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
+                    var path = Path.Combine(Environment.GetEnvironmentVariable("TEMP"), "settings-render-check.png");
+                    using (var stream = File.Create(path))
+                    {
+                        encoder.Save(stream);
+                    }
+
+                    Console.WriteLine("RENDERED " + path);
+                    window.Close();
+                    result = 0;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("RENDER FAILED: " + ex);
+                    result = 1;
+                }
+            });
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.Start();
+            thread.Join();
+            return result;
+        }
+
+        static void PowerSavingModeSchemaDefaultsToDisabled()
+        {
+            var source = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "OverlayPlacementSettings.cs"));
+            Assert.True(source.Contains("public bool EnablePowerSavingMode { get; set; }"));
+            Assert.False(source.Contains("EnablePowerSavingMode { get; set; } = true"));
+            var settingsView = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "PlacementSettingsWindow.xaml"));
+            Assert.True(settingsView.Contains("PowerSavingModeCheckBox"));
+            var mainWindow = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "MainWindow.xaml.cs"));
+            Assert.True(mainWindow.Contains("ApplyPowerSavingState"));
+            Assert.True(mainWindow.Contains("PowerSavingTimerInterval"));
+            Assert.True(mainWindow.Contains("ModuleHost.SetAnimationsEnabled"));
         }
 
         static void TaskbarControllerRestoresWidgetsForUnsafePlacement()

@@ -60,6 +60,9 @@ namespace LyricHover.App
         private string currentPrimaryText = string.Empty;
         private string currentSecondaryText = string.Empty;
         private TimeSpan currentLineDuration = TimeSpan.FromSeconds(4);
+        private string dockLyricPrimaryText = string.Empty;
+        private string dockLyricSecondaryText = string.Empty;
+        private bool dockLyricOverrideActive;
         private DispatcherTimer startupHintTimer;
         private Forms.NotifyIcon trayIcon;
         private int positionAnimationVersion;
@@ -121,6 +124,11 @@ namespace LyricHover.App
         private const uint VkEscape = 0x1B;
         private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
         private const uint MOUSEEVENTF_LEFTUP = 0x0004;
+        private static readonly TimeSpan NormalTimerInterval = TimeSpan.FromMilliseconds(250);
+        private static readonly TimeSpan PowerSavingTimerInterval = TimeSpan.FromMilliseconds(1000);
+        private static readonly TimeSpan NormalHoverTimerInterval = TimeSpan.FromMilliseconds(40);
+        private static readonly TimeSpan PowerSavingHoverTimerInterval = TimeSpan.FromMilliseconds(500);
+        private bool powerSavingActive;
 
         public MainWindow()
         {
@@ -183,11 +191,20 @@ namespace LyricHover.App
             lyricsClient = CreateLyricsClient(selectedLyricsSource);
             InitializeTrayIcon();
 
-            timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+            powerSavingActive = placementSettings.EnablePowerSavingMode;
+            ModuleHost.SetAnimationsEnabled(!powerSavingActive);
+
+            timer = new DispatcherTimer
+            {
+                Interval = powerSavingActive ? PowerSavingTimerInterval : NormalTimerInterval
+            };
             timer.Tick += async (sender, args) => await RefreshAsync();
             timer.Start();
 
-            hoverProximityTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(40) };
+            hoverProximityTimer = new DispatcherTimer
+            {
+                Interval = powerSavingActive ? PowerSavingHoverTimerInterval : NormalHoverTimerInterval
+            };
             hoverProximityTimer.Tick += (sender, args) => UpdateHoverProximity();
 
             Loaded += async (sender, args) =>
@@ -433,6 +450,11 @@ namespace LyricHover.App
                     mediaSessions.WindowsCurrentSessionId);
                 currentSession = selected;
 
+                if (!placementSettings.IslandEnabled)
+                {
+                    HideIsland(true);
+                }
+
                 if (selected == null)
                 {
                     playbackIntents.CancelUnless(string.Empty);
@@ -561,6 +583,14 @@ namespace LyricHover.App
                     lyricOffset,
                     placementSettings.UseMultiLineDisplay,
                     placementSettings.ShowTranslation);
+                // The taskbar dock keeps its own lines/translation preference, independent
+                // from the island, so select a second snapshot with the dock settings.
+                var dockLines = LyricsDisplaySelector.Select(
+                    currentLyrics,
+                    timeline.Position,
+                    lyricOffset,
+                    placementSettings.LyricDockUseMultiLineDisplay,
+                    placementSettings.LyricDockShowTranslation);
                 var lineDuration = currentLyrics.GetCurrentLineDuration(
                     timeline.Position,
                     lyricOffset,
@@ -568,7 +598,9 @@ namespace LyricHover.App
                 SetIslandText(
                     lines.Count > 0 ? lines[0].Text : string.Empty,
                     lines.Count > 1 ? lines[1].Text : string.Empty,
-                    lineDuration);
+                    lineDuration,
+                    dockLines.Count > 0 ? dockLines[0].Text : string.Empty,
+                    dockLines.Count > 1 ? dockLines[1].Text : string.Empty);
                 ShowIsland();
             }
             catch (Exception ex)
@@ -589,7 +621,7 @@ namespace LyricHover.App
                 string lrc;
                 var cacheHit = cache.TryRead(track, out lrc);
                 var cachedLyrics = cacheHit ? LyricsPackageParser.Parse(lrc) : null;
-                var needsTranslation = placementSettings.ShowTranslation &&
+                var needsTranslation = (placementSettings.ShowTranslation || placementSettings.LyricDockShowTranslation) &&
                     !LyricsPackageParser.HasTranslation(lrc) &&
                     !LyricsDisplaySelector.ShouldIgnoreTranslation(cachedLyrics);
                 if (forceRefresh || !cacheHit || needsTranslation)
@@ -647,6 +679,11 @@ namespace LyricHover.App
 
         private void ShowIsland()
         {
+            if (!placementSettings.IslandEnabled)
+            {
+                return;
+            }
+
             if (islandVisible)
             {
                 UpdateInteractionStateLayout();
@@ -697,6 +734,14 @@ namespace LyricHover.App
 
         private void AnimateTo(double targetLeft, double targetTop)
         {
+            if (powerSavingActive)
+            {
+                ClearPositionAnimation();
+                Left = targetLeft;
+                Top = targetTop;
+                return;
+            }
+
             if (!positionAnimationTargets.TrySet(targetLeft, targetTop))
             {
                 return;
@@ -781,6 +826,11 @@ namespace LyricHover.App
 
         private void ShowHoverTransparency(Point localPoint, double intensity)
         {
+            if (powerSavingActive)
+            {
+                return;
+            }
+
             if (IsHoverTransparencySuppressed())
             {
                 if (backgroundHoverOpacityMask != null || lyricsHoverOpacityMask != null)
@@ -894,6 +944,12 @@ namespace LyricHover.App
             }
 
             if (suppressHoverTransparency)
+            {
+                HideHoverTransparency();
+                return;
+            }
+
+            if (powerSavingActive)
             {
                 HideHoverTransparency();
                 return;
@@ -1035,10 +1091,26 @@ namespace LyricHover.App
             return new OverlaySize(Width, Height);
         }
 
+        private void ApplyPowerSavingState()
+        {
+            var powerSaving = placementSettings.EnablePowerSavingMode;
+            powerSavingActive = powerSaving;
+            timer.Interval = powerSaving ? PowerSavingTimerInterval : NormalTimerInterval;
+            hoverProximityTimer.Interval = powerSaving ? PowerSavingHoverTimerInterval : NormalHoverTimerInterval;
+            ModuleHost.SetAnimationsEnabled(!powerSaving);
+            if (powerSaving)
+            {
+                ClearPositionAnimation();
+                islandSizeAnimationVersion++;
+                StopIslandSizeAnimationFrames();
+                HideHoverTransparency();
+            }
+        }
+
         private void ApplyPlacementSettings(OverlayPlacementSettings settings)
         {
             var previousSource = placementSettings.LyricsSource;
-            var previousShowTranslation = placementSettings.ShowTranslation;
+            var previousShowTranslation = placementSettings.ShowTranslation || placementSettings.LyricDockShowTranslation;
             var editedLayouts = placementSettings.IslandLayouts;
             placementSettings = settings ?? new OverlayPlacementSettings();
             placementSettings.IslandLayouts = editedLayouts ?? placementSettings.IslandLayouts;
@@ -1057,6 +1129,11 @@ namespace LyricHover.App
             settingsStore.Save(placementSettings);
             RegisterGlobalHotkeys();
             UpdateIslandShape();
+            ApplyPowerSavingState();
+            if (!placementSettings.IslandEnabled)
+            {
+                HideIsland(true);
+            }
             if (currentTrack != null && previousSource != placementSettings.LyricsSource)
             {
                 RefreshCurrentTrackLyrics(true);
@@ -1065,7 +1142,7 @@ namespace LyricHover.App
 
             if (currentTrack != null &&
                 !previousShowTranslation &&
-                placementSettings.ShowTranslation &&
+                (placementSettings.ShowTranslation || placementSettings.LyricDockShowTranslation) &&
                 !LyricsDisplaySelector.ShouldIgnoreTranslation(currentLyrics))
             {
                 RefreshCurrentTrackLyrics(false);
@@ -1323,6 +1400,25 @@ namespace LyricHover.App
         {
             var startWidth = islandVisualWidth > 0 ? islandVisualWidth : ActualWidth > 0 ? ActualWidth : Width;
             var startHeight = islandVisualHeight > 0 ? islandVisualHeight : ActualHeight > 0 ? ActualHeight : Height;
+            if (powerSavingActive)
+            {
+                islandSizeAnimationVersion++;
+                StopIslandSizeAnimationFrames();
+                BeginAnimation(WidthProperty, null);
+                BeginAnimation(HeightProperty, null);
+                ModuleHost.BeginAnimation(OpacityProperty, null);
+                ModuleHost.Opacity = 1.0;
+                Width = targetWidth;
+                Height = targetHeight;
+                IslandShellTranslate.X = 0;
+                var directPosition = OverlayPositioner.GetVisiblePosition(
+                    placementSettings.ToPlacement(), ResolveScreen(), new OverlaySize(targetWidth, targetHeight));
+                Left = directPosition.Left;
+                Top = directPosition.Top;
+                UpdateIslandSizeVisuals(targetWidth, targetHeight);
+                return;
+            }
+
             if (Math.Abs(targetWidth - startWidth) < 0.5 && Math.Abs(targetHeight - startHeight) < 0.5)
             {
                 islandSizeAnimationVersion++;
@@ -1469,9 +1565,22 @@ namespace LyricHover.App
 
         private void SetIslandText(string primary, string secondary, TimeSpan lineDuration)
         {
+            SetIslandText(primary, secondary, lineDuration, null, null);
+        }
+
+        private void SetIslandText(
+            string primary,
+            string secondary,
+            TimeSpan lineDuration,
+            string dockPrimary,
+            string dockSecondary)
+        {
             currentPrimaryText = primary ?? string.Empty;
             currentSecondaryText = secondary ?? string.Empty;
             currentLineDuration = lineDuration;
+            dockLyricOverrideActive = dockPrimary != null;
+            dockLyricPrimaryText = dockPrimary ?? string.Empty;
+            dockLyricSecondaryText = dockSecondary ?? string.Empty;
             RenderCurrentModuleState();
         }
 
@@ -1482,8 +1591,8 @@ namespace LyricHover.App
             {
                 Session = currentSession,
                 PendingPlaybackStatus = playbackIntents.GetDesiredStatus(currentSession?.SessionId),
-                PrimaryText = currentPrimaryText,
-                SecondaryText = currentSecondaryText,
+                PrimaryText = dockLyricOverrideActive ? dockLyricPrimaryText : currentPrimaryText,
+                SecondaryText = dockLyricOverrideActive ? dockLyricSecondaryText : currentSecondaryText,
                 AccentText = string.Empty,
                 TimelineReliability = currentTimelineReliability,
                 EffectivePosition = currentEffectivePosition,
@@ -1704,6 +1813,10 @@ namespace LyricHover.App
 
         private void DisableTaskbarLyrics(LyricDockFailureReason reason)
         {
+            // Persisting "off" must also force the controller off, so the dock surface can
+            // never keep showing while the stored setting says disabled.
+            LyricDockController.Configure(false, placementSettings.ScreenName, placementSettings.LyricDockAlignment);
+            settingsWindow?.NotifyTaskbarLyricsDisabled();
             if (!placementSettings.LyricDockEnabled)
             {
                 return;
@@ -1742,6 +1855,14 @@ namespace LyricHover.App
 
         private void OpenPlacementSettingsWindow(bool focusTaskbarLyrics = false)
         {
+            // Heal runtime/setting divergence before the window clones the settings: a dock
+            // that is actually showing must read as enabled, whatever was last persisted.
+            if (LyricDockController.IsEnabled && !placementSettings.LyricDockEnabled)
+            {
+                placementSettings.LyricDockEnabled = true;
+                settingsStore.Save(placementSettings);
+            }
+
             if (settingsWindow != null)
             {
                 SetSettingsWindowHoverSuppressed(true);

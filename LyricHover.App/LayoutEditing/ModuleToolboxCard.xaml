@@ -9,7 +9,7 @@
             Background="{DynamicResource SettingsControlBackgroundBrush}"
             BorderBrush="{DynamicResource SettingsControlBorderBrush}"
             BorderThickness="1"
-            CornerRadius="9">
+            CornerRadius="{DynamicResource RadiusSmall}">
         <StackPanel>
             <Path Width="19"
                   Height="19"

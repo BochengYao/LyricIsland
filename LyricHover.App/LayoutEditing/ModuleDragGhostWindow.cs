@@ -60,6 +60,7 @@ namespace LyricHover.App.LayoutEditing
             CopyBrush(sourceResources, "SettingsControlBorderBrush", Color.FromRgb(78, 88, 104));
             CopyBrush(sourceResources, "SettingsControlForegroundBrush", Colors.White);
             CopyBrush(sourceResources, "SettingsControlMutedForegroundBrush", Color.FromRgb(215, 220, 229));
+            Resources["RadiusSmall"] = new CornerRadius(10);
         }
 
         private void CopyBrush(ResourceDictionary sourceResources, string key, Color fallback)
