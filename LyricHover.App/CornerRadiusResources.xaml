@@ -1,0 +1,14 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Rounded rectangles: one shared iOS-style hierarchy. -->
+    <CornerRadius x:Key="RadiusLarge">18</CornerRadius>
+    <CornerRadius x:Key="RadiusMedium">14</CornerRadius>
+    <CornerRadius x:Key="RadiusSmall">10</CornerRadius>
+
+    <!-- True capsules: each radius is exactly half of its rendered height. -->
+    <CornerRadius x:Key="RadiusToggleTrack">12</CornerRadius>
+    <CornerRadius x:Key="RadiusToggleKnob">10</CornerRadius>
+    <CornerRadius x:Key="RadiusSliderThumb">9</CornerRadius>
+    <CornerRadius x:Key="RadiusPreviewIsland">26</CornerRadius>
+    <CornerRadius x:Key="RadiusPreviewBar">10</CornerRadius>
+</ResourceDictionary>

@@ -28,11 +28,6 @@ namespace LyricHover.Tests
                 return suite.ExitCode;
             }
 
-            if (args.Length == 1 && string.Equals(args[0], "--render-settings-screenshot", StringComparison.Ordinal))
-            {
-                return RenderSettingsScreenshot();
-            }
-
             if (args.Length == 1 && string.Equals(args[0], "--settings-runtime-state-fixture", StringComparison.Ordinal))
             {
                 suite.Run("settings edit drafts do not change committed or persisted state", SettingsEditDraftsStayIsolated);
@@ -221,6 +216,7 @@ namespace LyricHover.Tests
             suite.Run("mouse avoidance settings restores screenshot defaults", MouseAvoidanceSettingsRestoresScreenshotDefaults);
             suite.Run("click through keeps left drag available", ClickThroughKeepsLeftDragAvailable);
             suite.Run("settings window exposes theme mode switcher", SettingsWindowExposesThemeModeSwitcher);
+            suite.Run("settings surfaces share semantic corner radii", SettingsSurfacesShareSemanticCornerRadii);
             suite.Run("system theme follows Windows changes live", SystemThemeFollowsWindowsChangesLive);
             suite.Run("cache settings explains capacity and cleanup", CacheSettingsExplainsCapacityAndCleanup);
             suite.Run("settings layout exposes requested streamlined controls", SettingsLayoutExposesRequestedStreamlinedControls);
@@ -3276,6 +3272,37 @@ namespace LyricHover.Tests
             Assert.False(windowSource.Contains("foreach (var control in FindVisualChildren<Control>(root))"));
         }
 
+        static void SettingsSurfacesShareSemanticCornerRadii()
+        {
+            var root = GetSolutionRoot();
+            var resources = File.ReadAllText(Path.Combine(root, "LyricHover.App", "CornerRadiusResources.xaml"));
+            var app = File.ReadAllText(Path.Combine(root, "LyricHover.App", "App.xaml"));
+            var settings = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml"));
+            var information = File.ReadAllText(Path.Combine(root, "LyricHover.App", "InformationDialog.xaml"));
+            var supporterConfirmation = File.ReadAllText(Path.Combine(root, "LyricHover.App", "SupporterBadgeImprintConfirmationWindow.xaml"));
+            var taskbarConfirmation = File.ReadAllText(Path.Combine(root, "LyricHover.App", "TaskbarLyricsConfirmationWindow.xaml"));
+            var settingsSurfaces = string.Join("\n", settings, information, supporterConfirmation, taskbarConfirmation);
+            var settingsDialogs = string.Join("\n", information, supporterConfirmation, taskbarConfirmation);
+
+            Assert.True(resources.Contains("x:Key=\"RadiusLarge\">18<"));
+            Assert.True(resources.Contains("x:Key=\"RadiusMedium\">14<"));
+            Assert.True(resources.Contains("x:Key=\"RadiusSmall\">10<"));
+            Assert.True(resources.Contains("x:Key=\"RadiusToggleTrack\">12<"));
+            Assert.True(resources.Contains("x:Key=\"RadiusPreviewIsland\">26<"));
+            Assert.False(resources.Contains("999"));
+            Assert.True(app.Contains("ResourceDictionary Source=\"CornerRadiusResources.xaml\""));
+            Assert.Equal(4, CountOccurrences(settingsSurfaces, "ResourceDictionary Source=\"CornerRadiusResources.xaml\""));
+            Assert.False(settings.Contains("RadiusPill"));
+            Assert.True(settings.Contains("CornerRadius=\"{StaticResource RadiusToggleTrack}\""));
+            Assert.True(settings.Contains("CornerRadius=\"{StaticResource RadiusToggleKnob}\""));
+            Assert.True(settings.Contains("CornerRadius=\"{StaticResource RadiusSliderThumb}\""));
+            Assert.True(settings.Contains("CornerRadius=\"{StaticResource RadiusPreviewIsland}\""));
+            Assert.True(settings.Contains("CornerRadius=\"{StaticResource RadiusPreviewBar}\""));
+            Assert.False(settingsSurfaces.Contains("CornerRadius=\"999\""));
+            Assert.False(settingsDialogs.Contains("CornerRadius=\"20\""));
+            Assert.False(settingsDialogs.Contains("CornerRadius=\"9\""));
+        }
+
         static void SettingsFirstOpenTextUsesThemeResources()
         {
             var root = GetSolutionRoot();
@@ -4049,58 +4076,6 @@ namespace LyricHover.Tests
             Assert.True(source.Contains("SchemaVersion = 3"));
             Assert.True(source.Contains("originalSchemaVersion"));
             Assert.False(source.Contains("LyricDockEnabled { get; set; } = true"));
-        }
-
-        static int RenderSettingsScreenshot()
-        {
-            var result = 1;
-            var thread = new Thread(() =>
-            {
-                try
-                {
-                    foreach (var field in typeof(System.Windows.Application).GetFields(System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic))
-                    {
-                        if (field.FieldType == typeof(System.Reflection.Assembly))
-                        {
-                            field.SetValue(null, typeof(LyricHover.App.PlacementSettingsWindow).Assembly);
-                        }
-                    }
-
-                    var app = new System.Windows.Application();
-                    var screens = new[] { new OverlayScreenArea("RenderTest", 0, 0, 1920, 1080, 0, 0, 1920, 1040) };
-                    var settings = new LyricHover.App.OverlayPlacementSettings { SettingsTheme = LyricHover.App.SettingsThemePreference.Dark };
-                    var window = new LyricHover.App.PlacementSettingsWindow(screens, settings, applied => applied);
-                    window.Width = 1040;
-                    window.Height = 720;
-                    window.UpdateLayout();
-                    var target = (System.Windows.FrameworkElement)window.Content;
-                    target.Measure(new System.Windows.Size(1040, 720));
-                    target.Arrange(new System.Windows.Rect(0, 0, 1040, 720));
-                    target.UpdateLayout();
-                    var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap(1040, 720, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
-                    bitmap.Render(target);
-                    var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
-                    encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
-                    var path = Path.Combine(Environment.GetEnvironmentVariable("TEMP"), "settings-render-check.png");
-                    using (var stream = File.Create(path))
-                    {
-                        encoder.Save(stream);
-                    }
-
-                    Console.WriteLine("RENDERED " + path);
-                    window.Close();
-                    result = 0;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("RENDER FAILED: " + ex);
-                    result = 1;
-                }
-            });
-            thread.SetApartmentState(ApartmentState.STA);
-            thread.Start();
-            thread.Join();
-            return result;
         }
 
         static void PowerSavingModeSchemaDefaultsToDisabled()

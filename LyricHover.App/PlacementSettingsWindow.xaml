@@ -15,15 +15,10 @@
         Icon="Assets/app-logo.png"
         PreviewMouseLeftButtonDown="Window_MouseLeftButtonDown">
     <Window.Resources>
-        <!-- Corner Radius Design Tokens：整页统一圆角层级，禁止散落硬编码 -->
-        <!-- 大型容器：窗口底衬、侧边导航卡、页面大卡片（通用/缓存/模块布局/歌词外观等） -->
-        <CornerRadius x:Key="RadiusLarge">18</CornerRadius>
-        <!-- 选择卡片与分段控件容器：水平积木/自动折叠卡片、分段选择外框 -->
-        <CornerRadius x:Key="RadiusMedium">14</CornerRadius>
-        <!-- 设置项控件：按钮、输入框、下拉框、Slider 滑块、Toggle 内部、内嵌小卡片 -->
-        <CornerRadius x:Key="RadiusSmall">10</CornerRadius>
-        <!-- 胶囊：完成按钮、ToggleSwitch 轨道与滑块、胶囊形预览条 -->
-        <CornerRadius x:Key="RadiusPill">999</CornerRadius>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="CornerRadiusResources.xaml" />
+            </ResourceDictionary.MergedDictionaries>
         <SolidColorBrush x:Key="SettingsControlBackgroundBrush" Color="#F8FAFC" />
         <SolidColorBrush x:Key="SettingsControlForegroundBrush" Color="#1F2937" />
         <SolidColorBrush x:Key="SettingsControlMutedForegroundBrush" Color="#344054" />
@@ -188,7 +183,7 @@
                                 Background="{DynamicResource SettingsControlPressedBackgroundBrush}"
                                 BorderBrush="{DynamicResource SettingsControlBorderBrush}"
                                 BorderThickness="1"
-                                CornerRadius="{StaticResource RadiusPill}">
+                                CornerRadius="{StaticResource RadiusToggleTrack}">
                             <Border x:Name="SwitchKnob"
                                     Width="20"
                                     Height="20"
@@ -198,7 +193,7 @@
                                     Background="White"
                                     BorderBrush="{DynamicResource SettingsControlBorderBrush}"
                                     BorderThickness="1"
-                                    CornerRadius="{StaticResource RadiusPill}">
+                                    CornerRadius="{StaticResource RadiusToggleKnob}">
                                 <Border.RenderTransform>
                                     <TranslateTransform />
                                 </Border.RenderTransform>
@@ -255,7 +250,7 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="{StaticResource RadiusPill}">
+                                CornerRadius="{StaticResource RadiusSmall}">
                             <ContentPresenter Margin="{TemplateBinding Padding}"
                                               VerticalAlignment="Center" />
                         </Border>
@@ -452,7 +447,7 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="{StaticResource RadiusPill}">
+                                CornerRadius="{StaticResource RadiusSmall}">
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center" />
                         </Border>
@@ -734,7 +729,7 @@
                                                         Background="#FFFFFF"
                                                         BorderBrush="#C8D1DC"
                                                         BorderThickness="1"
-                                                        CornerRadius="{StaticResource RadiusPill}">
+                                                        CornerRadius="{StaticResource RadiusSliderThumb}">
                                                     <Border.Effect>
                                                         <DropShadowEffect BlurRadius="7"
                                                                           Direction="270"
@@ -824,6 +819,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        </ResourceDictionary>
     </Window.Resources>
 
     <Border x:Name="RootChrome"
@@ -1613,7 +1609,7 @@
                                                     HorizontalAlignment="Center"
                                                     VerticalAlignment="Center"
                                                     Background="#000000"
-                                                    CornerRadius="{StaticResource RadiusPill}">
+                                                    CornerRadius="{StaticResource RadiusPreviewIsland}">
                                                 <Border.OpacityMask>
                                                     <RadialGradientBrush x:Name="HoverPreviewAura"
                                                                          MappingMode="Absolute"
@@ -1674,7 +1670,7 @@
                                         Margin="0"
                                         VerticalAlignment="Center">
                                 <Border Height="20"
-                                        CornerRadius="{StaticResource RadiusPill}"
+                                        CornerRadius="{StaticResource RadiusPreviewBar}"
                                         Background="{DynamicResource SettingsTrackBackgroundBrush}"
                                         BorderBrush="{DynamicResource SettingsControlBorderBrush}"
                                         BorderThickness="1"

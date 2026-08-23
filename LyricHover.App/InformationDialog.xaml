@@ -15,6 +15,10 @@
         Loaded="Window_Loaded"
         PreviewKeyDown="Window_PreviewKeyDown">
     <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="CornerRadiusResources.xaml" />
+            </ResourceDictionary.MergedDictionaries>
         <SolidColorBrush x:Key="SettingsRootBackgroundBrush" Color="#F4F3FA" />
         <SolidColorBrush x:Key="SettingsControlForegroundBrush" Color="#1F2937" />
         <SolidColorBrush x:Key="SettingsControlMutedForegroundBrush" Color="#667085" />
@@ -37,7 +41,7 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="9">
+                                CornerRadius="{StaticResource RadiusSmall}">
                             <ContentPresenter Margin="14,0"
                                               HorizontalAlignment="Center"
                                               VerticalAlignment="Center" />
@@ -56,12 +60,13 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        </ResourceDictionary>
     </Window.Resources>
 
     <Border Background="{DynamicResource SettingsRootBackgroundBrush}"
             BorderBrush="{DynamicResource SettingsControlBorderBrush}"
             BorderThickness="1"
-            CornerRadius="20">
+            CornerRadius="{StaticResource RadiusLarge}">
         <Border.Effect>
             <DropShadowEffect BlurRadius="28"
                               Color="#66000000"
@@ -85,7 +90,7 @@
                 <Border Width="42"
                         Height="42"
                         Background="#1A1677FF"
-                        CornerRadius="14">
+                        CornerRadius="{StaticResource RadiusMedium}">
                     <Path Width="22"
                           Height="22"
                           HorizontalAlignment="Center"
@@ -115,7 +120,7 @@
                     Background="#F8FAFC"
                     BorderBrush="{DynamicResource SettingsControlBorderBrush}"
                     BorderThickness="1"
-                    CornerRadius="14">
+                    CornerRadius="{StaticResource RadiusMedium}">
                 <TextBlock x:Name="MessageTextBlock"
                            FontFamily="Microsoft YaHei UI"
                            FontSize="14"
