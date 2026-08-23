@@ -31,7 +31,7 @@ namespace LyricHover.App
         private readonly IReadOnlyList<OverlayScreenArea> screens;
         private readonly IReadOnlyList<MediaSessionSnapshot> playerSessions;
         private readonly IReadOnlyList<InstalledPlayer> installedPlayers;
-        private readonly Action<OverlayPlacementSettings> applySettings;
+        private readonly Func<OverlayPlacementSettings, OverlayPlacementSettings> applySettings;
         private readonly Action<IslandLayoutMode, bool> beginLayoutEditing;
         private readonly Action saveLayoutEditing;
         private readonly Action cancelLayoutEditing;
@@ -39,13 +39,14 @@ namespace LyricHover.App
         private readonly Action<IslandLayoutMode, double, double> updateDividerSettings;
         private readonly Action<IslandLayoutMode> removeDividers;
         private readonly Action<bool> setModuleDragActive;
-        private readonly Action<bool> setHoverTransparencySuppressed;
+        private AppLanguagePreference acceptedLanguagePreference;
         private readonly Func<IslandLayoutMode, IslandLayoutProfile> getLayoutDraftSnapshot;
         private readonly Action startTutorial;
         private readonly Action<string> tutorialSectionChanged;
         private readonly Func<bool> tryExitTutorial;
         private int acceptedCacheLimitMegabytes;
         private OverlayPlacementSettings workingSettings;
+        private OverlayPlacementSettings acceptedSettings;
         private SettingsDirtyStateTracker<OverlayPlacementSettings> dirtyStateTracker;
         private SettingsThemePreference selectedThemePreference = SettingsThemePreference.System;
         private bool initializingSettings = true;
@@ -150,7 +151,7 @@ namespace LyricHover.App
         public PlacementSettingsWindow(
             IReadOnlyList<OverlayScreenArea> screens,
             OverlayPlacementSettings currentSettings,
-            Action<OverlayPlacementSettings> applySettings,
+            Func<OverlayPlacementSettings, OverlayPlacementSettings> applySettings,
             IReadOnlyList<MediaSessionSnapshot> playerSessions = null,
             IReadOnlyList<InstalledPlayer> installedPlayers = null,
             Action<IslandLayoutMode, bool> beginLayoutEditing = null,
@@ -160,7 +161,6 @@ namespace LyricHover.App
             Action<IslandLayoutMode, double, double> updateDividerSettings = null,
             Action<IslandLayoutMode> removeDividers = null,
             Action<bool> setModuleDragActive = null,
-            Action<bool> setHoverTransparencySuppressed = null,
             Func<IslandLayoutMode, IslandLayoutProfile> getLayoutDraftSnapshot = null,
             Action startTutorial = null,
             Action<string> tutorialSectionChanged = null,
@@ -186,7 +186,6 @@ namespace LyricHover.App
             this.updateDividerSettings = updateDividerSettings;
             this.removeDividers = removeDividers;
             this.setModuleDragActive = setModuleDragActive;
-            this.setHoverTransparencySuppressed = setHoverTransparencySuppressed;
             this.getLayoutDraftSnapshot = getLayoutDraftSnapshot;
             this.startTutorial = startTutorial;
             this.tutorialSectionChanged = tutorialSectionChanged;
@@ -198,6 +197,8 @@ namespace LyricHover.App
             settings.Normalize();
             workingSettings = settings;
             workingSettings.Normalize();
+            acceptedSettings = settings.DeepClone();
+            acceptedLanguagePreference = settings.Language;
             UiLanguageService.SetPreference(settings.Language);
             InitializeLanguageSelector(settings.Language);
             InitializeScreenSelection(settings.ScreenName);
@@ -259,7 +260,6 @@ namespace LyricHover.App
                 InitializeSwitchKnobAnimations();
                 UpdateSegmentSelectionPositions(false);
                 CenterOnDesktop();
-                setHoverTransparencySuppressed?.Invoke(true);
                 UpdateLayoutModePreviewAnimation();
             };
             Closing += (sender, args) =>
@@ -272,7 +272,7 @@ namespace LyricHover.App
                 moduleDragGhost?.Close();
                 moduleDragGhost = null;
                 StopLayoutModePreviewAnimation();
-                setHoverTransparencySuppressed?.Invoke(false);
+                UiLanguageService.SetPreference(acceptedLanguagePreference);
                 if (layoutEditingActive)
                 {
                     CancelLayoutEditing();
@@ -416,6 +416,30 @@ namespace LyricHover.App
             QueueDirtyStateUpdate();
         }
 
+        public void NotifyTaskbarLyricsDisabled()
+        {
+            if (LyricDockEnabledCheckBox.IsChecked != true)
+            {
+                return;
+            }
+
+            suppressTaskbarLyricsConfirmation = true;
+            LyricDockEnabledCheckBox.IsChecked = false;
+            suppressTaskbarLyricsConfirmation = false;
+            if (workingSettings != null)
+            {
+                workingSettings.LyricDockEnabled = false;
+            }
+
+            if (acceptedSettings != null)
+            {
+                acceptedSettings.LyricDockEnabled = false;
+                dirtyStateTracker?.Accept(acceptedSettings);
+            }
+
+            QueueDirtyStateUpdate();
+        }
+
         public void ApplyPendingChangesForTutorial()
         {
             ApplyCurrentSettings();
@@ -426,24 +450,6 @@ namespace LyricHover.App
             ShowSection("LyricsAppearance");
             LyricsAppearanceSectionButton.IsChecked = true;
             LyricDockEnabledCheckBox.Focus();
-        }
-
-        public void NotifyTaskbarLyricsDisabled()
-        {
-            if (LyricDockEnabledCheckBox.IsChecked != true)
-            {
-                return;
-            }
-
-            // The controller was disabled externally (taskbar environment failure); mirror it
-            // onto the switch so the window never shows an enabled state that is no longer real.
-            suppressTaskbarLyricsConfirmation = true;
-            LyricDockEnabledCheckBox.IsChecked = false;
-            suppressTaskbarLyricsConfirmation = false;
-            if (workingSettings != null)
-            {
-                workingSettings.LyricDockEnabled = false;
-            }
         }
 
         // The dock controls live in a panel that is collapsed by default; their segmented
@@ -900,12 +906,16 @@ namespace LyricHover.App
         private void ApplyCurrentSettings()
         {
             var settings = CaptureSettings();
+            var committedSettings = applySettings(settings) ?? settings;
             SaveLayoutEditingIfActive();
-            applySettings(settings);
-            ReflectForcedDockState(settings);
-            workingSettings = settings.DeepClone();
-            acceptedCacheLimitMegabytes = settings.CacheLimitMegabytes;
-            dirtyStateTracker.Accept(settings);
+            IslandEnabledSwitch.IsChecked = committedSettings.IslandEnabled;
+            LyricDockEnabledCheckBox.IsChecked = committedSettings.LyricDockEnabled;
+            ReflectForcedDockState(committedSettings);
+            workingSettings = committedSettings.DeepClone();
+            acceptedSettings = committedSettings.DeepClone();
+            acceptedLanguagePreference = committedSettings.Language;
+            acceptedCacheLimitMegabytes = committedSettings.CacheLimitMegabytes;
+            dirtyStateTracker.Accept(committedSettings);
             settingsDirty = false;
             RefreshActionButtonVisuals(true);
 

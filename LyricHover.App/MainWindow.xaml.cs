@@ -40,13 +40,14 @@ namespace LyricHover.App
         private int lyricLoadGeneration;
         private readonly LyricsCache cache;
         private readonly OverlaySettingsStore settingsStore;
+        private readonly SettingsRuntimeStateCoordinator settingsStateCoordinator;
         private readonly WindowsLyricDockEnvironment lyricDockEnvironment;
         private readonly LyricDockController LyricDockController;
         private readonly ScreenCatalog screenCatalog = new ScreenCatalog();
         private ILyricsClient lyricsClient;
         private TimedLyrics currentLyrics = new TimedLyrics(new LyricLine[0]);
         private TrackIdentity currentTrack;
-        private OverlayPlacementSettings placementSettings;
+        private OverlayPlacementSettings placementSettings => settingsStateCoordinator.Current;
         private LyricsSourcePreference selectedLyricsSource = LyricsSourcePreference.Automatic;
         private LayoutEditSession layoutEditSession;
         private IslandLayoutMode layoutEditingMode = IslandLayoutMode.HorizontalBlocks;
@@ -160,7 +161,8 @@ namespace LyricHover.App
             mediaSessions.SessionsChanged += (sender, args) =>
                 Dispatcher.BeginInvoke(new Action(async () => await RefreshAsync()));
             settingsStore = new OverlaySettingsStore(settingsPath);
-            placementSettings = settingsStore.Load();
+            settingsStateCoordinator = new SettingsRuntimeStateCoordinator(settingsStore, settingsStore.Load());
+            UiLanguageService.SetPreference(placementSettings.Language);
             lyricDockEnvironment = new WindowsLyricDockEnvironment();
             var taskbarLease = new WidgetVisibilityLease(
                 lyricDockEnvironment,
@@ -180,8 +182,7 @@ namespace LyricHover.App
             if (settingsFileExisted && !placementSettings.HasSeenTutorial)
             {
                 // Existing installations predate the tutorial flag and must not be mistaken for a first launch.
-                placementSettings.HasSeenTutorial = true;
-                settingsStore.Save(placementSettings);
+                settingsStateCoordinator.CommitRuntimeMutation(settings => settings.HasSeenTutorial = true);
             }
             selectedLyricsSource = placementSettings.LyricsSource;
             lyricOffset = TimeSpan.FromMilliseconds(placementSettings.DefaultLyricOffsetMilliseconds);
@@ -226,8 +227,7 @@ namespace LyricHover.App
                 if (shouldStartFirstRunTutorial)
                 {
                     shouldStartFirstRunTutorial = false;
-                    placementSettings.HasSeenTutorial = true;
-                    settingsStore.Save(placementSettings);
+                    settingsStateCoordinator.CommitRuntimeMutation(settings => settings.HasSeenTutorial = true);
                     await StartTutorialAsync();
                 }
             };
@@ -702,7 +702,7 @@ namespace LyricHover.App
 
         private void HideIsland(bool animated)
         {
-            if (settingsWindow != null || tutorialFlow.IsActive)
+            if ((settingsWindow != null || tutorialFlow.IsActive) && placementSettings.IslandEnabled)
             {
                 ShowIsland();
                 return;
@@ -1107,14 +1107,20 @@ namespace LyricHover.App
             }
         }
 
-        private void ApplyPlacementSettings(OverlayPlacementSettings settings)
+        private OverlayPlacementSettings ApplyPlacementSettings(OverlayPlacementSettings settings)
         {
-            var previousSource = placementSettings.LyricsSource;
-            var previousShowTranslation = placementSettings.ShowTranslation || placementSettings.LyricDockShowTranslation;
-            var editedLayouts = placementSettings.IslandLayouts;
-            placementSettings = settings ?? new OverlayPlacementSettings();
-            placementSettings.IslandLayouts = editedLayouts ?? placementSettings.IslandLayouts;
-            placementSettings.Normalize();
+            return settingsStateCoordinator.ApplyDraft(settings, SynchronizePlacementSettingsRuntime);
+        }
+
+        private void SynchronizePlacementSettingsRuntime(
+            OverlayPlacementSettings previousSettings,
+            OverlayPlacementSettings runtimeSettings)
+        {
+            var previousSource = previousSettings.LyricsSource;
+            var previousShowTranslation = previousSettings.ShowTranslation || previousSettings.LyricDockShowTranslation;
+            var editedLayouts = previousSettings.IslandLayouts;
+            runtimeSettings.IslandLayouts = editedLayouts ?? runtimeSettings.IslandLayouts;
+            runtimeSettings.Normalize();
             interactionController.ExpandedDuration = TimeSpan.FromSeconds(placementSettings.ExpandedAutoCollapseSeconds);
             cache.SetMaxBytes(GetCacheLimitBytes(placementSettings));
             selectedLyricsSource = placementSettings.LyricsSource;
@@ -1123,10 +1129,9 @@ namespace LyricHover.App
             if (!LyricDockController.Configure(placementSettings.LyricDockEnabled, placementSettings.ScreenName, placementSettings.LyricDockAlignment) && taskbarWasRequested)
             {
                 placementSettings.LyricDockEnabled = false;
-                settings.LyricDockEnabled = false;
                 ShowTaskbarLyricsFailure(LyricDockController.LastFailureReason);
             }
-            settingsStore.Save(placementSettings);
+            UiLanguageService.SetPreference(placementSettings.Language);
             RegisterGlobalHotkeys();
             UpdateIslandShape();
             ApplyPowerSavingState();
@@ -1163,8 +1168,7 @@ namespace LyricHover.App
         {
             var screens = screenCatalog.GetScreens();
             var placement = OverlayPositioner.SnapToNearestEdge(Left, Top, GetOverlaySize(), screens);
-            placementSettings = CreateSettingsFromPlacement(placement);
-            settingsStore.Save(placementSettings);
+            settingsStateCoordinator.CommitRuntimeSnapshot(CreateSettingsFromPlacement(placement));
             UpdateIslandShape();
             if (currentTrack == null)
             {
@@ -1190,7 +1194,7 @@ namespace LyricHover.App
             var pointer = GetPointerScreenPoint(e.GetPosition(this));
             var screens = screenCatalog.GetScreens();
             var placement = OverlayPositioner.GetHorizontalDragPlacement(pointer.X, pointer.Y, GetOverlaySize(), screens);
-            placementSettings = CreateSettingsFromPlacement(placement);
+            settingsStateCoordinator.SetTransientRuntimeSnapshot(CreateSettingsFromPlacement(placement));
 
             var screen = screenCatalog.FindScreen(placement.ScreenName) ?? ResolveScreen();
             var position = OverlayPositioner.GetVisiblePosition(placement, screen, GetOverlaySize());
@@ -1228,7 +1232,7 @@ namespace LyricHover.App
             horizontalDragActive = false;
             horizontalDragPending = false;
             ReleaseMouseCapture();
-            settingsStore.Save(placementSettings);
+            settingsStateCoordinator.PersistCurrentRuntimeState();
             UpdateIslandShape();
             UpdateHoverProximity();
         }
@@ -1822,8 +1826,8 @@ namespace LyricHover.App
                 return;
             }
 
-            placementSettings.LyricDockEnabled = false;
-            settingsStore.Save(placementSettings);
+            settingsStateCoordinator.CommitRuntimeMutation(settings => settings.LyricDockEnabled = false);
+            settingsWindow?.NotifyTaskbarLyricsDisabled();
             ShowTaskbarLyricsFailure(reason);
         }
 
@@ -1874,7 +1878,7 @@ namespace LyricHover.App
 
             settingsWindow = new PlacementSettingsWindow(
                 screenCatalog.GetScreens(),
-                placementSettings,
+                settingsStateCoordinator.CreateEditSnapshot(),
                 ApplyPlacementSettings,
                 mediaSessions.Sessions,
                 InstalledPlayerCatalog.Detect(),
@@ -1885,7 +1889,6 @@ namespace LyricHover.App
                 UpdateDividerSettings,
                 RemoveDividers,
                 SetModuleDragActive,
-                SetSettingsWindowHoverSuppressed,
                 GetLayoutDraftSnapshot,
                 () => _ = StartTutorialAsync(),
                 OnTutorialSettingsSectionChanged,
@@ -1908,8 +1911,6 @@ namespace LyricHover.App
         private void BeginLayoutEditing(IslandLayoutMode mode, bool resetToDefault)
         {
             committedModuleDrops.Reset();
-            placementSettings.IslandLayouts = placementSettings.IslandLayouts ?? IslandLayoutDefaults.Create();
-            placementSettings.IslandLayouts.Mode = mode;
             layoutEditingMode = mode;
             var profile = resetToDefault
                 ? GetDefaultLayoutProfile(mode)
@@ -2053,15 +2054,12 @@ namespace LyricHover.App
                 return;
             }
 
-            var committed = layoutEditSession.Commit();
-            SetEditableLayoutProfile(layoutEditingMode, committed);
+            layoutEditSession.Commit();
             committedModuleDrops.Reset();
             layoutEditSession = null;
             layoutEditing = false;
             ModuleHost.LayoutEditingEnabled = false;
             interactionController.SetEditing(false);
-            placementSettings.Normalize();
-            settingsStore.Save(placementSettings);
             UpdateIslandShape();
         }
 

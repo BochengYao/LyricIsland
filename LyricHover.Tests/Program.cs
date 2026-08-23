@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using LyricHover.Core;
 using LyricHover.Core.Layout;
 using LyricHover.Core.Media;
+using LyricHover.App;
 using LyricHover.App.LyricDock;
 
 namespace LyricHover.Tests
@@ -30,6 +31,15 @@ namespace LyricHover.Tests
             if (args.Length == 1 && string.Equals(args[0], "--render-settings-screenshot", StringComparison.Ordinal))
             {
                 return RenderSettingsScreenshot();
+            }
+
+            if (args.Length == 1 && string.Equals(args[0], "--settings-runtime-state-fixture", StringComparison.Ordinal))
+            {
+                suite.Run("settings edit drafts do not change committed or persisted state", SettingsEditDraftsStayIsolated);
+                suite.Run("settings Apply synchronizes runtime and persists the effective state", SettingsApplySynchronizesRuntimeAndPersistsEffectiveState);
+                suite.Run("settings runtime state is restored after restart", SettingsRuntimeStateRestoresAfterRestart);
+                suite.Run("settings window lifecycle keeps temporary state out of business state", SettingsWindowLifecycleKeepsTemporaryStateIsolated);
+                return suite.ExitCode;
             }
 
             suite.Run("parses synced lrc lines and metadata", ParsesSyncedLrcLinesAndMetadata);
@@ -92,6 +102,10 @@ namespace LyricHover.Tests
             suite.Run("tracks normalized settings dirty state", TracksNormalizedSettingsDirtyState);
             suite.Run("layout draft snapshots are isolated", LayoutDraftSnapshotsAreIsolated);
             suite.Run("settings store backs up corrupt JSON", SettingsStoreBacksUpCorruptJson);
+            suite.Run("settings edit drafts do not change committed or persisted state", SettingsEditDraftsStayIsolated);
+            suite.Run("settings Apply synchronizes runtime and persists the effective state", SettingsApplySynchronizesRuntimeAndPersistsEffectiveState);
+            suite.Run("settings runtime state is restored after restart", SettingsRuntimeStateRestoresAfterRestart);
+            suite.Run("settings window lifecycle keeps temporary state out of business state", SettingsWindowLifecycleKeepsTemporaryStateIsolated);
             suite.Run("taskbar Widgets lease restores absent, disabled, and enabled states", TaskbarWidgetsLeaseRestoresOriginalStates);
             suite.Run("taskbar Widgets lease rolls back after refresh failure", TaskbarWidgetsLeaseRollsBackAfterRefreshFailure);
             suite.Run("taskbar Widgets lease fails fast when the OS blocks TaskbarDa writes", TaskbarWidgetsLeaseFailsFastWhenWritesAreBlocked);
@@ -1150,6 +1164,102 @@ namespace LyricHover.Tests
 
             Assert.True(source.Contains(".corrupt-"));
             Assert.True(source.Contains("File.Copy"));
+        }
+
+        static void SettingsEditDraftsStayIsolated()
+        {
+            WithTemporarySettingsStore((store, path) =>
+            {
+                var initial = new OverlayPlacementSettings { IslandEnabled = true };
+                store.Save(initial);
+                var coordinator = new SettingsRuntimeStateCoordinator(store, store.Load());
+
+                var draft = coordinator.CreateEditSnapshot();
+                draft.IslandEnabled = false;
+
+                Assert.True(coordinator.CreateEditSnapshot().IslandEnabled);
+                Assert.True(store.Load().IslandEnabled);
+            });
+        }
+
+        static void SettingsApplySynchronizesRuntimeAndPersistsEffectiveState()
+        {
+            WithTemporarySettingsStore((store, path) =>
+            {
+                var initial = new OverlayPlacementSettings
+                {
+                    IslandEnabled = true,
+                    LyricDockEnabled = false
+                };
+                store.Save(initial);
+                var coordinator = new SettingsRuntimeStateCoordinator(store, store.Load());
+                var draft = coordinator.CreateEditSnapshot();
+                draft.IslandEnabled = false;
+                draft.LyricDockEnabled = true;
+                var runtimeSawDraft = false;
+
+                var effective = coordinator.ApplyDraft(draft, (previous, runtime) =>
+                {
+                    runtimeSawDraft = previous.IslandEnabled && !runtime.IslandEnabled;
+                    runtime.LyricDockEnabled = false;
+                });
+
+                Assert.True(runtimeSawDraft);
+                Assert.False(effective.IslandEnabled);
+                Assert.False(effective.LyricDockEnabled);
+                var persisted = store.Load();
+                Assert.False(persisted.IslandEnabled);
+                Assert.False(persisted.LyricDockEnabled);
+            });
+        }
+
+        static void SettingsRuntimeStateRestoresAfterRestart()
+        {
+            WithTemporarySettingsStore((store, path) =>
+            {
+                store.Save(new OverlayPlacementSettings { IslandEnabled = true });
+                var firstRun = new SettingsRuntimeStateCoordinator(store, store.Load());
+                var draft = firstRun.CreateEditSnapshot();
+                draft.IslandEnabled = false;
+                firstRun.ApplyDraft(draft, (previous, runtime) => { });
+
+                var restarted = new SettingsRuntimeStateCoordinator(store, store.Load());
+
+                Assert.False(restarted.CreateEditSnapshot().IslandEnabled);
+            });
+        }
+
+        static void SettingsWindowLifecycleKeepsTemporaryStateIsolated()
+        {
+            var mainWindow = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "LyricHover.App", "MainWindow.xaml.cs"));
+            var settingsWindow = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "LyricHover.App", "PlacementSettingsWindow.xaml.cs"));
+
+            Assert.True(mainWindow.Contains("settingsStateCoordinator.CreateEditSnapshot()"));
+            Assert.True(mainWindow.Contains("SetSettingsWindowHoverSuppressed(true)"));
+            Assert.True(mainWindow.Contains("SetSettingsWindowHoverSuppressed(false)"));
+            Assert.False(settingsWindow.Contains("setHoverTransparencySuppressed"));
+            Assert.True(settingsWindow.Contains("UiLanguageService.SetPreference(acceptedLanguagePreference)"));
+            Assert.False(mainWindow.Contains("placementSettings.IslandLayouts.Mode = mode"));
+        }
+
+        static void WithTemporarySettingsStore(Action<OverlaySettingsStore, string> test)
+        {
+            var directory = Path.Combine(Path.GetTempPath(), "lyrichover-settings-state-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(directory);
+            var path = Path.Combine(directory, "settings.json");
+            try
+            {
+                test(new OverlaySettingsStore(path), path);
+            }
+            finally
+            {
+                if (Directory.Exists(directory))
+                {
+                    Directory.Delete(directory, true);
+                }
+            }
         }
 
         static void BuildsIslandGeometryForMeasuredModuleSize()
@@ -3959,7 +4069,7 @@ namespace LyricHover.Tests
                     var app = new System.Windows.Application();
                     var screens = new[] { new OverlayScreenArea("RenderTest", 0, 0, 1920, 1080, 0, 0, 1920, 1040) };
                     var settings = new LyricHover.App.OverlayPlacementSettings { SettingsTheme = LyricHover.App.SettingsThemePreference.Dark };
-                    var window = new LyricHover.App.PlacementSettingsWindow(screens, settings, applied => { });
+                    var window = new LyricHover.App.PlacementSettingsWindow(screens, settings, applied => applied);
                     window.Width = 1040;
                     window.Height = 720;
                     window.UpdateLayout();
