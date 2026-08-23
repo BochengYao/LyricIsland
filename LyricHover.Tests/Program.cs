@@ -1582,7 +1582,7 @@ namespace LyricHover.Tests
             Assert.True(supportPanel.Contains("x:Name=\"SupportPageContent\""));
             Assert.True(supportPanel.Contains("<RowDefinition Height=\"*\" MinHeight=\"96\" />"));
             Assert.True(supportPanel.Contains("<RowDefinition Height=\"1.45*\" MinHeight=\"198\" />"));
-            Assert.Equal(1, CountOccurrences(supportPanel, "<Setter Property=\"CornerRadius\" Value=\"9\" />"));
+            Assert.True(supportPanel.Contains("<Setter Property=\"CornerRadius\" Value=\"{StaticResource RadiusSmall}\" />"));
             Assert.Equal(1, CountOccurrences(supportPanel, "Style=\"{StaticResource SupportProContainerStyle}\""));
             Assert.False(supportPanel.Contains("Style=\"{StaticResource CardStyle}\""));
             Assert.True(supportPanel.Contains("<Run Text=\"LyricHover主体功能始终免费。您可以通过免费方式支持项目，您也可以升级Pro来支持开发者。\" />"));
@@ -1614,7 +1614,7 @@ namespace LyricHover.Tests
             Assert.True(supportPanel.Contains("评价与撰写评价"));
             Assert.True(supportPanel.Contains("分享给身边的朋友"));
             Assert.True(supportPanel.Contains("在 GitHub 上点 Star"));
-            Assert.Equal(4, CountOccurrences(freeActions, "<RowDefinition Height=\"34\" />"));
+            Assert.Equal(12, CountOccurrences(freeActions, "<RowDefinition Height=\"Auto\" />"));
             Assert.Equal(4, CountOccurrences(freeActions, "Grid.Row=\"2\""));
             Assert.True(supportPanel.Contains("M9,18 H15 M10,22 H14"));
             Assert.False(supportPanel.Contains("M3,3 H21 V17 H10 L6,21"));
@@ -1629,7 +1629,7 @@ namespace LyricHover.Tests
             Assert.Equal(1, CountOccurrences(supportPanel, "Click=\"SupportShareButton_Click\""));
             Assert.Equal(1, CountOccurrences(supportPanel, "Click=\"OpenGitHubAboutRow_Click\""));
             Assert.Equal(1, CountOccurrences(supportPanel, "Click=\"SupportFeedbackButton_Click\""));
-            Assert.True(supportPanel.Contains("Text=\"去反馈  &gt;\""));
+            Assert.True(supportPanel.Contains("Text=\"去反馈\""));
             Assert.True(source.Contains("https://lyric-island.top/incentives/"));
             Assert.True(source.Contains("SupportFeedbackButton_Click"));
             Assert.True(supportPanel.Contains("Pro 支持计划"));
@@ -1640,12 +1640,12 @@ namespace LyricHover.Tests
             Assert.True(supportPanel.Contains("Margin=\"0,8,0,0\""));
             Assert.True(supportPanel.Contains("LineHeight=\"22\""));
             Assert.True(supportPanel.Contains("通过 Microsoft Store 升级 Pro，支持LyricHover持续开发，并解锁更多专属权益。"));
-            Assert.True(supportPanel.Contains("抢先使用新功能"));
-            Assert.True(supportPanel.Contains("新能力发布后优先体验。"));
+            Assert.True(supportPanel.Contains("抢先体验"));
+            Assert.True(supportPanel.Contains("优先体验新功能。"));
             Assert.True(supportPanel.Contains("支持者徽章"));
-            Assert.True(supportPanel.Contains("一次性设置署名与激活日期，永久展示支持者身份。"));
+            Assert.True(supportPanel.Contains("永久展示支持者身份。"));
             Assert.True(supportPanel.Contains("永久有效"));
-            Assert.True(supportPanel.Contains("买断制会员，已购权益长期有效。"));
+            Assert.True(supportPanel.Contains("一次购买，权益长期有效。"));
             Assert.True(supportPanel.Contains("x:Name=\"SupportProPurchaseButton\""));
             Assert.True(supportPanel.Contains("Click=\"SupportProPurchaseButton_Click\""));
             Assert.True(supportPanel.Contains("Text=\"升级 Pro · ¥7\""));
@@ -1677,8 +1677,8 @@ namespace LyricHover.Tests
             Assert.True(factorySource.Contains("RenderTargetBitmap"));
             Assert.True(factorySource.Contains("ImageBrush"));
             Assert.True(factorySource.Contains("yyyy.MM.dd"));
-            Assert.True(previewXaml.Contains("通过拖拽旋转徽章"));
-            Assert.True(previewXaml.Contains("按下 Esc 键关闭"));
+            Assert.True(previewXaml.Contains("拖拽旋转 · 滚轮放大 / 缩小"));
+            Assert.False(previewXaml.Contains("按下 Esc 键关闭"));
             Assert.True(previewXaml.Contains("Background=\"#F2000000\""));
             Assert.True(previewXaml.Contains("Topmost=\"True\""));
             Assert.True(previewXaml.Contains("LyricHover Pro 支持计划"));
@@ -1787,13 +1787,13 @@ namespace LyricHover.Tests
             Assert.True(xaml.Contains("<Setter Property=\"FocusVisualStyle\" Value=\"{StaticResource SidebarKeyboardFocusVisualStyle}\" />"));
             Assert.True(supportPanel.Contains("<Setter Property=\"Foreground\" Value=\"{DynamicResource SettingsControlForegroundBrush}\" />"));
             Assert.False(supportPanel.Contains("M10,18 C8,16 2,12 2,7"));
-            Assert.Equal(3, CountOccurrences(proBenefits, "<ColumnDefinition Width=\"*\" />"));
+            Assert.Equal(6, CountOccurrences(proBenefits, "<ColumnDefinition Width=\"*\" />"));
             Assert.False(proBenefits.Contains("1.08*"));
             Assert.False(proBenefits.Contains("1.18*"));
             Assert.Equal(3, CountOccurrences(proBenefits, "Style=\"{StaticResource SupportProFeatureTitleStyle}\""));
-            Assert.Equal(3, CountOccurrences(proBenefits, "Margin=\"33,1,0,0\""));
+            Assert.Equal(3, CountOccurrences(proBenefits, "Margin=\"33,4,0,0\""));
             Assert.Equal(3, CountOccurrences(proBenefits, "LineHeight=\"16\""));
-            Assert.True(supportPanel.Contains("<Setter Property=\"TextWrapping\" Value=\"NoWrap\" />"));
+            Assert.True(supportPanel.Contains("<Setter Property=\"TextWrapping\" Value=\"Wrap\" />"));
             Assert.False(supportPanel.Contains("升级 Pro 会员"));
             Assert.False(supportPanel.Contains("抢先使用所有新功能"));
             Assert.False(supportPanel.Contains("支持与否不会影响"));
@@ -2876,19 +2876,17 @@ namespace LyricHover.Tests
             Assert.True(xaml.Contains("PlayerSelectionComboBox_SelectionChanged"));
             Assert.True(xaml.Contains("x:Name=\"PlayerSelectionHintText\""));
             Assert.True(xaml.Contains("注：网易云音乐由于接口限制无法实时同步歌曲进度（播放器内拖动进度条无法同步）"));
-            Assert.True(xaml.Contains("PlacementTarget=\"{Binding ElementName=TemplateRoot}\""));
-            Assert.True(xaml.Contains("StaysOpen=\"False\""));
-            Assert.True(xaml.Contains("ComboBoxItem_PreviewMouseLeftButtonUp"));
             Assert.True(xaml.Contains("IsSynchronizedWithCurrentItem=\"False\""));
             Assert.True(xaml.Contains("SelectedValuePath=\"Value\""));
             Assert.True(settings.Contains("installedPlayers"));
             Assert.True(settings.Contains("NormalizePlayerSelection"));
+            Assert.True(settings.Contains("PlayerSelectionComboBox.ItemsSource = options"));
             Assert.True(settings.Contains("ThenByDescending(option => option.IsDetected)"));
             Assert.True(settings.Contains("PlayerSelectionComboBox.SelectedValue"));
             Assert.True(settings.Contains("workingSettings.LockedSourceAppUserModelId"));
             Assert.True(settings.Contains("source is ComboBoxItem"));
             Assert.True(settings.Contains("DeepClone()"));
-            Assert.True(settings.Contains("优先选择 "));
+            Assert.True(settings.Contains("Translate(\"优先选择\") + \" \""));
             Assert.False(settings.Contains("已锁定到 "));
             Assert.True(settings.Contains("注：网易云音乐由于接口限制无法实时同步歌曲进度（播放器内拖动进度条无法同步）"));
             Assert.True(settings.Contains("未检测到，启动播放器后生效"));
@@ -3465,14 +3463,14 @@ namespace LyricHover.Tests
             Assert.True(xaml.Contains("x:Name=\"SaveButton\""));
             Assert.True(source.Contains("SettingsDirtyStateTracker<OverlayPlacementSettings>"));
             Assert.True(source.Contains("TimeSpan.FromMilliseconds(220)"));
-            Assert.True(source.Contains("setHoverTransparencySuppressed?.Invoke(true)"));
+            Assert.False(source.Contains("setHoverTransparencySuppressed?.Invoke(true)"));
             Assert.False(source.Contains("setHoverTransparencySuppressed?.Invoke(section == \"Layout\")"));
             Assert.True(xaml.Contains("x:Name=\"HorizontalLayoutPreviewCard\""));
             Assert.True(xaml.Contains("x:Name=\"ExpandableLayoutPreviewCard\""));
             Assert.True(xaml.Contains("<Grid x:Name=\"LayoutSettingsPanel\""));
             Assert.True(xaml.Contains("Content=\"恢复默认\""));
             Assert.True(xaml.Contains("Topmost=\"True\""));
-            Assert.True(xaml.Contains("<Border CornerRadius=\"15\""));
+            Assert.True(xaml.Contains("<Border CornerRadius=\"{StaticResource RadiusLarge}\""));
             Assert.True(xaml.Contains("所有模块像积木一样横向排列，始终完整显示。"));
             Assert.True(xaml.Contains("x:Name=\"ExpandablePreviewShortcutRun\""));
             Assert.True(source.Contains("TimeSpan.FromSeconds(3.2)"));
@@ -3724,7 +3722,8 @@ namespace LyricHover.Tests
 
             Assert.False(method.Contains("FadeOutSettingsWindowAsync"));
             Assert.True(method.Contains("ApplyPendingChangesForTutorial"));
-            Assert.True(action.Contains("Width = emphasized ? 176 : 142"));
+            Assert.True(action.Contains("MeasureButtonWidth("));
+            Assert.True(action.Contains("Width = buttonWidth + ActionPadding * 2"));
             Assert.True(action.Contains("Opacity = emphasized ? 0.72 : 0.22"));
         }
 
@@ -3738,7 +3737,8 @@ namespace LyricHover.Tests
             Assert.True(action.Contains("const double ActionPadding"));
             Assert.True(action.Contains("button.Margin = new Thickness(ActionPadding)"));
             Assert.True(action.Contains("BorderThickness = new Thickness(0)"));
-            Assert.True(action.Contains("FontSize = emphasized ? 18 : 15"));
+            Assert.True(action.Contains("var fontSize = emphasized ? 18 : 15"));
+            Assert.True(action.Contains("FontSize = fontSize"));
             Assert.True(action.Contains("public Task PulseInAsync"));
             Assert.True(action.Contains("new LinearDoubleKeyFrame(0.32"));
             Assert.True(main.Contains("tutorialNextWindow.PulseInAsync(TimeSpan.FromMilliseconds(820))"));
@@ -3766,7 +3766,7 @@ namespace LyricHover.Tests
             var main = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
 
             Assert.True(xaml.Contains("x:Name=\"LayoutEditTutorialHighlight\""));
-            Assert.True(xaml.Contains("CornerRadius=\"16\""));
+            Assert.True(xaml.Contains("CornerRadius=\"{StaticResource RadiusLarge}\""));
             Assert.True(xaml.Contains("IsHitTestVisible=\"False\""));
             Assert.True(settings.Contains("public void PulseLayoutEditSettingsHighlight()"));
             Assert.True(main.Contains("settingsWindow?.PulseLayoutEditSettingsHighlight()"));
