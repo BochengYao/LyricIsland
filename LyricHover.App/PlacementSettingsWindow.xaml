@@ -43,18 +43,30 @@
         <SolidColorBrush x:Key="SettingsCardBackgroundBrush" Color="#B3FFFFFF" />
         <SolidColorBrush x:Key="SettingsSecondaryForegroundBrush" Color="#86868B" />
         <Style x:Key="SettingsOverlayScrollThumbStyle" TargetType="Thumb">
+            <Setter Property="MinHeight" Value="36" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Thumb">
-                        <Border Margin="0,2"
-                                Background="#4D8E8E93"
-                                CornerRadius="3" />
+                        <Border x:Name="ScrollThumbVisual"
+                                Width="4"
+                                Margin="0,4"
+                                HorizontalAlignment="Center"
+                                Background="{DynamicResource SettingsControlForegroundBrush}"
+                                CornerRadius="2"
+                                Opacity="0.28" />
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ScrollThumbVisual" Property="Width" Value="6" />
+                                <Setter TargetName="ScrollThumbVisual" Property="CornerRadius" Value="3" />
+                                <Setter TargetName="ScrollThumbVisual" Property="Opacity" Value="0.48" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
         <Style x:Key="SettingsOverlayScrollBarStyle" TargetType="ScrollBar">
-            <Setter Property="Width" Value="6" />
+            <Setter Property="Width" Value="8" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -91,8 +103,8 @@
                                                     ContentTemplate="{TemplateBinding ContentTemplate}" />
                             <ScrollBar x:Name="PART_VerticalScrollBar"
                                        Grid.Column="1"
-                                       Width="6"
-                                       Margin="8,4,0,4"
+                                       Width="8"
+                                       Margin="10,8,2,8"
                                        Maximum="{TemplateBinding ScrollableHeight}"
                                        Opacity="0"
                                        Orientation="Vertical"
@@ -107,8 +119,8 @@
                                         <Storyboard>
                                             <DoubleAnimation Storyboard.TargetName="PART_VerticalScrollBar"
                                                              Storyboard.TargetProperty="Opacity"
-                                                             To="1"
-                                                             Duration="0:0:0.2">
+                                                             To="0.88"
+                                                             Duration="0:0:0.16">
                                                 <DoubleAnimation.EasingFunction>
                                                     <CubicEase EasingMode="EaseOut" />
                                                 </DoubleAnimation.EasingFunction>
@@ -122,7 +134,7 @@
                                             <DoubleAnimation Storyboard.TargetName="PART_VerticalScrollBar"
                                                              Storyboard.TargetProperty="Opacity"
                                                              To="0"
-                                                             Duration="0:0:0.2">
+                                                             Duration="0:0:0.35">
                                                 <DoubleAnimation.EasingFunction>
                                                     <CubicEase EasingMode="EaseOut" />
                                                 </DoubleAnimation.EasingFunction>
@@ -130,6 +142,9 @@
                                         </Storyboard>
                                     </BeginStoryboard>
                                 </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="ScrollableHeight" Value="0">
+                                <Setter TargetName="PART_VerticalScrollBar" Property="Visibility" Value="Collapsed" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -207,7 +222,7 @@
             <Setter Property="Background" Value="{DynamicResource SettingsCardBackgroundBrush}" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="CornerRadius" Value="{StaticResource RadiusLarge}" />
-            <Setter Property="Padding" Value="32,28" />
+            <Setter Property="Padding" Value="32,20" />
             <Setter Property="Effect">
                 <Setter.Value>
                     <DropShadowEffect BlurRadius="26"
@@ -231,13 +246,13 @@
             </Setter>
         </Style>
         <Style x:Key="SidebarButtonStyle" TargetType="RadioButton">
-            <Setter Property="Height" Value="32" />
-            <Setter Property="Margin" Value="0,0,0,6" />
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Margin" Value="0,0,0,5" />
             <Setter Property="Padding" Value="14,0" />
             <Setter Property="FontFamily" Value="Segoe UI Variable Display, Microsoft YaHei UI" />
-            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontSize" Value="14.5" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Opacity" Value="0.5" />
+            <Setter Property="Opacity" Value="0.72" />
             <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="Transparent" />
@@ -323,13 +338,13 @@
             </Setter>
         </Style>
         <Style x:Key="SidebarIconStyle" TargetType="Path">
-            <Setter Property="Width" Value="16" />
-            <Setter Property="Height" Value="16" />
-            <Setter Property="Margin" Value="0,0,10,0" />
+            <Setter Property="Width" Value="17" />
+            <Setter Property="Height" Value="17" />
+            <Setter Property="Margin" Value="0,0,12,0" />
             <Setter Property="Stretch" Value="Uniform" />
             <Setter Property="Fill" Value="Transparent" />
             <Setter Property="Stroke" Value="{DynamicResource SettingsControlMutedForegroundBrush}" />
-            <Setter Property="StrokeThickness" Value="1.5" />
+            <Setter Property="StrokeThickness" Value="1.6" />
             <Setter Property="StrokeStartLineCap" Value="Round" />
             <Setter Property="StrokeEndLineCap" Value="Round" />
             <Setter Property="StrokeLineJoin" Value="Round" />
@@ -900,6 +915,28 @@
                                 <TextBlock VerticalAlignment="Center" Text="通用" />
                             </StackPanel>
                         </RadioButton>
+                        <RadioButton x:Name="LyricsAppearanceSectionButton"
+                                     GroupName="SettingsSection"
+                                     Tag="LyricsAppearance"
+                                     Checked="SectionButton_Checked"
+                                     Style="{StaticResource SidebarButtonStyle}">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource SidebarIconStyle}"
+                                      Data="M4,16 C4,14 6,14 7,13 L13.5,6.5 L15.5,8.5 L9,15 C8,16 8,16 6,16 Z M13.5,6.5 L14.8,5.2 L16.8,7.2 L15.5,8.5" />
+                                <TextBlock VerticalAlignment="Center" Text="歌词外观" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="LayoutSectionButton"
+                                     GroupName="SettingsSection"
+                                     Tag="Layout"
+                                     Checked="SectionButton_Checked"
+                                     Style="{StaticResource SidebarButtonStyle}">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource SidebarIconStyle}"
+                                      Data="M2,2 L18,2 L18,18 L2,18 Z M7.33,2 L7.33,18 M12.66,2 L12.66,18 M2,7.33 L18,7.33 M2,12.66 L18,12.66" />
+                                <TextBlock VerticalAlignment="Center" Text="模块布局" />
+                            </StackPanel>
+                        </RadioButton>
                         <RadioButton x:Name="PositionSectionButton"
                                      GroupName="SettingsSection"
                                      Tag="Position"
@@ -931,28 +968,6 @@
                                 <Path Style="{StaticResource SidebarIconStyle}"
                                       Data="M7,7 L7,4 A3,3 0 1 0 4,7 Z M13,7 L13,4 A3,3 0 1 1 16,7 Z M7,13 L7,16 A3,3 0 1 1 4,13 Z M13,13 L13,16 A3,3 0 1 0 16,13 Z M7,7 L13,7 L13,13 L7,13 Z" />
                                 <TextBlock VerticalAlignment="Center" Text="快捷键" />
-                            </StackPanel>
-                        </RadioButton>
-                        <RadioButton x:Name="LayoutSectionButton"
-                                     GroupName="SettingsSection"
-                                     Tag="Layout"
-                                     Checked="SectionButton_Checked"
-                                     Style="{StaticResource SidebarButtonStyle}">
-                            <StackPanel Orientation="Horizontal">
-                                <Path Style="{StaticResource SidebarIconStyle}"
-                                      Data="M2,2 L18,2 L18,18 L2,18 Z M7.33,2 L7.33,18 M12.66,2 L12.66,18 M2,7.33 L18,7.33 M2,12.66 L18,12.66" />
-                                <TextBlock VerticalAlignment="Center" Text="模块布局" />
-                            </StackPanel>
-                        </RadioButton>
-                        <RadioButton x:Name="LyricsAppearanceSectionButton"
-                                     GroupName="SettingsSection"
-                                     Tag="LyricsAppearance"
-                                     Checked="SectionButton_Checked"
-                                     Style="{StaticResource SidebarButtonStyle}">
-                            <StackPanel Orientation="Horizontal">
-                                <Path Style="{StaticResource SidebarIconStyle}"
-                                      Data="M4,16 C4,14 6,14 7,13 L13.5,6.5 L15.5,8.5 L9,15 C8,16 8,16 6,16 Z M13.5,6.5 L14.8,5.2 L16.8,7.2 L15.5,8.5" />
-                                <TextBlock VerticalAlignment="Center" Text="歌词外观" />
                             </StackPanel>
                         </RadioButton>
                         <RadioButton x:Name="AboutSectionButton"
@@ -1071,7 +1086,7 @@
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0"
-                                       Margin="0,0,0,24"
+                                       Margin="0,0,0,18"
                                        FontSize="22"
                                        FontWeight="SemiBold"
                                        Text="歌词外观" />
@@ -1351,7 +1366,7 @@
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0"
-                                       Margin="0,0,0,24"
+                                       Margin="0,0,0,18"
                                        FontSize="22"
                                        FontWeight="SemiBold"
                                        Text="位置与状态" />
@@ -1463,7 +1478,7 @@
                             </Grid.RowDefinitions>
 
                             <Grid Grid.Row="0"
-                                  Margin="0,0,0,24">
+                                  Margin="0,0,0,18">
                                 <TextBlock VerticalAlignment="Center"
                                            FontSize="22"
                                            FontWeight="SemiBold"
@@ -1795,7 +1810,7 @@
                             </Grid.RowDefinitions>
 
                             <StackPanel Grid.Row="0"
-                                        Margin="0,0,0,24">
+                                        Margin="0,0,0,18">
                                 <TextBlock FontSize="22"
                                            FontWeight="SemiBold"
                                            Text="快捷键" />
@@ -1853,7 +1868,7 @@
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0"
-                                       Margin="0,0,0,24"
+                                       Margin="0,0,0,18"
                                        FontSize="22"
                                        FontWeight="SemiBold"
                                        Text="模块布局" />
@@ -2171,7 +2186,7 @@
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0"
-                                       Margin="0,0,0,24"
+                                       Margin="0,0,0,18"
                                        FontSize="22"
                                        FontWeight="SemiBold"
                                        Text="通用" />
@@ -2220,7 +2235,7 @@
                                     <TextBlock x:Name="PlayerSelectionHintText"
                                                Grid.Row="2"
                                                Grid.Column="1"
-                                               Margin="0,6,0,16"
+                                               Margin="0,6,0,10"
                                                Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
                                                FontSize="12"
                                                TextWrapping="Wrap">
@@ -2231,7 +2246,7 @@
                                     </Grid>
                                 </Border>
 
-                                <Border Margin="0,26,0,0"
+                                <Border Margin="0,18,0,0"
                                         Style="{StaticResource SettingsGlassCardStyle}">
                                     <Grid>
                                         <Grid.RowDefinitions>
@@ -2310,7 +2325,7 @@
                                     </Grid>
                                 </Border>
 
-                                <Border Margin="0,26,0,0"
+                                <Border Margin="0,18,0,0"
                                         Style="{StaticResource SettingsGlassCardStyle}">
                                     <Grid>
                                         <Grid.RowDefinitions>
@@ -2405,7 +2420,7 @@
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0"
-                                       Margin="0,0,0,24"
+                                       Margin="0,0,0,18"
                                        FontSize="22"
                                        FontWeight="SemiBold"
                                        Text="支持" />
@@ -2935,7 +2950,7 @@
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0"
-                                       Margin="0,0,0,24"
+                                       Margin="0,0,0,18"
                                        FontSize="22"
                                        FontWeight="SemiBold"
                                        Text="关于" />

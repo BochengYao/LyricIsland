@@ -220,6 +220,7 @@ namespace LyricHover.Tests
             suite.Run("system theme follows Windows changes live", SystemThemeFollowsWindowsChangesLive);
             suite.Run("cache settings explains capacity and cleanup", CacheSettingsExplainsCapacityAndCleanup);
             suite.Run("settings layout exposes requested streamlined controls", SettingsLayoutExposesRequestedStreamlinedControls);
+            suite.Run("settings navigation follows Apple density and priority", SettingsNavigationFollowsAppleDensityAndPriority);
             suite.Run("divider settings update layout modules", DividerSettingsUpdateLayoutModules);
             suite.Run("hover mask restores full opacity outside aura", HoverMaskRestoresFullOpacityOutsideAura);
             suite.Run("settings first open text uses theme resources", SettingsFirstOpenTextUsesThemeResources);
@@ -3516,6 +3517,44 @@ namespace LyricHover.Tests
             Assert.True(main.Contains("settingsWindowHoverSuppressed || moduleDragActive"));
             Assert.True(main.Contains("SetSettingsWindowHoverSuppressed"));
             Assert.True(main.Contains("IsStartupHintActive() || settingsWindow != null"));
+        }
+
+        static void SettingsNavigationFollowsAppleDensityAndPriority()
+        {
+            var xaml = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "LyricHover.App", "PlacementSettingsWindow.xaml")).Replace("\r\n", "\n");
+            var generalStart = xaml.IndexOf("x:Name=\"LyricsSettingsPanel\"", StringComparison.Ordinal);
+            var generalEnd = xaml.IndexOf("x:Name=\"SupportSettingsPanel\"", generalStart, StringComparison.Ordinal);
+            var generalPanel = xaml.Substring(generalStart, generalEnd - generalStart);
+
+            Assert.True(xaml.Contains("x:Name=\"ScrollThumbVisual\""));
+            Assert.True(xaml.Contains("Width=\"4\""));
+            Assert.True(xaml.Contains("To=\"0.88\""));
+            Assert.True(xaml.Contains("Duration=\"0:0:0.35\""));
+            Assert.True(xaml.Contains("<Setter Property=\"Height\" Value=\"38\" />"));
+            Assert.True(xaml.Contains("<Setter Property=\"FontSize\" Value=\"14.5\" />"));
+            Assert.True(xaml.Contains("<Setter Property=\"Opacity\" Value=\"0.72\" />"));
+            Assert.True(xaml.Contains("<Setter Property=\"Padding\" Value=\"32,20\" />"));
+            Assert.Equal(2, CountOccurrences(generalPanel, "Margin=\"0,18,0,0\""));
+            Assert.False(generalPanel.Contains("Margin=\"0,26,0,0\""));
+
+            var orderedNavigationItems = new[]
+            {
+                "LyricsSectionButton",
+                "LyricsAppearanceSectionButton",
+                "LayoutSectionButton",
+                "PositionSectionButton",
+                "HoverSectionButton",
+                "HotkeysSectionButton",
+                "AboutSectionButton"
+            };
+            var previousIndex = -1;
+            foreach (var item in orderedNavigationItems)
+            {
+                var currentIndex = xaml.IndexOf("x:Name=\"" + item + "\"", StringComparison.Ordinal);
+                Assert.True(currentIndex > previousIndex);
+                previousIndex = currentIndex;
+            }
         }
 
         static void DividerSettingsUpdateLayoutModules()
