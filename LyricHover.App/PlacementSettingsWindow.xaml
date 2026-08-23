@@ -222,7 +222,7 @@
             <Setter Property="Background" Value="{DynamicResource SettingsCardBackgroundBrush}" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="CornerRadius" Value="{StaticResource RadiusLarge}" />
-            <Setter Property="Padding" Value="32,20" />
+            <Setter Property="Padding" Value="24" />
             <Setter Property="Effect">
                 <Setter.Value>
                     <DropShadowEffect BlurRadius="26"
@@ -1092,7 +1092,6 @@
                                        Text="歌词外观" />
 
                             <Border Grid.Row="1"
-                                    Padding="40"
                                     Style="{StaticResource SettingsGlassCardStyle}">
                             <Grid>
                             <Grid.RowDefinitions>
@@ -1199,7 +1198,6 @@
 
                             <Border Grid.Row="2"
                                     Margin="0,26,0,0"
-                                    Padding="40"
                                     Style="{StaticResource SettingsGlassCardStyle}">
                             <Grid>
                             <Grid.RowDefinitions>

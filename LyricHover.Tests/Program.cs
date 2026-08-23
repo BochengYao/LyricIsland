@@ -3534,7 +3534,9 @@ namespace LyricHover.Tests
             Assert.True(xaml.Contains("<Setter Property=\"Height\" Value=\"38\" />"));
             Assert.True(xaml.Contains("<Setter Property=\"FontSize\" Value=\"14.5\" />"));
             Assert.True(xaml.Contains("<Setter Property=\"Opacity\" Value=\"0.72\" />"));
-            Assert.True(xaml.Contains("<Setter Property=\"Padding\" Value=\"32,20\" />"));
+            Assert.True(xaml.Contains("<Setter Property=\"Padding\" Value=\"24\" />"));
+            Assert.False(xaml.Contains("Padding=\"32,20\""));
+            Assert.False(xaml.Contains("Padding=\"40\""));
             Assert.Equal(2, CountOccurrences(generalPanel, "Margin=\"0,18,0,0\""));
             Assert.False(generalPanel.Contains("Margin=\"0,26,0,0\""));
 
