@@ -289,13 +289,15 @@
             <Setter Property="SnapsToDevicePixels" Value="True" />
         </Style>
         <Style x:Key="AboutActionTitleStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontSize" Value="14.5" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
         </Style>
         <Style x:Key="AboutActionDescriptionStyle" TargetType="TextBlock">
-            <Setter Property="Margin" Value="0,1,0,0" />
-            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,2,0,0" />
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="LineHeight" Value="18" />
+            <Setter Property="LineStackingStrategy" Value="BlockLineHeight" />
             <Setter Property="Foreground" Value="{DynamicResource SettingsControlMutedForegroundBrush}" />
         </Style>
         <Style x:Key="TextLinkButtonStyle" TargetType="Button">
@@ -2429,18 +2431,20 @@
                             <Grid.Resources>
                                 <Style x:Key="SupportActionTitleStyle" TargetType="TextBlock">
                                     <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
-                                    <Setter Property="FontSize" Value="13.5" />
+                                    <Setter Property="FontSize" Value="14.5" />
                                     <Setter Property="FontWeight" Value="SemiBold" />
                                     <Setter Property="TextWrapping" Value="Wrap" />
                                 </Style>
                                 <Style x:Key="SupportActionDescriptionStyle" TargetType="TextBlock">
-                                    <Setter Property="Margin" Value="0,3,0,0" />
+                                    <Setter Property="Margin" Value="0,2,0,0" />
                                     <Setter Property="Foreground" Value="{DynamicResource SettingsControlMutedForegroundBrush}" />
-                                    <Setter Property="FontSize" Value="11.5" />
+                                    <Setter Property="FontSize" Value="12.5" />
+                                    <Setter Property="LineHeight" Value="18" />
+                                    <Setter Property="LineStackingStrategy" Value="BlockLineHeight" />
                                     <Setter Property="TextWrapping" Value="Wrap" />
                                 </Style>
                                 <Style x:Key="SupportProContainerStyle" TargetType="Border">
-                                    <Setter Property="Padding" Value="24,20" />
+                                    <Setter Property="Padding" Value="20" />
                                     <Setter Property="Background" Value="{DynamicResource SettingsControlBackgroundBrush}" />
                                     <Setter Property="BorderBrush" Value="{DynamicResource SettingsControlBorderBrush}" />
                                     <Setter Property="BorderThickness" Value="1" />
@@ -2449,8 +2453,8 @@
                                 </Style>
                                 <!-- Icon paths: Lucide (ISC), except the GitHub mark from Primer Octicons (MIT). -->
                                 <Style x:Key="SupportLineIconStyle" TargetType="Path">
-                                    <Setter Property="Width" Value="28" />
-                                    <Setter Property="Height" Value="28" />
+                                    <Setter Property="Width" Value="22" />
+                                    <Setter Property="Height" Value="22" />
                                     <Setter Property="Fill" Value="Transparent" />
                                     <Setter Property="Stroke" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
                                     <Setter Property="StrokeThickness" Value="1.75" />
@@ -2460,14 +2464,14 @@
                                     <Setter Property="Stretch" Value="Uniform" />
                                 </Style>
                                 <Style x:Key="SupportBrandIconStyle" TargetType="Path">
-                                    <Setter Property="Width" Value="28" />
-                                    <Setter Property="Height" Value="28" />
+                                    <Setter Property="Width" Value="22" />
+                                    <Setter Property="Height" Value="22" />
                                     <Setter Property="Fill" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
                                     <Setter Property="Stretch" Value="Uniform" />
                                 </Style>
                                 <Style x:Key="SupportProFeatureTitleStyle" TargetType="TextBlock">
                                     <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
-                                    <Setter Property="FontSize" Value="14" />
+                                    <Setter Property="FontSize" Value="13.5" />
                                     <Setter Property="FontWeight" Value="SemiBold" />
                                     <Setter Property="TextWrapping" Value="Wrap" />
                                     <Setter Property="LineHeight" Value="17" />
@@ -2485,208 +2489,104 @@
                                 </Grid.RowDefinitions>
 
                                 <TextBlock Grid.Row="1"
-                                           Margin="0,8,0,0"
+                                           Margin="0,4,0,0"
                                            Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
-                                           FontSize="14.5"
-                                           LineHeight="22"
+                                           FontSize="13.5"
+                                           LineHeight="20"
                                            LineStackingStrategy="BlockLineHeight"
-                                           TextWrapping="Wrap">
-                                    <Run Text="LyricHover主体功能始终免费。您可以通过免费方式支持项目，您也可以升级Pro来支持开发者。" />
-                                    <LineBreak />
-                                    <Run Text="这对我们真的很重要，谢谢！❤️" />
-                                </TextBlock>
+                                           TextWrapping="Wrap"
+                                           Text="选择一种方式帮助 LyricHover 持续改进；核心功能始终免费。" />
 
                                 <StackPanel x:Name="SupportFreeHeading"
                                             Grid.Row="2"
-                                            Margin="0,21,0,0">
-                                    <TextBlock FontSize="22"
+                                            Margin="0,16,0,0">
+                                    <TextBlock FontSize="17"
                                                FontWeight="SemiBold"
                                                Text="免费支持" />
                                 </StackPanel>
 
-                                <Grid x:Name="SupportFreeActionsGrid"
-                                      Grid.Row="3"
-                                      Margin="0,12,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="1" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="1" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="1" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
+                                <Border Grid.Row="3"
+                                        Margin="0,10,0,0"
+                                        Background="{DynamicResource SettingsControlBackgroundBrush}"
+                                        CornerRadius="{StaticResource RadiusSmall}"
+                                        ClipToBounds="True">
+                                    <Grid x:Name="SupportFreeActionsGrid">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="72" />
+                                            <RowDefinition Height="1" />
+                                            <RowDefinition Height="72" />
+                                        </Grid.RowDefinitions>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="1" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
 
-                                    <Grid Grid.Column="0"
-                                          Margin="0,0,12,0">
-                                        <Grid Margin="0,8,0,8" VerticalAlignment="Top">
+                                        <Grid Grid.Row="0" Grid.Column="0" Margin="16,0">
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="28" />
+                                                <ColumnDefinition Width="22" />
                                                 <ColumnDefinition Width="12" />
                                                 <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
-                                            <Path Style="{StaticResource SupportLineIconStyle}"
-                                                  HorizontalAlignment="Center"
-                                                  VerticalAlignment="Top"
-                                                  Data="M22,17 A2,2 0 0 1 20,19 H6.828 A2,2 0 0 0 5.414,19.586 L3.212,21.788 A0.71,0.71 0 0 1 2,21.286 V5 A2,2 0 0 1 4,3 H20 A2,2 0 0 1 22,5 Z M7,11 H17 M7,15 H13 M7,7 H15" />
-                                            <Grid x:Name="SupportReviewTextGrid"
-                                                  Grid.Column="2">
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="Auto" />
-                                                </Grid.RowDefinitions>
-                                                <TextBlock Grid.Row="0" Style="{StaticResource SupportActionTitleStyle}" Text="评价与撰写评价" />
-                                                <TextBlock Grid.Row="1" Style="{StaticResource SupportActionDescriptionStyle}" Text="你的想法会让LyricHover更好" />
-                                                <Button Grid.Row="2"
-                                                        VerticalAlignment="Top"
-                                                        HorizontalAlignment="Stretch"
-                                                        HorizontalContentAlignment="Stretch"
-                                                        Style="{StaticResource TextLinkButtonStyle}"
-                                                        Click="SupportStoreReviewButton_Click">
-                                                    <TextBlock Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                               FontSize="12"
-                                                               FontWeight="SemiBold"
-                                                               TextWrapping="Wrap"
-                                                               Text="去评价" />
-                                                </Button>
-                                            </Grid>
+                                            <Path Style="{StaticResource SupportLineIconStyle}" VerticalAlignment="Center" Data="M22,17 A2,2 0 0 1 20,19 H6.828 A2,2 0 0 0 5.414,19.586 L3.212,21.788 A0.71,0.71 0 0 1 2,21.286 V5 A2,2 0 0 1 4,3 H20 A2,2 0 0 1 22,5 Z M7,11 H17 M7,15 H13 M7,7 H15" />
+                                            <StackPanel x:Name="SupportReviewTextGrid" Grid.Column="2" VerticalAlignment="Center">
+                                                <TextBlock Style="{StaticResource SupportActionTitleStyle}" Text="评价 LyricHover" />
+                                                <TextBlock Style="{StaticResource SupportActionDescriptionStyle}" Text="在 Microsoft Store 分享使用感受" />
+                                            </StackPanel>
+                                            <Button Grid.Column="3" VerticalAlignment="Center" Style="{StaticResource TextLinkButtonStyle}" Click="SupportStoreReviewButton_Click" Content="去评价" />
                                         </Grid>
-                                    </Grid>
 
-                                    <Border Grid.Column="1"
-                                            Width="1"
-                                            Height="62"
-                                            VerticalAlignment="Center"
-                                            Background="{DynamicResource SettingsControlBorderBrush}"
-                                            Opacity="0.55" />
+                                        <Border Grid.Row="0" Grid.Column="1" Grid.RowSpan="3" Background="{DynamicResource SettingsControlBorderBrush}" Opacity="0.55" />
 
-                                    <Grid Grid.Column="2"
-                                          Margin="12,0">
-                                        <Grid Margin="0,8" VerticalAlignment="Top">
+                                        <Grid Grid.Row="0" Grid.Column="2" Margin="16,0">
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="28" />
+                                                <ColumnDefinition Width="22" />
                                                 <ColumnDefinition Width="12" />
                                                 <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
-                                            <Path Style="{StaticResource SupportLineIconStyle}"
-                                                  HorizontalAlignment="Center"
-                                                  VerticalAlignment="Top"
-                                                  Data="M18,2 A3,3 0 1 1 18,8 A3,3 0 1 1 18,2 M6,9 A3,3 0 1 1 6,15 A3,3 0 1 1 6,9 M18,16 A3,3 0 1 1 18,22 A3,3 0 1 1 18,16 M8.59,13.51 L15.42,17.49 M15.41,6.51 L8.59,10.49" />
-                                            <Grid x:Name="SupportShareTextGrid"
-                                                  Grid.Column="2">
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="Auto" />
-                                                </Grid.RowDefinitions>
-                                                <TextBlock Grid.Row="0" Style="{StaticResource SupportActionTitleStyle}" Text="分享给身边的朋友" />
-                                                <TextBlock Grid.Row="1" Style="{StaticResource SupportActionDescriptionStyle}" Text="让更多人发现并使用LyricHover" />
-                                                <Button Grid.Row="2"
-                                                        VerticalAlignment="Top"
-                                                        HorizontalAlignment="Stretch"
-                                                        HorizontalContentAlignment="Stretch"
-                                                        Style="{StaticResource TextLinkButtonStyle}"
-                                                        Click="SupportShareButton_Click">
-                                                    <TextBlock Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                               FontSize="12"
-                                                               FontWeight="SemiBold"
-                                                               TextWrapping="Wrap"
-                                                               Text="立即分享" />
-                                                </Button>
-                                            </Grid>
+                                            <Path Style="{StaticResource SupportLineIconStyle}" VerticalAlignment="Center" Data="M18,2 A3,3 0 1 1 18,8 A3,3 0 1 1 18,2 M6,9 A3,3 0 1 1 6,15 A3,3 0 1 1 6,9 M18,16 A3,3 0 1 1 18,22 A3,3 0 1 1 18,16 M8.59,13.51 L15.42,17.49 M15.41,6.51 L8.59,10.49" />
+                                            <StackPanel x:Name="SupportShareTextGrid" Grid.Column="2" VerticalAlignment="Center">
+                                                <TextBlock Style="{StaticResource SupportActionTitleStyle}" Text="分享给朋友" />
+                                                <TextBlock Style="{StaticResource SupportActionDescriptionStyle}" Text="让需要桌面歌词的人发现 LyricHover" />
+                                            </StackPanel>
+                                            <Button Grid.Column="3" VerticalAlignment="Center" Style="{StaticResource TextLinkButtonStyle}" Click="SupportShareButton_Click" Content="分享" />
                                         </Grid>
-                                    </Grid>
 
-                                    <Border Grid.Column="3"
-                                            Width="1"
-                                            Height="62"
-                                            VerticalAlignment="Center"
-                                            Background="{DynamicResource SettingsControlBorderBrush}"
-                                            Opacity="0.55" />
+                                        <Border Grid.Row="1" Grid.ColumnSpan="3" Background="{DynamicResource SettingsControlBorderBrush}" Opacity="0.55" />
 
-                                    <Grid Grid.Column="4"
-                                          Margin="12,0">
-                                        <Grid Margin="0,8" VerticalAlignment="Top">
+                                        <Grid Grid.Row="2" Grid.Column="0" Margin="16,0">
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="28" />
+                                                <ColumnDefinition Width="22" />
                                                 <ColumnDefinition Width="12" />
                                                 <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
-                                            <Path Style="{StaticResource SupportBrandIconStyle}"
-                                                  HorizontalAlignment="Center"
-                                                  VerticalAlignment="Top"
-                                                  Data="M10.226,17.284 C7.261,16.924 5.172,14.791 5.172,12.028 C5.172,10.905 5.576,9.692 6.25,8.884 C5.958,8.143 6.003,6.57 6.34,5.919 C7.238,5.807 8.451,6.279 9.17,6.929 C10.023,6.66 10.922,6.525 12.023,6.525 C13.123,6.525 14.022,6.66 14.83,6.907 C15.526,6.278 16.762,5.807 17.66,5.919 C17.975,6.525 18.02,8.098 17.727,8.861 C18.447,9.715 18.828,10.861 18.828,12.028 C18.828,14.791 16.739,16.88 13.73,17.262 C14.493,17.756 15.01,18.834 15.01,20.069 V22.405 C15.01,23.079 15.571,23.461 16.245,23.191 C20.311,21.641 23.5,17.576 23.5,12.545 C23.5,6.188 18.334,1 11.978,1 C5.62,1 0.5,6.188 0.5,12.545 C0.5,17.531 3.667,21.665 7.935,23.214 C8.541,23.439 9.125,23.034 9.125,22.428 V20.63 C8.766,20.765 8.406,20.854 8.047,20.854 C6.564,20.854 5.688,20.046 5.06,18.541 C4.813,17.934 4.543,17.575 4.026,17.508 C3.756,17.485 3.667,17.373 3.667,17.238 C3.667,16.968 4.117,16.767 4.565,16.767 C5.217,16.767 5.778,17.171 6.362,18.002 C6.812,18.653 7.283,18.945 7.845,18.945 C8.406,18.945 8.765,18.743 9.282,18.226 C9.664,17.845 9.956,17.508 10.226,17.284" />
-                                            <Grid x:Name="SupportGitHubTextGrid"
-                                                  Grid.Column="2">
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="Auto" />
-                                                </Grid.RowDefinitions>
-                                                <TextBlock Grid.Row="0" Style="{StaticResource SupportActionTitleStyle}" Text="在 GitHub 上点 Star" />
-                                                <TextBlock Grid.Row="1" Style="{StaticResource SupportActionDescriptionStyle}" Text="Star 越多，越多人看到LyricHover" />
-                                                <Button Grid.Row="2"
-                                                        VerticalAlignment="Top"
-                                                        HorizontalAlignment="Stretch"
-                                                        HorizontalContentAlignment="Stretch"
-                                                        Style="{StaticResource TextLinkButtonStyle}"
-                                                        Click="OpenGitHubAboutRow_Click">
-                                                    <TextBlock Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                               FontSize="12"
-                                                               FontWeight="SemiBold"
-                                                               TextWrapping="Wrap"
-                                                               Text="去 GitHub" />
-                                                </Button>
-                                            </Grid>
+                                            <Path Style="{StaticResource SupportBrandIconStyle}" VerticalAlignment="Center" Data="M10.226,17.284 C7.261,16.924 5.172,14.791 5.172,12.028 C5.172,10.905 5.576,9.692 6.25,8.884 C5.958,8.143 6.003,6.57 6.34,5.919 C7.238,5.807 8.451,6.279 9.17,6.929 C10.023,6.66 10.922,6.525 12.023,6.525 C13.123,6.525 14.022,6.66 14.83,6.907 C15.526,6.278 16.762,5.807 17.66,5.919 C17.975,6.525 18.02,8.098 17.727,8.861 C18.447,9.715 18.828,10.861 18.828,12.028 C18.828,14.791 16.739,16.88 13.73,17.262 C14.493,17.756 15.01,18.834 15.01,20.069 V22.405 C15.01,23.079 15.571,23.461 16.245,23.191 C20.311,21.641 23.5,17.576 23.5,12.545 C23.5,6.188 18.334,1 11.978,1 C5.62,1 0.5,6.188 0.5,12.545 C0.5,17.531 3.667,21.665 7.935,23.214 C8.541,23.439 9.125,23.034 9.125,22.428 V20.63 C8.766,20.765 8.406,20.854 8.047,20.854 C6.564,20.854 5.688,20.046 5.06,18.541 C4.813,17.934 4.543,17.575 4.026,17.508 C3.756,17.485 3.667,17.373 3.667,17.238 C3.667,16.968 4.117,16.767 4.565,16.767 C5.217,16.767 5.778,17.171 6.362,18.002 C6.812,18.653 7.283,18.945 7.845,18.945 C8.406,18.945 8.765,18.743 9.282,18.226 C9.664,17.845 9.956,17.508 10.226,17.284" />
+                                            <StackPanel x:Name="SupportGitHubTextGrid" Grid.Column="2" VerticalAlignment="Center">
+                                                <TextBlock Style="{StaticResource SupportActionTitleStyle}" Text="GitHub 项目" />
+                                                <TextBlock Style="{StaticResource SupportActionDescriptionStyle}" Text="查看代码、版本记录与开发进展" />
+                                            </StackPanel>
+                                            <Button Grid.Column="3" VerticalAlignment="Center" Style="{StaticResource TextLinkButtonStyle}" Click="OpenGitHubAboutRow_Click" Content="打开" />
                                         </Grid>
-                                    </Grid>
 
-                                    <Border Grid.Column="5"
-                                            Width="1"
-                                            Height="62"
-                                            VerticalAlignment="Center"
-                                            Background="{DynamicResource SettingsControlBorderBrush}"
-                                            Opacity="0.55" />
-
-                                    <Grid x:Name="SupportFeedbackItem"
-                                          Grid.Column="6"
-                                          Margin="12,0,0,0">
-                                        <Grid Margin="0,8,0,8" VerticalAlignment="Top">
+                                        <Grid x:Name="SupportFeedbackItem" Grid.Row="2" Grid.Column="2" Margin="16,0">
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="28" />
+                                                <ColumnDefinition Width="22" />
                                                 <ColumnDefinition Width="12" />
                                                 <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
-                                            <Path Style="{StaticResource SupportLineIconStyle}"
-                                                  HorizontalAlignment="Center"
-                                                  VerticalAlignment="Top"
-                                                  Data="M9,18 H15 M10,22 H14 M15.09,14 C15.27,13.82 15.45,13.64 15.6,13.45 A6.5,6.5 0 1 0 8.4,13.45 C8.56,13.64 8.74,13.82 8.91,14 A4.5,4.5 0 0 1 10,17.5 V18 H14 V17.5 A4.5,4.5 0 0 1 15.09,14" />
-                                            <Grid x:Name="SupportFeedbackTextGrid"
-                                                  Grid.Column="2">
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="Auto" />
-                                                </Grid.RowDefinitions>
-                                                <TextBlock Grid.Row="0" Style="{StaticResource SupportActionTitleStyle}" Text="意见反馈" />
-                                                <TextBlock Grid.Row="1" Style="{StaticResource SupportActionDescriptionStyle}" Text="提交问题与功能建议" />
-                                                <Button Grid.Row="2"
-                                                        VerticalAlignment="Top"
-                                                        HorizontalAlignment="Stretch"
-                                                        HorizontalContentAlignment="Stretch"
-                                                        Style="{StaticResource TextLinkButtonStyle}"
-                                                        Click="SupportFeedbackButton_Click">
-                                                    <TextBlock Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                               FontSize="12"
-                                                               FontWeight="SemiBold"
-                                                               TextWrapping="Wrap"
-                                                               Text="去反馈" />
-                                                </Button>
-                                            </Grid>
+                                            <Path Style="{StaticResource SupportLineIconStyle}" VerticalAlignment="Center" Data="M9,18 H15 M10,22 H14 M15.09,14 C15.27,13.82 15.45,13.64 15.6,13.45 A6.5,6.5 0 1 0 8.4,13.45 C8.56,13.64 8.74,13.82 8.91,14 A4.5,4.5 0 0 1 10,17.5 V18 H14 V17.5 A4.5,4.5 0 0 1 15.09,14" />
+                                            <StackPanel x:Name="SupportFeedbackTextGrid" Grid.Column="2" VerticalAlignment="Center">
+                                                <TextBlock Style="{StaticResource SupportActionTitleStyle}" Text="意见反馈" />
+                                                <TextBlock Style="{StaticResource SupportActionDescriptionStyle}" Text="提交问题与功能建议" />
+                                            </StackPanel>
+                                            <Button Grid.Column="3" VerticalAlignment="Center" Style="{StaticResource TextLinkButtonStyle}" Click="SupportFeedbackButton_Click" Content="反馈" />
                                         </Grid>
                                     </Grid>
-                                </Grid>
+                                </Border>
 
                                 <TextBlock x:Name="SupportStatusText"
                                            Grid.Row="4"
@@ -2712,25 +2612,25 @@
                                         </Grid.RowDefinitions>
                                         <TextBlock Grid.Row="0"
                                                    Foreground="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"
-                                                   FontSize="11.5"
+                                                   FontSize="12.5"
                                                    FontWeight="SemiBold"
-                                                   Text="LYRIC HOVER PRO" />
+                                                   Text="LyricHover Pro" />
                                         <TextBlock x:Name="SupportProTitleText"
                                                    Grid.Row="1"
                                                    Margin="0,3,88,0"
                                                    MaxWidth="760"
                                                    HorizontalAlignment="Left"
-                                                   FontSize="23"
+                                                   FontSize="20"
                                                    FontWeight="SemiBold"
                                                    TextWrapping="Wrap"
                                                    Text="Pro 支持计划" />
                                           <TextBlock x:Name="SupportProDescriptionText"
                                                      Grid.Row="2"
-                                                     Margin="0,8,88,0"
+                                                     Margin="0,6,88,0"
                                                     MaxWidth="760"
                                                     HorizontalAlignment="Left"
                                                     Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
-                                                   FontSize="13"
+                                                   FontSize="13.5"
                                                    LineHeight="20"
                                                    LineStackingStrategy="BlockLineHeight"
                                                     TextWrapping="Wrap"
@@ -2738,7 +2638,7 @@
 
                                         <Grid x:Name="SupportProBenefitsGrid"
                                               Grid.Row="3"
-                                              Margin="0,14,272,0"
+                                              Margin="0,12,272,0"
                                               VerticalAlignment="Center">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
@@ -2751,13 +2651,13 @@
                                             <StackPanel Grid.Column="0" Margin="0,0,8,0">
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="25" />
+                                                        <ColumnDefinition Width="22" />
                                                         <ColumnDefinition Width="8" />
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
                                                     <Path Grid.Column="0"
-                                                          Width="25"
-                                                          Height="25"
+                                                          Width="22"
+                                                          Height="22"
                                                           Style="{StaticResource SupportLineIconStyle}"
                                                           Data="M12,15 V20 C12,20 15.03,19.45 16,18 C17.08,16.38 16,13 16,13 M4.5,16.5 C3,17.76 2.5,21.5 2.5,21.5 C2.5,21.5 6.24,21 7.5,19.5 C8.21,18.66 8.2,17.37 7.41,16.59 C6.63,15.8 5.34,15.79 4.5,16.5 M9,12 C9.54,10.63 10.21,9.31 11,8.05 C13.49,4.15 17.56,1.86 22,2 C22,4.72 21.22,9.5 16,13 C14.74,13.79 13.4,14.46 12,15 Z M9,12 H4 C4,12 4.55,8.97 6,8 C7.62,6.92 11,8.05 11,8.05" />
                                                     <TextBlock x:Name="SupportProEarlyAccessTitleText"
@@ -2767,7 +2667,7 @@
                                                                Text="抢先体验" />
                                                 </Grid>
                                                 <TextBlock x:Name="SupportProEarlyAccessDescriptionText"
-                                                           Margin="33,4,0,0"
+                                                           Margin="30,4,0,0"
                                                             Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
                                                             FontSize="12"
                                                              LineHeight="16"
@@ -2786,13 +2686,13 @@
                                             <StackPanel Grid.Column="2" Margin="8,0">
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="25" />
+                                                        <ColumnDefinition Width="22" />
                                                         <ColumnDefinition Width="8" />
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
                                                     <Path Grid.Column="0"
-                                                          Width="25"
-                                                          Height="25"
+                                                          Width="22"
+                                                          Height="22"
                                                           Style="{StaticResource SupportLineIconStyle}"
                                                           Data="M7.21,15 L2.66,7.14 A2,2 0 0 1 2.79,4.94 L4.4,2.8 A2,2 0 0 1 6,2 H18 A2,2 0 0 1 19.6,2.8 L21.2,4.94 A2,2 0 0 1 21.34,7.14 L16.79,15 M11,12 L5.12,2.2 M13,12 L18.88,2.2 M8,7 H16 M12,12 A5,5 0 1 1 12,22 A5,5 0 1 1 12,12 M12,18 V16 H11.5" />
                                                     <TextBlock x:Name="SupportProBadgeTitleText"
@@ -2802,7 +2702,7 @@
                                                                Text="支持者徽章" />
                                                 </Grid>
                                                 <TextBlock x:Name="SupportProBadgeDescriptionText"
-                                                           Margin="33,4,0,0"
+                                                           Margin="30,4,0,0"
                                                             Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
                                                             FontSize="12"
                                                             LineHeight="16"
@@ -2821,13 +2721,13 @@
                                             <StackPanel Grid.Column="4" Margin="8,0,0,0">
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="25" />
+                                                        <ColumnDefinition Width="22" />
                                                         <ColumnDefinition Width="8" />
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
                                                     <Path Grid.Column="0"
-                                                          Width="25"
-                                                          Height="25"
+                                                          Width="22"
+                                                          Height="22"
                                                           Style="{StaticResource SupportLineIconStyle}"
                                                           Data="M6,16 C11,16 13,8 18,8 A4,4 0 0 1 18,16 C13,16 11,8 6,8 A4,4 0 1 0 6,16" />
                                                     <TextBlock x:Name="SupportProLifetimeTitleText"
@@ -2837,7 +2737,7 @@
                                                                Text="永久有效" />
                                                 </Grid>
                                                 <TextBlock x:Name="SupportProLifetimeDescriptionText"
-                                                           Margin="33,4,0,0"
+                                                           Margin="30,4,0,0"
                                                             Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
                                                             FontSize="12"
                                                              LineHeight="16"
@@ -2850,12 +2750,12 @@
                                         <Grid x:Name="SupportProActionHost"
                                               Grid.Row="3"
                                               Width="248"
-                                              Margin="0,0,0,16"
+                                              Margin="0,0,0,12"
                                               HorizontalAlignment="Right"
                                               VerticalAlignment="Bottom">
                                             <Button x:Name="SupportProPurchaseButton"
                                                     Width="248"
-                                                    Height="46"
+                                                    Height="42"
                                                     VerticalAlignment="Center"
                                                     Background="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"
                                                     BorderBrush="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"
@@ -2971,45 +2871,39 @@
 
                                     <Grid x:Name="AboutAppIdentity">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="72" />
+                                            <ColumnDefinition Width="64" />
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
                                         <Border x:Name="AboutAppLogoContainer"
-                                                Width="56"
-                                                Height="56"
+                                                Width="48"
+                                                Height="48"
                                                 VerticalAlignment="Center"
                                                 CornerRadius="{StaticResource RadiusSmall}"
                                                 ClipToBounds="True">
-                                            <Border.Effect>
-                                                <DropShadowEffect BlurRadius="14"
-                                                                  Color="#B3000000"
-                                                                  Direction="270"
-                                                                  Opacity="0.28"
-                                                                  ShadowDepth="3" />
-                                            </Border.Effect>
                                             <Image Source="Assets/app-logo.png" Stretch="UniformToFill" />
                                         </Border>
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                            <TextBlock FontSize="28"
+                                            <TextBlock FontSize="22"
                                                        FontWeight="SemiBold"
                                                        Text="LyricHover" />
-                                            <TextBlock Margin="0,2,0,0"
+                                            <TextBlock Margin="0,1,0,0"
                                                        Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
-                                                       FontSize="21"
+                                                       FontSize="14.5"
+                                                       LineHeight="20"
                                                        Text="桌面同步歌词与模块化媒体控制" />
                                             <WrapPanel Margin="0,5,0,0">
                                                 <TextBlock Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
-                                                           FontSize="12"
-                                                           Text="作者：" />
-                                                <TextBlock Margin="2,0,28,0"
-                                                           FontSize="12"
+                                                           FontSize="12.5"
+                                                           Text="作者" />
+                                                <TextBlock Margin="6,0,24,0"
+                                                           FontSize="12.5"
                                                            FontWeight="SemiBold"
                                                            Text="大丞子" />
                                                 <TextBlock Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
-                                                           FontSize="12"
-                                                           Text="版本号：" />
-                                                <TextBlock Margin="2,0,0,0"
-                                                           FontSize="12"
+                                                           FontSize="12.5"
+                                                           Text="版本" />
+                                                <TextBlock Margin="6,0,0,0"
+                                                           FontSize="12.5"
                                                            FontWeight="SemiBold"
                                                            Text="{x:Static core:ProductVersion.DisplayVersionNumber}" />
                                             </WrapPanel>
@@ -3018,18 +2912,19 @@
 
                                     <Border x:Name="AboutTopDivider"
                                              Grid.Row="1"
-                                             Margin="0,14,0,0"
+                                             Margin="0,18,0,0"
+                                             Opacity="0.45"
                                              Style="{StaticResource AboutDividerStyle}" />
 
                                     <Grid x:Name="AboutSettingsList"
                                           Grid.Row="2"
                                           HorizontalAlignment="Stretch">
                                         <Grid.RowDefinitions>
-                                            <RowDefinition Height="56" />
+                                            <RowDefinition Height="60" />
                                             <RowDefinition Height="1" />
-                                            <RowDefinition Height="56" />
+                                            <RowDefinition Height="60" />
                                             <RowDefinition Height="1" />
-                                            <RowDefinition Height="56" />
+                                            <RowDefinition Height="60" />
                                             <RowDefinition Height="1" />
                                         </Grid.RowDefinitions>
 
@@ -3179,56 +3074,30 @@
                                     <StackPanel x:Name="AboutUpdateSection"
                                                 Grid.Row="4"
                                                 MaxWidth="680"
-                                                Margin="2,0,0,0"
+                                                Margin="2,12,0,0"
                                                 HorizontalAlignment="Left">
-                                        <TextBlock FontSize="18"
+                                        <TextBlock FontSize="14.5"
                                                    FontWeight="SemiBold"
-                                                   Text="v2.0 更新内容" />
-                                        <StackPanel Margin="0,8,0,0">
-                                            <Grid Margin="0,0,0,4">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="16" />
-                                                    <ColumnDefinition Width="*" />
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Foreground="{DynamicResource SettingsControlMutedForegroundBrush}" FontSize="13" Text="•" />
-                                                <TextBlock Grid.Column="1" Foreground="{DynamicResource SettingsControlMutedForegroundBrush}" FontSize="13" TextWrapping="Wrap" Text="新增水平积木与自动折叠两种LyricHover布局" />
-                                            </Grid>
-                                            <Grid Margin="0,0,0,4">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="16" />
-                                                    <ColumnDefinition Width="*" />
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Foreground="{DynamicResource SettingsControlMutedForegroundBrush}" FontSize="13" Text="•" />
-                                                <TextBlock Grid.Column="1" Foreground="{DynamicResource SettingsControlMutedForegroundBrush}" FontSize="13" TextWrapping="Wrap" Text="支持拖动添加、排序与删除封面、歌词、控制、信息、进度和分割线模块" />
-                                            </Grid>
-                                            <Grid Margin="0,0,0,4">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="16" />
-                                                    <ColumnDefinition Width="*" />
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Foreground="{DynamicResource SettingsControlMutedForegroundBrush}" FontSize="13" Text="•" />
-                                                <TextBlock Grid.Column="1" Foreground="{DynamicResource SettingsControlMutedForegroundBrush}" FontSize="13" TextWrapping="Wrap" Text="支持 Apple Music、QQ 音乐、网易云、酷狗、酷我、Spotify 等 SMTC 播放器" />
-                                            </Grid>
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="16" />
-                                                    <ColumnDefinition Width="*" />
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Foreground="{DynamicResource SettingsControlMutedForegroundBrush}" FontSize="13" Text="•" />
-                                                <TextBlock Grid.Column="1" Foreground="{DynamicResource SettingsControlMutedForegroundBrush}" FontSize="13" TextWrapping="Wrap" Text="新增同步歌词缓存、播放器锁定、鼠标避让、快捷键和主题设置" />
-                                            </Grid>
-                                        </StackPanel>
+                                                   Text="关于 LyricHover" />
+                                        <TextBlock Margin="0,5,0,0"
+                                                   Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
+                                                   FontSize="12.5"
+                                                   LineHeight="19"
+                                                   LineStackingStrategy="BlockLineHeight"
+                                                   TextWrapping="Wrap"
+                                                   Text="为 Windows 设计的桌面同步歌词与模块化媒体控制工具。功能更新与版本记录可在 GitHub 查看。" />
                                     </StackPanel>
 
                                     <Border x:Name="AboutBottomDivider"
                                              Grid.Row="5"
-                                             Margin="0,14,0,0"
+                                             Margin="0,12,0,0"
+                                             Opacity="0.45"
                                              Style="{StaticResource AboutDividerStyle}" />
                                     <TextBlock Grid.Row="6"
-                                               Margin="0,10,0,4"
+                                               Margin="0,9,0,2"
                                                Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
                                                FontSize="12"
-                                               Text="© 2026 大丞子 · 感谢参与 v2.0 测试" />
+                                               Text="© 2026 大丞子 · LyricHover" />
                                     <TextBlock Grid.Row="6" Text="软件著作权" Visibility="Collapsed" />
                                     <TextBlock Grid.Row="6" Text="申请中" Visibility="Collapsed" />
                             </Grid>
