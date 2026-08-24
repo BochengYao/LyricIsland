@@ -20,10 +20,36 @@
                 <ResourceDictionary Source="CornerRadiusResources.xaml" />
             </ResourceDictionary.MergedDictionaries>
         <SolidColorBrush x:Key="SettingsRootBackgroundBrush" Color="#F4F3FA" />
+        <SolidColorBrush x:Key="SettingsControlBackgroundBrush" Color="#F8FAFC" />
         <SolidColorBrush x:Key="SettingsControlForegroundBrush" Color="#1F2937" />
         <SolidColorBrush x:Key="SettingsControlMutedForegroundBrush" Color="#667085" />
         <SolidColorBrush x:Key="SettingsControlBorderBrush" Color="#D8DEE8" />
         <SolidColorBrush x:Key="SettingsControlPressedBackgroundBrush" Color="#EEF2F7" />
+        <SolidColorBrush x:Key="SettingsControlHoverBackgroundBrush" Color="#FFFFFF" />
+        <Style x:Key="SecondaryButtonStyle" TargetType="Button">
+            <Setter Property="MinWidth" Value="100" />
+            <Setter Property="Height" Value="38" />
+            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SettingsControlBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SettingsControlBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonRoot" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource RadiusSmall}">
+                            <ContentPresenter Margin="14,0" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ButtonRoot" Property="Background" Value="{DynamicResource SettingsControlHoverBackgroundBrush}" /></Trigger>
+                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="ButtonRoot" Property="Background" Value="{DynamicResource SettingsControlPressedBackgroundBrush}" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="PrimaryButtonStyle" TargetType="Button">
             <Setter Property="MinWidth" Value="128" />
             <Setter Property="Height" Value="38" />
@@ -131,11 +157,18 @@
                            TextWrapping="Wrap" />
             </Border>
 
-            <Button Grid.Row="2"
-                    HorizontalAlignment="Right"
-                    Style="{StaticResource PrimaryButtonStyle}"
-                    Click="OKButton_Click"
-                    Content="确定" />
+            <StackPanel Grid.Row="2" HorizontalAlignment="Right" Orientation="Horizontal">
+                <Button x:Name="CancelButton"
+                        Margin="0,0,10,0"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Visibility="Collapsed"
+                        Click="CancelButton_Click"
+                        Content="取消" />
+                <Button x:Name="OKButton"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Click="OKButton_Click"
+                        Content="确定" />
+            </StackPanel>
         </Grid>
     </Border>
 </Window>

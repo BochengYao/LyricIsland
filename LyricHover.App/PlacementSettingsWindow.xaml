@@ -153,7 +153,7 @@
         </Style>
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
-            <Setter Property="FontFamily" Value="Segoe UI Variable Display, Microsoft YaHei UI" />
+            <Setter Property="FontFamily" Value="Segoe UI Variable Text, Microsoft YaHei UI" />
             <Setter Property="FontSize" Value="13" />
         </Style>
         <Style x:Key="CardStyle" TargetType="Border">
@@ -164,10 +164,10 @@
             <Setter Property="CornerRadius" Value="{StaticResource RadiusLarge}" />
         </Style>
         <Style x:Key="SettingLabel" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource SettingsControlMutedForegroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="TextWrapping" Value="Wrap" />
-            <Setter Property="LineHeight" Value="18" />
+            <Setter Property="LineHeight" Value="20" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
         <Style x:Key="CompoundSettingLabel"
@@ -214,6 +214,16 @@
                                 </Border.RenderTransform>
                             </Border>
                         </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="SwitchTrack"
+                                        Property="Background"
+                                        Value="#0A84FF" />
+                                <Setter TargetName="SwitchTrack"
+                                        Property="BorderBrush"
+                                        Value="#0A84FF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -233,6 +243,43 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="PrioritySectionTitleStyle"
+               TargetType="TextBlock"
+               BasedOn="{StaticResource SettingLabel}">
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
+        </Style>
+        <Style x:Key="PrioritySectionDescriptionStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource SettingsControlMutedForegroundBrush}" />
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="LineHeight" Value="20" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style x:Key="PriorityListCardStyle" TargetType="Border">
+            <Setter Property="Padding" Value="6" />
+            <Setter Property="Background" Value="{DynamicResource SettingsControlBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SettingsControlBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="12" />
+        </Style>
+        <Style x:Key="PriorityRowStyle" TargetType="Border">
+            <Setter Property="Height" Value="42" />
+            <Setter Property="Margin" Value="0,1" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Cursor" Value="SizeAll" />
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+            <Setter Property="RenderTransform"><Setter.Value><TranslateTransform /></Setter.Value></Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#0AFFFFFF" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="PriorityAutoToggleStyle" TargetType="CheckBox" BasedOn="{StaticResource SettingsSwitchStyle}">
+            <Setter Property="ToolTip" Value="自动选择播放器" />
+            <Setter Property="Margin" Value="12,0,0,0" />
+        </Style>
         <Style x:Key="SidebarKeyboardFocusVisualStyle" TargetType="Control">
             <Setter Property="Template">
                 <Setter.Value>
@@ -249,8 +296,8 @@
             <Setter Property="Height" Value="38" />
             <Setter Property="Margin" Value="0,0,0,5" />
             <Setter Property="Padding" Value="14,0" />
-            <Setter Property="FontFamily" Value="Segoe UI Variable Display, Microsoft YaHei UI" />
-            <Setter Property="FontSize" Value="14.5" />
+            <Setter Property="FontFamily" Value="Segoe UI Variable Text, Microsoft YaHei UI" />
+            <Setter Property="FontSize" Value="15" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Opacity" Value="0.72" />
             <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
@@ -355,7 +402,7 @@
             <Setter Property="MinWidth" Value="86" />
             <Setter Property="Height" Value="34" />
             <Setter Property="Padding" Value="16,0" />
-            <Setter Property="FontFamily" Value="Segoe UI Variable Display, Microsoft YaHei UI" />
+            <Setter Property="FontFamily" Value="Segoe UI Variable Text, Microsoft YaHei UI" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
             <Setter Property="Background" Value="{DynamicResource SettingsControlBackgroundBrush}" />
@@ -388,7 +435,7 @@
             <Setter Property="MinWidth" Value="86" />
             <Setter Property="Height" Value="34" />
             <Setter Property="Padding" Value="16,0" />
-            <Setter Property="FontFamily" Value="Segoe UI Variable Display, Microsoft YaHei UI" />
+            <Setter Property="FontFamily" Value="Segoe UI Variable Text, Microsoft YaHei UI" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="Foreground" Value="White" />
             <Setter Property="Background" Value="#0A84FF" />
@@ -423,7 +470,7 @@
             <Setter Property="MinWidth" Value="86" />
             <Setter Property="Height" Value="34" />
             <Setter Property="Padding" Value="16,0" />
-            <Setter Property="FontFamily" Value="Segoe UI Variable Display, Microsoft YaHei UI" />
+            <Setter Property="FontFamily" Value="Segoe UI Variable Text, Microsoft YaHei UI" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Template">
@@ -453,7 +500,7 @@
             <Setter Property="MinWidth" Value="96" />
             <Setter Property="Height" Value="34" />
             <Setter Property="Padding" Value="28,0" />
-            <Setter Property="FontFamily" Value="Segoe UI Variable Display, Microsoft YaHei UI" />
+            <Setter Property="FontFamily" Value="Segoe UI Variable Text, Microsoft YaHei UI" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="BorderThickness" Value="1" />
@@ -657,8 +704,8 @@
         </Style>
         <Style TargetType="CheckBox">
             <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
-            <Setter Property="FontFamily" Value="Segoe UI Variable Display, Microsoft YaHei UI" />
-            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontFamily" Value="Segoe UI Variable Text, Microsoft YaHei UI" />
+            <Setter Property="FontSize" Value="14.5" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="CheckBox">
@@ -777,7 +824,7 @@
             <Setter Property="Height" Value="30" />
             <Setter Property="MinWidth" Value="92" />
             <Setter Property="Padding" Value="14,0" />
-            <Setter Property="FontFamily" Value="Segoe UI Variable Display, Microsoft YaHei UI" />
+            <Setter Property="FontFamily" Value="Segoe UI Variable Text, Microsoft YaHei UI" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="Foreground" Value="{DynamicResource SettingsControlMutedForegroundBrush}" />
             <Setter Property="Background" Value="Transparent" />
@@ -1206,6 +1253,7 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="56" />
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
                                 <RowDefinition Height="56" />
                                 <RowDefinition Height="56" />
                                 <RowDefinition Height="56" />
@@ -1231,22 +1279,72 @@
                                       Grid.Column="1"
                                       HorizontalAlignment="Right"
                                       Style="{StaticResource SettingsSwitchStyle}"
-                                      Checked="LyricDockEnabledCheckBox_Checked" />
-                            <TextBlock Grid.Row="2"
-                                       Grid.ColumnSpan="2"
-                                       Margin="0,0,0,12"
-                                       Foreground="{DynamicResource SettingsSecondaryForegroundBrush}"
-                                       FontSize="12"
-                                       TextWrapping="Wrap"
-                                       Text="首次开启会暂时隐藏系统小组件；仅在所选屏幕具备安全空间时显示，可随时关闭并自动恢复。" />
+                                      />
+                            <Grid Grid.Row="2"
+                                  Grid.ColumnSpan="2"
+                                  Margin="0,0,0,8"
+                                  HorizontalAlignment="Left">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Foreground="{DynamicResource SettingsSecondaryForegroundBrush}"
+                                           FontSize="13"
+                                           VerticalAlignment="Center"
+                                           Text="开启后会关闭系统任务栏小组件，" />
+                                <Button Padding="0"
+                                        Grid.Column="1"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        Cursor="Hand"
+                                        FontSize="13"
+                                        Foreground="#FF1677FF"
+                                        VerticalAlignment="Center"
+                                        FocusVisualStyle="{x:Null}"
+                                        Content="重新打开小组件…"
+                                        Click="WidgetsHelpLink_Click">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <ContentPresenter VerticalAlignment="Center" />
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                            </Grid>
+                            <Border x:Name="WidgetsHelpPanel"
+                                    Grid.Row="3"
+                                    Grid.ColumnSpan="2"
+                                    Margin="0,0,0,12"
+                                    Padding="12,10"
+                                    Background="{DynamicResource SettingsControlBackgroundBrush}"
+                                    BorderBrush="{DynamicResource SettingsControlBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="{StaticResource RadiusSmall}"
+                                    MaxHeight="0"
+                                    Opacity="0"
+                                    ClipToBounds="True"
+                                    Visibility="Collapsed">
+                                <StackPanel>
+                                    <TextBlock Foreground="{DynamicResource SettingsControlForegroundBrush}"
+                                               FontSize="13"
+                                               LineHeight="19"
+                                               TextWrapping="Wrap"
+                                               Text="Windows 11：打开“设置”→“个性化”→“任务栏”→“任务栏项”，开启“小组件”。" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               Foreground="{DynamicResource SettingsControlForegroundBrush}"
+                                               FontSize="13"
+                                               LineHeight="19"
+                                               TextWrapping="Wrap"
+                                               Text="Windows 10：右键任务栏→“资讯和兴趣”→选择“显示图标和文本”或“显示图标”。" />
+                                </StackPanel>
+                            </Border>
 
-                            <TextBlock Grid.Row="3"
+                            <TextBlock Grid.Row="4"
                                        Grid.Column="0"
                                        Margin="0,0,16,0"
                                        Style="{StaticResource SettingLabel}"
                                        Text="对齐" />
                             <Border x:Name="DockAlignmentSegmentRoot"
-                                    Grid.Row="3"
+                                    Grid.Row="4"
                                     Grid.Column="1"
                                     Padding="3"
                                     HorizontalAlignment="Left"
@@ -1283,12 +1381,12 @@
                                 </Grid>
                             </Border>
 
-                            <TextBlock Grid.Row="4"
+                            <TextBlock Grid.Row="5"
                                        Grid.Column="0"
                                        Margin="0,0,16,0"
                                        Style="{StaticResource SettingLabel}"
                                        Text="行数" />
-                            <StackPanel Grid.Row="4"
+                            <StackPanel Grid.Row="5"
                                         Grid.Column="1"
                                         Orientation="Horizontal">
                                 <Border x:Name="DockLineModeSegmentRoot"
@@ -1343,12 +1441,12 @@
                                 </Border>
                             </StackPanel>
 
-                            <TextBlock Grid.Row="5"
+                            <TextBlock Grid.Row="6"
                                        Grid.Column="0"
                                        Style="{StaticResource SettingLabel}"
                                        Text="翻译" />
                             <CheckBox x:Name="DockShowTranslationCheckBox"
-                                      Grid.Row="5"
+                                      Grid.Row="6"
                                       Grid.Column="1"
                                       HorizontalAlignment="Right"
                                       Style="{StaticResource SettingsSwitchStyle}"
@@ -2044,17 +2142,13 @@
                                                 </Border>
                                             </Grid>
                                             <TextBlock Margin="0,5,0,0" FontSize="12.5" FontWeight="SemiBold" Text="自动折叠" />
-                                            <TextBlock Margin="0,2,0,0"
+                                            <TextBlock x:Name="ExpandablePreviewDescriptionText"
+                                                       Margin="0,2,0,0"
                                                        Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
-                                                       FontSize="10.5"
-                                                       TextWrapping="Wrap">
-                                                <Run Text="平时保持紧凑，按住 " />
-                                                <Run x:Name="ExpandablePreviewShortcutRun"
-                                                     Foreground="#FF1677FF"
-                                                     FontWeight="Bold"
-                                                     Text="Ctrl" />
-                                                <Run Text="即展开，松开后自动折叠。" />
-                                            </TextBlock>
+                                                       FontSize="11.5"
+                                                       LineHeight="16"
+                                                       TextWrapping="Wrap"
+                                                       Text="平时保持紧凑，按住 Ctrl 即展开，松开后自动折叠。" />
                                         </StackPanel>
                                     </Border>
                                 </Button>
@@ -2193,57 +2287,67 @@
 
                             <StackPanel Grid.Row="1">
                                 <Border Style="{StaticResource SettingsGlassCardStyle}">
-                                    <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="56" />
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="Auto" />
-                                        </Grid.RowDefinitions>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="160" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource PrioritySectionTitleStyle}" Text="首选歌词源" />
+                                        <TextBlock Margin="0,4,0,10" Style="{StaticResource PrioritySectionDescriptionStyle}" Text="拖动排序。顶部来源会优先用于歌词匹配。" />
+                                        <Border Style="{StaticResource PriorityListCardStyle}">
+                                            <ItemsControl x:Name="LyricsSourcePriorityList"
+                                                          AllowDrop="True"
+                                                          PreviewMouseLeftButtonDown="PriorityList_PreviewMouseLeftButtonDown"
+                                                          PreviewMouseMove="PriorityList_PreviewMouseMove"
+                                                          DragOver="PriorityList_DragOver"
+                                                          Drop="PriorityList_Drop"
+                                                          GiveFeedback="PriorityList_GiveFeedback">
+                                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Style="{StaticResource PriorityRowStyle}">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions><ColumnDefinition Width="28" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                                                <TextBlock x:Name="DragHandle" VerticalAlignment="Center" FontSize="18" Foreground="{DynamicResource SettingsControlMutedForegroundBrush}" Opacity="0.42" Text="≡" />
+                                                                <TextBlock Grid.Column="1" VerticalAlignment="Center" Foreground="{DynamicResource SettingsControlForegroundBrush}" Text="{Binding DisplayName}" />
+                                                            </Grid>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </Border>
 
-                                    <TextBlock Grid.Row="0"
-                                               Grid.Column="0"
-                                               Margin="0,0,16,0"
-                                               Style="{StaticResource SettingLabel}"
-                                               Text="首选歌词源" />
-                                    <ComboBox x:Name="LyricsSourceComboBox"
-                                              Grid.Row="0"
-                                              Grid.Column="1"
-                                              DisplayMemberPath="DisplayName"
-                                              SelectedValuePath="Value" />
-
-                                    <TextBlock Grid.Row="1"
-                                               Grid.Column="0"
-                                               Margin="0,7,16,0"
-                                               VerticalAlignment="Top"
-                                               Style="{StaticResource CompoundSettingLabel}"
-                                               Text="播放器" />
-                                    <StackPanel x:Name="LayoutPlayerRowContent"
-                                                Grid.Row="1"
-                                                Grid.Column="1"
-                                                Margin="0"
-                                                VerticalAlignment="Top">
-                                        <ComboBox x:Name="PlayerSelectionComboBox"
-                                                  DisplayMemberPath="DisplayName"
-                                                  IsSynchronizedWithCurrentItem="False"
-                                                  SelectedValuePath="Value"
-                                                  SelectionChanged="PlayerSelectionComboBox_SelectionChanged" />
+                                        <Grid Margin="0,24,0,0">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Style="{StaticResource PrioritySectionTitleStyle}" Text="播放器" />
+                                                <TextBlock Margin="0,4,0,0" Style="{StaticResource PrioritySectionDescriptionStyle}" Text="拖动排序；关闭自动选择时优先使用顶部播放器。" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                                                <TextBlock VerticalAlignment="Center" Style="{StaticResource PrioritySectionDescriptionStyle}" Text="自动选择" />
+                                                <CheckBox x:Name="AutoSelectPlayerToggle" Style="{StaticResource PriorityAutoToggleStyle}" Checked="AutoSelectPlayerToggle_Changed" Unchecked="AutoSelectPlayerToggle_Changed" />
+                                            </StackPanel>
+                                        </Grid>
+                                        <Border Margin="0,10,0,0" Style="{StaticResource PriorityListCardStyle}">
+                                            <ItemsControl x:Name="PlayerPriorityList"
+                                                          AllowDrop="True"
+                                                          PreviewMouseLeftButtonDown="PriorityList_PreviewMouseLeftButtonDown"
+                                                          PreviewMouseMove="PriorityList_PreviewMouseMove"
+                                                          DragOver="PriorityList_DragOver"
+                                                          Drop="PriorityList_Drop"
+                                                          GiveFeedback="PriorityList_GiveFeedback">
+                                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Style="{StaticResource PriorityRowStyle}">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions><ColumnDefinition Width="28" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                                                <TextBlock x:Name="DragHandle" VerticalAlignment="Center" FontSize="18" Foreground="{DynamicResource SettingsControlMutedForegroundBrush}" Opacity="0.42" Text="≡" />
+                                                                <TextBlock Grid.Column="1" VerticalAlignment="Center" Foreground="{DynamicResource SettingsControlForegroundBrush}" Text="{Binding DisplayName}" />
+                                                            </Grid>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </Border>
+                                        <TextBlock x:Name="PlayerSelectionHintText" Margin="0,8,0,0" Style="{StaticResource PrioritySectionDescriptionStyle}" />
                                     </StackPanel>
-                                    <TextBlock x:Name="PlayerSelectionHintText"
-                                               Grid.Row="2"
-                                               Grid.Column="1"
-                                               Margin="0,6,0,10"
-                                               Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
-                                               FontSize="12"
-                                               TextWrapping="Wrap">
-                                        <Run Text="自动选择会跟随最近活跃的播放器" />
-                                        <LineBreak />
-                                        <Run Text="注：网易云音乐由于接口限制无法实时同步歌曲进度（播放器内拖动进度条无法同步）" />
-                                    </TextBlock>
-                                    </Grid>
                                 </Border>
 
                                 <Border Margin="0,18,0,0"

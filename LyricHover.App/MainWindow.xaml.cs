@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -130,6 +131,7 @@ namespace LyricHover.App
         private static readonly TimeSpan NormalHoverTimerInterval = TimeSpan.FromMilliseconds(40);
         private static readonly TimeSpan PowerSavingHoverTimerInterval = TimeSpan.FromMilliseconds(500);
         private bool powerSavingActive;
+        private bool widgetsSettingsConfirmationShowing;
 
         public MainWindow()
         {
@@ -175,8 +177,10 @@ namespace LyricHover.App
                 Dispatcher.BeginInvoke(new Action(() => OpenPlacementSettingsWindow(true)));
             LyricDockController.FeatureDisabled += (sender, reason) =>
                 Dispatcher.BeginInvoke(new Action(() => DisableTaskbarLyrics(reason)));
-            LyricDockController.WidgetsHidingDegraded += (sender, args) =>
-                Dispatcher.BeginInvoke(new Action(() => ShowWidgetsHidingDegradedNotice()));
+            LyricDockController.WidgetsHidden += (sender, args) =>
+                Dispatcher.BeginInvoke(new Action(() => LyricDockController.RefreshPlacement()));
+            LyricDockController.WidgetsHidingNeedsSettingsConfirmation += (sender, args) =>
+                Dispatcher.BeginInvoke(new Action(ShowWidgetsSettingsConfirmation));
             LyricDockController.Start(placementSettings.LyricDockEnabled, placementSettings.ScreenName, placementSettings.LyricDockAlignment);
             shouldStartFirstRunTutorial = !settingsFileExisted;
             if (settingsFileExisted && !placementSettings.HasSeenTutorial)
@@ -189,7 +193,7 @@ namespace LyricHover.App
             interactionController.ExpandedDuration = TimeSpan.FromSeconds(placementSettings.ExpandedAutoCollapseSeconds);
             cache = new LyricsCache(cacheRoot, GetCacheLimitBytes(placementSettings));
             UpdateIslandShape();
-            lyricsClient = CreateLyricsClient(selectedLyricsSource);
+            lyricsClient = CreateLyricsClient(placementSettings.LyricsSourcePriority);
             InitializeTrayIcon();
 
             powerSavingActive = placementSettings.EnablePowerSavingMode;
@@ -1116,30 +1120,28 @@ namespace LyricHover.App
             OverlayPlacementSettings previousSettings,
             OverlayPlacementSettings runtimeSettings)
         {
-            var previousSource = previousSettings.LyricsSource;
             var previousShowTranslation = previousSettings.ShowTranslation || previousSettings.LyricDockShowTranslation;
             var editedLayouts = previousSettings.IslandLayouts;
             runtimeSettings.IslandLayouts = editedLayouts ?? runtimeSettings.IslandLayouts;
             runtimeSettings.Normalize();
-            interactionController.ExpandedDuration = TimeSpan.FromSeconds(placementSettings.ExpandedAutoCollapseSeconds);
-            cache.SetMaxBytes(GetCacheLimitBytes(placementSettings));
-            selectedLyricsSource = placementSettings.LyricsSource;
-            lyricsClient = CreateLyricsClient(selectedLyricsSource);
-            var taskbarWasRequested = placementSettings.LyricDockEnabled;
-            if (!LyricDockController.Configure(placementSettings.LyricDockEnabled, placementSettings.ScreenName, placementSettings.LyricDockAlignment) && taskbarWasRequested)
+            interactionController.ExpandedDuration = TimeSpan.FromSeconds(runtimeSettings.ExpandedAutoCollapseSeconds);
+            cache.SetMaxBytes(GetCacheLimitBytes(runtimeSettings));
+            selectedLyricsSource = runtimeSettings.LyricsSource;
+            lyricsClient = CreateLyricsClient(runtimeSettings.LyricsSourcePriority);
+            var taskbarWasRequested = runtimeSettings.LyricDockEnabled;
+            if (!LyricDockController.Configure(runtimeSettings.LyricDockEnabled, runtimeSettings.ScreenName, runtimeSettings.LyricDockAlignment) && taskbarWasRequested)
             {
-                placementSettings.LyricDockEnabled = false;
-                ShowTaskbarLyricsFailure(LyricDockController.LastFailureReason);
+                runtimeSettings.LyricDockEnabled = false;
             }
-            UiLanguageService.SetPreference(placementSettings.Language);
+            UiLanguageService.SetPreference(runtimeSettings.Language);
             RegisterGlobalHotkeys();
             UpdateIslandShape();
             ApplyPowerSavingState();
-            if (!placementSettings.IslandEnabled)
+            if (!runtimeSettings.IslandEnabled)
             {
                 HideIsland(true);
             }
-            if (currentTrack != null && previousSource != placementSettings.LyricsSource)
+            if (currentTrack != null && !previousSettings.LyricsSourcePriority.SequenceEqual(runtimeSettings.LyricsSourcePriority))
             {
                 RefreshCurrentTrackLyrics(true);
                 return;
@@ -1147,7 +1149,7 @@ namespace LyricHover.App
 
             if (currentTrack != null &&
                 !previousShowTranslation &&
-                (placementSettings.ShowTranslation || placementSettings.LyricDockShowTranslation) &&
+                (runtimeSettings.ShowTranslation || runtimeSettings.LyricDockShowTranslation) &&
                 !LyricsDisplaySelector.ShouldIgnoreTranslation(currentLyrics))
             {
                 RefreshCurrentTrackLyrics(false);
@@ -1828,33 +1830,24 @@ namespace LyricHover.App
 
             settingsStateCoordinator.CommitRuntimeMutation(settings => settings.LyricDockEnabled = false);
             settingsWindow?.NotifyTaskbarLyricsDisabled();
-            ShowTaskbarLyricsFailure(reason);
         }
 
-                private void ShowWidgetsHidingDegradedNotice()
+        private void ShowWidgetsSettingsConfirmation()
         {
-            // Security software with registry protection can block the TaskbarDa write that
-            // auto-hides Widgets.  Tell the user once per enable cycle instead of failing silently.
-            var message = "本机的安全软件（如火绒、联想电脑管家）阻止了任务栏小组件设置的自动修改，因此无法自动隐藏小组件。" +
-                "任务栏歌词已在小组件旁正常显示。\n\n如需自动隐藏：请在安全软件中关闭对应的注册表/系统防护规则后重新开启歌词；" +
-                "或手动在系统设置 > 个性化 > 任务栏中关闭小组件，歌词会自动使用腾出的空间。";
-            var dialog = new InformationDialog(this, "小组件保持可见", message);
-            dialog.ShowDialog();
-        }
-
-        private void ShowTaskbarLyricsFailure(LyricDockFailureReason reason)
-        {
-            var message = reason switch
+            if (widgetsSettingsConfirmationShowing) return;
+            widgetsSettingsConfirmationShowing = true;
+            try
             {
-                LyricDockFailureReason.UnsupportedOS => "任务栏歌词仅支持 Windows 10 及以上版本，已保持关闭。",
-                LyricDockFailureReason.WidgetsNotFound => "未能可靠找到所选屏幕的 Windows Widgets 按钮，已关闭任务栏歌词并恢复 Widgets。",
-                LyricDockFailureReason.InsufficientSafeSpace => "所选任务栏没有至少 220 px 的连续安全空间，已关闭任务栏歌词。若任务栏开启了小组件，可在系统设置 > 个性化 > 任务栏中手动关闭以腾出空间后重试。",
-                LyricDockFailureReason.RegistryOrRefreshFailed => "Windows Widgets 设置未能写入或验证生效，已关闭任务栏歌词并尝试恢复原状态。",
-                LyricDockFailureReason.TaskbarNotFound => "未找到所选屏幕的任务栏，已关闭任务栏歌词并恢复 Widgets。",
-                _ => "任务栏环境已改变且无法安全恢复，已关闭任务栏歌词并恢复 Widgets。"
-            };
-            var dialog = new InformationDialog(this, "任务栏歌词已关闭", message);
-            dialog.ShowDialog();
+                var dialog = new WidgetsSettingsConfirmationWindow(this, placementSettings.SettingsTheme);
+                if (dialog.ShowDialog() == true)
+                {
+                    LyricDockController.TryHideWidgetsThroughSettingsUi();
+                }
+            }
+            finally
+            {
+                widgetsSettingsConfirmationShowing = false;
+            }
         }
 
         private void OpenPlacementSettingsWindow(bool focusTaskbarLyrics = false)
@@ -2258,12 +2251,12 @@ namespace LyricHover.App
             return IslandShape.InputHitTest(point) != null;
         }
 
-        private static ILyricsClient CreateLyricsClient(LyricsSourcePreference source)
+        private static ILyricsClient CreateLyricsClient(IEnumerable<LyricsSourcePreference> sourcePriority)
         {
-            return new CompositeLyricsClient(CreateLyricsSourceChain(source).Select(CreateSingleLyricsClient).ToArray());
+            return new CompositeLyricsClient(CreateLyricsSourceChain(sourcePriority).Select(CreateSingleLyricsClient).ToArray());
         }
 
-        private static LyricsSourcePreference[] CreateLyricsSourceChain(LyricsSourcePreference preferredSource)
+        private static LyricsSourcePreference[] CreateLyricsSourceChain(IEnumerable<LyricsSourcePreference> sourcePriority)
         {
             var fallbackOrder = new[]
             {
@@ -2273,13 +2266,10 @@ namespace LyricHover.App
                 LyricsSourcePreference.NetEase
             };
 
-            if (preferredSource == LyricsSourcePreference.Automatic)
-            {
-                return fallbackOrder;
-            }
-
-            return new[] { preferredSource }
-                .Concat(fallbackOrder.Where(source => source != preferredSource))
+            return (sourcePriority ?? Enumerable.Empty<LyricsSourcePreference>())
+                .Where(source => source != LyricsSourcePreference.Automatic && fallbackOrder.Contains(source))
+                .Concat(fallbackOrder)
+                .Distinct()
                 .ToArray();
         }
 

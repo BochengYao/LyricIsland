@@ -33,7 +33,7 @@ namespace LyricHover.App
         public const int MinNoPlaybackAutoRetractSeconds = 0;
         public const int MaxAutoRetractSeconds = 300;
 
-        public int SchemaVersion { get; set; } = 3;
+        public int SchemaVersion { get; set; } = 4;
 
         public IslandLayoutSettings IslandLayouts { get; set; } = IslandLayoutDefaults.Create();
 
@@ -61,7 +61,15 @@ namespace LyricHover.App
 
         public AppLanguagePreference Language { get; set; } = AppLanguagePreference.System;
 
-        public LyricsSourcePreference LyricsSource { get; set; } = LyricsSourcePreference.Automatic;
+        // Kept for backwards compatibility with existing settings files. New code
+        // uses LyricsSourcePriority and keeps this value synchronized to its first item.
+        public LyricsSourcePreference LyricsSource { get; set; } = LyricsSourcePreference.LrcLib;
+
+        public List<LyricsSourcePreference> LyricsSourcePriority { get; set; } = CreateDefaultLyricsSourcePriority();
+
+        public List<string> PlayerPriority { get; set; } = new List<string>();
+
+        public bool AutoSelectPlayer { get; set; } = true;
 
         public bool UseMultiLineDisplay { get; set; } = true;
 
@@ -105,6 +113,16 @@ namespace LyricHover.App
 
         public void Normalize()
         {
+            var originalSchemaVersion = SchemaVersion;
+            if (originalSchemaVersion < 4)
+            {
+                LyricsSourcePriority = CreateDefaultLyricsSourcePriority(LyricsSource);
+                PlayerPriority = string.IsNullOrWhiteSpace(LockedSourceAppUserModelId)
+                    ? new List<string>()
+                    : new List<string> { LockedSourceAppUserModelId };
+                AutoSelectPlayer = string.IsNullOrWhiteSpace(LockedSourceAppUserModelId);
+                SchemaVersion = 4;
+            }
             if (SchemaVersion < 2 || IslandLayouts == null)
             {
                 IslandLayouts = IslandLayoutDefaults.Create();
@@ -124,7 +142,7 @@ namespace LyricHover.App
             ExpandedAutoCollapseSeconds = Math.Max(
                 MinAutoRetractSeconds,
                 Math.Min(MaxAutoRetractSeconds, ExpandedAutoCollapseSeconds));
-            SchemaVersion = 3;
+            SchemaVersion = 4;
             OffsetRatio = Math.Max(0, Math.Min(1, OffsetRatio));
             CacheLimitMegabytes = Math.Max(MinCacheLimitMegabytes, Math.Min(MaxCacheLimitMegabytes, CacheLimitMegabytes));
             HoverAuraSize = Math.Max(MinHoverAuraSize, Math.Min(MaxHoverAuraSize, HoverAuraSize));
@@ -132,10 +150,12 @@ namespace LyricHover.App
             HoverAuraAspectRatio = Math.Max(MinHoverAuraAspectRatio, Math.Min(MaxHoverAuraAspectRatio, HoverAuraAspectRatio));
             HoverTransparencyPercent = Math.Max(MinHoverTransparencyPercent, Math.Min(MaxHoverTransparencyPercent, HoverTransparencyPercent));
             HoverSpectrumStops = NormalizeHoverSpectrumStops(HoverSpectrumStops, HoverTransparencyPercent);
-            if (!Enum.IsDefined(typeof(LyricsSourcePreference), LyricsSource))
-            {
-                LyricsSource = LyricsSourcePreference.Automatic;
-            }
+            LyricsSourcePriority = NormalizeLyricsSourcePriority(LyricsSourcePriority);
+            LyricsSource = LyricsSourcePriority[0];
+            PlayerPriority = NormalizePlayerPriority(PlayerPriority);
+            LockedSourceAppUserModelId = AutoSelectPlayer || PlayerPriority.Count == 0
+                ? string.Empty
+                : PlayerPriority[0];
 
             if (!Enum.IsDefined(typeof(SettingsThemePreference), SettingsTheme))
             {
@@ -161,6 +181,13 @@ namespace LyricHover.App
             {
                 LyricDockUseMultiLineDisplay = true;
             }
+
+            // At least one lyric surface must remain available.  This also repairs
+            // legacy or externally edited settings files that disabled both surfaces.
+            if (!IslandEnabled && !LyricDockEnabled)
+            {
+                IslandEnabled = true;
+            }
         }
 
         private static OverlayDockEdge NormalizeEdge(OverlayDockEdge edge)
@@ -176,6 +203,41 @@ namespace LyricHover.App
                 new HoverSpectrumStop { PositionPercent = DefaultHoverSpectrumMidPosition, TransparencyPercent = DefaultHoverSpectrumMidTransparency },
                 new HoverSpectrumStop { PositionPercent = 100, TransparencyPercent = DefaultHoverSpectrumEdgeTransparency }
             };
+        }
+
+        public static List<LyricsSourcePreference> CreateDefaultLyricsSourcePriority(LyricsSourcePreference preferred = LyricsSourcePreference.LrcLib)
+        {
+            var available = new[]
+            {
+                LyricsSourcePreference.LrcLib,
+                LyricsSourcePreference.QQMusic,
+                LyricsSourcePreference.KuGou,
+                LyricsSourcePreference.NetEase
+            };
+            var first = available.Contains(preferred) ? preferred : LyricsSourcePreference.LrcLib;
+            return new[] { first }.Concat(available.Where(source => source != first)).ToList();
+        }
+
+        private static List<LyricsSourcePreference> NormalizeLyricsSourcePriority(IEnumerable<LyricsSourcePreference> values)
+        {
+            var ordered = (values ?? Enumerable.Empty<LyricsSourcePreference>())
+                .Where(value => value != LyricsSourcePreference.Automatic &&
+                                Enum.IsDefined(typeof(LyricsSourcePreference), value))
+                .Distinct()
+                .ToList();
+            foreach (var source in CreateDefaultLyricsSourcePriority())
+            {
+                if (!ordered.Contains(source)) ordered.Add(source);
+            }
+            return ordered;
+        }
+
+        private static List<string> NormalizePlayerPriority(IEnumerable<string> values)
+        {
+            return (values ?? Enumerable.Empty<string>())
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
 
         private static List<HoverSpectrumStop> NormalizeHoverSpectrumStops(List<HoverSpectrumStop> stops, int fallbackTransparencyPercent)

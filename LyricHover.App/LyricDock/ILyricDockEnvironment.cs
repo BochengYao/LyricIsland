@@ -48,6 +48,7 @@ namespace LyricHover.App.LyricDock
         bool TryGetPlacement(string screenName, LyricDockAlignment alignment, out LyricDockPlacement placement, out LyricDockFailureReason failureReason);
         bool TryReadTaskbarDa(out TaskbarDaValueState state);
         bool TryWriteTaskbarDa(TaskbarDaValueState state);
+        bool TryDisableWidgetsThroughSettingsUi();
         bool TryPrepareWidgetsRestore(string screenName);
         bool TryRefreshTaskbarAndVerify(TaskbarDaValueState expectedState, bool forceHide = false);
     }

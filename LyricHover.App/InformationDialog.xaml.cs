@@ -9,12 +9,15 @@ namespace LyricHover.App
         private static readonly string[] ThemeResourceKeys =
         {
             "SettingsRootBackgroundBrush",
+            "SettingsControlBackgroundBrush",
             "SettingsControlForegroundBrush",
             "SettingsControlMutedForegroundBrush",
-            "SettingsControlBorderBrush"
+            "SettingsControlBorderBrush",
+            "SettingsControlHoverBackgroundBrush",
+            "SettingsControlPressedBackgroundBrush"
         };
 
-        public InformationDialog(Window owner, string title, string message)
+        public InformationDialog(Window owner, string title, string message, string confirmText = null, string cancelText = null)
         {
             InitializeComponent();
             // WPF throws if the owner window has never been shown (e.g. the dialog is
@@ -24,6 +27,12 @@ namespace LyricHover.App
 
             TitleTextBlock.Text = title;
             MessageTextBlock.Text = message;
+            if (!string.IsNullOrWhiteSpace(confirmText)) OKButton.Content = confirmText;
+            if (!string.IsNullOrWhiteSpace(cancelText))
+            {
+                CancelButton.Content = cancelText;
+                CancelButton.Visibility = Visibility.Visible;
+            }
         }
 
         private void InheritThemeResources(FrameworkElement owner)
@@ -47,9 +56,19 @@ namespace LyricHover.App
             DialogResult = true;
         }
 
+        private void CancelButton_Click(object sender, RoutedEventArgs e)
+        {
+            DialogResult = false;
+        }
+
         private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Escape || e.Key == Key.Enter)
+            if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                DialogResult = false;
+            }
+            else if (e.Key == Key.Enter)
             {
                 e.Handled = true;
                 DialogResult = true;

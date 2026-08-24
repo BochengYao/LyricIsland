@@ -1,4 +1,6 @@
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace LyricHover.App.LyricDock
 {
@@ -23,6 +25,9 @@ namespace LyricHover.App.LyricDock
         private bool requestedEnabled;
         private bool widgetsHidingUnavailable;
         private bool restoringStartup;
+        private bool disposed;
+        private int widgetsHidingGeneration;
+        private TaskbarDaValueState? observedWidgetsState;
         private string screenName;
         private LyricDockAlignment alignment;
         private LyricsPresentationSnapshot snapshot = new LyricsPresentationSnapshot { IsWaitingForPlayback = true };
@@ -38,7 +43,8 @@ namespace LyricHover.App.LyricDock
 
         public event EventHandler SettingsRequested;
         public event EventHandler<LyricDockFailureReason> FeatureDisabled;
-        public event EventHandler WidgetsHidingDegraded;
+        public event EventHandler WidgetsHidden;
+        public event EventHandler WidgetsHidingNeedsSettingsConfirmation;
         public bool IsEnabled => enabled;
         public LyricDockFailureReason LastFailureReason { get; private set; }
 
@@ -53,16 +59,19 @@ namespace LyricHover.App.LyricDock
                 return false;
             }
             restoringStartup = true;
+            var configured = false;
             try
             {
                 // Startup restoration must stay silent: the degraded notice is only useful
                 // when the user explicitly turns the feature on from settings.
-                return Configure(requestedEnabled, requestedScreenName, requestedAlignment);
+                configured = Configure(requestedEnabled, requestedScreenName, requestedAlignment);
             }
             finally
             {
                 restoringStartup = false;
             }
+            if (configured && requestedEnabled) StartWidgetsHidingAttempt();
+            return configured;
         }
 
         public bool Configure(bool requestedEnabled, string requestedScreenName, LyricDockAlignment requestedAlignment)
@@ -90,18 +99,10 @@ namespace LyricHover.App.LyricDock
                 Disable(reason == LyricDockFailureReason.None ? LyricDockFailureReason.TaskbarNotFound : reason);
                 return false;
             }
-            if (!widgetsHidingUnavailable && !widgetLease.TryAcquire())
-            {
-                // Widgets hiding is an optional space enhancement, not a prerequisite.  Some
-                // machines (notably Win11 25H2 with registry write protection) block TaskbarDa
-                // writes entirely; keep the feature working with Widgets visible because the
-                // placement logic already accounts for them as occupied space.  Stop retrying
-                // for this session so refreshes don't repeat the slow acquisition timeout.
-                widgetsHidingUnavailable = true;
-                if (!restoringStartup) WidgetsHidingDegraded?.Invoke(this, EventArgs.Empty);            }
-
             enabled = true;
             Show(initialPlacement);
+            ObserveWidgetsState();
+            StartWidgetsHidingAttempt();
             return true;
         }
 
@@ -131,6 +132,8 @@ namespace LyricHover.App.LyricDock
         public void Dispose()
         {
             environment.Changed -= EnvironmentChanged;
+            disposed = true;
+            Interlocked.Increment(ref widgetsHidingGeneration);
             enabled = false;
             HideAndRestore();
         }
@@ -138,6 +141,28 @@ namespace LyricHover.App.LyricDock
         private void EnvironmentChanged(object sender, EventArgs args)
         {
             RefreshPlacement();
+            if (!enabled || !ObserveWidgetsState(out var changedState) || changedState == TaskbarDaValueState.Disabled) return;
+
+            // A manual Windows Settings change has made Widgets visible again.  Reuse the
+            // normal silent-first flow: reassert the existing lease when possible, otherwise
+            // ask before opening Settings again.
+            widgetsHidingUnavailable = false;
+            StartWidgetsHidingAttempt();
+        }
+
+        private void ObserveWidgetsState()
+        {
+            if (environment.TryReadTaskbarDa(out var current)) observedWidgetsState = current;
+        }
+
+        private bool ObserveWidgetsState(out TaskbarDaValueState changedState)
+        {
+            changedState = TaskbarDaValueState.Absent;
+            if (!environment.TryReadTaskbarDa(out var current)) return false;
+            var changed = observedWidgetsState.HasValue && observedWidgetsState.Value != current;
+            observedWidgetsState = current;
+            changedState = current;
+            return changed;
         }
         private bool CanUse(LyricDockPlacement placement) => placement != null && placement.IsVisible && !placement.IsFullscreenCovered && placement.Width >= MinimumWidth && placement.Height > 0 && placement.DpiScale > 0;
         private void Show(LyricDockPlacement placement)
@@ -159,6 +184,54 @@ namespace LyricHover.App.LyricDock
         {
             surface.Hide();
             widgetLease.TryRestore();
+        }
+
+        public void TryHideWidgetsThroughSettingsUi()
+        {
+            if (!enabled || disposed) return;
+            var generation = Interlocked.Increment(ref widgetsHidingGeneration);
+            Task.Run(() => widgetLease.TryAcquireThroughSettingsUi(screenName)).ContinueWith(task =>
+            {
+                if (disposed || generation != Volatile.Read(ref widgetsHidingGeneration) || !enabled) return;
+                if (task.Status == TaskStatus.RanToCompletion && task.Result)
+                {
+                    ObserveWidgetsState();
+                    widgetsHidingUnavailable = false;
+                    WidgetsHidden?.Invoke(this, EventArgs.Empty);
+                }
+            }, TaskScheduler.Default);
+        }
+
+        private void StartWidgetsHidingAttempt()
+        {
+            if (widgetsHidingUnavailable || restoringStartup || disposed) return;
+
+            var generation = Interlocked.Increment(ref widgetsHidingGeneration);
+            // Explorer can take seconds to apply TaskbarDa.  The current placement is already
+            // safe with Widgets visible, so its verification must not block the WPF Dispatcher.
+            Task.Run(() => widgetLease.TryAcquire(screenName)).ContinueWith(task =>
+            {
+                if (disposed || generation != Volatile.Read(ref widgetsHidingGeneration) || !enabled)
+                {
+                    if (task.Status == TaskStatus.RanToCompletion && task.Result)
+                    {
+                        widgetLease.TryRestore();
+                    }
+                    return;
+                }
+
+                if (task.Status == TaskStatus.RanToCompletion && task.Result)
+                {
+                    ObserveWidgetsState();
+                    WidgetsHidden?.Invoke(this, EventArgs.Empty);
+                    return;
+                }
+
+                // The background path did not have permission.  Let the host ask before
+                // opening Windows Settings; never surface that page without consent.
+                widgetsHidingUnavailable = true;
+                WidgetsHidingNeedsSettingsConfirmation?.Invoke(this, EventArgs.Empty);
+            }, TaskScheduler.Default);
         }
     }
 }

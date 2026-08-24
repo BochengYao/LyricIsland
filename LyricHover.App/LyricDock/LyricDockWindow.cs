@@ -17,9 +17,17 @@ namespace LyricHover.App.LyricDock
     public sealed class LyricDockWindow : Window, ILyricDockSurface
     {
         private const int GwlExStyle = -20;
+        private const int WmNcHitTest = 0x0084;
+        private const int WmRButtonDown = 0x0204;
+        private const int WmRButtonUp = 0x0205;
+        private const int WmContextMenu = 0x007B;
+        private const int HtClient = 1;
         private const int WsExNoActivate = 0x08000000;
         private const int WsExToolWindow = 0x00000080;
         private const uint SwpNoActivate = 0x0010;
+        private const uint SwpNoSize = 0x0001;
+        private const uint SwpNoMove = 0x0002;
+        private static readonly IntPtr HwndTopmost = new IntPtr(-1);
         private const double PrimaryLineHeight = 18;
         private const double SecondaryLineHeight = 14;
 
@@ -71,21 +79,53 @@ namespace LyricHover.App.LyricDock
             root.Children.Add(textViewport);
             Content = root;
             PreviewMouseLeftButtonDown += (sender, args) => args.Handled = true;
-            PreviewMouseRightButtonUp += (sender, args) => { SettingsRequested?.Invoke(this, EventArgs.Empty); args.Handled = true; };
             SourceInitialized += (sender, args) =>
             {
                 handle = new WindowInteropHelper(this).Handle;
                 var style = GetWindowLong(handle, GwlExStyle).ToInt64();
                 SetWindowLong(handle, GwlExStyle, new IntPtr(style | WsExNoActivate | WsExToolWindow));
+                HwndSource.FromHwnd(handle)?.AddHook(WindowMessageHook);
             };
         }
 
         public event EventHandler SettingsRequested;
 
+        private IntPtr WindowMessageHook(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            // WPF's routed right-button event is not reliable for this transparent,
+            // non-activating taskbar overlay.  Claim the native hit and context messages so
+            // Explorer cannot open its own taskbar menu underneath the lyrics surface.
+            if (message == WmNcHitTest)
+            {
+                handled = true;
+                return new IntPtr(HtClient);
+            }
+            if (message == WmRButtonDown)
+            {
+                // Consume the press too: otherwise Explorer can remember it and show the
+                // taskbar context menu after this no-activate overlay handles button-up.
+                handled = true;
+                return IntPtr.Zero;
+            }
+            if (message == WmRButtonUp)
+            {
+                SettingsRequested?.Invoke(this, EventArgs.Empty);
+                handled = true;
+                return IntPtr.Zero;
+            }
+            if (message == WmContextMenu)
+            {
+                handled = true;
+            }
+            return IntPtr.Zero;
+        }
+
         void ILyricDockSurface.Show()
         {
             if (!IsVisible) Show();
-            if (handle != IntPtr.Zero) SetWindowPos(handle, IntPtr.Zero, 0, 0, 0, 0, SwpNoActivate | 0x0001 | 0x0002);
+            // Keep the transparent native surface above the taskbar itself; HWND_TOP can
+            // leave a non-activating WPF window behind Explorer on some Windows builds.
+            if (handle != IntPtr.Zero) SetWindowPos(handle, HwndTopmost, 0, 0, 0, 0, SwpNoActivate | SwpNoSize | SwpNoMove);
         }
 
         public void Present(LyricsPresentationSnapshot snapshot)

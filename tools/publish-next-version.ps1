@@ -100,6 +100,10 @@ try {
 
     Push-Location $root
     try {
+        # This script owns the candidate-generation mutex. The transaction fixture
+        # intentionally starts another candidate generator, so it is run separately
+        # rather than recursively under this lock.
+        $env:LYRICHOVER_SKIP_RELEASE_VERSION_FIXTURE = '1'
         dotnet run --no-restore --configuration Release --project LyricHover.Tests
         if ($LASTEXITCODE -ne 0) { throw '自动测试失败。' }
 

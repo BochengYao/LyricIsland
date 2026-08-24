@@ -26,15 +26,32 @@ namespace LyricHover.App.LyricDock
             return TryDeleteRecovery();
         }
 
-        public bool TryAcquire()
+        public bool TryAcquire(string screenName = null)
         {
-            if (acquired) return true;
+            if (acquired)
+            {
+                // The user can re-enable Widgets from Windows Settings while the dock is
+                // active.  A lease is not proof that the shell still honors it: reassert the
+                // hidden state without replacing the original recovery value.
+                if (!environment.TryReadTaskbarDa(out var current)) return false;
+                if (current == TaskbarDaValueState.Disabled) return true;
+                if (!environment.TryWriteTaskbarDa(TaskbarDaValueState.Disabled) ||
+                    !environment.TryReadTaskbarDa(out var actual) ||
+                    actual != TaskbarDaValueState.Disabled ||
+                    !environment.TryRefreshTaskbarAndVerify(TaskbarDaValueState.Disabled)) return false;
+                return true;
+            }
             if (!environment.TryReadTaskbarDa(out var original)) return false;
+            // Capture the taskbar before changing TaskbarDa.  New Windows builds can expose
+            // Widgets through a different UIA subtree; the environment preserves a taskbar
+            // anchor even in that case so a successful registry write can still be verified.
+            if (!environment.TryPrepareWidgetsRestore(screenName)) return false;
             if (original == TaskbarDaValueState.Disabled)
             {
-                // Widgets are already hidden by the user; nothing to change or restore.
-                acquired = environment.TryRefreshTaskbarAndVerify(TaskbarDaValueState.Disabled);
-                return acquired;
+                // The user already hid Widgets. Do not wait for an Explorer/UIA refresh or
+                // show the settings-consent dialog merely because the visual probe is late.
+                acquired = true;
+                return true;
             }
             if (!TryWriteRecovery(original)) return false;
             // Single write attempt: never delete the value as a substitute for writing 0 —
@@ -59,6 +76,43 @@ namespace LyricHover.App.LyricDock
             if (!environment.TryRefreshTaskbarAndVerify(actualState, forceHide: actualState == TaskbarDaValueState.Absent))
             {
                 TryRestore();
+                return false;
+            }
+            acquired = true;
+            return true;
+        }
+
+        // This path is deliberately separate from TryAcquire: opening and automating the
+        // Windows Settings page is only allowed after the user has approved it.
+        public bool TryAcquireThroughSettingsUi(string screenName = null)
+        {
+            if (acquired)
+            {
+                // A user can re-enable Widgets after this lease was acquired.  Do not treat
+                // the in-memory lease as proof that the system setting is still Off: this is
+                // the user-approved fallback, so it must actually open Settings and toggle.
+                if (!environment.TryReadTaskbarDa(out var current)) return false;
+                if (current == TaskbarDaValueState.Disabled) return true;
+                return environment.TryPrepareWidgetsRestore(screenName) &&
+                    environment.TryDisableWidgetsThroughSettingsUi() &&
+                    environment.TryReadTaskbarDa(out var updatedState) &&
+                    updatedState == TaskbarDaValueState.Disabled &&
+                    environment.TryRefreshTaskbarAndVerify(TaskbarDaValueState.Disabled);
+            }
+            if (!environment.TryReadTaskbarDa(out var original)) return false;
+            if (!environment.TryPrepareWidgetsRestore(screenName)) return false;
+            if (original == TaskbarDaValueState.Disabled)
+            {
+                acquired = environment.TryRefreshTaskbarAndVerify(TaskbarDaValueState.Disabled);
+                return acquired;
+            }
+            if (!TryWriteRecovery(original)) return false;
+            if (!environment.TryDisableWidgetsThroughSettingsUi() ||
+                !environment.TryReadTaskbarDa(out var actual) ||
+                actual != TaskbarDaValueState.Disabled ||
+                !environment.TryRefreshTaskbarAndVerify(TaskbarDaValueState.Disabled))
+            {
+                TryDeleteRecovery();
                 return false;
             }
             acquired = true;

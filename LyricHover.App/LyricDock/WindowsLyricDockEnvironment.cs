@@ -21,16 +21,40 @@ namespace LyricHover.App.LyricDock
         private static readonly IntPtr HwndBroadcast = new IntPtr(0xffff);
         private readonly Forms.Timer changeTimer;
         private readonly Dictionary<string, WidgetAnchor> widgetAnchors = new Dictionary<string, WidgetAnchor>(StringComparer.OrdinalIgnoreCase);
+        private TaskbarDaValueState observedWidgetsState;
+        private bool hasObservedWidgetsState;
 
         public WindowsLyricDockEnvironment()
         {
-            changeTimer = new Forms.Timer { Interval = 1500 };
-            changeTimer.Tick += (sender, args) => Changed?.Invoke(this, EventArgs.Empty);
+            // Polling this single registry value is cheap.  Do not run a full UIA taskbar
+            // layout scan on every timer tick: that used to make the settings toggle feel
+            // sluggish and was unnecessary when nothing had changed.
+            if (TryReadTaskbarDa(out var initialState))
+            {
+                observedWidgetsState = initialState;
+                hasObservedWidgetsState = true;
+            }
+            changeTimer = new Forms.Timer { Interval = 300 };
+            changeTimer.Tick += (sender, args) => NotifyWidgetsStateChange();
             changeTimer.Start();
         }
 
         public bool IsSupported => GetRealWindowsVersion().Major >= 10;
         public event EventHandler Changed;
+
+        private void NotifyWidgetsStateChange()
+        {
+            if (!TryReadTaskbarDa(out var currentState)) return;
+            if (!hasObservedWidgetsState)
+            {
+                observedWidgetsState = currentState;
+                hasObservedWidgetsState = true;
+                return;
+            }
+            if (currentState == observedWidgetsState) return;
+            observedWidgetsState = currentState;
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
 
         public bool TryGetPlacement(string screenName, LyricDockAlignment alignment, out LyricDockPlacement placement, out LyricDockFailureReason failureReason)
         {
@@ -51,26 +75,21 @@ namespace LyricHover.App.LyricDock
 
             var targetScreen = string.IsNullOrWhiteSpace(screenName) ? screen.DeviceName : screenName;
             WidgetAnchor widgets = null;
-            var widgetsHiddenManually = false;
+            var widgetsDiscoveryUnavailable = false;
             if (!TryGetWidgetsAnchor(taskbar, targetScreen, out widgets))
             {
-                // No Widgets element is visible.  When TaskbarDa=0 the user hid Widgets
-                // manually via Windows Settings, so lyrics simply use the widest free gap;
-                // otherwise the discovery is genuinely unreliable and must fail closed.
-                if (!TryReadTaskbarDa(out var observedState) || observedState != TaskbarDaValueState.Disabled)
-                {
-                    failureReason = LyricDockFailureReason.WidgetsNotFound;
-                    return false;
-                }
+                // Windows changes the Widgets UIA tree across releases and languages.  Its
+                // absence must not disable taskbar lyrics: occupied UIA controls still define
+                // a safe gap, while the lease separately attempts to turn Widgets off.
                 widgets = null;
-                widgetsHiddenManually = true;
+                widgetsDiscoveryUnavailable = true;
             }
             if (!TryGetOccupiedIntervals(taskbar, taskbarRect, widgets, out var occupied))
             {
                 failureReason = LyricDockFailureReason.TaskbarChanged;
                 return false;
             }
-            if (!TrySelectSafeGap(taskbarRect, widgetsHiddenManually ? null : widgets.Bounds, occupied, alignment, out var gap))
+            if (!TrySelectSafeGap(taskbarRect, widgetsDiscoveryUnavailable ? null : widgets.Bounds, occupied, alignment, out var gap))
             {
                 failureReason = LyricDockFailureReason.InsufficientSafeSpace;
                 return false;
@@ -127,7 +146,7 @@ namespace LyricHover.App.LyricDock
             catch (Exception ex) { WriteDiagnosticLog($"Write TaskbarDa={state}: exception {ex.GetType().Name}: {ex.Message}"); return false; }
         }
 
-        private bool TryWriteTaskbarDaDirect(TaskbarDaValueState state)
+        private static bool TryWriteTaskbarDaDirect(TaskbarDaValueState state)
         {
             var hKey = IntPtr.Zero;
             var result = RegOpenKeyExW(HKEY_CURRENT_USER, ExplorerAdvancedKey, 0, KEY_ALL_ACCESS, ref hKey);
@@ -202,6 +221,250 @@ namespace LyricHover.App.LyricDock
                 WriteDiagnosticLog($"WMI write TaskbarDa={state}: exception {ex.GetType().Name}: {ex.Message}");
                 return false;
             }
+        }
+
+        public bool TryDisableWidgetsThroughSettingsUi()
+        {
+            var success = TryDisableWidgetsThroughStaHelper();
+            if (success) WriteDiagnosticLog("Write TaskbarDa=Disabled: ok (user-approved Windows Settings toggle)");
+            return success;
+        }
+
+        private static bool TryDisableWidgetsThroughStaHelper()
+        {
+            try
+            {
+                var executable = Process.GetCurrentProcess().MainModule?.FileName;
+                if (string.IsNullOrWhiteSpace(executable) || !System.IO.File.Exists(executable)) return false;
+                using var helper = Process.Start(new ProcessStartInfo
+                {
+                    FileName = executable,
+                    Arguments = "--lyrichover-widgets-settings-toggle",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                });
+                return helper != null && helper.WaitForExit(15000) && helper.ExitCode == 0;
+            }
+            catch (Exception ex)
+            {
+                WriteDiagnosticLog("Windows Settings helper: " + ex.GetType().Name + ": " + ex.Message);
+                return false;
+            }
+        }
+
+        internal static bool TryDisableWidgetsFromStaHelper() => TryDisableWidgetsViaSystemSettingsOnStaThread();
+
+        internal static bool TryWriteTaskbarDaFromElevatedHelper(TaskbarDaValueState state)
+        {
+            try
+            {
+                return TryWriteTaskbarDaDirect(state);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool TryWriteTaskbarDaViaElevation()
+        {
+            try
+            {
+                var executable = Process.GetCurrentProcess().MainModule?.FileName;
+                if (string.IsNullOrWhiteSpace(executable) || !System.IO.File.Exists(executable))
+                {
+                    return false;
+                }
+
+                using var helper = Process.Start(new ProcessStartInfo
+                {
+                    FileName = executable,
+                    Arguments = "--lyrichover-taskbar-da disabled",
+                    UseShellExecute = true,
+                    Verb = "runas"
+                });
+                return helper != null && helper.WaitForExit(8000) && helper.ExitCode == 0;
+            }
+            catch (Exception ex)
+            {
+                WriteDiagnosticLog("Elevated TaskbarDa write: " + ex.GetType().Name + ": " + ex.Message);
+                return false;
+            }
+        }
+
+        private static bool TryDisableWidgetsViaSystemSettingsOnStaThread()
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = "ms-settings:taskbar",
+                    UseShellExecute = true
+                });
+
+                var wait = Stopwatch.StartNew();
+                while (wait.Elapsed < TimeSpan.FromSeconds(12))
+                {
+                    var toggle = FindWidgetsSettingsToggle();
+                    if (toggle != null &&
+                        toggle.TryGetCurrentPattern(TogglePattern.Pattern, out var rawPattern) &&
+                        rawPattern is TogglePattern pattern)
+                    {
+                        if (pattern.Current.ToggleState == ToggleState.Off)
+                        {
+                            if (ConfirmWidgetsSettingsCommitAndClose(pattern, TimeSpan.FromMilliseconds(700))) return true;
+
+                            // On a first-open Settings page UIA can report Off before the
+                            // binding that writes TaskbarDa exists.  Registry still says On,
+                            // so create a fresh On -> Off edge and retry instead of accepting
+                            // the stale visual state and leaving Widgets enabled.
+                            pattern.Toggle();
+                            Thread.Sleep(120);
+                            toggle = FindWidgetsSettingsToggle();
+                            if (toggle != null &&
+                                toggle.TryGetCurrentPattern(TogglePattern.Pattern, out rawPattern) &&
+                                rawPattern is TogglePattern refreshedPattern &&
+                                refreshedPattern.Current.ToggleState != ToggleState.Off)
+                            {
+                                refreshedPattern.Toggle();
+                                if (ConfirmWidgetsSettingsCommitAndClose(refreshedPattern, TimeSpan.FromMilliseconds(700))) return true;
+                            }
+                            continue;
+                        }
+
+                        // The control can be exposed before Settings finishes binding its
+                        // persistence handler.  Toggle immediately for responsive feedback;
+                        // if that first commit is discarded, a later short retry re-acquires
+                        // the control instead of imposing a visible fixed 1.4-second wait.
+                        pattern.Toggle();
+                        if (ConfirmWidgetsSettingsCommitAndClose(pattern, TimeSpan.FromMilliseconds(700))) return true;
+                    }
+
+                    Thread.Sleep(150);
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteDiagnosticLog("Windows Settings Widgets toggle: " + ex.GetType().Name + ": " + ex.Message);
+            }
+
+            return false;
+        }
+
+        private static bool WaitForWidgetsSettingsCommit(TogglePattern pattern, TimeSpan timeout)
+        {
+            // The Settings page applies this asynchronously.  A short-lived helper that
+            // exits as soon as TogglePattern reports Off can cancel the pending commit;
+            // require the persisted TaskbarDa=0 state before returning success.
+            var wait = Stopwatch.StartNew();
+            while (wait.Elapsed < timeout)
+            {
+                Thread.Sleep(75);
+                try
+                {
+                    using var key = Registry.CurrentUser.OpenSubKey(ExplorerAdvancedKey, false);
+                    var value = key?.GetValue(WidgetsValueName, null);
+                    if (value != null && Convert.ToInt32(value) == 0 &&
+                        pattern.Current.ToggleState == ToggleState.Off)
+                    {
+                        return true;
+                    }
+                }
+                catch { }
+            }
+            return false;
+        }
+
+        private static bool ConfirmWidgetsSettingsCommitAndClose(TogglePattern pattern, TimeSpan timeout)
+        {
+            if (!WaitForWidgetsSettingsCommit(pattern, timeout)) return false;
+            CloseWidgetsSettingsWindow();
+            return true;
+        }
+
+        private static void CloseWidgetsSettingsWindow()
+        {
+            try
+            {
+                foreach (AutomationElement window in AutomationElement.RootElement.FindAll(TreeScope.Children, Condition.TrueCondition))
+                {
+                    if (!string.Equals(window.Current.ClassName, "ApplicationFrameWindow", StringComparison.OrdinalIgnoreCase)) continue;
+                    var toggle = window.FindFirst(
+                        TreeScope.Descendants,
+                        new PropertyCondition(AutomationElement.AutomationIdProperty, "SystemSettings_DesktopTaskbar_Da_ToggleSwitch"));
+                    if (toggle == null) continue;
+                    if (window.TryGetCurrentPattern(WindowPattern.Pattern, out var rawPattern) && rawPattern is WindowPattern pattern)
+                    {
+                        pattern.Close();
+                    }
+                    return;
+                }
+            }
+            catch
+            {
+                // Closing Settings is best-effort only.  The setting was already persisted.
+            }
+        }
+
+        private static AutomationElement FindWidgetsSettingsToggle()
+        {
+            try
+            {
+                // The taskbar page has a stable control id on current Windows 11 builds.
+                // Search only Settings windows first: scanning the desktop can race an
+                // unrelated ToggleSwitch and previously opened the page without toggling it.
+                foreach (AutomationElement window in AutomationElement.RootElement.FindAll(TreeScope.Children, Condition.TrueCondition))
+                {
+                    if (!string.Equals(window.Current.ClassName, "ApplicationFrameWindow", StringComparison.OrdinalIgnoreCase)) continue;
+                    var direct = window.FindFirst(
+                        TreeScope.Descendants,
+                        new PropertyCondition(AutomationElement.AutomationIdProperty, "SystemSettings_DesktopTaskbar_Da_ToggleSwitch"));
+                    if (direct != null) return direct;
+                }
+
+                foreach (AutomationElement element in AutomationElement.RootElement.FindAll(TreeScope.Descendants, Condition.TrueCondition))
+                {
+                    if (!element.TryGetCurrentPattern(TogglePattern.Pattern, out _))
+                    {
+                        continue;
+                    }
+
+                    if (HasWidgetsSettingsContext(element))
+                    {
+                        return element;
+                    }
+                }
+            }
+            catch
+            {
+                // System Settings may still be composing its XAML accessibility tree.
+            }
+
+            return null;
+        }
+
+        private static bool HasWidgetsSettingsContext(AutomationElement element)
+        {
+            for (var current = element; current != null; current = TreeWalker.ControlViewWalker.GetParent(current))
+            {
+                try
+                {
+                    var text = (current.Current.Name ?? string.Empty) + " " +
+                        (current.Current.AutomationId ?? string.Empty) + " " +
+                        (current.Current.HelpText ?? string.Empty);
+                    if (WidgetsElementMatcher.IsMatch(current.Current.AutomationId, current.Current.ClassName, text))
+                    {
+                        return true;
+                    }
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+
+            return false;
         }
 
         public bool TryPrepareWidgetsRestore(string screenName)

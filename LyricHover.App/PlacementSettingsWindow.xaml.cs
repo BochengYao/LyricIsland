@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
@@ -9,10 +11,12 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Microsoft.Win32;
@@ -50,7 +54,6 @@ namespace LyricHover.App
         private SettingsDirtyStateTracker<OverlayPlacementSettings> dirtyStateTracker;
         private SettingsThemePreference selectedThemePreference = SettingsThemePreference.System;
         private bool initializingSettings = true;
-        private bool suppressTaskbarLyricsConfirmation;
         private bool settingsDirty;
         private bool dirtyStateUpdateQueued;
         private bool applyingAutoSave;
@@ -62,7 +65,14 @@ namespace LyricHover.App
         private ModuleToolboxItemDescriptor moduleToolboxDragOption;
         private bool moduleToolboxDragInProgress;
         private ModuleDragGhostWindow moduleDragGhost;
-        private bool suppressPlayerSelectionChanged;
+        private Point? priorityDragStartPoint;
+        private object priorityDragItem;
+        private ItemsControl priorityDragOwner;
+        private PriorityDragAdorner priorityDragAdorner;
+        private PriorityInsertionAdorner priorityInsertionAdorner;
+        private AdornerLayer priorityAdornerLayer;
+        private bool suppressAutoSelectPlayerToggle;
+        private bool autoSelectPlayer;
         private DispatcherTimer translationModeToastTimer;
         private Border activeTranslationModeToast;
         private Storyboard layoutModePreviewStoryboard;
@@ -204,12 +214,11 @@ namespace LyricHover.App
             UiLanguageService.SetPreference(settings.Language);
             InitializeLanguageSelector(settings.Language);
             InitializeScreenSelection(settings.ScreenName);
-            InitializeLyricsSourceSelection(settings.LyricsSource);
+            InitializeLyricsSourcePriority(settings);
             acceptedCacheLimitMegabytes = settings.CacheLimitMegabytes;
             selectedThemePreference = settings.SettingsTheme;
             SetThemeRadioButton(selectedThemePreference);
             ApplySettingsTheme();
-            LyricsSourceComboBox.SelectedValue = settings.LyricsSource;
             SingleLineRadioButton.IsChecked = !settings.UseMultiLineDisplay;
             MultiLineRadioButton.IsChecked = settings.UseMultiLineDisplay;
             ShowTranslationCheckBox.IsChecked = settings.ShowTranslation;
@@ -260,6 +269,14 @@ namespace LyricHover.App
                 UiLanguageService.ApplyTo(this);
                 ScheduleLocalizedVisualRefresh();
                 InitializeSwitchKnobAnimations();
+                SynchronizeInitialIslandEnabledState();
+                Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(() =>
+                {
+                    foreach (var checkBox in GetAnimatedSwitches())
+                    {
+                        SyncSwitchVisualState(checkBox, animate: false);
+                    }
+                }));
                 UpdateSegmentSelectionPositions(false);
                 CenterOnDesktop();
                 UpdateLayoutModePreviewAnimation();
@@ -435,9 +452,7 @@ namespace LyricHover.App
                 return;
             }
 
-            suppressTaskbarLyricsConfirmation = true;
             LyricDockEnabledCheckBox.IsChecked = false;
-            suppressTaskbarLyricsConfirmation = false;
             if (workingSettings != null)
             {
                 workingSettings.LyricDockEnabled = false;
@@ -450,6 +465,59 @@ namespace LyricHover.App
             }
 
             QueueDirtyStateUpdate();
+        }
+
+        private void WidgetsHelpLink_Click(object sender, RoutedEventArgs e)
+        {
+            var showing = WidgetsHelpPanel.Visibility == Visibility.Visible;
+            // Preserve the rendered values before removing the previous clocks.  Clearing a
+            // WPF animation otherwise restores MaxHeight to its XAML value (zero), making a
+            // collapse snap closed before its easing animation can be seen.
+            var currentHeight = Math.Max(WidgetsHelpPanel.ActualHeight, WidgetsHelpPanel.MaxHeight);
+            var currentOpacity = WidgetsHelpPanel.Opacity;
+            WidgetsHelpPanel.BeginAnimation(OpacityProperty, null);
+            WidgetsHelpPanel.BeginAnimation(FrameworkElement.MaxHeightProperty, null);
+            if (!showing)
+            {
+                WidgetsHelpPanel.Visibility = Visibility.Visible;
+                WidgetsHelpPanel.Opacity = 0;
+                WidgetsHelpPanel.MaxHeight = 0;
+                var expand = new QuarticEase { EasingMode = EasingMode.EaseOut };
+                var heightAnimation = new DoubleAnimation(0, 88, TimeSpan.FromMilliseconds(260))
+                {
+                    EasingFunction = expand
+                };
+                heightAnimation.Completed += (completedSender, completedArgs) =>
+                {
+                    WidgetsHelpPanel.BeginAnimation(FrameworkElement.MaxHeightProperty, null);
+                    WidgetsHelpPanel.MaxHeight = 88;
+                };
+                WidgetsHelpPanel.BeginAnimation(FrameworkElement.MaxHeightProperty, heightAnimation);
+                WidgetsHelpPanel.BeginAnimation(OpacityProperty,
+                    new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(190)) { EasingFunction = expand });
+            }
+            else
+            {
+                WidgetsHelpPanel.MaxHeight = currentHeight;
+                WidgetsHelpPanel.Opacity = currentOpacity;
+                var collapse = new CubicEase { EasingMode = EasingMode.EaseIn };
+                var heightAnimation = new DoubleAnimation(currentHeight, 0, TimeSpan.FromMilliseconds(220))
+                {
+                    EasingFunction = collapse
+                };
+                heightAnimation.Completed += (completedSender, completedArgs) =>
+                {
+                    WidgetsHelpPanel.BeginAnimation(OpacityProperty, null);
+                    WidgetsHelpPanel.BeginAnimation(FrameworkElement.MaxHeightProperty, null);
+                    WidgetsHelpPanel.Visibility = Visibility.Collapsed;
+                    WidgetsHelpPanel.MaxHeight = 0;
+                    WidgetsHelpPanel.Opacity = 0;
+                };
+                WidgetsHelpPanel.BeginAnimation(FrameworkElement.MaxHeightProperty, heightAnimation);
+                WidgetsHelpPanel.BeginAnimation(OpacityProperty,
+                    new DoubleAnimation(currentOpacity, 0, TimeSpan.FromMilliseconds(180)) { EasingFunction = collapse });
+            }
+            e.Handled = true;
         }
 
         public void ApplyPendingChangesForTutorial()
@@ -499,9 +567,7 @@ namespace LyricHover.App
             // the enforced state back onto the switch so a later auto-save cannot resurrect it.
             if (LyricDockEnabledCheckBox.IsChecked == true && !settings.LyricDockEnabled)
             {
-                suppressTaskbarLyricsConfirmation = true;
                 LyricDockEnabledCheckBox.IsChecked = false;
-                suppressTaskbarLyricsConfirmation = false;
             }
         }
 
@@ -517,9 +583,7 @@ namespace LyricHover.App
         {
             foreach (var selector in new Selector[]
             {
-                LyricsSourceComboBox,
-                ScreenComboBox,
-                PlayerSelectionComboBox
+                ScreenComboBox
             })
             {
                 selector.SelectionChanged += SettingsSelector_SelectionChanged;
@@ -605,25 +669,16 @@ namespace LyricHover.App
                 : selectedScreenName;
         }
 
-        private void InitializeLyricsSourceSelection(LyricsSourcePreference preference)
+        private void InitializeLyricsSourcePriority(OverlayPlacementSettings settings)
         {
-            LyricsSourceComboBox.ItemsSource = new[]
-            {
-                new LyricsSourceOption(LyricsSourcePreference.Automatic, UiLanguageService.Translate("自动选择")),
-                new LyricsSourceOption(LyricsSourcePreference.LrcLib, "LRCLIB"),
-                new LyricsSourceOption(LyricsSourcePreference.QQMusic, "QQ 音乐"),
-                new LyricsSourceOption(LyricsSourcePreference.KuGou, "酷狗"),
-                new LyricsSourceOption(LyricsSourcePreference.NetEase, "网易云")
-            };
-            LyricsSourceComboBox.SelectedValue = preference;
+            LyricsSourcePriorityList.ItemsSource = new ObservableCollection<LyricsSourceOption>(
+                settings.LyricsSourcePriority.Select(source => new LyricsSourceOption(source, GetLyricsSourceDisplayName(source))));
         }
 
         private void RefreshLocalizedSettingsContent()
         {
             InitializeScreenSelection(ScreenComboBox.SelectedValue as string);
-            InitializeLyricsSourceSelection(LyricsSourceComboBox.SelectedValue is LyricsSourcePreference preference
-                ? preference
-                : LyricsSourcePreference.Automatic);
+            InitializeLyricsSourcePriority(workingSettings);
             InitializePlayerSelection(workingSettings);
             ApplyProEntitlementState(proEntitlementKind);
             UpdateSettingValueLabels();
@@ -668,7 +723,7 @@ namespace LyricHover.App
 
         private void UpdateExpandableInteractionHint()
         {
-            if (ExpandablePreviewShortcutRun == null || TemporaryInteractionHotkeyTextBox == null)
+            if (ExpandablePreviewDescriptionText == null || TemporaryInteractionHotkeyTextBox == null)
             {
                 return;
             }
@@ -676,12 +731,41 @@ namespace LyricHover.App
             var gesture = string.IsNullOrWhiteSpace(TemporaryInteractionHotkeyTextBox.Text)
                 ? "Ctrl"
                 : TemporaryInteractionHotkeyTextBox.Text.Trim();
-            ExpandablePreviewShortcutRun.Text = gesture;
+            ExpandablePreviewDescriptionText.Text = UiLanguageService.Translate("平时保持紧凑，按住 ") + gesture +
+                UiLanguageService.Translate(" 即展开，松开后自动折叠。");
+        }
+
+        private void SynchronizeInitialIslandEnabledState()
+        {
+            if (IslandEnabledSwitch == null || workingSettings == null)
+            {
+                return;
+            }
+
+            IslandEnabledSwitch.IsChecked = workingSettings.IslandEnabled;
+            SyncSwitchVisualState(IslandEnabledSwitch, animate: false);
         }
 
         private void SettingsToggle_Changed(object sender, RoutedEventArgs e)
         {
+            EnsureAtLeastOneLyricSurfaceEnabled(sender as ToggleButton);
             QueueDirtyStateUpdate();
+        }
+
+        private void EnsureAtLeastOneLyricSurfaceEnabled(ToggleButton changedToggle)
+        {
+            if (IslandEnabledSwitch?.IsChecked == true || LyricDockEnabledCheckBox?.IsChecked == true)
+            {
+                return;
+            }
+
+            if (ReferenceEquals(changedToggle, IslandEnabledSwitch))
+            {
+                LyricDockEnabledCheckBox.IsChecked = true;
+                return;
+            }
+
+            IslandEnabledSwitch.IsChecked = true;
         }
 
         private void ComboBoxItem_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -722,14 +806,16 @@ namespace LyricHover.App
                 }
 
                 var dirty = dirtyStateTracker.IsDirty(CaptureSettings());
-                if (dirty == settingsDirty)
+                if (dirty != settingsDirty)
                 {
-                    return;
+                    settingsDirty = dirty;
+                    RefreshActionButtonVisuals(true);
                 }
 
-                settingsDirty = dirty;
-                RefreshActionButtonVisuals(true);
-                if (dirty && !layoutEditingActive)
+                // Settings are applied as soon as a control changes.  This includes layout
+                // editing: the runtime preview and persisted settings must never wait for
+                // the window's "完成" button.
+                if (dirty)
                 {
                     applyingAutoSave = true;
                     try
@@ -958,8 +1044,15 @@ namespace LyricHover.App
             settings.Language = LanguageComboBox.SelectedValue is AppLanguagePreference language
                 ? language
                 : AppLanguagePreference.System;
-            settings.LyricsSource = ReadLyricsSource();
-            settings.LockedSourceAppUserModelId = PlayerSelectionComboBox.SelectedValue as string ?? string.Empty;
+            settings.LyricsSourcePriority = LyricsSourcePriorityList.Items.Cast<LyricsSourceOption>()
+                .Select(option => option.Value).ToList();
+            settings.LyricsSource = settings.LyricsSourcePriority.FirstOrDefault();
+            settings.PlayerPriority = PlayerPriorityList.Items.Cast<PlayerSelectionOption>()
+                .Select(option => option.Value).ToList();
+            settings.AutoSelectPlayer = autoSelectPlayer;
+            settings.LockedSourceAppUserModelId = autoSelectPlayer || settings.PlayerPriority.Count == 0
+                ? string.Empty
+                : settings.PlayerPriority[0];
             settings.UseMultiLineDisplay = ReadUseMultiLineDisplay();
             settings.ShowTranslation = ShowTranslationCheckBox.IsChecked == true;
             settings.IslandEnabled = IslandEnabledSwitch.IsChecked == true;
@@ -1029,13 +1122,7 @@ namespace LyricHover.App
 
         private void InitializePlayerSelection(OverlayPlacementSettings settings)
         {
-            var playerOptions = new Dictionary<string, PlayerSelectionOption>(StringComparer.OrdinalIgnoreCase)
-            {
-                [string.Empty] = new PlayerSelectionOption(
-                    string.Empty,
-                    UiLanguageService.Translate("自动选择"),
-                    true)
-            };
+            var playerOptions = new Dictionary<string, PlayerSelectionOption>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var installed in installedPlayers.OrderBy(player => player.DisplayName))
             {
@@ -1058,71 +1145,261 @@ namespace LyricHover.App
                 playerOptions[selectionKey] = new PlayerSelectionOption(selectionKey, UiLanguageService.Translate(displayName), true);
             }
 
-            var selectedValue = NormalizePlayerSelection(settings.LockedSourceAppUserModelId);
-            if (!playerOptions.ContainsKey(selectedValue) && !string.IsNullOrWhiteSpace(selectedValue))
+            var legacySelectedValue = NormalizePlayerSelection(settings.LockedSourceAppUserModelId);
+            if (!playerOptions.ContainsKey(legacySelectedValue) && !string.IsNullOrWhiteSpace(legacySelectedValue))
             {
                 PlayerProfile selectedProfile;
-                var displayName = PlayerProfileCatalog.TryResolveSelectionKey(selectedValue, out selectedProfile)
+                var displayName = PlayerProfileCatalog.TryResolveSelectionKey(legacySelectedValue, out selectedProfile)
                     ? selectedProfile.DisplayName
-                    : selectedValue;
-                playerOptions[selectedValue] = new PlayerSelectionOption(selectedValue, UiLanguageService.Translate(displayName), false);
+                    : legacySelectedValue;
+                playerOptions[legacySelectedValue] = new PlayerSelectionOption(legacySelectedValue, UiLanguageService.Translate(displayName), false);
             }
 
+            var priority = settings.PlayerPriority ?? new List<string>();
             var options = playerOptions.Values
-                .OrderBy(option => string.IsNullOrEmpty(option.Value) ? 0 : 1)
+                .OrderBy(option => GetPriorityIndex(priority, option.Value))
                 .ThenByDescending(option => option.IsDetected)
                 .ThenBy(option => option.DisplayName)
                 .ToList();
-            suppressPlayerSelectionChanged = true;
-            PlayerSelectionComboBox.ItemsSource = options;
-            PlayerSelectionComboBox.SelectedValue = options.Any(option =>
-                string.Equals(option.Value, selectedValue, StringComparison.OrdinalIgnoreCase))
-                ? selectedValue
-                : string.Empty;
-            suppressPlayerSelectionChanged = false;
+            PlayerPriorityList.ItemsSource = new ObservableCollection<PlayerSelectionOption>(options);
+            autoSelectPlayer = settings.AutoSelectPlayer;
+            UpdateAutoSelectPlayerToggleState();
             UpdatePlayerSelectionHint();
         }
 
-        private void PlayerSelectionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void AutoSelectPlayerToggle_Changed(object sender, RoutedEventArgs e)
         {
-            if (!suppressPlayerSelectionChanged)
+            if (suppressAutoSelectPlayerToggle)
             {
-                if (workingSettings != null)
-                {
-                    workingSettings.LockedSourceAppUserModelId = PlayerSelectionComboBox.SelectedValue as string
-                        ?? string.Empty;
-                }
-
-                QueueDirtyStateUpdate();
+                return;
             }
 
+            autoSelectPlayer = AutoSelectPlayerToggle.IsChecked == true;
+            QueueDirtyStateUpdate();
             UpdatePlayerSelectionHint();
         }
 
         private void UpdatePlayerSelectionHint()
         {
-            if (PlayerSelectionHintText == null || PlayerSelectionComboBox == null)
+            if (PlayerSelectionHintText == null || PlayerPriorityList == null)
             {
                 return;
             }
 
-            var option = PlayerSelectionComboBox.SelectedItem as PlayerSelectionOption;
-            string selectionHint;
-            if (option == null || string.IsNullOrEmpty(option.Value))
+            PlayerSelectionHintText.Text = UiLanguageService.Translate(
+                "注：网易云音乐由于接口限制无法实时同步歌曲进度（播放器内拖动进度条无法同步）");
+        }
+
+        private void UpdateAutoSelectPlayerToggleState()
+        {
+            if (AutoSelectPlayerToggle == null) return;
+            suppressAutoSelectPlayerToggle = true;
+            AutoSelectPlayerToggle.IsChecked = autoSelectPlayer;
+            suppressAutoSelectPlayerToggle = false;
+        }
+
+        private void PriorityList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            priorityDragStartPoint = e.GetPosition((IInputElement)sender);
+            priorityDragOwner = sender as ItemsControl;
+            priorityDragItem = FindPriorityItem(e.OriginalSource as DependencyObject);
+            e.Handled = true;
+        }
+
+        private void PriorityList_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (priorityDragItem == null || priorityDragOwner == null || priorityDragStartPoint == null || e.LeftButton != MouseButtonState.Pressed) return;
+            var point = e.GetPosition((IInputElement)sender);
+            if (Math.Abs(point.X - priorityDragStartPoint.Value.X) < SystemParameters.MinimumHorizontalDragDistance &&
+                Math.Abs(point.Y - priorityDragStartPoint.Value.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+
+            BeginPriorityDrag(priorityDragOwner, priorityDragItem);
+        }
+
+        private void PriorityList_DragOver(object sender, DragEventArgs e)
+        {
+            e.Effects = e.Data.GetDataPresent("LyricHover.SettingsPriorityItem") ? DragDropEffects.Move : DragDropEffects.None;
+            if (e.Effects == DragDropEffects.Move)
             {
-                selectionHint = UiLanguageService.Translate("自动选择会跟随最近活跃的播放器");
+                UpdatePriorityInsertion(sender as ItemsControl, e.GetPosition(sender as IInputElement));
             }
-            else if (!option.IsDetected)
+            e.Handled = true;
+        }
+
+        private void PriorityList_Drop(object sender, DragEventArgs e)
+        {
+            var list = sender as ItemsControl;
+            var item = e.Data.GetData("LyricHover.SettingsPriorityItem");
+            var items = list?.ItemsSource as IList;
+            if (list == null || item == null || items == null || !items.Contains(item)) return;
+            var target = FindPriorityItem(e.OriginalSource as DependencyObject);
+            var oldIndex = items.IndexOf(item);
+            var newIndex = GetPriorityInsertionIndex(list, e.GetPosition(list), target);
+            if (oldIndex >= 0 && newIndex >= 0 && oldIndex != newIndex)
             {
-                selectionHint = UiLanguageService.Translate("未检测到，启动播放器后生效");
+                var before = CapturePriorityRowOffsets(list);
+                items.Remove(item);
+                if (newIndex > oldIndex) newIndex--;
+                items.Insert(newIndex, item);
+                AnimatePriorityReflow(list, before);
+                if (ReferenceEquals(list, PlayerPriorityList))
+                {
+                    autoSelectPlayer = false;
+                    UpdateAutoSelectPlayerToggleState();
+                }
+                QueueDirtyStateUpdate();
+                UpdatePlayerSelectionHint();
             }
-            else
+            ClearPriorityAdorners();
+            e.Handled = true;
+        }
+
+        private void PriorityList_GiveFeedback(object sender, GiveFeedbackEventArgs e)
+        {
+            if (priorityDragAdorner != null)
             {
-                selectionHint = UiLanguageService.Translate("优先选择") + " " + option.DisplayName;
+                priorityDragAdorner.UpdatePosition(Mouse.GetPosition(this));
+            }
+            e.UseDefaultCursors = true;
+            e.Handled = true;
+        }
+
+        private static int GetPriorityIndex(IReadOnlyList<string> priority, string value)
+        {
+            for (var index = 0; index < priority.Count; index++)
+            {
+                if (string.Equals(priority[index], value, StringComparison.OrdinalIgnoreCase)) return index;
+            }
+            return int.MaxValue;
+        }
+
+        private void BeginPriorityDrag(ItemsControl owner, object item)
+        {
+            priorityAdornerLayer = AdornerLayer.GetAdornerLayer(owner);
+            var sourceRow = FindVisualParent<Border>(Mouse.DirectlyOver as DependencyObject);
+            if (priorityAdornerLayer != null && sourceRow != null)
+            {
+                priorityDragAdorner = new PriorityDragAdorner(owner, sourceRow);
+                priorityAdornerLayer.Add(priorityDragAdorner);
+                priorityDragAdorner.UpdatePosition(Mouse.GetPosition(this));
             }
 
-            PlayerSelectionHintText.Text = selectionHint + Environment.NewLine +
-                UiLanguageService.Translate("注：网易云音乐由于接口限制无法实时同步歌曲进度（播放器内拖动进度条无法同步）");
+            try
+            {
+                DragDrop.DoDragDrop(owner, new DataObject("LyricHover.SettingsPriorityItem", item), DragDropEffects.Move);
+            }
+            finally
+            {
+                ClearPriorityAdorners();
+                priorityDragItem = null;
+                priorityDragOwner = null;
+                priorityDragStartPoint = null;
+            }
+        }
+
+        private void UpdatePriorityInsertion(ItemsControl list, Point point)
+        {
+            if (list == null) return;
+            var index = GetPriorityInsertionIndex(list, point, FindPriorityItem(list.InputHitTest(point) as DependencyObject));
+            var y = GetPriorityInsertionY(list, index);
+            if (priorityAdornerLayer == null) priorityAdornerLayer = AdornerLayer.GetAdornerLayer(list);
+            if (priorityAdornerLayer == null) return;
+            if (priorityInsertionAdorner == null)
+            {
+                priorityInsertionAdorner = new PriorityInsertionAdorner(list);
+                priorityAdornerLayer.Add(priorityInsertionAdorner);
+            }
+            priorityInsertionAdorner.Update(y);
+        }
+
+        private static int GetPriorityInsertionIndex(ItemsControl list, Point point, object target)
+        {
+            if (target == null) return list.Items.Count;
+            var index = list.Items.IndexOf(target);
+            var container = list.ItemContainerGenerator.ContainerFromItem(target) as FrameworkElement;
+            if (container != null && point.Y > container.TranslatePoint(new Point(0, 0), list).Y + container.ActualHeight / 2)
+            {
+                index++;
+            }
+            return Math.Max(0, Math.Min(list.Items.Count, index));
+        }
+
+        private static double GetPriorityInsertionY(ItemsControl list, int index)
+        {
+            if (index >= list.Items.Count)
+            {
+                var last = list.ItemContainerGenerator.ContainerFromIndex(list.Items.Count - 1) as FrameworkElement;
+                return last == null ? 4 : last.TranslatePoint(new Point(0, last.ActualHeight), list).Y;
+            }
+            var container = list.ItemContainerGenerator.ContainerFromIndex(index) as FrameworkElement;
+            return container == null ? 4 : container.TranslatePoint(new Point(0, 0), list).Y;
+        }
+
+        private static object FindPriorityItem(DependencyObject source)
+        {
+            while (source != null)
+            {
+                var element = source as FrameworkElement;
+                if (element?.DataContext is LyricsSourceOption || element?.DataContext is PlayerSelectionOption)
+                {
+                    return element.DataContext;
+                }
+                source = source is Visual ? VisualTreeHelper.GetParent(source) : LogicalTreeHelper.GetParent(source);
+            }
+            return null;
+        }
+
+        private static Dictionary<object, double> CapturePriorityRowOffsets(ItemsControl list)
+        {
+            return list.Items.Cast<object>()
+                .Select(item => new { item, container = list.ItemContainerGenerator.ContainerFromItem(item) as FrameworkElement })
+                .Where(value => value.container != null)
+                .ToDictionary(value => value.item, value => value.container.TranslatePoint(new Point(0, 0), list).Y);
+        }
+
+        private void AnimatePriorityReflow(ItemsControl list, IDictionary<object, double> before)
+        {
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                foreach (var item in list.Items.Cast<object>())
+                {
+                    var row = list.ItemContainerGenerator.ContainerFromItem(item) as FrameworkElement;
+                    if (row == null || !before.TryGetValue(item, out var previousY)) continue;
+                    var offset = previousY - row.TranslatePoint(new Point(0, 0), list).Y;
+                    if (Math.Abs(offset) < 0.5) continue;
+                    var transform = row.RenderTransform as TranslateTransform;
+                    if (transform == null)
+                    {
+                        transform = new TranslateTransform();
+                        row.RenderTransform = transform;
+                    }
+                    transform.Y = offset;
+                    transform.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(180))
+                    {
+                        EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseOut }
+                    });
+                }
+            }), DispatcherPriority.Render);
+        }
+
+        private void ClearPriorityAdorners()
+        {
+            if (priorityAdornerLayer != null && priorityDragAdorner != null) priorityAdornerLayer.Remove(priorityDragAdorner);
+            if (priorityAdornerLayer != null && priorityInsertionAdorner != null) priorityAdornerLayer.Remove(priorityInsertionAdorner);
+            priorityDragAdorner = null;
+            priorityInsertionAdorner = null;
+            priorityAdornerLayer = null;
+        }
+
+        private static T FindVisualParent<T>(DependencyObject source) where T : DependencyObject
+        {
+            while (source != null)
+            {
+                var match = source as T;
+                if (match != null) return match;
+                source = source is Visual ? VisualTreeHelper.GetParent(source) : LogicalTreeHelper.GetParent(source);
+            }
+            return null;
         }
 
         private CheckBox[] GetAnimatedSwitches()
@@ -1133,7 +1410,8 @@ namespace LyricHover.App
                 IslandEnabledSwitch,
                 ShowTranslationCheckBox,
                 LyricDockEnabledCheckBox,
-                DockShowTranslationCheckBox
+                DockShowTranslationCheckBox,
+                AutoSelectPlayerToggle
             };
         }
 
@@ -1182,7 +1460,7 @@ namespace LyricHover.App
             var allowAnimation = animate && SystemParameters.ClientAreaAnimation;
             var duration = TimeSpan.FromMilliseconds(160);
 
-            var knob = template.FindName("SwitchKnob", checkBox) as UIElement;
+            var knob = template.FindName("SwitchKnob", checkBox) as FrameworkElement;
             if (knob != null)
             {
                 var transform = knob.RenderTransform as TranslateTransform;
@@ -1193,10 +1471,20 @@ namespace LyricHover.App
                     knob.RenderTransform = transform;
                 }
 
-                var targetX = isChecked ? 16.0 : 0.0;
+                // Keep the knob anchored on the left and animate only its translation.
+                // Initial synchronization applies the final value immediately; user
+                // changes animate from the current rendered position without delaying
+                // the IsChecked-driven track color.
+                knob.HorizontalAlignment = HorizontalAlignment.Left;
+                var targetX = isChecked ? 18.0 : 0.0;
+                var currentX = transform.X;
                 transform.BeginAnimation(TranslateTransform.XProperty, null);
                 if (allowAnimation)
                 {
+                    // Clearing a WPF animation clock restores the base value. Preserve
+                    // its currently rendered coordinate first so an off transition starts
+                    // on the right instead of jumping straight to the left.
+                    transform.X = currentX;
                     transform.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(targetX, duration)
                     {
                         EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
@@ -1208,48 +1496,6 @@ namespace LyricHover.App
                 }
             }
 
-            var track = template.FindName("SwitchTrack", checkBox) as Border;
-            if (track != null)
-            {
-                var accentColor = Color.FromRgb(0x0A, 0x84, 0xFF);
-                var offColor = GetThemeColor("SettingsControlPressedBackgroundBrush", Color.FromRgb(0xE8, 0xE8, 0xED));
-                var offBorderColor = GetThemeColor("SettingsControlBorderBrush", Color.FromArgb(0x1F, 0x00, 0x00, 0x00));
-                var targetBackground = isChecked ? accentColor : offColor;
-                var targetBorder = isChecked ? accentColor : offBorderColor;
-
-                var backgroundBrush = track.Background as SolidColorBrush;
-                if (backgroundBrush == null || backgroundBrush.IsFrozen || backgroundBrush.IsSealed)
-                {
-                    backgroundBrush = new SolidColorBrush(targetBackground);
-                    track.Background = backgroundBrush;
-                }
-
-                var borderBrush = track.BorderBrush as SolidColorBrush;
-                if (borderBrush == null || borderBrush.IsFrozen || borderBrush.IsSealed)
-                {
-                    borderBrush = new SolidColorBrush(targetBorder);
-                    track.BorderBrush = borderBrush;
-                }
-
-                backgroundBrush.BeginAnimation(SolidColorBrush.ColorProperty, null);
-                borderBrush.BeginAnimation(SolidColorBrush.ColorProperty, null);
-                if (allowAnimation)
-                {
-                    backgroundBrush.BeginAnimation(SolidColorBrush.ColorProperty, new ColorAnimation(targetBackground, duration)
-                    {
-                        EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-                    });
-                    borderBrush.BeginAnimation(SolidColorBrush.ColorProperty, new ColorAnimation(targetBorder, duration)
-                    {
-                        EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-                    });
-                }
-                else
-                {
-                    backgroundBrush.Color = targetBackground;
-                    borderBrush.Color = targetBorder;
-                }
-            }
         }
 
         private static string NormalizePlayerSelection(string value)
@@ -1595,25 +1841,6 @@ namespace LyricHover.App
                 updateDividerSettings?.Invoke(mode, DividerOpacitySlider.Value, DividerSpacingSlider.Value);
             }
             UpdateSettingValueLabels();
-        }
-
-        private void LyricDockEnabledCheckBox_Checked(object sender, RoutedEventArgs e)
-        {
-            if (initializingSettings || suppressTaskbarLyricsConfirmation || workingSettings?.LyricDockEnabled == true)
-            {
-                return;
-            }
-
-            var confirmationWindow = new TaskbarLyricsConfirmationWindow(Window.GetWindow(this));
-            var confirmed = confirmationWindow.ShowDialog() == true;
-            if (confirmed)
-            {
-                return;
-            }
-
-            suppressTaskbarLyricsConfirmation = true;
-            LyricDockEnabledCheckBox.IsChecked = false;
-            suppressTaskbarLyricsConfirmation = false;
         }
 
         private void ShowTranslationCheckBox_Changed(object sender, RoutedEventArgs e)
@@ -2840,11 +3067,16 @@ namespace LyricHover.App
             }
         }
 
-        private LyricsSourcePreference ReadLyricsSource()
+        private static string GetLyricsSourceDisplayName(LyricsSourcePreference source)
         {
-            return LyricsSourceComboBox.SelectedValue is LyricsSourcePreference
-                ? (LyricsSourcePreference)LyricsSourceComboBox.SelectedValue
-                : LyricsSourcePreference.Automatic;
+            switch (source)
+            {
+                case LyricsSourcePreference.LrcLib: return "LRCLIB";
+                case LyricsSourcePreference.QQMusic: return "QQ 音乐";
+                case LyricsSourcePreference.KuGou: return "酷狗";
+                case LyricsSourcePreference.NetEase: return "网易云";
+                default: return string.Empty;
+            }
         }
 
         private bool ReadUseMultiLineDisplay()
@@ -3109,7 +3341,7 @@ namespace LyricHover.App
         {
             while (source != null)
             {
-                if (source is ButtonBase || source is Selector || source is ComboBoxItem ||
+                if (source is ButtonBase || source is Selector || source is ItemsControl || source is ComboBoxItem ||
                     source is RangeBase || source is TextBoxBase ||
                     source is FrameworkElement element && Equals(element.Tag, "TextLink"))
                 {
@@ -3144,6 +3376,58 @@ namespace LyricHover.App
             public override string ToString()
             {
                 return DisplayName;
+            }
+        }
+
+        private sealed class PriorityDragAdorner : Adorner
+        {
+            private readonly VisualBrush brush;
+            private Point position;
+
+            public PriorityDragAdorner(UIElement adornedElement, FrameworkElement source) : base(adornedElement)
+            {
+                IsHitTestVisible = false;
+                brush = new VisualBrush(source) { Opacity = 0.94, Stretch = Stretch.None };
+                Width = source.ActualWidth;
+                Height = source.ActualHeight;
+                Effect = new DropShadowEffect { BlurRadius = 18, ShadowDepth = 6, Opacity = 0.28 };
+            }
+
+            public void UpdatePosition(Point next)
+            {
+                position = next;
+                InvalidateVisual();
+            }
+
+            protected override void OnRender(DrawingContext drawingContext)
+            {
+                drawingContext.PushTransform(new TranslateTransform(position.X - Width / 2, position.Y - Height / 2));
+                drawingContext.PushTransform(new ScaleTransform(1.02, 1.02, Width / 2, Height / 2));
+                drawingContext.DrawRectangle(brush, null, new Rect(0, 0, Width, Height));
+                drawingContext.Pop();
+                drawingContext.Pop();
+            }
+        }
+
+        private sealed class PriorityInsertionAdorner : Adorner
+        {
+            private double y;
+
+            public PriorityInsertionAdorner(UIElement adornedElement) : base(adornedElement)
+            {
+                IsHitTestVisible = false;
+            }
+
+            public void Update(double nextY)
+            {
+                y = nextY;
+                InvalidateVisual();
+            }
+
+            protected override void OnRender(DrawingContext drawingContext)
+            {
+                var pen = new Pen(new SolidColorBrush(Color.FromRgb(10, 132, 255)), 2);
+                drawingContext.DrawLine(pen, new Point(8, y), new Point(ActualWidth - 8, y));
             }
         }
 
