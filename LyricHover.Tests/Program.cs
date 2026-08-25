@@ -4199,7 +4199,17 @@ namespace LyricHover.Tests
             var mainWindow = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "MainWindow.xaml.cs"));
             Assert.True(mainWindow.Contains("ApplyPowerSavingState"));
             Assert.True(mainWindow.Contains("PowerSavingTimerInterval"));
+            Assert.True(mainWindow.Contains("PowerSavingIdleTimerInterval"));
+            Assert.True(mainWindow.Contains("IsPowerSavingRefreshIdle"));
             Assert.True(mainWindow.Contains("ModuleHost.SetAnimationsEnabled"));
+            var settingsWindow = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "PlacementSettingsWindow.xaml.cs"));
+            Assert.True(settingsWindow.Contains("powerSavingModePending"));
+            Assert.True(settingsWindow.Contains("TryApplySettingsBackdrop(bool dark, bool reduceEffects)"));
+            Assert.True(settingsWindow.Contains("SystemParameters.HighContrast || reduceEffects"));
+            Assert.True(settingsWindow.Contains("CanAnimateSettingsVisuals"));
+            Assert.True(settingsWindow.Contains("UpdateSettingsPerformanceVisuals"));
+            Assert.True(settingsWindow.Contains("StopLayoutModePreviewAnimation"));
+            Assert.True(settingsWindow.Contains("ApplyCurrentSettings(includePendingPowerSavingMode: false)"));
         }
 
         static void TaskbarControllerRestoresWidgetsForUnsafePlacement()

@@ -57,6 +57,8 @@ namespace LyricHover.App
         private bool settingsDirty;
         private bool dirtyStateUpdateQueued;
         private bool applyingAutoSave;
+        private bool powerSavingModePending;
+        private readonly Dictionary<UIElement, Effect> suppressedVisualEffects = new Dictionary<UIElement, Effect>();
         private bool layoutEditingActive;
         private bool suppressLayoutSelectionChanged;
         private IslandLayoutMode selectedLayoutMode = IslandLayoutMode.HorizontalBlocks;
@@ -106,6 +108,7 @@ namespace LyricHover.App
         private const int DWMWA_BORDER_COLOR = 34;
         private const int DWMWA_COLOR_NONE = unchecked((int)0xFFFFFFFE);
         private const int DWMSBT_TRANSIENTWINDOW = 3;
+        private const int DWMSBT_NONE = 1;
         private const int DWMWCP_ROUND = 2;
         private const int WCA_ACCENT_POLICY = 19;
         private const int ACCENT_DISABLED = 0;
@@ -305,7 +308,7 @@ namespace LyricHover.App
             ApplySettingsTheme();
         }
 
-        private bool TryApplySettingsBackdrop(bool dark)
+        private bool TryApplySettingsBackdrop(bool dark, bool reduceEffects)
         {
             var source = PresentationSource.FromVisual(this) as HwndSource;
             if (source == null || source.Handle == IntPtr.Zero)
@@ -332,14 +335,20 @@ namespace LyricHover.App
                     ref borderColor,
                     sizeof(int));
 
-                if (SystemParameters.HighContrast)
+                if (SystemParameters.HighContrast || reduceEffects)
                 {
                     ApplyAcrylicBlurBehind(source.Handle, ACCENT_DISABLED, 0);
-                    var noBackdrop = 1;
+                    var noBackdrop = DWMSBT_NONE;
                     DwmSetWindowAttribute(
                         source.Handle,
                         DWMWA_SYSTEMBACKDROP_TYPE,
                         ref noBackdrop,
+                        sizeof(int));
+                    var micaDisabled = 0;
+                    DwmSetWindowAttribute(
+                        source.Handle,
+                        DWMWA_MICA_EFFECT,
+                        ref micaDisabled,
                         sizeof(int));
                     return false;
                 }
@@ -470,6 +479,17 @@ namespace LyricHover.App
         private void WidgetsHelpLink_Click(object sender, RoutedEventArgs e)
         {
             var showing = WidgetsHelpPanel.Visibility == Visibility.Visible;
+            if (!CanAnimateSettingsVisuals)
+            {
+                WidgetsHelpPanel.BeginAnimation(OpacityProperty, null);
+                WidgetsHelpPanel.BeginAnimation(FrameworkElement.MaxHeightProperty, null);
+                WidgetsHelpPanel.Visibility = showing ? Visibility.Collapsed : Visibility.Visible;
+                WidgetsHelpPanel.Opacity = showing ? 0 : 1;
+                WidgetsHelpPanel.MaxHeight = showing ? 0 : 88;
+                e.Handled = true;
+                return;
+            }
+
             // Preserve the rendered values before removing the previous clocks.  Clearing a
             // WPF animation otherwise restores MaxHeight to its XAML value (zero), making a
             // collapse snap closed before its easing animation can be seen.
@@ -749,6 +769,15 @@ namespace LyricHover.App
         private void SettingsToggle_Changed(object sender, RoutedEventArgs e)
         {
             EnsureAtLeastOneLyricSurfaceEnabled(sender as ToggleButton);
+            if (ReferenceEquals(sender, PowerSavingModeCheckBox))
+            {
+                powerSavingModePending = acceptedSettings == null ||
+                    PowerSavingModeCheckBox.IsChecked != acceptedSettings.EnablePowerSavingMode;
+                ApplySettingsTheme();
+                QueueDirtyStateUpdate(applyImmediately: false);
+                return;
+            }
+
             QueueDirtyStateUpdate();
         }
 
@@ -789,7 +818,7 @@ namespace LyricHover.App
             e.Handled = true;
         }
 
-        private void QueueDirtyStateUpdate()
+        private void QueueDirtyStateUpdate(bool applyImmediately = true)
         {
             if (initializingSettings || dirtyStateTracker == null || dirtyStateUpdateQueued || applyingAutoSave)
             {
@@ -820,7 +849,7 @@ namespace LyricHover.App
                     applyingAutoSave = true;
                     try
                     {
-                        ApplyCurrentSettings();
+                        ApplyCurrentSettings(includePendingPowerSavingMode: false);
                     }
                     finally
                     {
@@ -888,12 +917,12 @@ namespace LyricHover.App
             return (TryFindResource(resourceKey) as SolidColorBrush)?.Color ?? fallback;
         }
 
-        private static void AnimateBrush(SolidColorBrush brush, Color target, bool animate)
+        private void AnimateBrush(SolidColorBrush brush, Color target, bool animate)
         {
             var current = brush.Color;
             brush.BeginAnimation(SolidColorBrush.ColorProperty, null);
             brush.Color = current;
-            if (!animate)
+            if (!animate || !CanAnimateSettingsVisuals)
             {
                 brush.Color = target;
                 return;
@@ -938,7 +967,7 @@ namespace LyricHover.App
             {
                 var previousSystemBackdropApplied = systemBackdropApplied;
                 var dark = ResolveDarkSettingsTheme(selectedThemePreference);
-                systemBackdropApplied = TryApplySettingsBackdrop(dark);
+                systemBackdropApplied = TryApplySettingsBackdrop(dark, IsPowerSavingVisualPreviewActive);
                 if (refreshTheme || SystemParameters.HighContrast || previousSystemBackdropApplied != systemBackdropApplied)
                 {
                     ApplySettingsTheme();
@@ -1001,9 +1030,9 @@ namespace LyricHover.App
             PowerSavingDetailsCollapseButton.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
         }
 
-        private void ApplyCurrentSettings()
+        private void ApplyCurrentSettings(bool includePendingPowerSavingMode = true)
         {
-            var settings = CaptureSettings();
+            var settings = CaptureSettings(includePendingPowerSavingMode);
             var committedSettings = applySettings(settings) ?? settings;
             SaveLayoutEditingIfActive();
             IslandEnabledSwitch.IsChecked = committedSettings.IslandEnabled;
@@ -1014,7 +1043,12 @@ namespace LyricHover.App
             acceptedLanguagePreference = committedSettings.Language;
             acceptedCacheLimitMegabytes = committedSettings.CacheLimitMegabytes;
             dirtyStateTracker.Accept(committedSettings);
-            settingsDirty = false;
+            if (includePendingPowerSavingMode)
+            {
+                powerSavingModePending = false;
+            }
+
+            settingsDirty = dirtyStateTracker.IsDirty(CaptureSettings());
             RefreshActionButtonVisuals(true);
 
             if (LayoutSettingsPanel.Visibility == Visibility.Visible && beginLayoutEditing != null)
@@ -1024,7 +1058,7 @@ namespace LyricHover.App
             }
         }
 
-        private OverlayPlacementSettings CaptureSettings()
+        private OverlayPlacementSettings CaptureSettings(bool includePendingPowerSavingMode = true)
         {
             var settings = workingSettings?.DeepClone() ?? new OverlayPlacementSettings();
             settings.IslandLayouts = settings.IslandLayouts ?? IslandLayoutDefaults.Create();
@@ -1060,7 +1094,9 @@ namespace LyricHover.App
             settings.LyricDockAlignment = ReadDockAlignment();
             settings.LyricDockUseMultiLineDisplay = ReadDockUseMultiLineDisplay();
             settings.LyricDockShowTranslation = DockShowTranslationCheckBox.IsChecked == true;
-            settings.EnablePowerSavingMode = PowerSavingModeCheckBox.IsChecked == true;
+            settings.EnablePowerSavingMode = includePendingPowerSavingMode || !powerSavingModePending
+                ? PowerSavingModeCheckBox.IsChecked == true
+                : acceptedSettings?.EnablePowerSavingMode ?? false;
             settings.LyricOffsetHotkeys = new HotkeySettings
             {
                 Earlier = EarlierHotkeyTextBox.Text,
@@ -1279,7 +1315,7 @@ namespace LyricHover.App
             var sourceRow = FindVisualParent<Border>(Mouse.DirectlyOver as DependencyObject);
             if (priorityAdornerLayer != null && sourceRow != null)
             {
-                priorityDragAdorner = new PriorityDragAdorner(owner, sourceRow);
+                priorityDragAdorner = new PriorityDragAdorner(owner, sourceRow, !IsPowerSavingVisualPreviewActive);
                 priorityAdornerLayer.Add(priorityDragAdorner);
                 priorityDragAdorner.UpdatePosition(Mouse.GetPosition(this));
             }
@@ -1374,6 +1410,12 @@ namespace LyricHover.App
                         row.RenderTransform = transform;
                     }
                     transform.Y = offset;
+                    if (!CanAnimateSettingsVisuals)
+                    {
+                        transform.Y = 0;
+                        continue;
+                    }
+
                     transform.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(180))
                     {
                         EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseOut }
@@ -1457,7 +1499,7 @@ namespace LyricHover.App
             }
 
             var isChecked = checkBox.IsChecked == true;
-            var allowAnimation = animate && SystemParameters.ClientAreaAnimation;
+            var allowAnimation = animate && CanAnimateSettingsVisuals;
             var duration = TimeSpan.FromMilliseconds(160);
 
             var knob = template.FindName("SwitchKnob", checkBox) as FrameworkElement;
@@ -1960,7 +2002,7 @@ namespace LyricHover.App
             var current = transform.X;
             transform.BeginAnimation(TranslateTransform.XProperty, null);
             transform.X = target;
-            if (!animated || !IsLoaded || Math.Abs(current - target) < 0.5)
+            if (!animated || !CanAnimateSettingsVisuals || !IsLoaded || Math.Abs(current - target) < 0.5)
             {
                 return;
             }
@@ -1979,6 +2021,12 @@ namespace LyricHover.App
             activeTranslationModeToast = toast;
             toast.BeginAnimation(OpacityProperty, null);
             toast.Visibility = Visibility.Visible;
+            if (!CanAnimateSettingsVisuals)
+            {
+                toast.Opacity = 1;
+                return;
+            }
+
             toast.Opacity = 0;
             toast.BeginAnimation(
                 OpacityProperty,
@@ -2005,6 +2053,14 @@ namespace LyricHover.App
             var toast = activeTranslationModeToast;
             if (toast == null)
             {
+                return;
+            }
+
+            if (!CanAnimateSettingsVisuals)
+            {
+                toast.BeginAnimation(OpacityProperty, null);
+                toast.Opacity = 0;
+                toast.Visibility = Visibility.Collapsed;
                 return;
             }
 
@@ -2475,6 +2531,11 @@ namespace LyricHover.App
                 ? new SolidColorBrush(Color.FromRgb(190, 58, 58))
                 : (Brush)FindResource("SettingsControlMutedForegroundBrush");
 
+            if (!CanAnimateSettingsVisuals)
+            {
+                return;
+            }
+
             var fadeAnimation = new DoubleAnimation
             {
                 BeginTime = TimeSpan.FromSeconds(3),
@@ -2523,13 +2584,14 @@ namespace LyricHover.App
             }
 
             var dark = ResolveDarkSettingsTheme(selectedThemePreference);
-            systemBackdropApplied = TryApplySettingsBackdrop(dark);
+            systemBackdropApplied = TryApplySettingsBackdrop(dark, IsPowerSavingVisualPreviewActive);
             UpdateThemeResources(dark);
             RootChrome.BorderBrush = Brushes.Transparent;
             RootChrome.BorderThickness = new Thickness(0);
             SidebarCard.BorderBrush = Brushes.Transparent;
             ContentCard.Background = Brushes.Transparent;
             ContentCard.BorderBrush = Brushes.Transparent;
+            UpdateSettingsPerformanceVisuals();
             if (dirtyStateTracker != null)
             {
                 RefreshActionButtonVisuals(false);
@@ -2538,7 +2600,7 @@ namespace LyricHover.App
 
         private void UpdateThemeResources(bool dark)
         {
-            var animate = IsLoaded && !initializingSettings;
+            var animate = IsLoaded && !initializingSettings && CanAnimateSettingsVisuals;
             var transitionVersion = ++themeTransitionVersion;
             var rootBackgroundHex = systemBackdropApplied
                 ? (dark ? "#261C1C1E" : "#14F5F5F7")
@@ -2564,7 +2626,11 @@ namespace LyricHover.App
             SetBrushResource("SettingsSidebarSelectedBackgroundBrush", dark ? "#1AFFFFFF" : "#0D000000", animate, transitionVersion);
             SetBrushResource("SettingsSidebarSelectedForegroundBrush", dark ? "#F5F5F7" : "#1D1D1F", animate, transitionVersion);
             SetBrushResource("SettingsTrackBackgroundBrush", dark ? "#3A3A3C" : "#E5E5EA", animate, transitionVersion);
-            SetBrushResource("SettingsCardBackgroundBrush", dark ? "#802C2C2E" : "#B3FFFFFF", animate, transitionVersion);
+            SetBrushResource(
+                "SettingsCardBackgroundBrush",
+                systemBackdropApplied ? (dark ? "#802C2C2E" : "#B3FFFFFF") : (dark ? "#FF2C2C2E" : "#FFFFFFFF"),
+                animate,
+                transitionVersion);
             SetBrushResource("SettingsSecondaryForegroundBrush", dark ? "#636366" : "#86868B", animate, transitionVersion);
             SetBrushResource("SettingsToastBackgroundBrush", dark ? "#F02C2C2E" : "#FFFFFFFF", animate, transitionVersion);
             SetBrushResource("SettingsToastBorderBrush", dark ? "#660A84FF" : "#C9D7EC", animate, transitionVersion);
@@ -2762,6 +2828,7 @@ namespace LyricHover.App
                 _ = RefreshProEntitlementAsync();
             }
             UpdateLayoutModePreviewAnimation();
+            UpdateSettingsPerformanceVisuals();
             if (section == "Layout" && beginLayoutEditing != null && !layoutEditingActive)
             {
                 layoutEditingActive = true;
@@ -2801,7 +2868,7 @@ namespace LyricHover.App
                 return;
             }
 
-            if (!SystemParameters.ClientAreaAnimation)
+            if (!CanAnimateSettingsVisuals)
             {
                 target.BeginAnimation(OpacityProperty, null);
                 target.Opacity = 1.0;
@@ -2863,6 +2930,13 @@ namespace LyricHover.App
         {
             if (LayoutEditTutorialHighlight == null)
             {
+                return;
+            }
+
+            if (!CanAnimateSettingsVisuals)
+            {
+                LayoutEditTutorialHighlight.BeginAnimation(OpacityProperty, null);
+                LayoutEditTutorialHighlight.Opacity = 0;
                 return;
             }
 
@@ -3024,7 +3098,7 @@ namespace LyricHover.App
                 return;
             }
 
-            if (LayoutSettingsPanel.Visibility == Visibility.Visible)
+            if (LayoutSettingsPanel.Visibility == Visibility.Visible && CanAnimateSettingsVisuals)
             {
                 layoutModePreviewStoryboard.Begin(this, true);
             }
@@ -3076,6 +3150,53 @@ namespace LyricHover.App
                 case LyricsSourcePreference.KuGou: return "酷狗";
                 case LyricsSourcePreference.NetEase: return "网易云";
                 default: return string.Empty;
+            }
+        }
+
+        private bool IsPowerSavingVisualPreviewActive => PowerSavingModeCheckBox?.IsChecked == true;
+
+        private bool CanAnimateSettingsVisuals =>
+            !IsPowerSavingVisualPreviewActive && SystemParameters.ClientAreaAnimation;
+
+        private void UpdateSettingsPerformanceVisuals()
+        {
+            if (!IsLoaded)
+            {
+                return;
+            }
+
+            if (!IsPowerSavingVisualPreviewActive)
+            {
+                foreach (var entry in suppressedVisualEffects.ToArray())
+                {
+                    entry.Key.Effect = entry.Value;
+                }
+
+                suppressedVisualEffects.Clear();
+                return;
+            }
+
+            StopLayoutModePreviewAnimation();
+            if (WidgetsHelpPanel != null)
+            {
+                var showing = WidgetsHelpPanel.Visibility == Visibility.Visible;
+                WidgetsHelpPanel.BeginAnimation(OpacityProperty, null);
+                WidgetsHelpPanel.BeginAnimation(FrameworkElement.MaxHeightProperty, null);
+                WidgetsHelpPanel.Opacity = showing ? 1 : 0;
+                WidgetsHelpPanel.MaxHeight = showing ? 88 : 0;
+            }
+
+            var elements = new List<UIElement> { this };
+            elements.AddRange(FindVisualChildren<UIElement>(this));
+            foreach (var element in elements)
+            {
+                if (element.Effect == null || suppressedVisualEffects.ContainsKey(element))
+                {
+                    continue;
+                }
+
+                suppressedVisualEffects.Add(element, element.Effect);
+                element.Effect = null;
             }
         }
 
@@ -3384,13 +3505,16 @@ namespace LyricHover.App
             private readonly VisualBrush brush;
             private Point position;
 
-            public PriorityDragAdorner(UIElement adornedElement, FrameworkElement source) : base(adornedElement)
+            public PriorityDragAdorner(UIElement adornedElement, FrameworkElement source, bool showShadow) : base(adornedElement)
             {
                 IsHitTestVisible = false;
                 brush = new VisualBrush(source) { Opacity = 0.94, Stretch = Stretch.None };
                 Width = source.ActualWidth;
                 Height = source.ActualHeight;
-                Effect = new DropShadowEffect { BlurRadius = 18, ShadowDepth = 6, Opacity = 0.28 };
+                if (showShadow)
+                {
+                    Effect = new DropShadowEffect { BlurRadius = 18, ShadowDepth = 6, Opacity = 0.28 };
+                }
             }
 
             public void UpdatePosition(Point next)

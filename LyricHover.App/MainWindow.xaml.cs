@@ -128,6 +128,7 @@ namespace LyricHover.App
         private const uint MOUSEEVENTF_LEFTUP = 0x0004;
         private static readonly TimeSpan NormalTimerInterval = TimeSpan.FromMilliseconds(250);
         private static readonly TimeSpan PowerSavingTimerInterval = TimeSpan.FromMilliseconds(1000);
+        private static readonly TimeSpan PowerSavingIdleTimerInterval = TimeSpan.FromSeconds(4);
         private static readonly TimeSpan NormalHoverTimerInterval = TimeSpan.FromMilliseconds(40);
         private static readonly TimeSpan PowerSavingHoverTimerInterval = TimeSpan.FromMilliseconds(500);
         private bool powerSavingActive;
@@ -201,7 +202,7 @@ namespace LyricHover.App
 
             timer = new DispatcherTimer
             {
-                Interval = powerSavingActive ? PowerSavingTimerInterval : NormalTimerInterval
+                Interval = GetRefreshTimerInterval()
             };
             timer.Tick += async (sender, args) => await RefreshAsync();
             timer.Start();
@@ -615,6 +616,7 @@ namespace LyricHover.App
             finally
             {
                 refreshingState = false;
+                UpdateRefreshTimerInterval();
             }
         }
 
@@ -1099,7 +1101,7 @@ namespace LyricHover.App
         {
             var powerSaving = placementSettings.EnablePowerSavingMode;
             powerSavingActive = powerSaving;
-            timer.Interval = powerSaving ? PowerSavingTimerInterval : NormalTimerInterval;
+            UpdateRefreshTimerInterval();
             hoverProximityTimer.Interval = powerSaving ? PowerSavingHoverTimerInterval : NormalHoverTimerInterval;
             ModuleHost.SetAnimationsEnabled(!powerSaving);
             if (powerSaving)
@@ -1847,6 +1849,35 @@ namespace LyricHover.App
             finally
             {
                 widgetsSettingsConfirmationShowing = false;
+            }
+        }
+
+        private TimeSpan GetRefreshTimerInterval()
+        {
+            if (!powerSavingActive)
+            {
+                return NormalTimerInterval;
+            }
+
+            return IsPowerSavingRefreshIdle()
+                ? PowerSavingIdleTimerInterval
+                : PowerSavingTimerInterval;
+        }
+
+        private bool IsPowerSavingRefreshIdle()
+        {
+            return currentSession == null &&
+                !islandVisible &&
+                settingsWindow == null &&
+                !tutorialFlow.IsActive &&
+                !LyricDockController.IsEnabled;
+        }
+
+        private void UpdateRefreshTimerInterval()
+        {
+            if (timer != null)
+            {
+                timer.Interval = GetRefreshTimerInterval();
             }
         }
 
