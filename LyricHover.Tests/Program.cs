@@ -4196,6 +4196,9 @@ namespace LyricHover.Tests
             Assert.False(source.Contains("EnablePowerSavingMode { get; set; } = true"));
             var settingsView = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "PlacementSettingsWindow.xaml"));
             Assert.True(settingsView.Contains("PowerSavingModeCheckBox"));
+            Assert.True(settingsView.Contains("了解节能模式"));
+            Assert.True(settingsView.Contains("播放时每秒更新一次；空闲时每四秒检查一次。"));
+            Assert.True(settingsView.Contains("设置使用实体背景，并减少阴影、预览和过渡动画。"));
             var mainWindow = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "MainWindow.xaml.cs"));
             Assert.True(mainWindow.Contains("ApplyPowerSavingState"));
             Assert.True(mainWindow.Contains("PowerSavingTimerInterval"));
