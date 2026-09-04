@@ -3452,6 +3452,11 @@ namespace LyricHover.Tests
             Assert.True(trayMenuSource.Contains("DrawItemGlyph"));
             Assert.True(trayMenuSource.Contains("TextRenderer.DrawText"));
             Assert.True(trayMenuSource.Contains("GetTextBounds(e.Graphics, e.Item)"));
+            Assert.True(trayMenuSource.Contains("Microsoft YaHei UI"));
+            Assert.True(trayMenuSource.Contains("Segoe MDL2 Assets"));
+            Assert.True(trayMenuSource.Contains("GetGlyphBounds(graphics, item)"));
+            Assert.False(trayMenuSource.Contains("DrawSettingsGlyph"));
+            Assert.False(trayMenuSource.Contains("DrawExitGlyph"));
             Assert.False(trayMenuSource.Contains("base.OnRenderItemText(e)"));
         }
 
@@ -3467,8 +3472,13 @@ namespace LyricHover.Tests
             try
             {
                 var backColorProperty = menu.GetType().GetProperty("BackColor");
+                var fontProperty = menu.GetType().GetProperty("Font");
                 var rendererProperty = menu.GetType().GetProperty("Renderer");
                 var itemsProperty = menu.GetType().GetProperty("Items");
+
+                var menuFont = fontProperty.GetValue(menu);
+                Assert.Equal("Microsoft YaHei UI", (string)menuFont.GetType().GetProperty("Name").GetValue(menuFont));
+                Assert.True(Math.Abs(Convert.ToSingle(menuFont.GetType().GetProperty("SizeInPoints").GetValue(menuFont)) - 10.5F) < 0.01F);
 
                 apply.Invoke(null, new object[] { menu, SettingsThemePreference.Light });
                 var lightColor = backColorProperty.GetValue(menu);

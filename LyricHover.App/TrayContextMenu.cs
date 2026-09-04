@@ -25,7 +25,7 @@ namespace LyricHover.App
                 AutoSize = true,
                 BackColor = Color.White,
                 DropShadowEnabled = true,
-                Font = new Font("Segoe UI", 10F, FontStyle.Regular, GraphicsUnit.Point),
+                Font = new Font("Microsoft YaHei UI", 10.5F, FontStyle.Regular, GraphicsUnit.Point),
                 MinimumSize = new Size(204, 0),
                 Padding = new Forms.Padding(7, 8, 7, 8),
                 ShowCheckMargin = false,
@@ -197,6 +197,7 @@ namespace LyricHover.App
                     | Forms.TextFormatFlags.VerticalCenter
                     | Forms.TextFormatFlags.SingleLine
                     | Forms.TextFormatFlags.EndEllipsis
+                    | Forms.TextFormatFlags.NoPadding
                     | Forms.TextFormatFlags.NoPrefix);
         }
 
@@ -225,50 +226,37 @@ namespace LyricHover.App
             var glyphColor = !item.Enabled
                 ? palette.MutedForeground
                 : item.Selected ? palette.SelectedForeground : palette.Glyph;
-            using (var pen = new Pen(glyphColor, Math.Max(1.4F, Scale(graphics, 1.5F))))
+            var glyph = string.Equals(item.Name, "TraySettingsMenuItem", StringComparison.Ordinal)
+                ? "\uE713"
+                : string.Equals(item.Name, "TrayExitMenuItem", StringComparison.Ordinal)
+                    ? "\uE7E8"
+                    : null;
+            if (glyph == null)
             {
-                pen.StartCap = LineCap.Round;
-                pen.EndCap = LineCap.Round;
-                WithAntialiasing(graphics, () =>
-                {
-                    if (string.Equals(item.Name, "TraySettingsMenuItem", StringComparison.Ordinal))
-                    {
-                        DrawSettingsGlyph(graphics, pen, Scale(graphics, 20F), item.Height / 2F);
-                    }
-                    else if (string.Equals(item.Name, "TrayExitMenuItem", StringComparison.Ordinal))
-                    {
-                        DrawExitGlyph(graphics, pen, Scale(graphics, 20F), item.Height / 2F);
-                    }
-                });
+                return;
+            }
+
+            using (var font = new Font("Segoe MDL2 Assets", 12F, FontStyle.Regular, GraphicsUnit.Point))
+            {
+                Forms.TextRenderer.DrawText(
+                    graphics,
+                    glyph,
+                    font,
+                    GetGlyphBounds(graphics, item),
+                    glyphColor,
+                    Forms.TextFormatFlags.HorizontalCenter
+                        | Forms.TextFormatFlags.VerticalCenter
+                        | Forms.TextFormatFlags.SingleLine
+                        | Forms.TextFormatFlags.NoPadding
+                        | Forms.TextFormatFlags.NoPrefix);
             }
         }
 
-        private static void DrawSettingsGlyph(Graphics graphics, Pen pen, float centerX, float centerY)
+        internal static Rectangle GetGlyphBounds(Graphics graphics, Forms.ToolStripItem item)
         {
-            var innerRadius = Scale(graphics, 3F);
-            var outerRadius = Scale(graphics, 7F);
-            graphics.DrawEllipse(pen, centerX - innerRadius, centerY - innerRadius, innerRadius * 2, innerRadius * 2);
-            for (var index = 0; index < 8; index++)
-            {
-                var angle = Math.PI * index / 4D;
-                var startX = centerX + (float)Math.Cos(angle) * (outerRadius - Scale(graphics, 2F));
-                var startY = centerY + (float)Math.Sin(angle) * (outerRadius - Scale(graphics, 2F));
-                var endX = centerX + (float)Math.Cos(angle) * outerRadius;
-                var endY = centerY + (float)Math.Sin(angle) * outerRadius;
-                graphics.DrawLine(pen, startX, startY, endX, endY);
-            }
-        }
-
-        private static void DrawExitGlyph(Graphics graphics, Pen pen, float centerX, float centerY)
-        {
-            var radius = Scale(graphics, 7F);
-            graphics.DrawArc(pen, centerX - radius, centerY - radius, radius * 2, radius * 2, -48F, 276F);
-            graphics.DrawLine(
-                pen,
-                centerX,
-                centerY - Scale(graphics, 9F),
-                centerX,
-                centerY - Scale(graphics, 1F));
+            var left = (int)Math.Round(Scale(graphics, 11F));
+            var width = (int)Math.Round(Scale(graphics, 18F));
+            return new Rectangle(left, 0, width, item.Height);
         }
 
         internal static GraphicsPath CreateRoundedPath(Rectangle bounds, float radius)
@@ -353,10 +341,10 @@ namespace LyricHover.App
                 {
                     Background = Color.FromArgb(255, 44, 44, 46),
                     Border = Color.FromArgb(255, 72, 72, 74),
-                    Foreground = Color.FromArgb(255, 245, 245, 247),
-                    SelectedForeground = Color.FromArgb(255, 245, 245, 247),
+                    Foreground = Color.FromArgb(255, 250, 250, 252),
+                    SelectedForeground = Color.FromArgb(255, 255, 255, 255),
                     MutedForeground = Color.FromArgb(255, 142, 142, 147),
-                    Glyph = Color.FromArgb(255, 174, 174, 178),
+                    Glyph = Color.FromArgb(255, 200, 200, 204),
                     HoverBackground = Color.FromArgb(255, 58, 58, 60),
                     PressedBackground = Color.FromArgb(255, 72, 72, 74),
                     Separator = Color.FromArgb(255, 66, 66, 69)
