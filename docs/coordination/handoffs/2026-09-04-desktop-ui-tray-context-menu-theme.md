@@ -3,7 +3,7 @@
 - 日期：2026-09-04
 - 任务线程：Desktop Island, Settings & Interaction UI
 - 基线提交：`1de81933050c830d228a93069424ba038bb3fe5d`
-- 结果提交：`305dbd82217a6d36f8923e5e1f860bc3f3e9cf4d`
+- 结果提交：`91ff27a`（托盘菜单易读性修复）
 - 分支：`codex/feature/desktop-tray-menu-theme`
 - 允许修改范围：`LyricHover.App/` 的托盘 UI 与直接回归测试
 - Handoff Status：Feature Handoff / 本地候选已生成，待 UI 实机视觉确认
@@ -17,6 +17,7 @@
 - Apply 设置主题后立即刷新托盘菜单；跟随系统模式在每次菜单打开前重新读取 `AppsUseLightTheme`。
 - 高对比度模式回退到 Windows `SystemColors`，避免自定义色破坏可访问性。
 - 保留托盘双击打开设置、菜单打开设置和退出应用的原行为。
+- 根据实机截图修复自绘图标与菜单文字重叠：文字改用独立布局矩形绘制，并为左侧图标栏保留 44px 的 DPI 感知间距。
 
 ## 未修改 / 非目标
 
@@ -25,12 +26,11 @@
 
 ## 本地候选
 
-- 版本提交：`d7736e94c1a9ec1daa72a4571f7fbb5c92503233`。
-- 当前版本：`3.2.35-Beta`，framework-dependent `win-x64`。
-- 目录：`publish/current`，11 个文件，共 33,788,242 bytes。
-- `LyricHover.App.dll` SHA-256：`5AA22E4C64D98A19DBCEC26E8978148F51AFEEC149C1B6E3DE85032BB7273C6D`。
-- `LyricHover.App.exe` SHA-256：`1FF4A9D1DE3FC104F52BFD3A5C78237CBDAF02B71E679D994C37691BEEB173F7`。
-- 旧 `3.2.34-Beta` current 已由权威脚本归档为 `publish/archive/v3.2.34-Beta-20260904-191531`。
+- 当前版本：`3.2.36-Beta`，framework-dependent `win-x64`。
+- 目录：`publish/current`，8 个文件，共 24,534,091 bytes。
+- `LyricHover.App.dll` SHA-256：`EACA7CB2EAB68F968FA60E65C573B850D03607CCFEA6B4FDCD14FDBCCFAA53B3`。
+- `LyricHover.App.exe` SHA-256：`4EB73DD500151FA40F6EF9889EDFC918E87E16BAD2E55726A2A098F60987CE2F`。
+- 旧 `3.2.35-Beta` current 已由权威脚本归档为 `publish/archive/v3.2.35-Beta`。
 
 ## 验证
 
@@ -39,7 +39,7 @@
 - 命令：设置 `LYRICHOVER_SKIP_RELEASE_VERSION_FIXTURE=1` 后运行 `dotnet run --project LyricHover.Tests -c Release --no-build`。
 - 结果：全部执行项 PASS；新增源码契约测试和运行时菜单实例测试，确认浅/深配色、渲染器、菜单结构和主题刷新入口。
 - 命令：设置 Windows SDK 路径后运行 `publish.ps1 -NoLaunch`。
-- 结果：完整回归 PASS；`win-x64` Release 构建 0 warning、0 error；发布脚本输出 `发布完成：v3.2.35 Beta`。
+- 结果：完整回归 PASS；`win-x64` Release 构建 0 warning、0 error；发布脚本输出 `发布完成：v3.2.36 Beta`。
 - 命令：`dotnet run --no-restore --configuration Release --project LyricHover.Tests -- --release-version-fixture`。
 - 结果：在可读取真实用户 NuGet 缓存的环境中 PASS；发布版本变更保持事务化与串行化。
 - 产物一致性：`publish/current/LyricHover.App.dll` 与同次 Release `win-x64` 输出 SHA-256 完全一致；deps/runtimeconfig 均非空，目标 staging 已清理。
