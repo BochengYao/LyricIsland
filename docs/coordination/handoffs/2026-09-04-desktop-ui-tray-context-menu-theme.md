@@ -29,7 +29,7 @@
 ## 未修改 / 非目标
 
 - 未修改设置模型、持久化键、Core、播放器、歌词、缓存或时间线。
-- 未上传 GitHub、未提交 Microsoft Store、未发布官网或任何外部渠道。
+- 仅上传 GitHub 功能分支；未创建 GitHub Release、未提交 Microsoft Store、未发布官网或其他发行渠道。
 
 ## 本地候选
 
