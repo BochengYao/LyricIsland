@@ -3450,6 +3450,9 @@ namespace LyricHover.Tests
             Assert.True(trayMenuSource.Contains("SystemInformation.HighContrast"));
             Assert.True(trayMenuSource.Contains("HoverBackground"));
             Assert.True(trayMenuSource.Contains("DrawItemGlyph"));
+            Assert.True(trayMenuSource.Contains("TextRenderer.DrawText"));
+            Assert.True(trayMenuSource.Contains("GetTextBounds(e.Graphics, e.Item)"));
+            Assert.False(trayMenuSource.Contains("base.OnRenderItemText(e)"));
         }
 
         static void TrayMenuRuntimePaletteSwitchesBetweenLightAndDark()

@@ -186,9 +186,29 @@ namespace LyricHover.App
             e.TextColor = !e.Item.Enabled
                 ? palette.MutedForeground
                 : e.Item.Selected ? palette.SelectedForeground : palette.Foreground;
-            e.TextFormat |= Forms.TextFormatFlags.VerticalCenter;
-            base.OnRenderItemText(e);
             DrawItemGlyph(e.Graphics, e.Item);
+            Forms.TextRenderer.DrawText(
+                e.Graphics,
+                e.Text,
+                e.TextFont,
+                GetTextBounds(e.Graphics, e.Item),
+                e.TextColor,
+                Forms.TextFormatFlags.Left
+                    | Forms.TextFormatFlags.VerticalCenter
+                    | Forms.TextFormatFlags.SingleLine
+                    | Forms.TextFormatFlags.EndEllipsis
+                    | Forms.TextFormatFlags.NoPrefix);
+        }
+
+        internal static Rectangle GetTextBounds(Graphics graphics, Forms.ToolStripItem item)
+        {
+            var left = (int)Math.Round(Scale(graphics, 44F));
+            var right = (int)Math.Round(Scale(graphics, 14F));
+            return new Rectangle(
+                left,
+                0,
+                Math.Max(1, item.Width - left - right),
+                item.Height);
         }
 
         protected override void OnRenderSeparator(Forms.ToolStripSeparatorRenderEventArgs e)
