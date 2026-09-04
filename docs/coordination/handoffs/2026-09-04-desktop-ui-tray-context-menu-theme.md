@@ -4,6 +4,7 @@
 - 任务线程：Desktop Island, Settings & Interaction UI
 - 基线提交：`1de81933050c830d228a93069424ba038bb3fe5d`
 - 功能提交：`f534f3a9e3f941d2b38a592261f2baba81710e4b`（紧凑桌面浮层视觉重设计）
+- DPI 修复提交：`3de6fb9`（菜单整体布局按右键所在显示器同步缩放）
 - 分支：`codex/feature/desktop-tray-menu-theme`
 - 允许修改范围：`LyricHover.App/` 的托盘 UI 与直接回归测试
 - Handoff Status：Feature Handoff / 本地候选已生成，待 UI 实机视觉确认
@@ -22,6 +23,8 @@
 - 高对比度模式回退到 Windows `SystemColors`，避免自定义色破坏可访问性。
 - 保留托盘双击打开设置、菜单打开设置和退出应用的原行为。
 - 菜单项没有缩放、旋转、位移、发光或波纹动画；维持系统弹出行为，避免增加业务行为和 Windows 10/11 兼容风险。
+- 用户 150% DPI 截图暴露固定 `160px` 容器与 DPI 字体/图标不一致：旧文字区域约 90px，而“偏好设置”实测约需 92.95px，因此出现 `偏好设...`。
+- 在菜单 `Opening` 阶段通过鼠标所在显示器解析有效 DPI，并同步缩放菜单宽度、行高、Padding、Margin 与图标/文字布局；显示前完成布局，不引入可见尺寸跳变。DPI API 不可用时回退到 WinForms `DeviceDpi`。
 
 ## 未修改 / 非目标
 
@@ -31,8 +34,8 @@
 ## 本地候选
 
 - 当前版本：`3.2.35-Beta`，framework-dependent `win-x64`；按用户要求使用 `-KeepVersion` 同版本重建。
-- 目录：`publish/current`，11 个文件，共 33,790,938 bytes。
-- `LyricHover.App.dll` SHA-256：`5167858A7B824D01F7C3320DE2969548A719847A2E3CC79A57F8A7D5D2EABEB9`。
+- 目录：`publish/current`，11 个文件，共 33,792,278 bytes。
+- `LyricHover.App.dll` SHA-256：`EA8A2A44DA18127340C5DCEEE084B61D4D4C8C5DFBBDCADE67B48CBDBDD2D2D4`。
 - `LyricHover.App.exe` SHA-256：`1FF4A9D1DE3FC104F52BFD3A5C78237CBDAF02B71E679D994C37691BEEB173F7`。
 - 前两轮 `3.2.35-Beta` current 已由权威脚本保留在 `publish/archive/v3.2.35-Beta*`；中间生成但未交付的 `3.2.36-Beta` 也保留在归档中供追溯。
 
@@ -43,6 +46,7 @@
 - 命令：设置 `LYRICHOVER_SKIP_RELEASE_VERSION_FIXTURE=1` 后运行 `dotnet run --project LyricHover.Tests -c Release --no-build`。
 - 结果：全部执行项 PASS；源码契约和运行时菜单实例测试确认浅/深配色、紧凑尺寸、无分割线、矢量图标路径、菜单结构和主题刷新入口。
 - DPI 回归：在 100% / 125% / 150% / 175% / 200% 缩放下生成两枚图标路径，检查边界有效且最大光学尺寸一致。
+- 完整布局 DPI 回归：在 100% / 125% / 150% / 175% / 200% 下验证容器宽度、菜单项宽高和文字可用区按同一比例缩放；当前机器 150% 下文字可用区由约 90px 增至约 164px。
 - 命令回归：运行时分别触发“偏好设置”和“退出”菜单项，原有回调各执行且仅执行一次。
 - 命令：设置 Windows SDK 路径后运行 `publish.ps1 -KeepVersion -NoLaunch`。
 - 结果：完整回归 PASS；`win-x64` Release 发布成功，发布脚本输出 `发布完成：v3.2.35 Beta`。
@@ -54,6 +58,6 @@
 
 ## 风险与后续
 
-- 已知限制：离屏实渲染不能呈现真实桌面 DWM 阴影，也不能替代真实托盘弹出后的最终观感确认。
+- 已知限制：离屏实渲染不能呈现真实桌面 DWM 阴影，也不能替代真实托盘弹出后的最终观感确认；正在运行的旧进程必须完全退出后再启动 `publish/current`，否则仍会显示内存中的旧菜单实现。
 - 交接目标：Desktop UI / User Acceptance；从 `publish/current/LyricHover.App.exe` 启动，分别在浅色、深色、跟随系统和高对比度下右键托盘图标。
 - 回滚点：回滚 `305dbd82217a6d36f8923e5e1f860bc3f3e9cf4d` 即恢复默认 `ContextMenuStrip`。
