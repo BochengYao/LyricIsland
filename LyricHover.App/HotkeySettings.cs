@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 using System.Windows.Input;
 
 namespace LyricHover.App
@@ -77,7 +78,7 @@ namespace LyricHover.App
                 }
 
                 Key key;
-                if (!TryParseKey(token, out key) || !Keyboard.IsKeyDown(key))
+                if (!TryParseKey(token, out key) || !IsVirtualKeyPressed(KeyInterop.VirtualKeyFromKey(key)))
                 {
                     return false;
                 }
@@ -109,14 +110,19 @@ namespace LyricHover.App
         {
             switch ((token ?? string.Empty).Trim().ToLowerInvariant())
             {
-                case "alt": return (Keyboard.Modifiers & ModifierKeys.Alt) != 0;
+                case "alt": return IsVirtualKeyPressed(0x12);
                 case "ctrl":
-                case "control": return (Keyboard.Modifiers & ModifierKeys.Control) != 0;
-                case "shift": return (Keyboard.Modifiers & ModifierKeys.Shift) != 0;
+                case "control": return IsVirtualKeyPressed(0x11);
+                case "shift": return IsVirtualKeyPressed(0x10);
                 case "win":
-                case "windows": return (Keyboard.Modifiers & ModifierKeys.Windows) != 0;
+                case "windows": return IsVirtualKeyPressed(0x5B) || IsVirtualKeyPressed(0x5C);
                 default: return false;
             }
+        }
+
+        private static bool IsVirtualKeyPressed(int virtualKey)
+        {
+            return (GetAsyncKeyState(virtualKey) & 0x8000) != 0;
         }
 
         private static bool TryParseKey(string token, out Key key)
@@ -129,5 +135,8 @@ namespace LyricHover.App
 
             return Enum.TryParse(normalized, true, out key) && key != Key.None;
         }
+
+        [DllImport("user32.dll")]
+        private static extern short GetAsyncKeyState(int virtualKey);
     }
 }

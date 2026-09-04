@@ -1,4 +1,5 @@
 using System;
+using LyricHover.Core;
 using LyricHover.Core.Media;
 
 namespace LyricHover.App.Modules
@@ -13,5 +14,8 @@ namespace LyricHover.App.Modules
         public TimelineReliability TimelineReliability { get; set; }
         public TimeSpan EffectivePosition { get; set; }
         public TimeSpan LineDuration { get; set; } = TimeSpan.FromSeconds(4);
+        public double PrimaryWordTrackingProgress { get; set; } = -1;
+        public LyricLine PrimaryWordTrackingLine { get; set; }
+        public TimeSpan WordTrackingPosition { get; set; }
     }
 }

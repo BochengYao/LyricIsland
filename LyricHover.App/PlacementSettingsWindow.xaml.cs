@@ -48,6 +48,7 @@ namespace LyricHover.App
         private readonly Action startTutorial;
         private readonly Action<string> tutorialSectionChanged;
         private readonly Func<bool> tryExitTutorial;
+        private readonly Action refreshCurrentLyrics;
         private int acceptedCacheLimitMegabytes;
         private OverlayPlacementSettings workingSettings;
         private OverlayPlacementSettings acceptedSettings;
@@ -59,6 +60,7 @@ namespace LyricHover.App
         private bool applyingAutoSave;
         private bool powerSavingModePending;
         private readonly Dictionary<UIElement, Effect> suppressedVisualEffects = new Dictionary<UIElement, Effect>();
+        private readonly Dictionary<CheckBox, FrameworkElement> initializedSwitchKnobs = new Dictionary<CheckBox, FrameworkElement>();
         private bool layoutEditingActive;
         private bool suppressLayoutSelectionChanged;
         private IslandLayoutMode selectedLayoutMode = IslandLayoutMode.HorizontalBlocks;
@@ -179,7 +181,8 @@ namespace LyricHover.App
             Func<IslandLayoutMode, IslandLayoutProfile> getLayoutDraftSnapshot = null,
             Action startTutorial = null,
             Action<string> tutorialSectionChanged = null,
-            Func<bool> tryExitTutorial = null)
+            Func<bool> tryExitTutorial = null,
+            Action refreshCurrentLyrics = null)
         {
             InitializeComponent();
             var localApplicationDataRoot = Environment.GetFolderPath(
@@ -205,6 +208,7 @@ namespace LyricHover.App
             this.startTutorial = startTutorial;
             this.tutorialSectionChanged = tutorialSectionChanged;
             this.tryExitTutorial = tryExitTutorial;
+            this.refreshCurrentLyrics = refreshCurrentLyrics;
             PreviewKeyDown += PlacementSettingsWindow_PreviewKeyDown;
             SourceInitialized += PlacementSettingsWindow_SourceInitialized;
 
@@ -225,6 +229,7 @@ namespace LyricHover.App
             SingleLineRadioButton.IsChecked = !settings.UseMultiLineDisplay;
             MultiLineRadioButton.IsChecked = settings.UseMultiLineDisplay;
             ShowTranslationCheckBox.IsChecked = settings.ShowTranslation;
+            IslandWordTrackingCheckBox.IsChecked = settings.IslandWordTrackingEnabled;
             IslandEnabledSwitch.IsChecked = settings.IslandEnabled;
             LyricDockEnabledCheckBox.IsChecked = settings.LyricDockEnabled;
             DockAlignmentCenterRadioButton.IsChecked = settings.LyricDockAlignment != LyricDockAlignment.Left;
@@ -232,6 +237,7 @@ namespace LyricHover.App
             DockSingleLineRadioButton.IsChecked = !settings.LyricDockUseMultiLineDisplay;
             DockMultiLineRadioButton.IsChecked = settings.LyricDockUseMultiLineDisplay;
             DockShowTranslationCheckBox.IsChecked = settings.LyricDockShowTranslation;
+            DockWordTrackingCheckBox.IsChecked = settings.LyricDockWordTrackingEnabled;
             PowerSavingModeCheckBox.IsChecked = settings.EnablePowerSavingMode;
             ScreenComboBox.SelectedValue = string.IsNullOrWhiteSpace(settings.ScreenName)
                 ? this.screens.FirstOrDefault()?.Name
@@ -1089,11 +1095,13 @@ namespace LyricHover.App
                 : settings.PlayerPriority[0];
             settings.UseMultiLineDisplay = ReadUseMultiLineDisplay();
             settings.ShowTranslation = ShowTranslationCheckBox.IsChecked == true;
+            settings.IslandWordTrackingEnabled = IslandWordTrackingCheckBox.IsChecked == true;
             settings.IslandEnabled = IslandEnabledSwitch.IsChecked == true;
             settings.LyricDockEnabled = LyricDockEnabledCheckBox.IsChecked == true;
             settings.LyricDockAlignment = ReadDockAlignment();
             settings.LyricDockUseMultiLineDisplay = ReadDockUseMultiLineDisplay();
             settings.LyricDockShowTranslation = DockShowTranslationCheckBox.IsChecked == true;
+            settings.LyricDockWordTrackingEnabled = DockWordTrackingCheckBox.IsChecked == true;
             settings.EnablePowerSavingMode = includePendingPowerSavingMode || !powerSavingModePending
                 ? PowerSavingModeCheckBox.IsChecked == true
                 : acceptedSettings?.EnablePowerSavingMode ?? false;
@@ -1201,6 +1209,11 @@ namespace LyricHover.App
             autoSelectPlayer = settings.AutoSelectPlayer;
             UpdateAutoSelectPlayerToggleState();
             UpdatePlayerSelectionHint();
+        }
+
+        private void RefreshCurrentLyricsButton_Click(object sender, RoutedEventArgs e)
+        {
+            refreshCurrentLyrics?.Invoke();
         }
 
         private void AutoSelectPlayerToggle_Changed(object sender, RoutedEventArgs e)
@@ -1451,8 +1464,10 @@ namespace LyricHover.App
                 PowerSavingModeCheckBox,
                 IslandEnabledSwitch,
                 ShowTranslationCheckBox,
+                IslandWordTrackingCheckBox,
                 LyricDockEnabledCheckBox,
                 DockShowTranslationCheckBox,
+                DockWordTrackingCheckBox,
                 AutoSelectPlayerToggle
             };
         }
@@ -1506,11 +1521,19 @@ namespace LyricHover.App
             if (knob != null)
             {
                 var transform = knob.RenderTransform as TranslateTransform;
-                if (transform == null || transform.IsFrozen || transform.IsSealed)
+                if (!initializedSwitchKnobs.TryGetValue(checkBox, out var initializedKnob) ||
+                    !ReferenceEquals(initializedKnob, knob) ||
+                    transform == null ||
+                    transform.IsFrozen ||
+                    transform.IsSealed)
                 {
-                    var initialX = transform == null ? 0.0 : transform.X;
+                    // Materialize the template trigger's current position as a local
+                    // transform. This preserves the correct first frame, then lets the
+                    // cancellable code animation own subsequent transitions.
+                    var initialX = transform == null ? (isChecked ? 18.0 : 0.0) : transform.X;
                     transform = new TranslateTransform(initialX, 0.0);
                     knob.RenderTransform = transform;
+                    initializedSwitchKnobs[checkBox] = knob;
                 }
 
                 // Keep the knob anchored on the left and animate only its translation.

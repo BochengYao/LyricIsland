@@ -16,6 +16,11 @@ namespace LyricHover.App.Modules
         private string displayedSecondary;
         private int lyricsTransitionVersion;
         private bool animationsEnabled = true;
+        private bool lyricsTransitionInProgress;
+        private LyricLine displayedWordTrackingLine;
+        private TimeSpan displayedWordTrackingPosition;
+        private bool displayedWordTrackingPlaying;
+        private double displayedWordTrackingProgress = -1;
 
         public bool AnimationsEnabled
         {
@@ -37,7 +42,23 @@ namespace LyricHover.App.Modules
         public void Update(IslandRenderState state)
         {
             state = state ?? new IslandRenderState();
-            SetIslandText(state.PrimaryLyric, state.SecondaryLyric, state.PrimaryAccent, state.LineDuration);
+            var primary = state.PrimaryLyric ?? string.Empty;
+            var secondary = state.SecondaryLyric ?? string.Empty;
+            var accent = state.PrimaryAccent ?? string.Empty;
+            var textChanged = displayedPrimary != primary || displayedSecondary != secondary || displayedAccent != accent;
+
+            displayedWordTrackingLine = state.PrimaryWordTrackingLine;
+            displayedWordTrackingPosition = state.WordTrackingPosition;
+            displayedWordTrackingPlaying = ResolveIsPlaying(state);
+            displayedWordTrackingProgress = state.PrimaryWordTrackingProgress;
+
+            if (!textChanged)
+            {
+                UpdateActiveWordTracking();
+                return;
+            }
+
+            SetIslandText(primary, secondary, accent, state.LineDuration);
         }
 
         private void SetIslandText(string primary, string secondary, string accent, TimeSpan lineDuration)
@@ -46,16 +67,12 @@ namespace LyricHover.App.Modules
             secondary = secondary ?? string.Empty;
             accent = accent ?? string.Empty;
 
-            if (displayedPrimary == primary && displayedSecondary == secondary && displayedAccent == accent)
-            {
-                return;
-            }
-
             var shouldAnimate = lyricTextTransitionTracker.Update(primary, secondary);
             displayedPrimary = primary;
             displayedSecondary = secondary;
             displayedAccent = accent;
             var transitionVersion = ++lyricsTransitionVersion;
+            lyricsTransitionInProgress = false;
 
             if (!animationsEnabled)
             {
@@ -93,6 +110,7 @@ namespace LyricHover.App.Modules
             IncomingLyricsTransform.Y = 10;
             CurrentLyricsPanel.Opacity = 1;
             CurrentLyricsTransform.Y = 0;
+            lyricsTransitionInProgress = true;
 
             var easing = new QuarticEase { EasingMode = EasingMode.EaseOut };
             var duration = TimeSpan.FromMilliseconds(280);
@@ -109,7 +127,8 @@ namespace LyricHover.App.Modules
                     return;
                 }
 
-                ApplyCurrentLyricsText(primary, secondary, accent);
+                lyricsTransitionInProgress = false;
+                ApplyCurrentLyricsText(displayedPrimary, displayedSecondary, displayedAccent);
                 ResetLyricsAnimationState();
                 StartMarquee(lineDuration);
             };
@@ -142,6 +161,7 @@ namespace LyricHover.App.Modules
 
         private void ResetLyricsAnimationState()
         {
+            IncomingPrimaryLyricText.StopPlaybackProjection();
             CurrentLyricsPanel.BeginAnimation(OpacityProperty, null);
             CurrentLyricsTransform.BeginAnimation(TranslateTransform.YProperty, null);
             IncomingLyricsPanel.BeginAnimation(OpacityProperty, null);
@@ -151,6 +171,28 @@ namespace LyricHover.App.Modules
             CurrentLyricsTransform.Y = 0;
             IncomingLyricsPanel.Opacity = 0;
             IncomingLyricsTransform.Y = 10;
+        }
+
+        private void UpdateActiveWordTracking()
+        {
+            var target = lyricsTransitionInProgress ? IncomingPrimaryLyricText : PrimaryLyricText;
+            PresentWordTracking(target, displayedPrimary);
+        }
+
+        private void PresentWordTracking(WordTrackingTextBlock textBlock, string text)
+        {
+            textBlock.Present(
+                text,
+                displayedWordTrackingLine,
+                displayedWordTrackingPosition,
+                displayedWordTrackingPlaying,
+                displayedWordTrackingProgress);
+        }
+
+        private static bool ResolveIsPlaying(IslandRenderState state)
+        {
+            var status = state.PendingPlaybackStatus ?? state.Session?.PlaybackStatus;
+            return status == LyricHover.Core.Media.MediaPlaybackStatus.Playing;
         }
 
         private void StartMarquee(TimeSpan lineDuration)
@@ -207,7 +249,7 @@ namespace LyricHover.App.Modules
 
         private void PreparePrimaryLine(
             StackPanel panel,
-            TextBlock textBlock,
+            WordTrackingTextBlock textBlock,
             TextBlock accentTextBlock,
             TranslateTransform transform,
             FrameworkElement clip,
@@ -217,7 +259,7 @@ namespace LyricHover.App.Modules
         {
             transform.BeginAnimation(TranslateTransform.XProperty, null);
             transform.X = 0;
-            textBlock.Text = text ?? string.Empty;
+            PresentWordTracking(textBlock, text);
             accentTextBlock.Text = accent ?? string.Empty;
             accentTextBlock.Visibility = string.IsNullOrWhiteSpace(accent)
                 ? Visibility.Collapsed

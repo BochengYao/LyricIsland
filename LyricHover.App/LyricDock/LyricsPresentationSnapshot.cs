@@ -1,4 +1,5 @@
 ﻿using System;
+using LyricHover.Core;
 using LyricHover.Core.Media;
 using LyricHover.App.Modules;
 
@@ -15,6 +16,9 @@ namespace LyricHover.App.LyricDock
         public TimelineReliability TimelineReliability { get; set; }
         public TimeSpan EffectivePosition { get; set; }
         public MediaPlaybackStatus? PendingPlaybackStatus { get; set; }
+        public double PrimaryWordTrackingProgress { get; set; } = -1;
+        public LyricLine PrimaryWordTrackingLine { get; set; }
+        public TimeSpan WordTrackingPosition { get; set; }
 
         public IslandRenderState ToIslandRenderState()
         {
@@ -27,7 +31,10 @@ namespace LyricHover.App.LyricDock
                 TimelineReliability = TimelineReliability,
                 EffectivePosition = EffectivePosition,
                 PendingPlaybackStatus = PendingPlaybackStatus,
-                LineDuration = LineDuration
+                LineDuration = LineDuration,
+                PrimaryWordTrackingProgress = PrimaryWordTrackingProgress,
+                PrimaryWordTrackingLine = PrimaryWordTrackingLine,
+                WordTrackingPosition = WordTrackingPosition
             };
         }
     }

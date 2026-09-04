@@ -62,6 +62,9 @@ namespace LyricHover.App
         private string currentPrimaryText = string.Empty;
         private string currentSecondaryText = string.Empty;
         private TimeSpan currentLineDuration = TimeSpan.FromSeconds(4);
+        private double currentWordTrackingProgress = -1;
+        private LyricLine currentWordTrackingLine;
+        private TimeSpan currentWordTrackingPosition;
         private string dockLyricPrimaryText = string.Empty;
         private string dockLyricSecondaryText = string.Empty;
         private bool dockLyricOverrideActive;
@@ -170,12 +173,15 @@ namespace LyricHover.App
             var taskbarLease = new WidgetVisibilityLease(
                 lyricDockEnvironment,
                 System.IO.Path.Combine(productDataRoot, "taskbar-widgets-lease.txt"));
+            var lyricDockWindow = new LyricDockWindow(IsTemporaryInteractionHeld);
             LyricDockController = new LyricDockController(
                 lyricDockEnvironment,
                 taskbarLease,
-                new LyricDockWindow());
+                lyricDockWindow);
             LyricDockController.SettingsRequested += (sender, args) =>
                 Dispatcher.BeginInvoke(new Action(() => OpenPlacementSettingsWindow(true)));
+            LyricDockController.RefreshRequested += (sender, args) =>
+                Dispatcher.BeginInvoke(new Action(() => RefreshCurrentTrackLyrics(true)));
             LyricDockController.FeatureDisabled += (sender, reason) =>
                 Dispatcher.BeginInvoke(new Action(() => DisableTaskbarLyrics(reason)));
             LyricDockController.WidgetsHidden += (sender, args) =>
@@ -194,7 +200,7 @@ namespace LyricHover.App
             interactionController.ExpandedDuration = TimeSpan.FromSeconds(placementSettings.ExpandedAutoCollapseSeconds);
             cache = new LyricsCache(cacheRoot, GetCacheLimitBytes(placementSettings));
             UpdateIslandShape();
-            lyricsClient = CreateLyricsClient(placementSettings.LyricsSourcePriority);
+            lyricsClient = CreateLyricsClient(placementSettings.LyricsSourcePriority, IsWordTrackingRequested(placementSettings));
             InitializeTrayIcon();
 
             powerSavingActive = placementSettings.EnablePowerSavingMode;
@@ -600,12 +606,17 @@ namespace LyricHover.App
                     timeline.Position,
                     lyricOffset,
                     TimeSpan.FromSeconds(4));
+                var currentLine = currentLyrics.GetCurrentLine(timeline.Position, lyricOffset);
+                var wordProgress = currentLine.GetWordProgress(timeline.Position + lyricOffset);
                 SetIslandText(
                     lines.Count > 0 ? lines[0].Text : string.Empty,
                     lines.Count > 1 ? lines[1].Text : string.Empty,
                     lineDuration,
                     dockLines.Count > 0 ? dockLines[0].Text : string.Empty,
-                    dockLines.Count > 1 ? dockLines[1].Text : string.Empty);
+                    dockLines.Count > 1 ? dockLines[1].Text : string.Empty,
+                    wordProgress,
+                    currentLine,
+                    timeline.Position + lyricOffset);
                 ShowIsland();
             }
             catch (Exception ex)
@@ -630,7 +641,8 @@ namespace LyricHover.App
                 var needsTranslation = (placementSettings.ShowTranslation || placementSettings.LyricDockShowTranslation) &&
                     !LyricsPackageParser.HasTranslation(lrc) &&
                     !LyricsDisplaySelector.ShouldIgnoreTranslation(cachedLyrics);
-                if (forceRefresh || !cacheHit || needsTranslation)
+                var needsWordTracking = IsWordTrackingRequested(placementSettings) && !LyricsPackageParser.HasWordTiming(lrc);
+                if (forceRefresh || !cacheHit || needsTranslation || needsWordTracking)
                 {
                     var freshLrc = await lyricsClient.GetSyncedLyricsAsync(track);
                     if (!string.IsNullOrWhiteSpace(freshLrc))
@@ -1129,7 +1141,7 @@ namespace LyricHover.App
             interactionController.ExpandedDuration = TimeSpan.FromSeconds(runtimeSettings.ExpandedAutoCollapseSeconds);
             cache.SetMaxBytes(GetCacheLimitBytes(runtimeSettings));
             selectedLyricsSource = runtimeSettings.LyricsSource;
-            lyricsClient = CreateLyricsClient(runtimeSettings.LyricsSourcePriority);
+            lyricsClient = CreateLyricsClient(runtimeSettings.LyricsSourcePriority, IsWordTrackingRequested(runtimeSettings));
             var taskbarWasRequested = runtimeSettings.LyricDockEnabled;
             if (!LyricDockController.Configure(runtimeSettings.LyricDockEnabled, runtimeSettings.ScreenName, runtimeSettings.LyricDockAlignment) && taskbarWasRequested)
             {
@@ -1144,6 +1156,12 @@ namespace LyricHover.App
                 HideIsland(true);
             }
             if (currentTrack != null && !previousSettings.LyricsSourcePriority.SequenceEqual(runtimeSettings.LyricsSourcePriority))
+            {
+                RefreshCurrentTrackLyrics(true);
+                return;
+            }
+
+            if (currentTrack != null && !IsWordTrackingRequested(previousSettings) && IsWordTrackingRequested(runtimeSettings))
             {
                 RefreshCurrentTrackLyrics(true);
                 return;
@@ -1581,11 +1599,17 @@ namespace LyricHover.App
             string secondary,
             TimeSpan lineDuration,
             string dockPrimary,
-            string dockSecondary)
+            string dockSecondary,
+            double wordTrackingProgress = -1,
+            LyricLine wordTrackingLine = null,
+            TimeSpan? wordTrackingPosition = null)
         {
             currentPrimaryText = primary ?? string.Empty;
             currentSecondaryText = secondary ?? string.Empty;
             currentLineDuration = lineDuration;
+            currentWordTrackingProgress = wordTrackingProgress;
+            currentWordTrackingLine = wordTrackingLine;
+            currentWordTrackingPosition = wordTrackingPosition ?? TimeSpan.Zero;
             dockLyricOverrideActive = dockPrimary != null;
             dockLyricPrimaryText = dockPrimary ?? string.Empty;
             dockLyricSecondaryText = dockSecondary ?? string.Empty;
@@ -1605,14 +1629,26 @@ namespace LyricHover.App
                 TimelineReliability = currentTimelineReliability,
                 EffectivePosition = currentEffectivePosition,
                 LineDuration = currentLineDuration,
+                PrimaryWordTrackingProgress = placementSettings.LyricDockWordTrackingEnabled ? currentWordTrackingProgress : -1,
+                PrimaryWordTrackingLine = placementSettings.LyricDockWordTrackingEnabled ? currentWordTrackingLine : null,
+                WordTrackingPosition = currentWordTrackingPosition,
                 IsWaitingForPlayback = currentSession == null
             };
             var islandState = taskbarSnapshot.ToIslandRenderState();
+            islandState.PrimaryWordTrackingProgress = placementSettings.IslandWordTrackingEnabled
+                ? currentWordTrackingProgress
+                : -1;
+            islandState.PrimaryWordTrackingLine = placementSettings.IslandWordTrackingEnabled
+                ? currentWordTrackingLine
+                : null;
+            islandState.WordTrackingPosition = currentWordTrackingPosition;
             if (tutorialActive)
             {
                 islandState.PrimaryLyric = tutorialPrimaryText;
                 islandState.SecondaryLyric = tutorialSecondaryText;
                 islandState.PrimaryAccent = tutorialAccentText;
+                islandState.PrimaryWordTrackingProgress = -1;
+                islandState.PrimaryWordTrackingLine = null;
             }
             ModuleHost.Update(islandState);
             LyricDockController?.Present(taskbarSnapshot);
@@ -1916,7 +1952,8 @@ namespace LyricHover.App
                 GetLayoutDraftSnapshot,
                 () => _ = StartTutorialAsync(),
                 OnTutorialSettingsSectionChanged,
-                TryExitTutorial);
+                TryExitTutorial,
+                () => RefreshCurrentTrackLyrics(true));
             settingsWindow.Closed += async (sender, args) =>
             {
                 settingsWindow = null;
@@ -2282,9 +2319,17 @@ namespace LyricHover.App
             return IslandShape.InputHitTest(point) != null;
         }
 
-        private static ILyricsClient CreateLyricsClient(IEnumerable<LyricsSourcePreference> sourcePriority)
+        private static ILyricsClient CreateLyricsClient(IEnumerable<LyricsSourcePreference> sourcePriority, bool preferWordTiming)
         {
-            return new CompositeLyricsClient(CreateLyricsSourceChain(sourcePriority).Select(CreateSingleLyricsClient).ToArray());
+            var fallback = new CompositeLyricsClient(CreateLyricsSourceChain(sourcePriority).Select(CreateSingleLyricsClient).ToArray());
+            return preferWordTiming
+                ? (ILyricsClient)new WordTimedPreferredLyricsClient(new ILyricsClient[] { new QQMusicLyricsClient(), new NetEaseLyricsClient() }, fallback)
+                : fallback;
+        }
+
+        private static bool IsWordTrackingRequested(OverlayPlacementSettings settings)
+        {
+            return settings != null && (settings.IslandWordTrackingEnabled || settings.LyricDockWordTrackingEnabled);
         }
 
         private static LyricsSourcePreference[] CreateLyricsSourceChain(IEnumerable<LyricsSourcePreference> sourcePriority)
@@ -2742,6 +2787,13 @@ namespace LyricHover.App
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            if (IsTemporaryInteractionHeld())
+            {
+                RefreshCurrentTrackLyrics(true);
+                e.Handled = true;
+                return;
+            }
+
             if (settingsWindow != null)
             {
                 return;

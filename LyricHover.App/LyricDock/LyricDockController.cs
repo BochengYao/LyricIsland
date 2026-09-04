@@ -7,6 +7,7 @@ namespace LyricHover.App.LyricDock
     public interface ILyricDockSurface
     {
         event EventHandler SettingsRequested;
+        event EventHandler RefreshRequested;
         bool IsVisible { get; }
         void Show();
         void Hide();
@@ -39,9 +40,11 @@ namespace LyricHover.App.LyricDock
             this.surface = surface ?? throw new ArgumentNullException(nameof(surface));
             environment.Changed += EnvironmentChanged;
             surface.SettingsRequested += (sender, args) => SettingsRequested?.Invoke(this, EventArgs.Empty);
+            surface.RefreshRequested += (sender, args) => RefreshRequested?.Invoke(this, EventArgs.Empty);
         }
 
         public event EventHandler SettingsRequested;
+        public event EventHandler RefreshRequested;
         public event EventHandler<LyricDockFailureReason> FeatureDisabled;
         public event EventHandler WidgetsHidden;
         public event EventHandler WidgetsHidingNeedsSettingsConfirmation;

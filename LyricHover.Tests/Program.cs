@@ -19,6 +19,7 @@ namespace LyricHover.Tests
 {
     class Program
     {
+        [STAThread]
         static int Main(string[] args)
         {
             var suite = new TestSuite();
@@ -42,6 +43,8 @@ namespace LyricHover.Tests
             }
 
             suite.Run("parses synced lrc lines and metadata", ParsesSyncedLrcLinesAndMetadata);
+            suite.Run("parses QQ QRC word timings and progress", ParsesQrcWordTimingsAndProgress);
+            suite.Run("parses NetEase YRC word timings", ParsesYrcWordTimings);
             suite.Run("selects the current lyric line by playback position", SelectsCurrentLyricLineByPlaybackPosition);
             suite.Run("selects the current lyric line with timing offset", SelectsCurrentLyricLineWithTimingOffset);
             suite.Run("selects current and next lyric lines", SelectsCurrentAndNextLyricLines);
@@ -70,7 +73,11 @@ namespace LyricHover.Tests
             suite.Run("returns empty lyrics when lrc lib request times out", ReturnsEmptyLyricsWhenLrcLibRequestTimesOut);
             suite.Run("fetches synced lyrics from netease response", FetchesSyncedLyricsFromNetEaseResponse);
             suite.Run("fetches translated lyrics from netease response", FetchesTranslatedLyricsFromNetEaseResponse);
+            suite.Run("fetches translated lyrics from a 64-bit netease song id", FetchesTranslatedLyricsFrom64BitNetEaseSongId);
             suite.Run("fetches synced lyrics from qq music response", FetchesSyncedLyricsFromQqMusicResponse);
+            suite.Run("falls back to QQ legacy lyrics when QRC payload is not text", FallsBackToQqLegacyLyricsWhenQrcPayloadIsNotText);
+            suite.Run("reads QQ QRC from lyric when qrc is an availability flag", ReadsQqQrcFromLyricWhenQrcIsAvailabilityFlag);
+            suite.Run("merges fallback translation into word timed lyrics", MergesFallbackTranslationIntoWordTimedLyrics);
             suite.Run("fetches translated lyrics from qq music response", FetchesTranslatedLyricsFromQqMusicResponse);
             suite.Run("ignores timestamp only translation from qq music", IgnoresTimestampOnlyTranslationFromQqMusicResponse);
             suite.Run("fetches synced lyrics from kugou response", FetchesSyncedLyricsFromKuGouResponse);
@@ -163,6 +170,7 @@ namespace LyricHover.Tests
             suite.Run("layout rebuild replays the latest island content", LayoutRebuildReplaysLatestIslandContent);
             suite.Run("escape exits tutorial from island and settings", EscapeExitsTutorialFromIslandAndSettings);
             suite.Run("lyric transition keeps centered canvas position", LyricTransitionKeepsCenteredCanvasPosition);
+            suite.Run("word-tracked lyric centers with the current line width", WordTrackedLyricCentersWithCurrentLineWidth);
             suite.Run("tutorial hover waits before enabling avoidance", TutorialHoverWaitsBeforeEnablingAvoidance);
             suite.Run("tutorial next remains visible and keeps settings open", TutorialNextRemainsVisibleAndKeepsSettingsOpen);
             suite.Run("tutorial next uses an unclipped rounded pulse", TutorialNextUsesUnclippedRoundedPulse);
@@ -248,6 +256,7 @@ namespace LyricHover.Tests
             suite.Run("atomically replaces settings files without leaving temporary files", AtomicallyReplacesSettingsFilesWithoutLeavingTemporaryFiles);
             suite.Run("tracks reference changes without treating equal content as the same object", TracksReferenceChangesWithoutTreatingEqualContentAsTheSameObject);
             suite.Run("module views skip unchanged rendering work", ModuleViewsSkipUnchangedRenderingWork);
+            suite.Run("word tracking uses frame-smooth overlay clipping", WordTrackingUsesFrameSmoothOverlayClipping);
             suite.Run("coalesces identical hover samples without losing changed samples", CoalescesIdenticalHoverSamplesWithoutLosingChangedSamples);
             suite.Run("settings dirty fingerprint avoids a second JSON deep clone", SettingsDirtyFingerprintAvoidsASecondJsonDeepClone);
             suite.Run("user visible product branding uses lyric hover", UserVisibleProductBrandingUsesLyricHover);
@@ -266,6 +275,25 @@ namespace LyricHover.Tests
             Assert.Equal(TimeSpan.FromMilliseconds(1500), lyrics.Lines[0].Timestamp);
             Assert.Equal("I want to hold your hand", lyrics.Lines[0].Text);
             Assert.Equal(TimeSpan.FromMilliseconds(4200), lyrics.Lines[1].Timestamp);
+        }
+
+        static void ParsesQrcWordTimingsAndProgress()
+        {
+            var lyrics = LyricsPackageParser.Parse("[1000,1000]你(1000,400)好(1400,600)");
+            Assert.True(lyrics.Lines[0].HasWordTiming);
+            Assert.Equal("你好", lyrics.Lines[0].Text);
+            Assert.Equal(TimeSpan.FromMilliseconds(400), lyrics.Lines[0].Words[1].Offset);
+            Assert.True(lyrics.Lines[0].GetWordProgress(TimeSpan.FromMilliseconds(1500)) > .45);
+            Assert.True(lyrics.Lines[0].GetWordProgress(TimeSpan.FromMilliseconds(2100)) == 1);
+        }
+
+        static void ParsesYrcWordTimings()
+        {
+            var lyrics = LyricsPackageParser.Parse("[1000,1000](1000,400,0)Hel(1400,600,0)lo");
+            Assert.True(lyrics.Lines[0].HasWordTiming);
+            Assert.Equal("Hello", lyrics.Lines[0].Text);
+            Assert.Equal(TimeSpan.Zero, lyrics.Lines[0].Words[0].Offset);
+            Assert.Equal(TimeSpan.FromMilliseconds(400), lyrics.Lines[0].Words[1].Offset);
         }
 
         static void SelectsCurrentLyricLineByPlaybackPosition()
@@ -686,7 +714,7 @@ namespace LyricHover.Tests
 
             Assert.Equal("[00:01.00]Rah rah ah-ah-ah\n[00:02.00]Roma roma-ma", lrc);
             Assert.True(requests[0].AbsoluteUri.Contains("s=Bad%20Romance%20Lady%20Gaga"));
-            Assert.Equal("https://music.163.com/api/song/lyric?id=123&lv=1&kv=1&tv=-1", requests[1].AbsoluteUri);
+            Assert.Equal("https://music.163.com/api/song/lyric?id=123&lv=1&kv=1&tv=-1&yrc=true", requests[1].AbsoluteUri);
         }
 
         static void FetchesTranslatedLyricsFromNetEaseResponse()
@@ -707,6 +735,27 @@ namespace LyricHover.Tests
 
             Assert.True(lrc.Contains(LyricsPackageParser.TranslationSeparator));
             Assert.True(lrc.Contains("[00:01.00]拉拉"));
+        }
+
+        static void FetchesTranslatedLyricsFrom64BitNetEaseSongId()
+        {
+            var client = new NetEaseLyricsClient(uri =>
+            {
+                if (uri.AbsolutePath.EndsWith("/api/search/get/web", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "{\"result\":{\"songs\":[{\"id\":3392743806,\"name\":\"maggots for brains\",\"artists\":[{\"name\":\"Olivia Rodrigo\"}],\"duration\":240100}]}}";
+                }
+
+                return "{\"lrc\":{\"lyric\":\"[00:11.481]My day was so mundane\"},\"tlyric\":{\"lyric\":\"[00:11.481]我的一天如此乏味\"}}";
+            });
+
+            var package = client.GetSyncedLyricsAsync(new TrackIdentity(
+                    "maggots for brains", "Olivia Rodrigo", TimeSpan.FromSeconds(240)))
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.True(LyricsPackageParser.HasTranslation(package));
+            Assert.True(package.Contains("[00:11.481]我的一天如此乏味"));
         }
 
         static void UsesFallbackLyricsSourceWhenPrimarySourceIsEmpty()
@@ -1131,6 +1180,11 @@ namespace LyricHover.Tests
             Assert.True(source.Contains("IslandLayoutSettings"));
             Assert.True(source.Contains("LockedSourceAppUserModelId"));
             Assert.True(source.Contains("LyricOffsetHotkeys"));
+            Assert.True(source.Contains("IslandWordTrackingEnabled { get; set; } = true"));
+            Assert.True(source.Contains("LyricDockWordTrackingEnabled { get; set; } = true"));
+            var settingsView = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "PlacementSettingsWindow.xaml"));
+            Assert.True(settingsView.Contains("IslandWordTrackingCheckBox"));
+            Assert.True(settingsView.Contains("DockWordTrackingCheckBox"));
         }
 
         static void TracksNormalizedSettingsDirtyState()
@@ -3783,6 +3837,47 @@ namespace LyricHover.Tests
             Assert.True(File.Exists(Path.Combine(root, "LyricHover.App", "Assets", "Xiaolai-Regular.ttf")));
         }
 
+        static void WordTrackedLyricCentersWithCurrentLineWidth()
+        {
+            var text = new LyricHover.App.Modules.WordTrackingTextBlock
+            {
+                FontFamily = new System.Windows.Media.FontFamily("Microsoft YaHei UI"),
+                FontSize = 15,
+                FontWeight = System.Windows.FontWeights.SemiBold,
+                LineHeight = 18
+            };
+            var panel = new System.Windows.Controls.StackPanel
+            {
+                Orientation = System.Windows.Controls.Orientation.Horizontal
+            };
+            panel.Children.Add(text);
+            var unconstrained = new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity);
+
+            void Present(string primary)
+            {
+                text.Present(primary, null, TimeSpan.Zero, false, 0.4);
+                panel.Width = double.NaN;
+                panel.Measure(unconstrained);
+
+                var reference = new LyricHover.App.Modules.WordTrackingTextBlock
+                {
+                    FontFamily = text.FontFamily,
+                    FontSize = text.FontSize,
+                    FontWeight = text.FontWeight,
+                    LineHeight = text.LineHeight,
+                    Text = primary
+                };
+                reference.Measure(unconstrained);
+
+                Assert.True(Math.Abs(reference.DesiredSize.Width - panel.DesiredSize.Width) < 0.001);
+                panel.Width = panel.DesiredSize.Width;
+            }
+
+            Present("这是一句非常非常非常非常非常长的用于触发测量缓存的歌词");
+            Present("词：葛大为/小安");
+            Present("不用 为我呐喊");
+        }
+
         static void TutorialHoverWaitsBeforeEnablingAvoidance()
         {
             var root = GetSolutionRoot();
@@ -4011,6 +4106,25 @@ namespace LyricHover.Tests
             Assert.True(track.Contains("lastTitle == title"));
         }
 
+        static void WordTrackingUsesFrameSmoothOverlayClipping()
+        {
+            var root = Path.Combine(GetSolutionRoot(), "LyricHover.App");
+            var presenter = File.ReadAllText(Path.Combine(root, "Modules", "WordTrackingTextBlock.cs"));
+            var island = File.ReadAllText(Path.Combine(root, "Modules", "LyricsModuleView.xaml.cs"));
+            var dock = File.ReadAllText(Path.Combine(root, "LyricDock", "LyricDockWindow.cs"));
+            var snapshot = File.ReadAllText(Path.Combine(root, "LyricDock", "LyricsPresentationSnapshot.cs"));
+
+            Assert.True(presenter.Contains("CompositionTarget.Rendering += Rendering"));
+            Assert.True(presenter.Contains("RectangleGeometry"));
+            Assert.True(presenter.Contains("trackingLine.GetWordProgress(anchorPosition + elapsed)"));
+            Assert.True(island.Contains("WordTrackingTextBlock"));
+            Assert.True(dock.Contains("WordTrackingTextBlock"));
+            Assert.True(snapshot.Contains("PrimaryWordTrackingLine"));
+            Assert.True(snapshot.Contains("WordTrackingPosition"));
+            Assert.False(island.Contains("Math.Round(text.Length * wordTrackingProgress)"));
+            Assert.False(dock.Contains("Math.Round(text.Length * wordTrackingProgress)"));
+        }
+
         static void CoalescesIdenticalHoverSamplesWithoutLosingChangedSamples()
         {
             var samples = new HoverSampleTracker();
@@ -4094,6 +4208,83 @@ namespace LyricHover.Tests
             Assert.True(controller.IsEnabled);
         }
 
+        static void FallsBackToQqLegacyLyricsWhenQrcPayloadIsNotText()
+        {
+            var requests = new List<Uri>();
+            var encryptedQrc = Convert.ToBase64String(new byte[] { 0x9d, 0x12, 0xa7, 0x3e, 0xee, 0x04 });
+            const string legacyLrc = "[00:00.00]Bad Romance\n[00:01.00]Rah rah";
+            var client = new QQMusicLyricsClient(uri =>
+            {
+                requests.Add(uri);
+                if (uri.AbsolutePath.EndsWith("/client_search_cp", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "{\"data\":{\"song\":{\"list\":[{\"id\":103168363,\"mid\":\"002L922J1xDquy\",\"title\":\"Bad Romance\",\"singer\":[{\"name\":\"Lady Gaga\"}],\"interval\":295}]}}}";
+                }
+
+                if (uri.Host.Equals("c.y.qq.com", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "{\"lyric\":\"" + legacyLrc.Replace("\n", "\\n") + "\"}";
+                }
+
+                return "{\"code\":0,\"req_0\":{\"code\":0,\"data\":{\"lyric\":\"" + encryptedQrc + "\",\"qrc\":\"" + encryptedQrc + "\",\"trans\":\"\"}}}";
+            });
+
+            var lrc = client.GetSyncedLyricsAsync(new TrackIdentity("Bad Romance", "Lady Gaga", TimeSpan.FromSeconds(295)))
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.Equal(legacyLrc, lrc);
+            Assert.Equal(3, requests.Count);
+            Assert.True(requests[2].Host.Equals("c.y.qq.com", StringComparison.OrdinalIgnoreCase));
+        }
+
+        static void MergesFallbackTranslationIntoWordTimedLyrics()
+        {
+            const string yrc = "[1000,1000](0,500,0)hello(500,500,0) world";
+            var fallback = LyricsPackageParser.CreatePackage(
+                "[00:01.00]hello world",
+                "[00:01.00]你好，世界",
+                LyricsTranslationLanguage.SimplifiedChinese);
+            var client = new WordTimedPreferredLyricsClient(
+                new ILyricsClient[] { new FakeLyricsClient(yrc) },
+                new FakeLyricsClient(fallback));
+
+            var package = client.GetSyncedLyricsAsync(new TrackIdentity("test", "artist", TimeSpan.FromSeconds(3)))
+                .GetAwaiter()
+                .GetResult();
+            var parsed = LyricsPackageParser.Parse(package);
+
+            Assert.True(LyricsPackageParser.HasWordTiming(package));
+            Assert.True(LyricsPackageParser.HasTranslation(package));
+            Assert.Equal("你好，世界", parsed.TranslationLines[0].Text);
+        }
+
+        static void ReadsQqQrcFromLyricWhenQrcIsAvailabilityFlag()
+        {
+            const string qrc = "[1000,1000]hello(1000,500) world(1500,500)";
+            var client = new QQMusicLyricsClient(uri =>
+            {
+                if (uri.AbsolutePath.EndsWith("/client_search_cp", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "{\"data\":{\"song\":{\"list\":[{\"id\":1,\"mid\":\"mid\",\"title\":\"test\",\"singer\":[{\"name\":\"artist\"}],\"interval\":3}]}}}";
+                }
+
+                if (uri.Host.Equals("c.y.qq.com", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "{\"lyric\":\"[00:01.00]hello world\"}";
+                }
+
+                return "{\"code\":0,\"req_0\":{\"code\":0,\"data\":{\"lyric\":\"" + qrc + "\",\"qrc\":\"1\",\"trans\":\"\"}}}";
+            });
+
+            var lyrics = client.GetSyncedLyricsAsync(new TrackIdentity("test", "artist", TimeSpan.FromSeconds(3)))
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.True(LyricsPackageParser.HasWordTiming(lyrics));
+            Assert.Equal("hello world", LyricsPackageParser.Parse(lyrics).Lines[0].Text);
+        }
+
         static void TaskbarSettingsFallbackRehidesWidgetsAfterExistingLeaseChanges()
         {
             var environment = new FakeLyricDockEnvironment { TaskbarDa = TaskbarDaValueState.Enabled };
@@ -4174,7 +4365,7 @@ namespace LyricHover.Tests
         static void TaskbarSettingsSchemaDefaultsToDisabled()
         {
             var source = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "OverlayPlacementSettings.cs"));
-            Assert.True(source.Contains("SchemaVersion { get; set; } = 4"));
+            Assert.True(source.Contains("SchemaVersion { get; set; } = 5"));
             Assert.True(source.Contains("LyricDockEnabled { get; set; }"));
             var settingsView = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "PlacementSettingsWindow.xaml"));
             Assert.True(settingsView.Contains("LyricDockEnabledCheckBox"));
@@ -4184,7 +4375,7 @@ namespace LyricHover.Tests
         {
             var source = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "OverlayPlacementSettings.cs"));
             Assert.True(source.Contains("public bool LyricDockEnabled { get; set; }"));
-            Assert.True(source.Contains("SchemaVersion = 4"));
+            Assert.True(source.Contains("SchemaVersion = 5"));
             Assert.True(source.Contains("originalSchemaVersion"));
             Assert.False(source.Contains("LyricDockEnabled { get; set; } = true"));
         }
@@ -4469,6 +4660,7 @@ namespace LyricHover.Tests
     sealed class FakeTaskbarSurface : ILyricDockSurface
     {
         public event EventHandler SettingsRequested;
+        public event EventHandler RefreshRequested;
         public bool IsVisible { get; private set; }
         public LyricsPresentationSnapshot LastSnapshot { get; private set; }
         public double LastWidth { get; private set; }

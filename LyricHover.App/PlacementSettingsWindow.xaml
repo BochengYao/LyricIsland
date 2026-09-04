@@ -222,6 +222,12 @@
                                 <Setter TargetName="SwitchTrack"
                                         Property="BorderBrush"
                                         Value="#0A84FF" />
+                                <Setter TargetName="SwitchKnob"
+                                        Property="RenderTransform">
+                                    <Setter.Value>
+                                        <TranslateTransform X="18" />
+                                    </Setter.Value>
+                                </Setter>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -1148,6 +1154,7 @@
                                 <RowDefinition Height="56" />
                                 <RowDefinition Height="56" />
                                 <RowDefinition Height="56" />
+                                <RowDefinition Height="56" />
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="160" />
@@ -1242,6 +1249,8 @@
                                       Style="{StaticResource SettingsSwitchStyle}"
                                       Checked="ShowTranslationCheckBox_Changed"
                                       Unchecked="ShowTranslationCheckBox_Changed" />
+                            <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource SettingLabel}" Text="逐字追踪" />
+                            <CheckBox x:Name="IslandWordTrackingCheckBox" Grid.Row="4" Grid.Column="1" HorizontalAlignment="Right" Style="{StaticResource SettingsSwitchStyle}" />
                             </Grid>
                             </Border>
 
@@ -1254,6 +1263,7 @@
                                 <RowDefinition Height="56" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="56" />
                                 <RowDefinition Height="56" />
                                 <RowDefinition Height="56" />
                                 <RowDefinition Height="56" />
@@ -1452,6 +1462,8 @@
                                       Style="{StaticResource SettingsSwitchStyle}"
                                       Checked="DockShowTranslationCheckBox_Changed"
                                       Unchecked="DockShowTranslationCheckBox_Changed" />
+                            <TextBlock Grid.Row="7" Grid.Column="0" Style="{StaticResource SettingLabel}" Text="逐字追踪" />
+                            <CheckBox x:Name="DockWordTrackingCheckBox" Grid.Row="7" Grid.Column="1" HorizontalAlignment="Right" Style="{StaticResource SettingsSwitchStyle}" />
                             </Grid>
                             </Border>
                         </Grid>
@@ -2437,6 +2449,7 @@
                                             <RowDefinition Height="Auto" />
                                             <RowDefinition Height="Auto" />
                                             <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
                                         </Grid.RowDefinitions>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="160" />
@@ -2466,8 +2479,15 @@
                                                    FontSize="12.5"
                                                    TextWrapping="Wrap"
                                                    Text="用于保存已下载歌词，提高播放切换速度" />
+                                        <Button Grid.Row="2"
+                                                Grid.Column="1"
+                                                HorizontalAlignment="Left"
+                                                Margin="0,10,0,0"
+                                                Padding="14,6"
+                                                Content="强制刷新当前歌词"
+                                                Click="RefreshCurrentLyricsButton_Click" />
                                         <Button x:Name="CacheDetailsToggleButton"
-                                                Grid.Row="2"
+                                                Grid.Row="3"
                                                 Grid.Column="1"
                                                 Margin="0,8,0,0"
                                                 FontSize="12.5"
@@ -2476,7 +2496,7 @@
                                                 Click="CacheDetailsToggle_Click"
                                                 Content="查看详情" />
                                         <Button x:Name="CacheDetailsCollapseButton"
-                                                Grid.Row="2"
+                                                Grid.Row="3"
                                                 Grid.Column="1"
                                                 Margin="0,8,0,0"
                                                 FontSize="12.5"
@@ -2486,7 +2506,7 @@
                                                 Content="收起详情"
                                                 Visibility="Collapsed" />
                                         <StackPanel x:Name="CacheDetailsPanel"
-                                                    Grid.Row="3"
+                                                    Grid.Row="4"
                                                     Grid.ColumnSpan="2"
                                                     Margin="0,10,0,0"
                                                     Visibility="Collapsed">
