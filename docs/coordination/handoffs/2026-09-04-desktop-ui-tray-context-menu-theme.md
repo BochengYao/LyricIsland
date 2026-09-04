@@ -40,6 +40,8 @@
 - 结果：全部执行项 PASS；新增源码契约测试和运行时菜单实例测试，确认浅/深配色、渲染器、菜单结构和主题刷新入口。
 - 命令：设置 Windows SDK 路径后运行 `publish.ps1 -NoLaunch`。
 - 结果：完整回归 PASS；`win-x64` Release 构建 0 warning、0 error；发布脚本输出 `发布完成：v3.2.35 Beta`。
+- 命令：`dotnet run --no-restore --configuration Release --project LyricHover.Tests -- --release-version-fixture`。
+- 结果：在可读取真实用户 NuGet 缓存的环境中 PASS；发布版本变更保持事务化与串行化。
 - 产物一致性：`publish/current/LyricHover.App.dll` 与同次 Release `win-x64` 输出 SHA-256 完全一致；deps/runtimeconfig 均非空，目标 staging 已清理。
 - Computer Use：尝试启动当前构建时，被正在运行的 `publish/current` 单实例正确拦截；托盘驻留窗口不向 Computer Use 暴露可绑定窗口，因此未冒险关闭用户当前实例或误操作其他窗口。
 
