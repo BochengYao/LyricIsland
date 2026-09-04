@@ -10,6 +10,22 @@ namespace LyricHover.App
 {
     internal static class TrayContextMenuFactory
     {
+        private const int NominalMenuWidth = 160;
+        private const int NominalItemWidth = 150;
+        private const int NominalItemHeight = 33;
+        private const uint MonitorDefaultToNearest = 2;
+        private const int MonitorEffectiveDpi = 0;
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromPoint(Point point, uint flags);
+
+        [DllImport("shcore.dll")]
+        private static extern int GetDpiForMonitor(
+            IntPtr monitorHandle,
+            int dpiType,
+            out uint dpiX,
+            out uint dpiY);
+
         public static Forms.ContextMenuStrip Create(Action openSettings, Action exitApplication)
         {
             if (openSettings == null)
@@ -28,7 +44,7 @@ namespace LyricHover.App
                 BackColor = Color.FromArgb(255, 248, 248, 250),
                 DropShadowEnabled = true,
                 Font = new Font("Segoe UI Variable Text", 10F, FontStyle.Regular, GraphicsUnit.Point),
-                MinimumSize = new Size(160, 0),
+                MinimumSize = new Size(NominalMenuWidth, 0),
                 Padding = new Forms.Padding(5),
                 ShowCheckMargin = false,
                 ShowImageMargin = false
@@ -38,6 +54,8 @@ namespace LyricHover.App
             settingsItem.Margin = new Forms.Padding(5, 3, 5, 1);
             menu.Items.Add(settingsItem);
             menu.Items.Add(CreateItem("TrayExitMenuItem", "退出", exitApplication));
+            ApplyDpiLayout(menu);
+            menu.Opening += (sender, args) => ApplyDpiLayout(menu);
             menu.Opened += (sender, args) => TrayContextMenuTheme.ApplyRoundedRegion(menu);
             menu.SizeChanged += (sender, args) => TrayContextMenuTheme.ApplyRoundedRegion(menu);
             return menu;
@@ -51,11 +69,76 @@ namespace LyricHover.App
                 Margin = new Forms.Padding(5, 0, 5, 3),
                 Name = name,
                 Padding = new Forms.Padding(8, 0, 8, 0),
-                Size = new Size(150, 33),
+                Size = new Size(NominalItemWidth, NominalItemHeight),
                 TextAlign = ContentAlignment.MiddleLeft
             };
             item.Click += (sender, args) => action();
             return item;
+        }
+
+        internal static void ApplyDpiLayout(Forms.ContextMenuStrip menu)
+        {
+            if (menu == null)
+            {
+                return;
+            }
+
+            var scale = ResolveDpiScale(menu);
+            menu.MinimumSize = new Size(ScalePixel(NominalMenuWidth, scale), 0);
+            menu.Padding = new Forms.Padding(ScalePixel(5, scale));
+
+            foreach (Forms.ToolStripItem item in menu.Items)
+            {
+                item.Padding = new Forms.Padding(ScalePixel(8, scale), 0, ScalePixel(8, scale), 0);
+                item.Size = new Size(
+                    ScalePixel(NominalItemWidth, scale),
+                    ScalePixel(NominalItemHeight, scale));
+            }
+
+            if (menu.Items.Count > 0)
+            {
+                menu.Items[0].Margin = new Forms.Padding(
+                    ScalePixel(5, scale),
+                    ScalePixel(3, scale),
+                    ScalePixel(5, scale),
+                    ScalePixel(1, scale));
+            }
+
+            if (menu.Items.Count > 1)
+            {
+                menu.Items[1].Margin = new Forms.Padding(
+                    ScalePixel(5, scale),
+                    0,
+                    ScalePixel(5, scale),
+                    ScalePixel(3, scale));
+            }
+        }
+
+        internal static int ScalePixel(int value, float scale)
+        {
+            return (int)Math.Round(value * scale, MidpointRounding.AwayFromZero);
+        }
+
+        internal static float ResolveDpiScale(Forms.ContextMenuStrip menu)
+        {
+            try
+            {
+                var monitor = MonitorFromPoint(Forms.Cursor.Position, MonitorDefaultToNearest);
+                if (monitor != IntPtr.Zero &&
+                    GetDpiForMonitor(monitor, MonitorEffectiveDpi, out var dpiX, out _) == 0 &&
+                    dpiX > 0)
+                {
+                    return Math.Max(1F, dpiX / 96F);
+                }
+            }
+            catch (DllNotFoundException)
+            {
+            }
+            catch (EntryPointNotFoundException)
+            {
+            }
+
+            return Math.Max(1F, (menu?.DeviceDpi ?? 96) / 96F);
         }
     }
 

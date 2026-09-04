@@ -249,6 +249,7 @@ namespace LyricHover.Tests
             suite.Run("shows tray icon on startup", ShowsTrayIconOnStartup);
             suite.Run("tray menu uses product styling and follows the app theme", TrayMenuUsesProductStylingAndFollowsAppTheme);
             suite.Run("tray menu runtime palette switches between light and dark", TrayMenuRuntimePaletteSwitchesBetweenLightAndDark);
+            suite.Run("tray menu scales its complete layout across DPI modes", TrayMenuScalesCompleteLayoutAcrossDpiModes);
             suite.Run("tray menu vector glyphs stay optically aligned across DPI scales", TrayMenuVectorGlyphsStayAlignedAcrossDpiScales);
             suite.Run("main window keeps startup hint without media session", MainWindowKeepsStartupHintWithoutMediaSession);
             suite.Run("startup hint begins auto retract countdown immediately", StartupHintBeginsAutoRetractCountdownImmediately);
@@ -3458,8 +3459,12 @@ namespace LyricHover.Tests
             Assert.True(trayMenuSource.Contains("CreateGlyphPath"));
             Assert.True(trayMenuSource.Contains("GetGlyphBounds(graphics, item)"));
             Assert.True(trayMenuSource.Contains("DwmSetWindowAttribute"));
-            Assert.True(trayMenuSource.Contains("MinimumSize = new Size(160, 0)"));
-            Assert.True(trayMenuSource.Contains("Size = new Size(150, 33)"));
+            Assert.True(trayMenuSource.Contains("NominalMenuWidth = 160"));
+            Assert.True(trayMenuSource.Contains("NominalItemWidth = 150"));
+            Assert.True(trayMenuSource.Contains("NominalItemHeight = 33"));
+            Assert.True(trayMenuSource.Contains("menu.Opening += (sender, args) => ApplyDpiLayout(menu)"));
+            Assert.True(trayMenuSource.Contains("MonitorFromPoint(Forms.Cursor.Position"));
+            Assert.True(trayMenuSource.Contains("GetDpiForMonitor"));
             Assert.False(trayMenuSource.Contains("ToolStripSeparator"));
             Assert.False(trayMenuSource.Contains("TextRenderer.DrawText"));
             Assert.False(trayMenuSource.Contains("base.OnRenderItemText(e)"));
@@ -3488,17 +3493,20 @@ namespace LyricHover.Tests
                 var itemsProperty = menu.GetType().GetProperty("Items");
                 var minimumSizeProperty = menu.GetType().GetProperty("MinimumSize");
                 var paddingProperty = menu.GetType().GetProperty("Padding");
-                var deviceDpiProperty = menu.GetType().GetProperty("DeviceDpi");
+                var resolveDpiScale = factoryType.GetMethod(
+                    "ResolveDpiScale",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
                 var menuFont = fontProperty.GetValue(menu);
                 Assert.Equal("Segoe UI Variable Text", (string)menuFont.GetType().GetProperty("Name").GetValue(menuFont));
                 Assert.True(Math.Abs(Convert.ToSingle(menuFont.GetType().GetProperty("SizeInPoints").GetValue(menuFont)) - 10F) < 0.01F);
 
                 var minimumSize = minimumSizeProperty.GetValue(menu);
-                Assert.Equal(160, Convert.ToInt32(minimumSize.GetType().GetProperty("Width").GetValue(minimumSize)));
+                var menuScale = Convert.ToSingle(resolveDpiScale.Invoke(null, new[] { menu }));
+                var expectedMenuWidth = (int)Math.Round(160F * menuScale, MidpointRounding.AwayFromZero);
+                var expectedPadding = (int)Math.Round(5F * menuScale, MidpointRounding.AwayFromZero);
+                Assert.Equal(expectedMenuWidth, Convert.ToInt32(minimumSize.GetType().GetProperty("Width").GetValue(minimumSize)));
                 var menuPadding = paddingProperty.GetValue(menu);
-                var menuDpi = Convert.ToInt32(deviceDpiProperty.GetValue(menu));
-                var expectedPadding = (int)Math.Round(5F * Math.Max(1F, menuDpi / 96F));
                 Assert.Equal(expectedPadding, Convert.ToInt32(menuPadding.GetType().GetProperty("Left").GetValue(menuPadding)));
 
                 apply.Invoke(null, new object[] { menu, SettingsThemePreference.Light });
@@ -3527,6 +3535,13 @@ namespace LyricHover.Tests
                 var itemIndexer = items.GetType().GetProperty("Item", new[] { typeof(int) });
                 var settingsItem = itemIndexer.GetValue(items, new object[] { 0 });
                 var exitItem = itemIndexer.GetValue(items, new object[] { 1 });
+                var settingsSize = settingsItem.GetType().GetProperty("Size").GetValue(settingsItem);
+                Assert.Equal(
+                    (int)Math.Round(150F * menuScale, MidpointRounding.AwayFromZero),
+                    Convert.ToInt32(settingsSize.GetType().GetProperty("Width").GetValue(settingsSize)));
+                Assert.Equal(
+                    (int)Math.Round(33F * menuScale, MidpointRounding.AwayFromZero),
+                    Convert.ToInt32(settingsSize.GetType().GetProperty("Height").GetValue(settingsSize)));
                 settingsItem.GetType().GetMethod("PerformClick").Invoke(settingsItem, null);
                 exitItem.GetType().GetMethod("PerformClick").Invoke(exitItem, null);
                 Assert.Equal(1, settingsInvocations);
@@ -3535,6 +3550,24 @@ namespace LyricHover.Tests
             finally
             {
                 ((IDisposable)menu).Dispose();
+            }
+        }
+
+        static void TrayMenuScalesCompleteLayoutAcrossDpiModes()
+        {
+            var appAssembly = typeof(OverlayPlacementSettings).Assembly;
+            var factoryType = appAssembly.GetType("LyricHover.App.TrayContextMenuFactory", throwOnError: true);
+            var scalePixel = factoryType.GetMethod(
+                "ScalePixel",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+
+            foreach (var scale in new[] { 1F, 1.25F, 1.5F, 1.75F, 2F })
+            {
+                int Scale(int value) => (int)scalePixel.Invoke(null, new object[] { value, scale });
+                Assert.Equal((int)Math.Round(160F * scale, MidpointRounding.AwayFromZero), Scale(160));
+                Assert.Equal((int)Math.Round(150F * scale, MidpointRounding.AwayFromZero), Scale(150));
+                Assert.Equal((int)Math.Round(33F * scale, MidpointRounding.AwayFromZero), Scale(33));
+                Assert.True(Scale(150) - Scale(31) - Scale(9) >= Scale(108));
             }
         }
 
