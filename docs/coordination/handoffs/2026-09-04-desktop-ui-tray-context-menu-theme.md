@@ -1,13 +1,13 @@
 # 任务交接：Desktop UI / 托盘右键菜单主题化
 
-- 日期：2026-09-04
+- 日期：2026-09-04（2026-09-05 补充 GitHub 交付状态）
 - 任务线程：Desktop Island, Settings & Interaction UI
 - 基线提交：`1de81933050c830d228a93069424ba038bb3fe5d`
 - 功能提交：`f534f3a9e3f941d2b38a592261f2baba81710e4b`（紧凑桌面浮层视觉重设计）
 - DPI 修复提交：`3de6fb9`（菜单整体布局按右键所在显示器同步缩放）
 - 分支：`codex/feature/desktop-tray-menu-theme`
 - 允许修改范围：`LyricHover.App/` 的托盘 UI 与直接回归测试
-- Handoff Status：Feature Handoff / 本地候选已生成，待 UI 实机视觉确认
+- Handoff Status：Feature Handoff / 本地候选已生成，GitHub 推送待确认具体远端
 
 ## 已完成
 
@@ -60,4 +60,5 @@
 
 - 已知限制：离屏实渲染不能呈现真实桌面 DWM 阴影，也不能替代真实托盘弹出后的最终观感确认；正在运行的旧进程必须完全退出后再启动 `publish/current`，否则仍会显示内存中的旧菜单实现。
 - 交接目标：Desktop UI / User Acceptance；从 `publish/current/LyricHover.App.exe` 启动，分别在浅色、深色、跟随系统和高对比度下右键托盘图标。
+- GitHub 交付：计划推送分支 `codex/feature/desktop-tray-menu-theme`；当前 `origin` 为 `https://github.com/BochengYao/LyricIsland.git`。首次推送因需要用户明确确认该具体旧名仓库而暂停，尚未声称已上传。
 - 回滚点：回滚 `305dbd82217a6d36f8923e5e1f860bc3f3e9cf4d` 即恢复默认 `ContextMenuStrip`。
