@@ -70,6 +70,7 @@ namespace LyricHover.App
         private bool dockLyricOverrideActive;
         private DispatcherTimer startupHintTimer;
         private Forms.NotifyIcon trayIcon;
+        private Forms.ContextMenuStrip trayMenu;
         private int positionAnimationVersion;
         private readonly AnimationTargetTracker positionAnimationTargets = new AnimationTargetTracker();
         private EventHandler positionAnimationFrameHandler;
@@ -262,16 +263,25 @@ namespace LyricHover.App
 
         private void InitializeTrayIcon()
         {
+            trayMenu = TrayContextMenuFactory.Create(
+                () => Dispatcher.BeginInvoke(new Action(() => OpenPlacementSettingsWindow())),
+                () => Dispatcher.BeginInvoke(new Action(() => System.Windows.Application.Current.Shutdown())));
+            trayMenu.Opening += (sender, args) => ApplyTrayMenuTheme();
+            ApplyTrayMenuTheme();
+
             trayIcon = new Forms.NotifyIcon
             {
                 Text = "LyricHover | LYRIC HOVER",
                 Icon = LoadTrayIcon(),
-                ContextMenuStrip = new Forms.ContextMenuStrip()
+                ContextMenuStrip = trayMenu
             };
-            trayIcon.ContextMenuStrip.Items.Add("偏好设置", null, (sender, args) => Dispatcher.BeginInvoke(new Action(() => OpenPlacementSettingsWindow())));
-            trayIcon.ContextMenuStrip.Items.Add("退出", null, (sender, args) => Dispatcher.BeginInvoke(new Action(() => System.Windows.Application.Current.Shutdown())));
             trayIcon.DoubleClick += (sender, args) => Dispatcher.BeginInvoke(new Action(() => OpenPlacementSettingsWindow()));
             trayIcon.Visible = true;
+        }
+
+        private void ApplyTrayMenuTheme(SettingsThemePreference? preference = null)
+        {
+            TrayContextMenuTheme.Apply(trayMenu, preference ?? placementSettings.SettingsTheme);
         }
 
         private static Drawing.Icon LoadTrayIcon()
@@ -287,14 +297,16 @@ namespace LyricHover.App
 
         private void DisposeTrayIcon()
         {
-            if (trayIcon == null)
+            if (trayIcon != null)
             {
-                return;
+                trayIcon.Visible = false;
+                trayIcon.ContextMenuStrip = null;
+                trayIcon.Dispose();
+                trayIcon = null;
             }
 
-            trayIcon.Visible = false;
-            trayIcon.Dispose();
-            trayIcon = null;
+            trayMenu?.Dispose();
+            trayMenu = null;
         }
 
         [DllImport("user32.dll")]
@@ -1148,6 +1160,7 @@ namespace LyricHover.App
                 runtimeSettings.LyricDockEnabled = false;
             }
             UiLanguageService.SetPreference(runtimeSettings.Language);
+            ApplyTrayMenuTheme(runtimeSettings.SettingsTheme);
             RegisterGlobalHotkeys();
             UpdateIslandShape();
             ApplyPowerSavingState();

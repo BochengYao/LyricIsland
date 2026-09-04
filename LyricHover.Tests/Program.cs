@@ -247,6 +247,8 @@ namespace LyricHover.Tests
             suite.Run("island reveal and retract use nonlinear frame animation", IslandRevealAndRetractUseNonlinearFrameAnimation);
             suite.Run("does not use player specific ocr fallback when lyrics sources miss", DoesNotUsePlayerSpecificOcrFallbackWhenLyricsSourcesMiss);
             suite.Run("shows tray icon on startup", ShowsTrayIconOnStartup);
+            suite.Run("tray menu uses product styling and follows the app theme", TrayMenuUsesProductStylingAndFollowsAppTheme);
+            suite.Run("tray menu runtime palette switches between light and dark", TrayMenuRuntimePaletteSwitchesBetweenLightAndDark);
             suite.Run("main window keeps startup hint without media session", MainWindowKeepsStartupHintWithoutMediaSession);
             suite.Run("startup hint begins auto retract countdown immediately", StartupHintBeginsAutoRetractCountdownImmediately);
             suite.Run("native SMTC service keeps persistent session subscriptions", NativeSmtcServiceKeepsPersistentSessionSubscriptions);
@@ -3414,19 +3416,90 @@ namespace LyricHover.Tests
         {
             var root = GetSolutionRoot();
             var mainWindowSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
+            var trayMenuSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "TrayContextMenu.cs"));
             var projectSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "LyricHover.App.csproj"));
 
             Assert.True(mainWindowSource.Contains("Forms.NotifyIcon"));
             Assert.True(mainWindowSource.Contains("InitializeTrayIcon();"));
             Assert.True(mainWindowSource.Contains("trayIcon.Visible = true"));
             Assert.True(mainWindowSource.Contains("ContextMenuStrip"));
-            Assert.True(mainWindowSource.Contains("偏好设置"));
-            Assert.True(mainWindowSource.Contains("退出"));
+            Assert.True(trayMenuSource.Contains("偏好设置"));
+            Assert.True(trayMenuSource.Contains("退出"));
             Assert.True(mainWindowSource.Contains("OpenPlacementSettingsWindow"));
             Assert.True(mainWindowSource.Contains("DisposeTrayIcon"));
             Assert.True(mainWindowSource.Contains("Assets") && mainWindowSource.Contains("app.ico"));
             Assert.True(projectSource.Contains("Assets\\app.ico"));
             Assert.True(projectSource.Contains("CopyToOutputDirectory=\"Always\""));
+        }
+
+        static void TrayMenuUsesProductStylingAndFollowsAppTheme()
+        {
+            var root = GetSolutionRoot();
+            var mainWindowSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
+            var trayMenuSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "TrayContextMenu.cs"));
+
+            Assert.True(mainWindowSource.Contains("TrayContextMenuFactory.Create"));
+            Assert.True(mainWindowSource.Contains("trayMenu.Opening +="));
+            Assert.True(mainWindowSource.Contains("ApplyTrayMenuTheme(runtimeSettings.SettingsTheme)"));
+            Assert.True(trayMenuSource.Contains("DropShadowEnabled = true"));
+            Assert.True(trayMenuSource.Contains("CreateRoundedPath"));
+            Assert.True(trayMenuSource.Contains("TrayMenuRenderer"));
+            Assert.True(trayMenuSource.Contains("AppsUseLightTheme"));
+            Assert.True(trayMenuSource.Contains("SettingsThemePreference.Dark"));
+            Assert.True(trayMenuSource.Contains("SettingsThemePreference.Light"));
+            Assert.True(trayMenuSource.Contains("SystemInformation.HighContrast"));
+            Assert.True(trayMenuSource.Contains("HoverBackground"));
+            Assert.True(trayMenuSource.Contains("DrawItemGlyph"));
+        }
+
+        static void TrayMenuRuntimePaletteSwitchesBetweenLightAndDark()
+        {
+            var appAssembly = typeof(OverlayPlacementSettings).Assembly;
+            var factoryType = appAssembly.GetType("LyricHover.App.TrayContextMenuFactory", throwOnError: true);
+            var themeType = appAssembly.GetType("LyricHover.App.TrayContextMenuTheme", throwOnError: true);
+            var create = factoryType.GetMethod("Create", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            var apply = themeType.GetMethod("Apply", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            var menu = create.Invoke(null, new object[] { (Action)(() => { }), (Action)(() => { }) });
+
+            try
+            {
+                var backColorProperty = menu.GetType().GetProperty("BackColor");
+                var rendererProperty = menu.GetType().GetProperty("Renderer");
+                var itemsProperty = menu.GetType().GetProperty("Items");
+
+                apply.Invoke(null, new object[] { menu, SettingsThemePreference.Light });
+                var lightColor = backColorProperty.GetValue(menu);
+                var systemInformationType = Type.GetType("System.Windows.Forms.SystemInformation, System.Windows.Forms", throwOnError: true);
+                var highContrast = (bool)systemInformationType.GetProperty("HighContrast").GetValue(null);
+                if (!highContrast)
+                {
+                    Assert.Equal(255, ReadByteProperty(lightColor, "R"));
+                    Assert.Equal(255, ReadByteProperty(lightColor, "G"));
+                    Assert.Equal(255, ReadByteProperty(lightColor, "B"));
+                }
+
+                apply.Invoke(null, new object[] { menu, SettingsThemePreference.Dark });
+                var darkColor = backColorProperty.GetValue(menu);
+                if (!highContrast)
+                {
+                    Assert.Equal(44, ReadByteProperty(darkColor, "R"));
+                    Assert.Equal(44, ReadByteProperty(darkColor, "G"));
+                    Assert.Equal(46, ReadByteProperty(darkColor, "B"));
+                }
+                Assert.Equal("TrayMenuRenderer", rendererProperty.GetValue(menu).GetType().Name);
+
+                var items = itemsProperty.GetValue(menu);
+                Assert.Equal(3, (int)items.GetType().GetProperty("Count").GetValue(items));
+            }
+            finally
+            {
+                ((IDisposable)menu).Dispose();
+            }
+        }
+
+        static int ReadByteProperty(object value, string propertyName)
+        {
+            return Convert.ToInt32(value.GetType().GetProperty(propertyName).GetValue(value));
         }
 
         static void SegmentedSettingsAnimateTheirSelectionThumbs()
