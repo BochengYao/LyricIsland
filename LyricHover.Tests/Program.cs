@@ -249,6 +249,7 @@ namespace LyricHover.Tests
             suite.Run("shows tray icon on startup", ShowsTrayIconOnStartup);
             suite.Run("tray menu uses product styling and follows the app theme", TrayMenuUsesProductStylingAndFollowsAppTheme);
             suite.Run("tray menu runtime palette switches between light and dark", TrayMenuRuntimePaletteSwitchesBetweenLightAndDark);
+            suite.Run("tray menu vector glyphs stay optically aligned across DPI scales", TrayMenuVectorGlyphsStayAlignedAcrossDpiScales);
             suite.Run("main window keeps startup hint without media session", MainWindowKeepsStartupHintWithoutMediaSession);
             suite.Run("startup hint begins auto retract countdown immediately", StartupHintBeginsAutoRetractCountdownImmediately);
             suite.Run("native SMTC service keeps persistent session subscriptions", NativeSmtcServiceKeepsPersistentSessionSubscriptions);
@@ -3450,13 +3451,17 @@ namespace LyricHover.Tests
             Assert.True(trayMenuSource.Contains("SystemInformation.HighContrast"));
             Assert.True(trayMenuSource.Contains("HoverBackground"));
             Assert.True(trayMenuSource.Contains("DrawItemGlyph"));
-            Assert.True(trayMenuSource.Contains("TextRenderer.DrawText"));
-            Assert.True(trayMenuSource.Contains("GetTextBounds(e.Graphics, e.Item)"));
-            Assert.True(trayMenuSource.Contains("Microsoft YaHei UI"));
+            Assert.True(trayMenuSource.Contains("PaintMenuText"));
+            Assert.True(trayMenuSource.Contains("TextRenderingHint.AntiAliasGridFit"));
+            Assert.True(trayMenuSource.Contains("Segoe UI Variable Text"));
             Assert.True(trayMenuSource.Contains("Segoe MDL2 Assets"));
+            Assert.True(trayMenuSource.Contains("CreateGlyphPath"));
             Assert.True(trayMenuSource.Contains("GetGlyphBounds(graphics, item)"));
-            Assert.False(trayMenuSource.Contains("DrawSettingsGlyph"));
-            Assert.False(trayMenuSource.Contains("DrawExitGlyph"));
+            Assert.True(trayMenuSource.Contains("DwmSetWindowAttribute"));
+            Assert.True(trayMenuSource.Contains("MinimumSize = new Size(160, 0)"));
+            Assert.True(trayMenuSource.Contains("Size = new Size(150, 33)"));
+            Assert.False(trayMenuSource.Contains("ToolStripSeparator"));
+            Assert.False(trayMenuSource.Contains("TextRenderer.DrawText"));
             Assert.False(trayMenuSource.Contains("base.OnRenderItemText(e)"));
         }
 
@@ -3467,7 +3472,13 @@ namespace LyricHover.Tests
             var themeType = appAssembly.GetType("LyricHover.App.TrayContextMenuTheme", throwOnError: true);
             var create = factoryType.GetMethod("Create", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
             var apply = themeType.GetMethod("Apply", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-            var menu = create.Invoke(null, new object[] { (Action)(() => { }), (Action)(() => { }) });
+            var settingsInvocations = 0;
+            var exitInvocations = 0;
+            var menu = create.Invoke(null, new object[]
+            {
+                (Action)(() => settingsInvocations++),
+                (Action)(() => exitInvocations++)
+            });
 
             try
             {
@@ -3475,10 +3486,20 @@ namespace LyricHover.Tests
                 var fontProperty = menu.GetType().GetProperty("Font");
                 var rendererProperty = menu.GetType().GetProperty("Renderer");
                 var itemsProperty = menu.GetType().GetProperty("Items");
+                var minimumSizeProperty = menu.GetType().GetProperty("MinimumSize");
+                var paddingProperty = menu.GetType().GetProperty("Padding");
+                var deviceDpiProperty = menu.GetType().GetProperty("DeviceDpi");
 
                 var menuFont = fontProperty.GetValue(menu);
-                Assert.Equal("Microsoft YaHei UI", (string)menuFont.GetType().GetProperty("Name").GetValue(menuFont));
-                Assert.True(Math.Abs(Convert.ToSingle(menuFont.GetType().GetProperty("SizeInPoints").GetValue(menuFont)) - 10.5F) < 0.01F);
+                Assert.Equal("Segoe UI Variable Text", (string)menuFont.GetType().GetProperty("Name").GetValue(menuFont));
+                Assert.True(Math.Abs(Convert.ToSingle(menuFont.GetType().GetProperty("SizeInPoints").GetValue(menuFont)) - 10F) < 0.01F);
+
+                var minimumSize = minimumSizeProperty.GetValue(menu);
+                Assert.Equal(160, Convert.ToInt32(minimumSize.GetType().GetProperty("Width").GetValue(minimumSize)));
+                var menuPadding = paddingProperty.GetValue(menu);
+                var menuDpi = Convert.ToInt32(deviceDpiProperty.GetValue(menu));
+                var expectedPadding = (int)Math.Round(5F * Math.Max(1F, menuDpi / 96F));
+                Assert.Equal(expectedPadding, Convert.ToInt32(menuPadding.GetType().GetProperty("Left").GetValue(menuPadding)));
 
                 apply.Invoke(null, new object[] { menu, SettingsThemePreference.Light });
                 var lightColor = backColorProperty.GetValue(menu);
@@ -3486,27 +3507,74 @@ namespace LyricHover.Tests
                 var highContrast = (bool)systemInformationType.GetProperty("HighContrast").GetValue(null);
                 if (!highContrast)
                 {
-                    Assert.Equal(255, ReadByteProperty(lightColor, "R"));
-                    Assert.Equal(255, ReadByteProperty(lightColor, "G"));
-                    Assert.Equal(255, ReadByteProperty(lightColor, "B"));
+                    Assert.Equal(248, ReadByteProperty(lightColor, "R"));
+                    Assert.Equal(248, ReadByteProperty(lightColor, "G"));
+                    Assert.Equal(250, ReadByteProperty(lightColor, "B"));
                 }
 
                 apply.Invoke(null, new object[] { menu, SettingsThemePreference.Dark });
                 var darkColor = backColorProperty.GetValue(menu);
                 if (!highContrast)
                 {
-                    Assert.Equal(44, ReadByteProperty(darkColor, "R"));
-                    Assert.Equal(44, ReadByteProperty(darkColor, "G"));
-                    Assert.Equal(46, ReadByteProperty(darkColor, "B"));
+                    Assert.Equal(36, ReadByteProperty(darkColor, "R"));
+                    Assert.Equal(36, ReadByteProperty(darkColor, "G"));
+                    Assert.Equal(38, ReadByteProperty(darkColor, "B"));
                 }
                 Assert.Equal("TrayMenuRenderer", rendererProperty.GetValue(menu).GetType().Name);
 
                 var items = itemsProperty.GetValue(menu);
-                Assert.Equal(3, (int)items.GetType().GetProperty("Count").GetValue(items));
+                Assert.Equal(2, (int)items.GetType().GetProperty("Count").GetValue(items));
+                var itemIndexer = items.GetType().GetProperty("Item", new[] { typeof(int) });
+                var settingsItem = itemIndexer.GetValue(items, new object[] { 0 });
+                var exitItem = itemIndexer.GetValue(items, new object[] { 1 });
+                settingsItem.GetType().GetMethod("PerformClick").Invoke(settingsItem, null);
+                exitItem.GetType().GetMethod("PerformClick").Invoke(exitItem, null);
+                Assert.Equal(1, settingsInvocations);
+                Assert.Equal(1, exitInvocations);
             }
             finally
             {
                 ((IDisposable)menu).Dispose();
+            }
+        }
+
+        static void TrayMenuVectorGlyphsStayAlignedAcrossDpiScales()
+        {
+            var appAssembly = typeof(OverlayPlacementSettings).Assembly;
+            var rendererType = appAssembly.GetType("LyricHover.App.TrayMenuRenderer", throwOnError: true);
+            var createGlyphPath = rendererType.GetMethod(
+                "CreateGlyphPath",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+
+            foreach (var scale in new[] { 1F, 1.25F, 1.5F, 1.75F, 2F })
+            {
+                var targetSize = 15F * scale;
+                var maximumDimensions = new List<float>();
+                foreach (var glyph in new[] { "\uE713", "\uE7E8" })
+                {
+                    var path = createGlyphPath.Invoke(null, new object[]
+                    {
+                        glyph,
+                        new System.Drawing.RectangleF(0F, 0F, targetSize, targetSize)
+                    });
+                    try
+                    {
+                        var bounds = path.GetType().GetMethod("GetBounds", Type.EmptyTypes).Invoke(path, null);
+                        var width = Convert.ToSingle(bounds.GetType().GetProperty("Width").GetValue(bounds));
+                        var height = Convert.ToSingle(bounds.GetType().GetProperty("Height").GetValue(bounds));
+                        var maximumDimension = Math.Max(width, height);
+                        Assert.True(width > targetSize * 0.6F);
+                        Assert.True(height > targetSize * 0.6F);
+                        Assert.True(maximumDimension <= targetSize);
+                        maximumDimensions.Add(maximumDimension);
+                    }
+                    finally
+                    {
+                        ((IDisposable)path).Dispose();
+                    }
+                }
+
+                Assert.True(Math.Abs(maximumDimensions[0] - maximumDimensions[1]) < 0.1F);
             }
         }
 
