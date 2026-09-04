@@ -7,7 +7,7 @@
 - DPI 修复提交：`3de6fb9`（菜单整体布局按右键所在显示器同步缩放）
 - 分支：`codex/feature/desktop-tray-menu-theme`
 - 允许修改范围：`LyricHover.App/` 的托盘 UI 与直接回归测试
-- Handoff Status：Feature Handoff / 本地候选已生成，GitHub 推送待确认具体远端
+- Handoff Status：Feature Handoff / 本地候选已生成，GitHub 功能分支已上传，待 UI 实机视觉确认
 
 ## 已完成
 
@@ -60,5 +60,5 @@
 
 - 已知限制：离屏实渲染不能呈现真实桌面 DWM 阴影，也不能替代真实托盘弹出后的最终观感确认；正在运行的旧进程必须完全退出后再启动 `publish/current`，否则仍会显示内存中的旧菜单实现。
 - 交接目标：Desktop UI / User Acceptance；从 `publish/current/LyricHover.App.exe` 启动，分别在浅色、深色、跟随系统和高对比度下右键托盘图标。
-- GitHub 交付：计划推送分支 `codex/feature/desktop-tray-menu-theme`；当前 `origin` 为 `https://github.com/BochengYao/LyricIsland.git`。首次推送因需要用户明确确认该具体旧名仓库而暂停，尚未声称已上传。
+- GitHub 交付：用户已明确确认旧名仓库；分支 `codex/feature/desktop-tray-menu-theme` 已推送到 `https://github.com/BochengYao/LyricIsland.git` 并设置 upstream。远端分支包含托盘视觉重设计、150% DPI 裁切修复、自动化测试与本 Handoff。
 - 回滚点：回滚 `305dbd82217a6d36f8923e5e1f860bc3f3e9cf4d` 即恢复默认 `ContextMenuStrip`。
