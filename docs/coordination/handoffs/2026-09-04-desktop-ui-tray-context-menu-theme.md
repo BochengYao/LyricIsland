@@ -26,11 +26,11 @@
 
 ## 本地候选
 
-- 当前版本：`3.2.36-Beta`，framework-dependent `win-x64`。
+- 当前版本：`3.2.35-Beta`，framework-dependent `win-x64`；按用户要求使用 `-KeepVersion` 同版本重建。
 - 目录：`publish/current`，8 个文件，共 24,534,091 bytes。
-- `LyricHover.App.dll` SHA-256：`EACA7CB2EAB68F968FA60E65C573B850D03607CCFEA6B4FDCD14FDBCCFAA53B3`。
-- `LyricHover.App.exe` SHA-256：`4EB73DD500151FA40F6EF9889EDFC918E87E16BAD2E55726A2A098F60987CE2F`。
-- 旧 `3.2.35-Beta` current 已由权威脚本归档为 `publish/archive/v3.2.35-Beta`。
+- `LyricHover.App.dll` SHA-256：`07257A7062E238FC47854033498C580FA999B900B8F459360313EBB63471107D`。
+- `LyricHover.App.exe` SHA-256：`1FF4A9D1DE3FC104F52BFD3A5C78237CBDAF02B71E679D994C37691BEEB173F7`。
+- 修复前的 `3.2.35-Beta` current 已由权威脚本保留在 `publish/archive/v3.2.35-Beta`；中间生成但未交付的 `3.2.36-Beta` 也保留在归档中供追溯。
 
 ## 验证
 
@@ -39,7 +39,7 @@
 - 命令：设置 `LYRICHOVER_SKIP_RELEASE_VERSION_FIXTURE=1` 后运行 `dotnet run --project LyricHover.Tests -c Release --no-build`。
 - 结果：全部执行项 PASS；新增源码契约测试和运行时菜单实例测试，确认浅/深配色、渲染器、菜单结构和主题刷新入口。
 - 命令：设置 Windows SDK 路径后运行 `publish.ps1 -NoLaunch`。
-- 结果：完整回归 PASS；`win-x64` Release 构建 0 warning、0 error；发布脚本输出 `发布完成：v3.2.36 Beta`。
+- 结果：完整回归 PASS；`win-x64` Release 构建 0 warning、0 error；最终以 `-KeepVersion` 执行，发布脚本输出 `发布完成：v3.2.35 Beta`。
 - 命令：`dotnet run --no-restore --configuration Release --project LyricHover.Tests -- --release-version-fixture`。
 - 结果：在可读取真实用户 NuGet 缓存的环境中 PASS；发布版本变更保持事务化与串行化。
 - 产物一致性：`publish/current/LyricHover.App.dll` 与同次 Release `win-x64` 输出 SHA-256 完全一致；deps/runtimeconfig 均非空，目标 staging 已清理。
