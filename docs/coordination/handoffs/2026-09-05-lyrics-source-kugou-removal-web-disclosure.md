@@ -4,8 +4,8 @@
 - Domains: Desktop Lyrics & Player Core, Desktop UI, Public Website Frontend, Quality & Integration
 - Baseline commit: `06a88fd02224566ad3f66990ae4e905a9bfe18b4`
 - Implementation commit: `27ddbb8e1988a106b230fbda233a1fc882eb9ca6`
-- Working state: implementation and release-candidate evidence committed on `main`; public feature-output redaction is pending its release commit
-- Release state: local `publish/current` rebuilt and verified; commits through `a64bb861b79e24beeba369375966ff56406f599f` are on GitHub and the first ESA deployment was observed in production
+- Working state: implementation, public feature-output redaction, and release evidence committed on `main`
+- Release state: local `publish/current` rebuilt and verified; website redaction commit `9c672ce105c84ec5a3829ff554659e7744ff9d1a` is on GitHub and verified through ESA production responses
 
 ## Scope
 
@@ -52,7 +52,9 @@
 - Production `/`, `/zh-hant/`, `/en/`, and `/ja/` returned HTTP 200 with `Server: ESA`, contained the locale-specific generic disclosure, and did not contain `LRCLIB`.
 - The first production check also found that `/api/features` was still serving historical provider-detail text stored in the database.
 - The follow-up implementation filters only the public feature response. ESA API tests prove that admin saves retain the original provider-detail text while public output substitutes the generic disclosure and retains unrelated items.
-- Final public API production verification and its release commit are recorded in the follow-up release evidence below once synchronization completes.
+- The public-output follow-up was committed as `9c672ce105c84ec5a3829ff554659e7744ff9d1a` and pushed to `origin/main`, triggering the second ESA deployment.
+- After that deployment, `/`, `/zh-hant/`, `/en/`, `/ja/`, and `/api/features` all returned HTTP 200 with `Server: ESA`; every locale page contained its expected generic disclosure, and none of those responses contained `LRCLIB`.
+- Production `/api/features` retained the KuGou/Kugou Music player-compatibility wording, confirming that only lyric-provider detail was redacted.
 
 ## Legal and product boundary
 
@@ -60,7 +62,7 @@
 - Hiding provider names or endpoints does not change API terms, copyright obligations, or the underlying network behavior.
 - Musixmatch is not included until its current plan and written display rights are confirmed for this product and distribution model.
 
-## Suggested next owner
+## Remaining owner
 
-- Release, GitHub & Store: push local `main`, wait for ESA synchronization, and verify the production response and expected public copy.
 - Legal & Evidence: retain provider terms or written permission for each remaining online lyric source before external release.
+- Microsoft Store distribution remains separate and was not uploaded or submitted by this handoff.
