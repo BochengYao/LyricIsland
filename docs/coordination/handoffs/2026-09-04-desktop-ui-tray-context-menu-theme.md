@@ -7,7 +7,7 @@
 - DPI 修复提交：`3de6fb9`（菜单整体布局按右键所在显示器同步缩放）
 - 分支：`codex/feature/desktop-tray-menu-theme`
 - 允许修改范围：`LyricHover.App/` 的托盘 UI 与直接回归测试
-- Handoff Status：Feature Handoff / 本地候选已生成，GitHub 功能分支已上传，待 UI 实机视觉确认
+- Handoff Status：Integration Verified / 干净主线候选已通过验证，待 GitHub `main` 快进同步
 
 ## 已完成
 
@@ -62,3 +62,11 @@
 - 交接目标：Desktop UI / User Acceptance；从 `publish/current/LyricHover.App.exe` 启动，分别在浅色、深色、跟随系统和高对比度下右键托盘图标。
 - GitHub 交付：用户已明确确认旧名仓库；分支 `codex/feature/desktop-tray-menu-theme` 已推送到 `https://github.com/BochengYao/LyricIsland.git` 并设置 upstream。远端分支包含托盘视觉重设计、150% DPI 裁切修复、自动化测试与本 Handoff。
 - 回滚点：回滚 `305dbd82217a6d36f8923e5e1f860bc3f3e9cf4d` 即恢复默认 `ContextMenuStrip`。
+
+## 主线集成（2026-09-05）
+
+- 为保护根工作树内其他线程的未跟踪 WIP，在独立干净 Worktree `tray-menu-theme-integration-20260905` 中执行集成。
+- 远端主线基线：`1a54d2bb27e14802137eb4e518093a26cea6c2cb`；托盘功能分支：`3ec5e4b59bda9e5968983f041d1e2c71cd67ff9d`。
+- 合并提交：`a4e7b1e04a1dd2cb89175a4552ddcec2a182b0a0`；使用 `ort` 策略无冲突完成，并同时保留远端最新 Website 提交与本地既有 Desktop 主线提交。
+- Integration Worktree 执行 `dotnet restore LyricHover.sln` 后，Release 构建成功（0 error，190 条既有测试警告），完整回归全部 PASS。
+- 合并结果已验证同时包含原本地 `main`、最新 `origin/main` 与托盘功能分支；本节提交后再执行本地 `main` 前移和 GitHub `main` 快进同步。
