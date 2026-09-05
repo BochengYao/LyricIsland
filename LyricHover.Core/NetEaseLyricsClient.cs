@@ -62,9 +62,13 @@ namespace LyricHover.Core
             {
                 return string.Empty;
             }
+            catch (FormatException)
+            {
+                return string.Empty;
+            }
         }
 
-        private static int ExtractBestSongId(string json, TrackIdentity track, bool allowLocalizedTitleAlias = false)
+        private static long ExtractBestSongId(string json, TrackIdentity track, bool allowLocalizedTitleAlias = false)
         {
             using (var document = JsonDocument.Parse(json))
             {
@@ -75,15 +79,17 @@ namespace LyricHover.Core
                     return 0;
                 }
 
-                var bestId = 0;
+                var bestId = 0L;
                 var bestScore = int.MinValue;
-                var bestAliasId = 0;
+                var bestAliasId = 0L;
                 var bestAliasScore = int.MinValue;
                 var secondAliasScore = int.MinValue;
 
                 foreach (var song in songs.EnumerateArray())
                 {
-                    if (song.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.Number)
+                    if (song.TryGetProperty("id", out var id) &&
+                        id.ValueKind == JsonValueKind.Number &&
+                        id.TryGetInt64(out var songId))
                     {
                         var title = ReadString(song, "name");
                         var artist = ReadArtists(song);
@@ -93,7 +99,7 @@ namespace LyricHover.Core
                         if (score > bestScore)
                         {
                             bestScore = score;
-                            bestId = id.GetInt32();
+                            bestId = songId;
                         }
 
                         if (allowLocalizedTitleAlias)
@@ -104,7 +110,7 @@ namespace LyricHover.Core
                             {
                                 secondAliasScore = bestAliasScore;
                                 bestAliasScore = aliasScore;
-                                bestAliasId = id.GetInt32();
+                                bestAliasId = songId;
                             }
                             else if (aliasScore > secondAliasScore)
                             {
@@ -133,11 +139,23 @@ namespace LyricHover.Core
         {
             using (var document = JsonDocument.Parse(json))
             {
-                if (document.RootElement.TryGetProperty("lrc", out var lrc) &&
+                var original = string.Empty;
+                if (document.RootElement.TryGetProperty("yrc", out var yrc) &&
+                    yrc.TryGetProperty("lyric", out var yrcLyric) &&
+                    yrcLyric.ValueKind == JsonValueKind.String &&
+                    LyricsPackageParser.HasWordTiming(yrcLyric.GetString()))
+                {
+                    original = yrcLyric.GetString() ?? string.Empty;
+                }
+                else if (document.RootElement.TryGetProperty("lrc", out var lrc) &&
                     lrc.TryGetProperty("lyric", out var lyric) &&
                     lyric.ValueKind == JsonValueKind.String)
                 {
-                    var original = lyric.GetString() ?? string.Empty;
+                    original = lyric.GetString() ?? string.Empty;
+                }
+
+                if (!string.IsNullOrWhiteSpace(original))
+                {
                     if (document.RootElement.TryGetProperty("tlyric", out var tlyric) &&
                         tlyric.TryGetProperty("lyric", out var translation) &&
                         translation.ValueKind == JsonValueKind.String)
@@ -228,9 +246,9 @@ namespace LyricHover.Core
             return new Uri(url);
         }
 
-        private static Uri BuildLyricRequestUri(int songId)
+        private static Uri BuildLyricRequestUri(long songId)
         {
-            return new Uri("https://music.163.com/api/song/lyric?id=" + songId + "&lv=1&kv=1&tv=-1");
+            return new Uri("https://music.163.com/api/song/lyric?id=" + songId + "&lv=1&kv=1&tv=-1&yrc=true");
         }
 
         private static HttpClient CreateHttpClient()

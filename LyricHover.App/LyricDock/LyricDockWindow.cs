@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using LyricHover.App.Modules;
 using LyricHover.Core;
 
 namespace LyricHover.App.LyricDock
@@ -18,6 +19,7 @@ namespace LyricHover.App.LyricDock
     {
         private const int GwlExStyle = -20;
         private const int WmNcHitTest = 0x0084;
+        private const int WmLButtonDown = 0x0201;
         private const int WmRButtonDown = 0x0204;
         private const int WmRButtonUp = 0x0205;
         private const int WmContextMenu = 0x007B;
@@ -37,14 +39,15 @@ namespace LyricHover.App.LyricDock
         private readonly StackPanel incomingPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Opacity = 0 };
         private readonly TranslateTransform currentSlide = new TranslateTransform();
         private readonly TranslateTransform incomingSlide = new TranslateTransform { Y = 10 };
-        private readonly TextBlock currentPrimary = CreatePrimaryText();
+        private readonly WordTrackingTextBlock currentPrimary = CreatePrimaryText();
         private readonly TextBlock currentSecondary = CreateSecondaryText();
-        private readonly TextBlock incomingPrimary = CreatePrimaryText();
+        private readonly WordTrackingTextBlock incomingPrimary = CreatePrimaryText();
         private readonly TextBlock incomingSecondary = CreateSecondaryText();
         private readonly Grid currentPrimaryClip = CreateClipRow(PrimaryLineHeight);
         private readonly Grid currentSecondaryClip = CreateClipRow(SecondaryLineHeight);
         private readonly Grid incomingPrimaryClip = CreateClipRow(PrimaryLineHeight);
         private readonly Grid incomingSecondaryClip = CreateClipRow(SecondaryLineHeight);
+        private readonly Func<bool> refreshModifierPressed;
         private Brush foreground = Brushes.White;
         private bool textLeftAligned;
         private IntPtr handle;
@@ -52,9 +55,16 @@ namespace LyricHover.App.LyricDock
         private TimeSpan lineDuration = TimeSpan.FromSeconds(4);
         private string displayedPrimary;
         private string displayedSecondary;
+        private bool transitionInProgress;
+        private LyricLine displayedWordTrackingLine;
+        private TimeSpan displayedWordTrackingPosition;
+        private bool displayedWordTrackingPlaying;
+        private double displayedWordTrackingProgress = -1;
 
-        public LyricDockWindow()
+        public LyricDockWindow(Func<bool> refreshModifierPressed = null)
         {
+            this.refreshModifierPressed = refreshModifierPressed ?? (() =>
+                (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) != 0);
             WindowStyle = WindowStyle.None;
             ResizeMode = ResizeMode.NoResize;
             ShowInTaskbar = false;
@@ -78,7 +88,6 @@ namespace LyricHover.App.LyricDock
             textViewport.SizeChanged += (sender, args) => ReapplyCurrentText();
             root.Children.Add(textViewport);
             Content = root;
-            PreviewMouseLeftButtonDown += (sender, args) => args.Handled = true;
             SourceInitialized += (sender, args) =>
             {
                 handle = new WindowInteropHelper(this).Handle;
@@ -89,6 +98,7 @@ namespace LyricHover.App.LyricDock
         }
 
         public event EventHandler SettingsRequested;
+        public event EventHandler RefreshRequested;
 
         private IntPtr WindowMessageHook(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
@@ -99,6 +109,15 @@ namespace LyricHover.App.LyricDock
             {
                 handled = true;
                 return new IntPtr(HtClient);
+            }
+            if (message == WmLButtonDown)
+            {
+                if (refreshModifierPressed())
+                {
+                    RefreshRequested?.Invoke(this, EventArgs.Empty);
+                }
+                handled = true;
+                return IntPtr.Zero;
             }
             if (message == WmRButtonDown)
             {
@@ -135,10 +154,18 @@ namespace LyricHover.App.LyricDock
                 ? "等待播放"
                 : snapshot.PrimaryText ?? string.Empty;
             var secondary = snapshot.SecondaryText ?? string.Empty;
+            var wordTrackingProgress = snapshot.PrimaryWordTrackingProgress;
             if (snapshot.LineDuration > TimeSpan.Zero) lineDuration = snapshot.LineDuration;
 
-            if (displayedPrimary == primary && displayedSecondary == secondary)
+            var textChanged = displayedPrimary != primary || displayedSecondary != secondary;
+            displayedWordTrackingLine = snapshot.PrimaryWordTrackingLine;
+            displayedWordTrackingPosition = snapshot.WordTrackingPosition;
+            displayedWordTrackingPlaying = ResolveIsPlaying(snapshot);
+            displayedWordTrackingProgress = wordTrackingProgress;
+
+            if (!textChanged)
             {
+                UpdateActiveWordTracking();
                 return;
             }
 
@@ -146,6 +173,7 @@ namespace LyricHover.App.LyricDock
             displayedPrimary = primary;
             displayedSecondary = secondary;
             var version = ++transitionVersion;
+            transitionInProgress = false;
 
             if (!shouldAnimate)
             {
@@ -157,12 +185,13 @@ namespace LyricHover.App.LyricDock
 
             ResetSlideAnimation();
             StopAllMarquees();
-            PrepareLine(incomingPrimary, incomingPrimaryClip, primary, true);
-            PrepareLine(incomingSecondary, incomingSecondaryClip, secondary, !string.IsNullOrWhiteSpace(secondary));
+            PreparePrimaryLine(incomingPrimary, incomingPrimaryClip, primary, true);
+            PrepareSecondaryLine(incomingSecondary, incomingSecondaryClip, secondary, !string.IsNullOrWhiteSpace(secondary));
             incomingPanel.Opacity = 0;
             incomingSlide.Y = 10;
             currentPanel.Opacity = 1;
             currentSlide.Y = 0;
+            transitionInProgress = true;
 
             var easing = new QuarticEase { EasingMode = EasingMode.EaseOut };
             var duration = TimeSpan.FromMilliseconds(280);
@@ -174,7 +203,8 @@ namespace LyricHover.App.LyricDock
                     return;
                 }
 
-                ApplyCurrentText(primary, secondary);
+                transitionInProgress = false;
+                ApplyCurrentText(displayedPrimary, displayedSecondary);
                 ResetSlideAnimation();
                 StartCurrentMarquees();
             };
@@ -203,12 +233,13 @@ namespace LyricHover.App.LyricDock
             ApplyForeground(incomingSecondary);
         }
 
-        private static TextBlock CreatePrimaryText()
+        private static WordTrackingTextBlock CreatePrimaryText()
         {
-            return new TextBlock
+            return new WordTrackingTextBlock
             {
                 FontSize = 13,
                 FontWeight = FontWeights.SemiBold,
+                DimOpacity = 0.45,
                 TextTrimming = TextTrimming.None,
                 TextWrapping = TextWrapping.NoWrap,
                 VerticalAlignment = VerticalAlignment.Center,
@@ -236,7 +267,7 @@ namespace LyricHover.App.LyricDock
             return grid;
         }
 
-        private static void AssemblePanel(StackPanel panel, TextBlock primary, TextBlock secondary, Grid primaryClip, Grid secondaryClip)
+        private static void AssemblePanel(StackPanel panel, WordTrackingTextBlock primary, TextBlock secondary, Grid primaryClip, Grid secondaryClip)
         {
             ((Canvas)primaryClip.Children[0]).Children.Add(primary);
             ((Canvas)secondaryClip.Children[0]).Children.Add(secondary);
@@ -244,14 +275,19 @@ namespace LyricHover.App.LyricDock
             panel.Children.Add(secondaryClip);
         }
 
+        private void ApplyForeground(WordTrackingTextBlock textBlock)
+        {
+            textBlock.Foreground = foreground;
+        }
+
         private void ApplyForeground(TextBlock textBlock)
         {
             textBlock.Foreground = foreground;
         }
 
-        private void PrepareLine(TextBlock textBlock, Grid clip, string text, bool visible)
+        private void PreparePrimaryLine(WordTrackingTextBlock textBlock, Grid clip, string text, bool visible)
         {
-            textBlock.Text = text ?? string.Empty;
+            PresentWordTracking(textBlock, text);
             textBlock.Foreground = foreground;
             // Collapse the whole clip row (not just the text) so an absent secondary line
             // removes its reserved height: in single-line mode the remaining row is then
@@ -264,16 +300,29 @@ namespace LyricHover.App.LyricDock
             }
         }
 
+        private void PrepareSecondaryLine(TextBlock textBlock, Grid clip, string text, bool visible)
+        {
+            textBlock.Text = text ?? string.Empty;
+            textBlock.Foreground = foreground;
+            textBlock.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+            clip.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+            if (visible)
+            {
+                MeasureAndPosition(textBlock, clip);
+            }
+        }
+
         private void ApplyCurrentText(string primary, string secondary)
         {
             StopAllMarquees();
-            PrepareLine(currentPrimary, currentPrimaryClip, primary, true);
-            PrepareLine(currentSecondary, currentSecondaryClip, secondary, !string.IsNullOrWhiteSpace(secondary));
+            PreparePrimaryLine(currentPrimary, currentPrimaryClip, primary, true);
+            PrepareSecondaryLine(currentSecondary, currentSecondaryClip, secondary, !string.IsNullOrWhiteSpace(secondary));
         }
 
         private void ReapplyCurrentText()
         {
             transitionVersion++;
+            transitionInProgress = false;
             ApplyCurrentText(displayedPrimary ?? string.Empty, displayedSecondary ?? string.Empty);
             ResetSlideAnimation();
             StartCurrentMarquees();
@@ -281,6 +330,7 @@ namespace LyricHover.App.LyricDock
 
         private void ResetSlideAnimation()
         {
+            incomingPrimary.StopPlaybackProjection();
             currentPanel.BeginAnimation(OpacityProperty, null);
             currentSlide.BeginAnimation(TranslateTransform.YProperty, null);
             incomingPanel.BeginAnimation(OpacityProperty, null);
@@ -290,6 +340,28 @@ namespace LyricHover.App.LyricDock
             currentSlide.Y = 0;
             incomingPanel.Opacity = 0;
             incomingSlide.Y = 10;
+        }
+
+        private void UpdateActiveWordTracking()
+        {
+            var target = transitionInProgress ? incomingPrimary : currentPrimary;
+            PresentWordTracking(target, displayedPrimary);
+        }
+
+        private void PresentWordTracking(WordTrackingTextBlock textBlock, string text)
+        {
+            textBlock.Present(
+                text,
+                displayedWordTrackingLine,
+                displayedWordTrackingPosition,
+                displayedWordTrackingPlaying,
+                displayedWordTrackingProgress);
+        }
+
+        private static bool ResolveIsPlaying(LyricsPresentationSnapshot snapshot)
+        {
+            var status = snapshot.PendingPlaybackStatus ?? snapshot.Session?.PlaybackStatus;
+            return status == LyricHover.Core.Media.MediaPlaybackStatus.Playing;
         }
 
         private void StartCurrentMarquees()
@@ -306,14 +378,14 @@ namespace LyricHover.App.LyricDock
             StopMarquee(incomingSecondary);
         }
 
-        private static void StopMarquee(TextBlock textBlock)
+        private static void StopMarquee(FrameworkElement textBlock)
         {
             var transform = (TranslateTransform)textBlock.RenderTransform;
             transform.BeginAnimation(TranslateTransform.XProperty, null);
             transform.X = 0;
         }
 
-        private void StartMarqueeIfNeeded(TextBlock textBlock, Grid clip)
+        private void StartMarqueeIfNeeded(FrameworkElement textBlock, Grid clip)
         {
             if (textBlock.Visibility != Visibility.Visible)
             {
@@ -339,7 +411,7 @@ namespace LyricHover.App.LyricDock
             ((TranslateTransform)textBlock.RenderTransform).BeginAnimation(TranslateTransform.XProperty, animation);
         }
 
-        private LyricTextPlacement MeasureAndPosition(TextBlock textBlock, Grid clip)
+        private LyricTextPlacement MeasureAndPosition(FrameworkElement textBlock, Grid clip)
         {
             var transform = (TranslateTransform)textBlock.RenderTransform;
             transform.BeginAnimation(TranslateTransform.XProperty, null);

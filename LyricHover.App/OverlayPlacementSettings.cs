@@ -33,7 +33,7 @@ namespace LyricHover.App
         public const int MinNoPlaybackAutoRetractSeconds = 0;
         public const int MaxAutoRetractSeconds = 300;
 
-        public int SchemaVersion { get; set; } = 4;
+        public int SchemaVersion { get; set; } = 5;
 
         public IslandLayoutSettings IslandLayouts { get; set; } = IslandLayoutDefaults.Create();
 
@@ -75,6 +75,8 @@ namespace LyricHover.App
 
         public bool ShowTranslation { get; set; } = true;
 
+        public bool IslandWordTrackingEnabled { get; set; } = true;
+
         public bool IslandEnabled { get; set; } = true;
 
         public bool LyricDockEnabled { get; set; }
@@ -82,6 +84,8 @@ namespace LyricHover.App
         public bool LyricDockUseMultiLineDisplay { get; set; } = true;
 
         public bool LyricDockShowTranslation { get; set; } = true;
+
+        public bool LyricDockWordTrackingEnabled { get; set; } = true;
 
         public bool EnablePowerSavingMode { get; set; }
 
@@ -142,7 +146,7 @@ namespace LyricHover.App
             ExpandedAutoCollapseSeconds = Math.Max(
                 MinAutoRetractSeconds,
                 Math.Min(MaxAutoRetractSeconds, ExpandedAutoCollapseSeconds));
-            SchemaVersion = 4;
+            SchemaVersion = 5;
             OffsetRatio = Math.Max(0, Math.Min(1, OffsetRatio));
             CacheLimitMegabytes = Math.Max(MinCacheLimitMegabytes, Math.Min(MaxCacheLimitMegabytes, CacheLimitMegabytes));
             HoverAuraSize = Math.Max(MinHoverAuraSize, Math.Min(MaxHoverAuraSize, HoverAuraSize));
@@ -305,11 +309,13 @@ namespace LyricHover.App
                 var originalLyricsSource = settings.LyricsSource;
                 var originalUseMultiLineDisplay = settings.UseMultiLineDisplay;
                 var originalShowTranslation = settings.ShowTranslation;
+                var originalIslandWordTracking = settings.IslandWordTrackingEnabled;
                 var originalIslandEnabled = settings.IslandEnabled;
                 var originalLyricDockEnabled = settings.LyricDockEnabled;
                 var originalLyricDockAlignment = settings.LyricDockAlignment;
                 var originalLyricDockUseMultiLineDisplay = settings.LyricDockUseMultiLineDisplay;
                 var originalLyricDockShowTranslation = settings.LyricDockShowTranslation;
+                var originalLyricDockWordTracking = settings.LyricDockWordTrackingEnabled;
                 var originalEnablePowerSavingMode = settings.EnablePowerSavingMode;
                 settings.Normalize();
                 if (settings.SchemaVersion != originalSchemaVersion ||
@@ -327,11 +333,13 @@ namespace LyricHover.App
                     settings.LyricsSource != originalLyricsSource ||
                     settings.UseMultiLineDisplay != originalUseMultiLineDisplay ||
                     settings.ShowTranslation != originalShowTranslation ||
+                    settings.IslandWordTrackingEnabled != originalIslandWordTracking ||
                     settings.IslandEnabled != originalIslandEnabled ||
                     settings.LyricDockEnabled != originalLyricDockEnabled ||
                     settings.LyricDockAlignment != originalLyricDockAlignment ||
                     settings.LyricDockUseMultiLineDisplay != originalLyricDockUseMultiLineDisplay ||
                     settings.LyricDockShowTranslation != originalLyricDockShowTranslation ||
+                    settings.LyricDockWordTrackingEnabled != originalLyricDockWordTracking ||
                     settings.EnablePowerSavingMode != originalEnablePowerSavingMode)
                 {
                     Save(settings);

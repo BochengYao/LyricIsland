@@ -22,7 +22,7 @@
         KeyUp="Window_KeyUp"
         MouseEnter="Window_MouseEnter"
         MouseLeave="Window_MouseLeave"
-        MouseLeftButtonDown="Window_MouseLeftButtonDown"
+        PreviewMouseLeftButtonDown="Window_MouseLeftButtonDown"
         MouseLeftButtonUp="Window_MouseLeftButtonUp"
         MouseMove="Window_MouseMove"
         SizeChanged="Window_SizeChanged"

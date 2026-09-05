@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using System.Text;
 
 namespace LyricHover.Core
 {
@@ -13,13 +15,13 @@ namespace LyricHover.Core
             var separatorIndex = FindTranslationSeparator(value);
             if (separatorIndex < 0)
             {
-                return LrcParser.Parse(value);
+                return ParseOriginalLyrics(value);
             }
 
             var originalLrc = value.Substring(0, separatorIndex);
             var translationLrc = value.Substring(separatorIndex + TranslationSeparator.Length);
             var translationLanguage = ExtractTranslationLanguage(ref translationLrc);
-            var original = LrcParser.Parse(originalLrc);
+            var original = ParseOriginalLyrics(originalLrc);
             var translation = LrcParser.Parse(translationLrc);
             return new TimedLyrics(
                 original.Lines,
@@ -27,6 +29,16 @@ namespace LyricHover.Core
                 original.Artist,
                 translation.Lines,
                 translationLanguage);
+        }
+
+        public static bool HasWordTiming(string value)
+        {
+            return Parse(value).Lines.Any(line => line.HasWordTiming);
+        }
+
+        private static TimedLyrics ParseOriginalLyrics(string value)
+        {
+            return WordTimedLyricsParser.TryParse(value, out var timed) ? timed : LrcParser.Parse(value);
         }
 
         public static bool HasTranslation(string value)
@@ -96,6 +108,46 @@ namespace LyricHover.Core
             value = value ?? string.Empty;
             var separatorIndex = FindTranslationSeparator(value);
             return separatorIndex < 0 ? value : value.Substring(0, separatorIndex);
+        }
+
+        internal static string GetTranslationLyrics(string value)
+        {
+            value = value ?? string.Empty;
+            var separatorIndex = FindTranslationSeparator(value);
+            if (separatorIndex < 0)
+            {
+                return string.Empty;
+            }
+
+            var translationLrc = value.Substring(separatorIndex + TranslationSeparator.Length);
+            ExtractTranslationLanguage(ref translationLrc);
+            return translationLrc.TrimStart('\r', '\n');
+        }
+
+        internal static string ToLineTimedLrc(string value)
+        {
+            value = value ?? string.Empty;
+            if (!WordTimedLyricsParser.TryParse(value, out var parsed) &&
+                !WordTimedLyricsParser.TryParseLineTimed(value, out parsed))
+            {
+                return value;
+            }
+
+            var builder = new StringBuilder();
+            foreach (var line in parsed.Lines)
+            {
+                var totalMinutes = (int)line.Timestamp.TotalMinutes;
+                builder.Append('[')
+                    .Append(totalMinutes.ToString("00"))
+                    .Append(':')
+                    .Append(line.Timestamp.Seconds.ToString("00"))
+                    .Append('.')
+                    .Append(line.Timestamp.Milliseconds.ToString("000"))
+                    .Append(']')
+                    .AppendLine(line.Text);
+            }
+
+            return builder.ToString().TrimEnd('\r', '\n');
         }
 
         internal static bool IsMeaningfulTranslationText(string value)

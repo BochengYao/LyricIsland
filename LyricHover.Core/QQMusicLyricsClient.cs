@@ -51,18 +51,39 @@ namespace LyricHover.Core
 
                 var playLyricJson = await fetchJsonAsync(BuildPlayLyricRequestUri(song)).ConfigureAwait(false);
                 var package = ExtractPlayLyricsPackage(playLyricJson);
-                if (!string.IsNullOrWhiteSpace(package))
-                {
-                    return package;
-                }
+                // QQ may return an encrypted QRC payload even when the request asks for
+                // unencrypted content. Never cache that binary payload as lyrics: it has no
+                // valid timed lines and must fall back to the legacy LRC endpoint.
+                var hasValidPlayPackage = !string.IsNullOrWhiteSpace(package) &&
+                    LyricsPackageParser.Parse(package).Lines.Count > 0;
 
                 if (string.IsNullOrWhiteSpace(song.Mid))
                 {
-                    return string.Empty;
+                    return hasValidPlayPackage ? package : string.Empty;
                 }
 
                 var lyricJson = await fetchJsonAsync(BuildLyricRequestUri(song.Mid)).ConfigureAwait(false);
-                return ExtractLegacyLyricsPackage(lyricJson);
+                var legacyPackage = ExtractLegacyLyricsPackage(lyricJson);
+                var hasValidLegacyPackage = !string.IsNullOrWhiteSpace(legacyPackage) &&
+                    LyricsPackageParser.Parse(legacyPackage).Lines.Count > 0;
+                if (!hasValidLegacyPackage)
+                {
+                    return hasValidPlayPackage ? package : string.Empty;
+                }
+
+                if (hasValidPlayPackage && LyricsPackageParser.HasWordTiming(package))
+                {
+                    return LyricsPackageParser.HasTranslation(package) || !LyricsPackageParser.HasTranslation(legacyPackage)
+                        ? package
+                        : LyricsPackageParser.CreatePackage(
+                            LyricsPackageParser.GetOriginalLyrics(package),
+                            LyricsPackageParser.GetTranslationLyrics(legacyPackage),
+                            LyricsPackageParser.GetTranslationLanguage(legacyPackage));
+                }
+
+                return LyricsPackageParser.HasTranslation(legacyPackage) || !hasValidPlayPackage
+                    ? legacyPackage
+                    : package;
             }
             catch (HttpRequestException)
             {
@@ -198,15 +219,24 @@ namespace LyricHover.Core
                     return string.Empty;
                 }
 
-                var original = DecodeMaybeBase64(ReadString(data, "lyric"));
+                // PlayLyricInfo puts the encrypted QRC hex in `lyric`; `qrc` is
+                // commonly only the numeric availability flag "1".
+                var original = DecodeQrc(ReadString(data, "lyric"));
+                var qrcPayload = ReadString(data, "qrc");
+                var qrc = qrcPayload == "1" ? string.Empty : DecodeQrc(qrcPayload);
+                if (LyricsPackageParser.HasWordTiming(qrc))
+                {
+                    original = qrc;
+                }
                 if (string.IsNullOrWhiteSpace(original))
                 {
                     return string.Empty;
                 }
 
-                var translated = DecodeMaybeBase64(ReadString(data, "trans"));
+                var translated = DecodeQrc(ReadString(data, "trans"));
                 if (!string.IsNullOrWhiteSpace(translated))
                 {
+                        translated = LyricsPackageParser.ToLineTimedLrc(translated);
                         return LyricsPackageParser.CreatePackage(
                             original,
                             translated,
@@ -232,6 +262,26 @@ namespace LyricHover.Core
             {
                 return WebUtility.HtmlDecode(value);
             }
+        }
+
+        private static string DecodeQrc(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            if (LyricsPackageParser.HasWordTiming(value))
+            {
+                return value;
+            }
+
+            if (QqQrcDecrypter.TryDecrypt(value, out var qrc))
+            {
+                return qrc;
+            }
+
+            return DecodeMaybeBase64(value);
         }
 
         private static string ReadString(JsonElement element, string propertyName)
@@ -343,7 +393,7 @@ namespace LyricHover.Core
                 idProperty + "," +
                 "\"crypt\":0," +
                 "\"lrc_t\":0," +
-                "\"qrc\":0," +
+                "\"qrc\":1," +
                 "\"qrc_t\":0," +
                 "\"trans\":1," +
                 "\"trans_t\":0," +

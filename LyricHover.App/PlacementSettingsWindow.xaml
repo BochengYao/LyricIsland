@@ -222,6 +222,12 @@
                                 <Setter TargetName="SwitchTrack"
                                         Property="BorderBrush"
                                         Value="#0A84FF" />
+                                <Setter TargetName="SwitchKnob"
+                                        Property="RenderTransform">
+                                    <Setter.Value>
+                                        <TranslateTransform X="18" />
+                                    </Setter.Value>
+                                </Setter>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -1148,6 +1154,7 @@
                                 <RowDefinition Height="56" />
                                 <RowDefinition Height="56" />
                                 <RowDefinition Height="56" />
+                                <RowDefinition Height="56" />
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="160" />
@@ -1242,6 +1249,8 @@
                                       Style="{StaticResource SettingsSwitchStyle}"
                                       Checked="ShowTranslationCheckBox_Changed"
                                       Unchecked="ShowTranslationCheckBox_Changed" />
+                            <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource SettingLabel}" Text="逐字追踪" />
+                            <CheckBox x:Name="IslandWordTrackingCheckBox" Grid.Row="4" Grid.Column="1" HorizontalAlignment="Right" Style="{StaticResource SettingsSwitchStyle}" />
                             </Grid>
                             </Border>
 
@@ -1254,6 +1263,7 @@
                                 <RowDefinition Height="56" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="56" />
                                 <RowDefinition Height="56" />
                                 <RowDefinition Height="56" />
                                 <RowDefinition Height="56" />
@@ -1452,6 +1462,8 @@
                                       Style="{StaticResource SettingsSwitchStyle}"
                                       Checked="DockShowTranslationCheckBox_Changed"
                                       Unchecked="DockShowTranslationCheckBox_Changed" />
+                            <TextBlock Grid.Row="7" Grid.Column="0" Style="{StaticResource SettingLabel}" Text="逐字追踪" />
+                            <CheckBox x:Name="DockWordTrackingCheckBox" Grid.Row="7" Grid.Column="1" HorizontalAlignment="Right" Style="{StaticResource SettingsSwitchStyle}" />
                             </Grid>
                             </Border>
                         </Grid>
@@ -2380,7 +2392,7 @@
                                                    Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
                                                    FontSize="12.5"
                                                    TextWrapping="Wrap"
-                                                   Text="降低刷新频率并关闭过渡动画，显著降低CPU与GPU占用，但歌词岛会失去流畅感" />
+                                                   Text="降低能耗，减少不必要的动态效果。" />
                                         <Button x:Name="PowerSavingDetailsToggleButton"
                                                 Grid.Row="2"
                                                 Grid.Column="1"
@@ -2389,7 +2401,7 @@
                                                 Foreground="#FF0A84FF"
                                                 Style="{StaticResource TextLinkButtonStyle}"
                                                 Click="PowerSavingDetailsToggle_Click"
-                                                Content="查看详情" />
+                                                Content="了解节能模式" />
                                         <Button x:Name="PowerSavingDetailsCollapseButton"
                                                 Grid.Row="2"
                                                 Grid.Column="1"
@@ -2398,7 +2410,7 @@
                                                 Foreground="#FF0A84FF"
                                                 Style="{StaticResource TextLinkButtonStyle}"
                                                 Click="PowerSavingDetailsToggle_Click"
-                                                Content="收起详情"
+                                                Content="收起"
                                                 Visibility="Collapsed" />
                                         <StackPanel x:Name="PowerSavingDetailsPanel"
                                                     Grid.Row="3"
@@ -2410,21 +2422,21 @@
                                                    LineHeight="18"
                                                    LineStackingStrategy="BlockLineHeight"
                                                    TextWrapping="Wrap"
-                                                   Text="定时任务降频：歌词岛主刷新从每秒4次降至每秒1次，鼠标接近探测从每秒25次降至每秒2次" />
+                                                   Text="播放时每秒更新一次；空闲时每四秒检查一次。" />
                                         <TextBlock Margin="0,10,0,0"
                                                    Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
                                                    FontSize="12.5"
                                                    LineHeight="18"
                                                    LineStackingStrategy="BlockLineHeight"
                                                    TextWrapping="Wrap"
-                                                   Text="关闭过渡动画：歌词切换的淡入淡出与位移、窗口位置与尺寸动画、模块出现与消失动画、悬停光晕均改为即时切换" />
+                                                   Text="设置使用实体背景，并减少阴影、预览和过渡动画。" />
                                         <TextBlock Margin="0,10,0,0"
                                                    Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
                                                    FontSize="12.5"
                                                    LineHeight="18"
                                                    LineStackingStrategy="BlockLineHeight"
                                                    TextWrapping="Wrap"
-                                                   Text="开启后的影响：歌词岛没有平滑过渡，悬停探测响应略迟钝，但功耗显著降低" />
+                                                   Text="界面会更安静。歌词切换和悬停将直接响应。" />
                                         </StackPanel>
                                     </Grid>
                                 </Border>
@@ -2433,6 +2445,7 @@
                                         Style="{StaticResource SettingsGlassCardStyle}">
                                     <Grid>
                                         <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
                                             <RowDefinition Height="Auto" />
                                             <RowDefinition Height="Auto" />
                                             <RowDefinition Height="Auto" />
@@ -2466,8 +2479,15 @@
                                                    FontSize="12.5"
                                                    TextWrapping="Wrap"
                                                    Text="用于保存已下载歌词，提高播放切换速度" />
+                                        <Button Grid.Row="2"
+                                                Grid.Column="1"
+                                                HorizontalAlignment="Left"
+                                                Margin="0,10,0,0"
+                                                Padding="14,6"
+                                                Content="强制刷新当前歌词"
+                                                Click="RefreshCurrentLyricsButton_Click" />
                                         <Button x:Name="CacheDetailsToggleButton"
-                                                Grid.Row="2"
+                                                Grid.Row="3"
                                                 Grid.Column="1"
                                                 Margin="0,8,0,0"
                                                 FontSize="12.5"
@@ -2476,7 +2496,7 @@
                                                 Click="CacheDetailsToggle_Click"
                                                 Content="查看详情" />
                                         <Button x:Name="CacheDetailsCollapseButton"
-                                                Grid.Row="2"
+                                                Grid.Row="3"
                                                 Grid.Column="1"
                                                 Margin="0,8,0,0"
                                                 FontSize="12.5"
@@ -2486,7 +2506,7 @@
                                                 Content="收起详情"
                                                 Visibility="Collapsed" />
                                         <StackPanel x:Name="CacheDetailsPanel"
-                                                    Grid.Row="3"
+                                                    Grid.Row="4"
                                                     Grid.ColumnSpan="2"
                                                     Margin="0,10,0,0"
                                                     Visibility="Collapsed">
