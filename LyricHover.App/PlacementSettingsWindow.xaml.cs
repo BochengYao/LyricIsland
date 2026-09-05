@@ -3170,7 +3170,6 @@ namespace LyricHover.App
             {
                 case LyricsSourcePreference.LrcLib: return "LRCLIB";
                 case LyricsSourcePreference.QQMusic: return "QQ 音乐";
-                case LyricsSourcePreference.KuGou: return "酷狗";
                 case LyricsSourcePreference.NetEase: return "网易云";
                 default: return string.Empty;
             }

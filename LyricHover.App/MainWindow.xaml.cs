@@ -2351,7 +2351,6 @@ namespace LyricHover.App
             {
                 LyricsSourcePreference.LrcLib,
                 LyricsSourcePreference.QQMusic,
-                LyricsSourcePreference.KuGou,
                 LyricsSourcePreference.NetEase
             };
 
@@ -2370,8 +2369,6 @@ namespace LyricHover.App
                     return new LrcLibClient();
                 case LyricsSourcePreference.QQMusic:
                     return new QQMusicLyricsClient();
-                case LyricsSourcePreference.KuGou:
-                    return new KuGouLyricsClient();
                 case LyricsSourcePreference.NetEase:
                     return new NetEaseLyricsClient();
                 default:

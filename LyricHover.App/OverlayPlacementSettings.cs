@@ -33,7 +33,7 @@ namespace LyricHover.App
         public const int MinNoPlaybackAutoRetractSeconds = 0;
         public const int MaxAutoRetractSeconds = 300;
 
-        public int SchemaVersion { get; set; } = 5;
+        public int SchemaVersion { get; set; } = 6;
 
         public IslandLayoutSettings IslandLayouts { get; set; } = IslandLayoutDefaults.Create();
 
@@ -146,7 +146,7 @@ namespace LyricHover.App
             ExpandedAutoCollapseSeconds = Math.Max(
                 MinAutoRetractSeconds,
                 Math.Min(MaxAutoRetractSeconds, ExpandedAutoCollapseSeconds));
-            SchemaVersion = 5;
+            SchemaVersion = 6;
             OffsetRatio = Math.Max(0, Math.Min(1, OffsetRatio));
             CacheLimitMegabytes = Math.Max(MinCacheLimitMegabytes, Math.Min(MaxCacheLimitMegabytes, CacheLimitMegabytes));
             HoverAuraSize = Math.Max(MinHoverAuraSize, Math.Min(MaxHoverAuraSize, HoverAuraSize));
@@ -215,7 +215,6 @@ namespace LyricHover.App
             {
                 LyricsSourcePreference.LrcLib,
                 LyricsSourcePreference.QQMusic,
-                LyricsSourcePreference.KuGou,
                 LyricsSourcePreference.NetEase
             };
             var first = available.Contains(preferred) ? preferred : LyricsSourcePreference.LrcLib;

@@ -233,14 +233,13 @@ const rawCopyByLocale: Record<"zh" | "en", SiteCopy> = {
     sources: {
       eyebrow: "歌词来自哪里",
       title: "多个来源，\n一次匹配。",
-      body:
-        "支持 LRCLIB、腾讯音乐和网易云音乐等歌词来源，自动为正在播放的歌曲寻找同步歌词与翻译。",
-        facts: [
-          { value: "4+", label: "歌词来源", detail: "多个来源自动匹配，减少歌词缺失。" },
-          { value: "6+", label: "主流播放器", detail: "兼容 Apple Music、QQ 音乐、网易云音乐*等。" },
-          { value: "0", label: "广告打扰", detail: "无广告，使用更纯粹" }
-        ],
-        note: "*受接口限制，网易云音乐暂不支持进度条同步与拖动进度条后的实时歌词同步。"
+      body: "在线歌词由第三方来源按需获取。",
+      facts: [
+        { value: "3+", label: "歌词来源", detail: "多个第三方来源自动匹配，减少歌词缺失。" },
+        { value: "6+", label: "主流播放器", detail: "兼容多种支持 Windows SMTC 的播放器。" },
+        { value: "0", label: "广告打扰", detail: "无广告，使用更纯粹" }
+      ],
+      note: "歌词可用性会因歌曲与第三方来源而异。"
     },
     faq: {
       eyebrow: "常见问题",
@@ -392,15 +391,13 @@ const rawCopyByLocale: Record<"zh" | "en", SiteCopy> = {
     sources: {
       eyebrow: "Where lyrics come from",
       title: "Many sources.\nOne perfect match.",
-      body:
-        "LyricHover searches providers including LRCLIB, Tencent Music, and NetEase Cloud Music to find synced lyrics and available translations for the song playing now.",
-        facts: [
-          { value: "4+", label: "lyric sources", detail: "Multiple sources match automatically, so fewer songs go without lyrics." },
-          { value: "6+", label: "popular players", detail: "Works with Apple Music, QQ Music, NetEase Cloud Music*, and more." },
-          { value: "0", label: "ad interruptions", detail: "No ads. Nothing between you and the lyrics." }
-        ],
-        note:
-          "*Due to API limitations, NetEase Cloud Music currently does not support progress-bar synchronization or real-time lyric synchronization after you drag the progress bar."
+      body: "Online lyrics are fetched on demand from third-party sources.",
+      facts: [
+        { value: "3+", label: "lyric sources", detail: "Multiple third-party sources match automatically, so fewer songs go without lyrics." },
+        { value: "6+", label: "popular players", detail: "Works with multiple Windows SMTC-compatible players." },
+        { value: "0", label: "ad interruptions", detail: "No ads. Nothing between you and the lyrics." }
+      ],
+      note: "Lyric availability varies by song and third-party source."
     },
     faq: {
       eyebrow: "Frequently asked",
@@ -502,7 +499,7 @@ const japaneseSiteCopy: SiteCopy = {
   demo: { eyebrow: "試してみる", title: "マウスを動かして、\n島の応答を見る。", body: "状態とレイアウトを切り替え、LyricHover の表示、収納、マウス回避を体験できます。これはブラウザー上のデモで、プレーヤーには接続しません。", playbackLabel: "再生状態", layoutLabel: "レイアウト", playing: "再生中", idle: "待機", near: "ポインターが近い", layoutA: "横並び", layoutC: "自動収納", nowPlaying: "再生中", track: "Quiet Orbit", artist: "LyricHover", lyric: "街の灯りが画面の端にとどまる", translation: "City lights rest above the screen", statusPlaying: "LyricHover を表示中", statusIdle: "LyricHover を収納しました", statusNear: "マウス回避が有効です", statusA: "A 横並びレイアウトを表示中", statusC: "C 自動収納レイアウトを表示中" },
   modules: { eyebrow: "自分で組み立てる", title: "どう広げるか、\nどう見せるか。", body: "横並びならのびやかに。自動収納なら省スペースに。LyricHover は選んだレイアウトに自然になじみます。", names: ["アルバムアート", "同期歌詞", "再生コントロール", "曲情報", "再生位置", "区切り線"], imageAlt: "3 つのデスクトップ場面での LyricHover レイアウト" },
   compatibility: { title: "プレーヤーが変わっても、\n歌詞はそのまま。", body: "LyricHover は使用中のプレーヤーを自動で認識し、再生状態に合わせます。設定でよく使うプレーヤーを固定すれば、いつでも一貫した体験です。", note: "*インターフェースの制限により、NetEase Cloud Music は現在、シーク後の進捗同期と歌詞の即時同期に対応していません。", players: sharedPlayers },
-  sources: { eyebrow: "歌詞はどこから", title: "複数のソースを、\n一度にマッチ。", body: "LRCLIB、Tencent Music、NetEase Cloud Music などの歌詞ソースを検索し、再生中の曲に同期歌詞と翻訳を見つけます。", facts: [{ value: "4+", label: "歌詞ソース", detail: "複数のソースを自動で照合します。" }, { value: "6+", label: "主要プレーヤー", detail: "Apple Music、QQ Music、NetEase Cloud Music* などに対応。" }, { value: "0", label: "広告の中断", detail: "広告なし。歌詞だけに集中できます。" }], note: "*API の制限により、NetEase Cloud Music は進捗バー同期とシーク後のリアルタイム歌詞同期に対応していません。" },
+  sources: { eyebrow: "歌詞はどこから", title: "複数のソースを、\n一度にマッチ。", body: "オンライン歌詞は、第三者の提供元から必要に応じて取得します。", facts: [{ value: "3+", label: "歌詞ソース", detail: "複数の第三者提供元を自動で照合します。" }, { value: "6+", label: "主要プレーヤー", detail: "Windows SMTC に対応する複数のプレーヤーで動作します。" }, { value: "0", label: "広告の中断", detail: "広告なし。歌詞だけに集中できます。" }], note: "歌詞の提供状況は、曲と第三者提供元によって異なります。" },
   faq: { eyebrow: "よくある質問", title: "始める前に、\n知っておきたいこと。", items: [
     { question: "LyricHover はどの音楽プレーヤーに対応していますか？", answer: "LyricHover は Apple Music、NetEase Cloud Music、QQ Music、Kugou Music、Kuwo Music などに対応します。Windows SMTC メディア制御プロトコルに接続するプレーヤーなら、再生中の曲を通常は自動で認識します。\nNetEase Cloud Music の Windows SMTC 対応は完全ではありません。プレーヤー内で手動シークすると、歌詞の位置がすぐに更新されない場合があります。" },
     { question: "LyricHover は無料ですか？ アカウントやサブスクリプションは必要ですか？", answer: "LyricHover の基本機能はずっと無料です。LyricHover のアカウントもサブスクリプションも必要ありません。\nPro サポートプランに参加すると、開発を支援し、一部の新機能を先行体験できます。コミュニティ特典で有効な提案や不具合を送ると、Pro サポートプランのギフトコードを受け取れる場合があります。\nPro 特典は、LyricHover をダウンロードした Microsoft Store アカウントに紐づきます。" },

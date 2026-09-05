@@ -80,7 +80,6 @@ namespace LyricHover.Tests
             suite.Run("merges fallback translation into word timed lyrics", MergesFallbackTranslationIntoWordTimedLyrics);
             suite.Run("fetches translated lyrics from qq music response", FetchesTranslatedLyricsFromQqMusicResponse);
             suite.Run("ignores timestamp only translation from qq music", IgnoresTimestampOnlyTranslationFromQqMusicResponse);
-            suite.Run("fetches synced lyrics from kugou response", FetchesSyncedLyricsFromKuGouResponse);
             suite.Run("scores lyric candidates by title artist and duration", ScoresLyricCandidatesByTitleArtistAndDuration);
             suite.Run("uses fallback lyrics source when primary source is empty", UsesFallbackLyricsSourceWhenPrimarySourceIsEmpty);
             suite.Run("prefers translated fallback lyrics source", PrefersTranslatedFallbackLyricsSource);
@@ -105,6 +104,7 @@ namespace LyricHover.Tests
             suite.Run("creates independent A and C layouts", CreatesIndependentAAndCLayouts);
             suite.Run("keeps repeated divider modules", KeepsRepeatedDividerModules);
             suite.Run("settings schema contains independent layouts", SettingsSchemaContainsIndependentLayouts);
+            suite.Run("removes retired lyric sources from persisted settings", RemovesRetiredLyricsSourcesFromPersistedSettings);
             suite.Run("tracks normalized settings dirty state", TracksNormalizedSettingsDirtyState);
             suite.Run("layout draft snapshots are isolated", LayoutDraftSnapshotsAreIsolated);
             suite.Run("settings store backs up corrupt JSON", SettingsStoreBacksUpCorruptJson);
@@ -891,32 +891,6 @@ namespace LyricHover.Tests
             Assert.False(LyricsPackageParser.HasTranslation(result));
         }
 
-        static void FetchesSyncedLyricsFromKuGouResponse()
-        {
-            var requests = new List<Uri>();
-            var lyrics = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("[00:01.00]hot song\n[00:02.00]new line"));
-            var client = new KuGouLyricsClient(uri =>
-            {
-                requests.Add(uri);
-                if (uri.AbsolutePath.EndsWith("/search", StringComparison.OrdinalIgnoreCase))
-                {
-                    return "{\"status\":200,\"candidates\":[{\"id\":\"abc\",\"accesskey\":\"key\",\"duration\":188000}]}";
-                }
-
-                return "{\"status\":200,\"content\":\"" + lyrics + "\"}";
-            });
-
-            var lrc = client.GetSyncedLyricsAsync(new TrackIdentity("Hot Song", "Singer", TimeSpan.FromSeconds(188)))
-                .GetAwaiter()
-                .GetResult();
-
-            Assert.Equal("[00:01.00]hot song\n[00:02.00]new line", lrc);
-            Assert.True(requests[0].AbsoluteUri.Contains("keyword=Hot%20Song%20Singer"));
-            Assert.True(requests[0].AbsoluteUri.Contains("duration=188000"));
-            Assert.True(requests[1].AbsoluteUri.Contains("id=abc"));
-            Assert.True(requests[1].AbsoluteUri.Contains("accesskey=key"));
-        }
-
         static void ScoresLyricCandidatesByTitleArtistAndDuration()
         {
             var track = new TrackIdentity("I Knew It, I Knew You", "Taylor Swift", TimeSpan.FromSeconds(178), "I Knew It, I Knew You");
@@ -1189,6 +1163,23 @@ namespace LyricHover.Tests
             var settingsView = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "PlacementSettingsWindow.xaml"));
             Assert.True(settingsView.Contains("IslandWordTrackingCheckBox"));
             Assert.True(settingsView.Contains("DockWordTrackingCheckBox"));
+        }
+
+        static void RemovesRetiredLyricsSourcesFromPersistedSettings()
+        {
+            var retiredSource = (LyricsSourcePreference)3;
+            var settings = new OverlayPlacementSettings
+            {
+                LyricsSource = retiredSource,
+                LyricsSourcePriority = new List<LyricsSourcePreference> { retiredSource }
+            };
+
+            settings.Normalize();
+
+            Assert.Equal(6, settings.SchemaVersion);
+            Assert.Equal(LyricsSourcePreference.LrcLib, settings.LyricsSource);
+            Assert.False(settings.LyricsSourcePriority.Contains(retiredSource));
+            Assert.Equal(3, settings.LyricsSourcePriority.Count);
         }
 
         static void TracksNormalizedSettingsDirtyState()
@@ -4552,7 +4543,7 @@ namespace LyricHover.Tests
         static void TaskbarSettingsSchemaDefaultsToDisabled()
         {
             var source = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "OverlayPlacementSettings.cs"));
-            Assert.True(source.Contains("SchemaVersion { get; set; } = 5"));
+            Assert.True(source.Contains("SchemaVersion { get; set; } = 6"));
             Assert.True(source.Contains("LyricDockEnabled { get; set; }"));
             var settingsView = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "PlacementSettingsWindow.xaml"));
             Assert.True(settingsView.Contains("LyricDockEnabledCheckBox"));
@@ -4562,7 +4553,7 @@ namespace LyricHover.Tests
         {
             var source = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "OverlayPlacementSettings.cs"));
             Assert.True(source.Contains("public bool LyricDockEnabled { get; set; }"));
-            Assert.True(source.Contains("SchemaVersion = 5"));
+            Assert.True(source.Contains("SchemaVersion = 6"));
             Assert.True(source.Contains("originalSchemaVersion"));
             Assert.False(source.Contains("LyricDockEnabled { get; set; } = true"));
         }

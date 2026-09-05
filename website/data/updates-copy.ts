@@ -106,7 +106,7 @@ const rawUpdatesByLocale: Record<"zh" | "en", UpdatesCopy> = {
         body:
           "歌词匹配继续支持多个来源，并允许选择首选源。首选源不适合当前歌曲时，会临时尝试其他来源。",
         items: [
-          "支持 LRCLIB、QQ 音乐、酷狗和网易云等歌词来源。",
+          "在线歌词由第三方来源按需获取。",
           "优先使用歌词库已经提供的同步歌词和中文翻译。",
           "LyricHover不会自行生成机器翻译。",
           "按歌曲维度维护本地 LRU 缓存，减少重复请求。"
@@ -207,7 +207,7 @@ const rawUpdatesByLocale: Record<"zh" | "en", UpdatesCopy> = {
         body:
           "Fallback matching remains available across providers, with an optional preferred source that does not block temporary fallback.",
         items: [
-          "Supports LRCLIB, QQ Music, Kugou Music, NetEase, and fallback matching.",
+          "Online lyrics are fetched on demand from third-party sources.",
           "Prefers synced lyrics and translations already supplied by a provider.",
           "LyricHover does not generate machine translations.",
           "A song-level local LRU cache reduces repeated requests."
