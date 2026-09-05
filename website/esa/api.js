@@ -174,6 +174,31 @@ function sanitizeFeatureContent(value) {
   };
 }
 
+const publicLyricsDisclosure = {
+  zh: "在线歌词由第三方来源按需获取。",
+  zhTw: "在線歌詞由第三方來源按需獲取。",
+  en: "Online lyrics are fetched on demand from third-party sources.",
+  ja: "オンライン歌詞は、第三者の提供元から必要に応じて取得します。"
+};
+
+function redactLyricSourceDetails(items, pattern, disclosure) {
+  const retained = items.filter((item) => !pattern.test(item) && item !== disclosure);
+  return retained.length === items.length ? items : [disclosure, ...retained];
+}
+
+function publicFeatureContent(content) {
+  return {
+    ...content,
+    sections: content.sections.map((section) => ({
+      ...section,
+      items_zh: redactLyricSourceDetails(section.items_zh, /歌词来源|歌词源|LRCLIB/i, publicLyricsDisclosure.zh),
+      items_zh_tw: redactLyricSourceDetails(section.items_zh_tw, /歌[词詞](?:来源|來源|源)|LRCLIB/i, publicLyricsDisclosure.zhTw),
+      items_en: redactLyricSourceDetails(section.items_en, /\blyric (?:source|provider)s?\b|\bLRCLIB\b/i, publicLyricsDisclosure.en),
+      items_ja: redactLyricSourceDetails(section.items_ja, /歌詞(?:ソース|提供元)|\blyric (?:source|provider)s?\b|\bLRCLIB\b/i, publicLyricsDisclosure.ja)
+    }))
+  };
+}
+
 function isFeatureReleaseVersion(value) {
   return value === LEGACY_FEATURE_RELEASE_VERSION || /^v\d+\.\d+\.\d+$/i.test(String(value || "").trim());
 }
@@ -1117,7 +1142,7 @@ async function handlePublic(request) {
 
 async function handleFeatures() {
   try {
-    return json({ content: await getFeatureContent() });
+    return json({ content: publicFeatureContent(await getFeatureContent()) });
   } catch {
     return jsonError("Unable to load feature content", 500);
   }

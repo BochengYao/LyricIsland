@@ -4,8 +4,8 @@
 - Domains: Desktop Lyrics & Player Core, Desktop UI, Public Website Frontend, Quality & Integration
 - Baseline commit: `06a88fd02224566ad3f66990ae4e905a9bfe18b4`
 - Implementation commit: `27ddbb8e1988a106b230fbda233a1fc882eb9ca6`
-- Working state: committed on local `main`; isolated branch creation was attempted twice but permission review timed out
-- Release state: local `publish/current` rebuilt and verified; GitHub push and ESA production synchronization are pending the release step
+- Working state: implementation and release-candidate evidence committed on `main`; public feature-output redaction is pending its release commit
+- Release state: local `publish/current` rebuilt and verified; commits through `a64bb861b79e24beeba369375966ff56406f599f` are on GitHub and the first ESA deployment was observed in production
 
 ## Scope
 
@@ -21,6 +21,7 @@
 - Removed KuGou from the lyrics preference enum, fallback chain, client factory, settings priority, and settings UI.
 - Reserved the retired numeric enum value `3`, bumped the settings schema to `6`, and added a regression test so old persisted KuGou preferences fall back safely instead of selecting another provider.
 - Updated public home/update copy in Chinese, Traditional Chinese (derived), English, and Japanese so lyric-provider copy does not name providers or expose endpoints and request parameters.
+- Added an output-only disclosure filter to public `/api/features`; matching historical provider-detail items are replaced by the locale's generic disclosure while the stored/admin content remains intact.
 - Preserved KuGou player detection, catalog entries, translations, and tests.
 
 ## Verification
@@ -44,6 +45,14 @@
 - The previous current candidate was retained at `publish/archive/v3.2.35-Beta-20260905-171456`.
 - The previously running `publish/current` process was stopped by the authoritative script; `-NoLaunch` left the new candidate stopped.
 - The release-version transaction and serialization fixture passed separately after packaging.
+
+## GitHub and ESA evidence
+
+- GitHub `origin/main` reached `a64bb861b79e24beeba369375966ff56406f599f`; that push triggered an ESA deployment.
+- Production `/`, `/zh-hant/`, `/en/`, and `/ja/` returned HTTP 200 with `Server: ESA`, contained the locale-specific generic disclosure, and did not contain `LRCLIB`.
+- The first production check also found that `/api/features` was still serving historical provider-detail text stored in the database.
+- The follow-up implementation filters only the public feature response. ESA API tests prove that admin saves retain the original provider-detail text while public output substitutes the generic disclosure and retains unrelated items.
+- Final public API production verification and its release commit are recorded in the follow-up release evidence below once synchronization completes.
 
 ## Legal and product boundary
 

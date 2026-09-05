@@ -595,6 +595,26 @@ try {
   managedFeatures.sections[0].title_zh_tw = "後台修改後的標題";
   managedFeatures.sections[0].title_ja = "管理画面で変更した見出し";
   managedFeatures.sections.reverse();
+  managedFeatures.sections[0].items_zh = [
+    "优化多个歌词来源之间的自动回退。",
+    "LRCLIB 按专辑搜索未命中时继续匹配。",
+    "保留按歌曲管理的缓存。"
+  ];
+  managedFeatures.sections[0].items_zh_tw = [
+    "優化多個歌詞來源之間的自動回退。",
+    "LRCLIB 按專輯搜尋未命中時繼續匹配。",
+    "保留按歌曲管理的快取。"
+  ];
+  managedFeatures.sections[0].items_en = [
+    "Optimized fallback between lyric sources.",
+    "LRCLIB falls back from album-scoped search.",
+    "Keeps the per-song cache."
+  ];
+  managedFeatures.sections[0].items_ja = [
+    "歌詞ソース間のフォールバックを改善しました。",
+    "LRCLIB のアルバム検索からフォールバックします。",
+    "曲ごとのキャッシュを保持します。"
+  ];
   const featureSaveResponse = await api.fetch(
     new Request("https://lyric-island.top/api/incentives/admin/features", {
       method: "PUT",
@@ -616,6 +636,30 @@ try {
   assert.equal(featureSaveData.content.sections[4].release_version, "v3.0.0");
   assert.equal(featureSaveData.content.sections[4].major_version, "V3");
   assert.equal(featureSaveData.content.sections[0].id, "feature-06");
+  assert.match(featureSaveData.content.sections[0].items_zh.join(" "), /LRCLIB/, "admin saves must preserve source data");
+
+  const redactedFeaturesResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/features")
+  );
+  assert.equal(redactedFeaturesResponse.status, 200);
+  const redactedFeaturesData = await redactedFeaturesResponse.json();
+  assert.deepEqual(redactedFeaturesData.content.sections[0].items_zh, [
+    "在线歌词由第三方来源按需获取。",
+    "保留按歌曲管理的缓存。"
+  ]);
+  assert.deepEqual(redactedFeaturesData.content.sections[0].items_zh_tw, [
+    "在線歌詞由第三方來源按需獲取。",
+    "保留按歌曲管理的快取。"
+  ]);
+  assert.deepEqual(redactedFeaturesData.content.sections[0].items_en, [
+    "Online lyrics are fetched on demand from third-party sources.",
+    "Keeps the per-song cache."
+  ]);
+  assert.deepEqual(redactedFeaturesData.content.sections[0].items_ja, [
+    "オンライン歌詞は、第三者の提供元から必要に応じて取得します。",
+    "曲ごとのキャッシュを保持します。"
+  ]);
+  assert.doesNotMatch(JSON.stringify(redactedFeaturesData.content), /LRCLIB/);
 
   const proxiedLoginResponse = await api.fetch(
     new Request("https://internal-worker.local/api/incentives/admin/login", {
