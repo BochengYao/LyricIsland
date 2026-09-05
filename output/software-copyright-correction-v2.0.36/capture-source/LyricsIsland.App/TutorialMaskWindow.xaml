@@ -1,0 +1,15 @@
+<Window x:Class="LyricsIsland.App.TutorialMaskWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        Topmost="True"
+        Focusable="False"
+        Opacity="0">
+    <Grid Background="#70F4F5F7"
+          IsHitTestVisible="False" />
+</Window>

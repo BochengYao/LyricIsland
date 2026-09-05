@@ -1,0 +1,228 @@
+import type { Locale } from "@/data/site-copy";
+
+export type UpdatesCopy = {
+  backLabel: string;
+  menuLabel: string;
+  languageName: string;
+  languageHref: string;
+  eyebrow: string;
+  title: string;
+  intro: string;
+  version: string;
+  status: string;
+  summaryLabel: string;
+  summary: string[];
+  sections: Array<{
+    number: string;
+    title: string;
+    body: string;
+    items: string[];
+  }>;
+  downloadsEyebrow: string;
+  downloadsTitle: string;
+  downloadsBody: string;
+  storeLabel: string;
+  footerNote: string;
+};
+
+export const updatesByLocale: Record<Locale, UpdatesCopy> = {
+  zh: {
+    backLabel: "返回官网",
+    menuLabel: "更新页导航",
+    languageName: "EN",
+    languageHref: "/en/updates",
+    eyebrow: "版本说明",
+    title: "歌词岛 v2.0 Beta 1，更新了什么？",
+    intro:
+      "这次更新把歌词岛从固定的单播放器桌面歌词，推进为支持多个 Windows 播放器、可以自由组合模块的顶部音乐抬头显示。",
+    version: "v2.0.0-beta.1",
+    status: "公开测试版",
+    summaryLabel: "本次重点",
+    summary: [
+      "A / C 两套独立模块布局",
+      "Windows SMTC 多播放器选择",
+      "真实歌词岛上的拖放编辑",
+      "歌词源、时间轴和控制能力局部降级"
+    ],
+    sections: [
+      {
+        number: "01",
+        title: "歌词岛变成可组合模块",
+        body:
+          "固定结构被拆分为六种模块。每个布局可以决定显示什么、以什么顺序出现，并保留重复分割线等组合能力。",
+        items: [
+          "首批模块：专辑封面、歌词、播放控制、歌曲信息、播放进度和分割线。",
+          "A 模式采用横向积木布局，适合持续显示完整信息。",
+          "C 模式包含收起与展开两种状态，悬停后显示更多模块。",
+          "A 与 C 布局分别保存，切换模式不会覆盖另一套布局。"
+        ]
+      },
+      {
+        number: "02",
+        title: "直接编辑屏幕上的真实歌词岛",
+        body:
+          "模块编辑不再只发生在抽象预览里。设置窗口提供模块工具箱，可以把模块拖到正在使用的顶部歌词岛。",
+        items: [
+          "拖入、重排和删除模块，并通过 18 px 网格完成吸附。",
+          "分割线可配置宽度、粗细和透明度。",
+          "保存会提交当前布局，取消会恢复编辑前状态。",
+          "缺失封面、歌词、时间轴或控制能力时，只隐藏相关模块。"
+        ]
+      },
+      {
+        number: "03",
+        title: "从单一场景扩展到多播放器",
+        body:
+          "播放器接入统一使用 Windows SMTC，不为每个播放器复制一套私有连接器。所有播放器在官网中保持同等层级。",
+        items: [
+          "当前明确适配 Apple Music、QQ 音乐、网易云音乐、酷狗、Spotify 和酷我。",
+          "默认选择正在播放且最近活跃的媒体会话。",
+          "也可以在设置中锁定指定播放器，避免多个会话之间切换。",
+          "上一曲、播放/暂停和下一曲仅在播放器向 Windows 声明支持时启用。"
+        ]
+      },
+      {
+        number: "04",
+        title: "时间轴不可靠时仍尽量保持同步",
+        body:
+          "不同播放器提供的时间轴质量并不一致。v2.0 Beta 1 把差异收敛在统一策略层，并在必要时使用内部单调时钟继续推进歌词。",
+        items: [
+          "可靠时间轴直接跟随播放器位置。",
+          "时间轴缺失或短暂冻结时，使用内部计时补偿。",
+          "用户拖动播放器进度后重新校准，减少歌词长期漂移。",
+          "播放器能力不足时局部降级，不让整个歌词岛失效。"
+        ]
+      },
+      {
+        number: "05",
+        title: "多歌词源与来源翻译保持一致",
+        body:
+          "歌词匹配继续支持多个来源，并允许选择首选源。首选源不适合当前歌曲时，会临时尝试其他来源。",
+        items: [
+          "支持 LRCLIB、QQ 音乐、酷狗和网易云等歌词来源。",
+          "优先使用歌词库已经提供的同步歌词和中文翻译。",
+          "歌词岛不会自行生成机器翻译。",
+          "按歌曲维度维护本地 LRU 缓存，减少重复请求。"
+        ]
+      },
+      {
+        number: "06",
+        title: "交互与日常使用继续打磨",
+        body:
+          "顶部滑入、空闲收起和鼠标避让仍是产品的核心体验，并与新的模块布局和播放器选择协同工作。",
+        items: [
+          "播放时从屏幕顶部滑入，暂停或停止后完整收回屏幕外。",
+          "鼠标靠近时只降低附近背景和文字的不透明度。",
+          "偏好设置支持浅色、深色和跟随系统主题。",
+          "全局快捷键可以调整或重置歌词时间偏移。"
+        ]
+      }
+    ],
+    downloadsEyebrow: "获取歌词岛",
+    downloadsTitle: "软件下载，只通过 Microsoft Store。",
+    downloadsBody:
+      "Microsoft Store 是唯一软件下载入口；GitHub 仅用于查看 v1.0 与源码。",
+    storeLabel: "打开 Microsoft Store",
+    footerNote: "播放器与音乐服务名称及商标归各自权利人所有。"
+  },
+  en: {
+    backLabel: "Back to the site",
+    menuLabel: "Updates navigation",
+    languageName: "中文",
+    languageHref: "/updates",
+    eyebrow: "Release notes",
+    title: "What changed in Lyric Island v2.0 Beta 1?",
+    intro:
+      "This release moves Lyric Island beyond a fixed single-player companion into a modular top-edge music HUD for multiple Windows players.",
+    version: "v2.0.0-beta.1",
+    status: "Public beta",
+    summaryLabel: "Release focus",
+    summary: [
+      "Independent A and C module layouts",
+      "Multi-player selection through Windows SMTC",
+      "Drag-and-drop editing on the real island",
+      "Graceful fallback for lyrics, timeline, and controls"
+    ],
+    sections: [
+      {
+        number: "01",
+        title: "The island is now modular",
+        body:
+          "The fixed layout has been split into six modules. Each layout controls what appears, in what order, while preserving repeated divider instances.",
+        items: [
+          "First modules: album art, lyrics, playback controls, track info, progress, and divider.",
+          "Mode A uses a horizontal block layout for continuously visible information.",
+          "Mode C has collapsed and expanded states, revealing more modules on hover.",
+          "A and C layouts are stored independently."
+        ]
+      },
+      {
+        number: "02",
+        title: "Edit the real on-screen island",
+        body:
+          "Layout editing is no longer limited to an abstract preview. A module toolbox in Settings can target the actual top-edge island.",
+        items: [
+          "Drag, reorder, and remove modules with 18 px snapping.",
+          "Configure divider width, thickness, and opacity.",
+          "Save commits the edited layout; cancel restores the pre-edit state.",
+          "Missing art, lyrics, timeline, or controls only hides the affected module."
+        ]
+      },
+      {
+        number: "03",
+        title: "From one player scenario to many",
+        body:
+          "Player integration is unified through Windows SMTC instead of copying private connectors. Every named player receives equal visual weight on the site.",
+        items: [
+          "Explicitly adapted for Apple Music, QQ Music, NetEase, KuGou, Spotify, and KuWo.",
+          "By default, the currently playing and most recently active session is selected.",
+          "A specific player can be locked in Settings.",
+          "Previous, play/pause, and next are enabled only when the player advertises support."
+        ]
+      },
+      {
+        number: "04",
+        title: "Lyrics keep moving when timelines are unreliable",
+        body:
+          "Timeline quality varies by player. Beta 1 contains those differences in one policy layer and uses an internal monotonic clock when necessary.",
+        items: [
+          "Reliable timelines follow the player position directly.",
+          "Missing or briefly frozen timelines use internal time compensation.",
+          "Manual seeks trigger recalibration to limit long-term drift.",
+          "Limited player capability degrades locally instead of disabling the whole island."
+        ]
+      },
+      {
+        number: "05",
+        title: "Multiple lyric providers, source translations intact",
+        body:
+          "Fallback matching remains available across providers, with an optional preferred source that does not block temporary fallback.",
+        items: [
+          "Supports LRCLIB, QQ Music, KuGou, NetEase, and fallback matching.",
+          "Prefers synced lyrics and translations already supplied by a provider.",
+          "Lyric Island does not generate machine translations.",
+          "A song-level local LRU cache reduces repeated requests."
+        ]
+      },
+      {
+        number: "06",
+        title: "Daily interaction keeps getting quieter",
+        body:
+          "Top-edge entry, idle retraction, and mouse awareness remain the core experience and now work alongside modular layouts and player selection.",
+        items: [
+          "Slides in while music plays and fully retracts after pause or stop.",
+          "Pointer proximity only lowers opacity around the nearby area.",
+          "Preferences support light, dark, and system theme modes.",
+          "Global shortcuts adjust or reset lyric timing offset."
+        ]
+      }
+    ],
+    downloadsEyebrow: "Get Lyric Island",
+    downloadsTitle: "Download only from Microsoft Store.",
+    downloadsBody:
+      "Microsoft Store is the only software download channel. GitHub is only for viewing v1.0 and the source code.",
+    storeLabel: "Open Microsoft Store",
+    footerNote:
+      "Player and music-service names and trademarks belong to their respective owners."
+  }
+};

@@ -1,0 +1,26 @@
+<UserControl x:Class="LyricsIsland.App.Modules.IslandModuleHost"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Background="Transparent">
+        <StackPanel x:Name="ModulePanel"
+                    Orientation="Horizontal"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    SnapsToDevicePixels="True" />
+        <Canvas IsHitTestVisible="False">
+            <Border x:Name="InsertionIndicator"
+                    Width="44"
+                    Height="42"
+                    VerticalAlignment="Center"
+                    Background="#301677FF"
+                    BorderBrush="#661677FF"
+                    BorderThickness="1.5"
+                    CornerRadius="9"
+                    Visibility="Collapsed">
+                <Border.RenderTransform>
+                    <TranslateTransform x:Name="InsertionIndicatorTransform" />
+                </Border.RenderTransform>
+            </Border>
+        </Canvas>
+    </Grid>
+</UserControl>

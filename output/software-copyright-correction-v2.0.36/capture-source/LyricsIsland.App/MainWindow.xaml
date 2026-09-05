@@ -1,0 +1,55 @@
+<Window x:Class="LyricsIsland.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:modules="clr-namespace:LyricsIsland.App.Modules"
+        Title="Lyric Island 歌词岛"
+        Width="560"
+        Height="60"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Topmost="True"
+        Focusable="True"
+        HorizontalContentAlignment="Stretch"
+        VerticalContentAlignment="Stretch"
+        AllowDrop="True"
+        PreviewDragOver="ModuleHost_DragOver"
+        PreviewDragLeave="ModuleHost_DragLeave"
+        PreviewDrop="ModuleHost_Drop"
+        KeyDown="Window_KeyDown"
+        KeyUp="Window_KeyUp"
+        MouseEnter="Window_MouseEnter"
+        MouseLeave="Window_MouseLeave"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown"
+        MouseLeftButtonUp="Window_MouseLeftButtonUp"
+        MouseMove="Window_MouseMove"
+        SizeChanged="Window_SizeChanged"
+        MouseRightButtonDown="Window_MouseRightButtonDown">
+    <Grid x:Name="IslandShell"
+          Width="560"
+          Height="60"
+          HorizontalAlignment="Left"
+          VerticalAlignment="Top"
+          ClipToBounds="True"
+          SnapsToDevicePixels="True">
+        <Grid.RenderTransform>
+            <TranslateTransform x:Name="IslandShellTranslate" />
+        </Grid.RenderTransform>
+        <Path x:Name="IslandShape"
+              Stretch="None"
+              Data="M 0,0 L 560,0 C 532,0 522,5 516,15 C 512,22 512,34 512,40 C 512,49 504,55 491,55 L 69,55 C 56,55 48,49 48,40 C 48,34 48,22 44,15 C 38,5 28,0 0,0 Z">
+            <Path.Fill>
+                <SolidColorBrush x:Name="IslandBackground" Color="#FF000000" />
+            </Path.Fill>
+        </Path>
+        <modules:IslandModuleHost x:Name="ModuleHost"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Center">
+            <modules:IslandModuleHost.RenderTransform>
+                <TranslateTransform Y="-2.5" />
+            </modules:IslandModuleHost.RenderTransform>
+        </modules:IslandModuleHost>
+    </Grid>
+</Window>
