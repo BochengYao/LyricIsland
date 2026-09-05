@@ -62,6 +62,9 @@
 - Root cause: the first public-output filter covered version-detail `sections` but omitted the overview `summary`; the earlier HTTP checks did not constitute rendered-browser evidence for every visible content region.
 - The correction applies the same locale-aware disclosure replacement to `summary` and re-applies `publicFeatureContent(...)` in `ManagedFeatureContent` immediately before rendering, providing a client-side fail-closed boundary as well as the ESA API boundary.
 - Regression coverage now stores the screenshot-equivalent sentence in the admin summary, proves the admin response retains it, and proves the public summary replaces it with the generic disclosure in all four locales.
+- The correction was committed as `9d333145fa7e9c6f97441d11e21276160f1dc80f` and pushed to `origin/main`.
+- Production `/updates/` returned HTTP 200 with `Server: ESA` and referenced the new `21crtjarm_on0.js` chunk; the downloaded production chunk matched the locally verified build byte-for-byte.
+- Production `/api/features` returned HTTP 200 with `Server: ESA`; its summary and complete public payload contained neither `LRCLIB`, Tencent Music, NetEase Music, nor the screenshot sentence.
 
 ## Legal and product boundary
 
