@@ -1,5 +1,6 @@
 import defaultContentJson from "@/data/feature-content-default.json";
 import type { FeatureContent, FeatureContentSection } from "@/data/incentives-types";
+import type { Locale } from "@/data/site-copy";
 
 export const defaultFeatureContent = defaultContentJson as FeatureContent;
 
@@ -77,8 +78,13 @@ export function sanitizeFeatureContent(value: unknown): FeatureContent {
       };
     })
     .filter((item) => item.title_zh || item.title_en);
+  const sourceVersions = Array.isArray(source.versions) ? source.versions : [];
+  const versions = [...sourceVersions, ...sections.map((section) => section.release_version)]
+    .map((value) => cleanText(value, 40))
+    .filter((value): value is string => Boolean(value) && value !== LEGACY_FEATURE_RELEASE_VERSION && FEATURE_RELEASE_VERSION_PATTERN.test(value));
 
   return {
+    versions: [...new Set(versions)],
     summary: {
       label_zh: summaryLabelZh,
       label_en: summaryLabelEn,
@@ -100,20 +106,33 @@ function normalizeEnglishPlayerNames(value: string) {
     .replace(/\bKuwo(?:\s+Music)?\b/gi, "Kuwo Music");
 }
 
-export function localizedFeatureContent(content: FeatureContent, locale: "zh" | "en") {
-  const suffix = locale === "zh" ? "zh" : "en";
+export function localizedFeatureContent(content: FeatureContent, locale: Locale) {
   const localizeText = locale === "en" ? normalizeEnglishPlayerNames : (value: string) => value;
+  const pick = (zh: string, zhTw: string, en: string, ja: string) => locale === "zh"
+    ? zh
+    : locale === "zhHant"
+      ? (zhTw || zh)
+      : locale === "ja"
+        ? (ja || en || zh)
+        : (en || zh);
+  const pickItems = (zh: string[], zhTw: string[], en: string[], ja: string[]) => locale === "zh"
+    ? zh
+    : locale === "zhHant"
+      ? (zhTw.length ? zhTw : zh)
+      : locale === "ja"
+        ? (ja.length ? ja : en.length ? en : zh)
+        : (en.length ? en : zh);
   return {
-    summaryLabel: localizeText(content.summary[`label_${suffix}`]),
-    summary: content.summary[`items_${suffix}`].map(localizeText),
+    summaryLabel: localizeText(pick(content.summary.label_zh, content.summary.label_zh_tw, content.summary.label_en, content.summary.label_ja)),
+    summary: pickItems(content.summary.items_zh, content.summary.items_zh_tw, content.summary.items_en, content.summary.items_ja).map(localizeText),
     summaryVisible: content.summary.visible,
     sections: content.sections
       .filter((section) => section.visible)
       .map((section, index) => ({
         number: String(index + 1).padStart(2, "0"),
-        title: localizeText(section[`title_${suffix}`]),
-        body: localizeText(section[`body_${suffix}`]),
-        items: section[`items_${suffix}`].map(localizeText)
+        title: localizeText(pick(section.title_zh, section.title_zh_tw, section.title_en, section.title_ja)),
+        body: localizeText(pick(section.body_zh, section.body_zh_tw, section.body_en, section.body_ja)),
+        items: pickItems(section.items_zh, section.items_zh_tw, section.items_en, section.items_ja).map(localizeText)
       }))
   };
 }
