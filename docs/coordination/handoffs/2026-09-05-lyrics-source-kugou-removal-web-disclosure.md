@@ -2,8 +2,10 @@
 
 - Date: 2026-09-05
 - Domains: Desktop Lyrics & Player Core, Desktop UI, Public Website Frontend, Quality & Integration
-- Working state: uncommitted changes on `main`; isolated branch creation was attempted twice but permission review timed out
-- Release state: validated locally; not committed, pushed, packaged, uploaded, or published
+- Baseline commit: `06a88fd02224566ad3f66990ae4e905a9bfe18b4`
+- Implementation commit: `27ddbb8e1988a106b230fbda233a1fc882eb9ca6`
+- Working state: committed on local `main`; isolated branch creation was attempted twice but permission review timed out
+- Release state: local `publish/current` rebuilt and verified; GitHub push and ESA production synchronization are pending the release step
 
 ## Scope
 
@@ -31,6 +33,18 @@
 - `git diff --check`: passed.
 - Exact search found no remaining `KuGouLyricsClient`, `LyricsSourcePreference.KuGou`, `lyrics.kugou.com`, or KuGou lyric-response test references.
 
+## Local release candidate
+
+- Command: `publish.ps1 -KeepVersion -NoLaunch` after a successful `win-x64` restore.
+- Result: `publish/current`, framework-dependent `win-x64`, `3.2.35-Beta`; 8 files totaling 24,532,283 bytes.
+- `LyricHover.App.dll` SHA-256: `D371B6686DCAFD11EC7C2A7171A16EE0A95093D7C58008FD745C9BB15D6CB847`.
+- `LyricHover.App.exe` SHA-256: `1FF4A9D1DE3FC104F52BFD3A5C78237CBDAF02B71E679D994C37691BEEB173F7`.
+- `LyricHover.Core.dll` SHA-256: `70038808857EB89C923447E0BBD45B9D19F21FC0ED8FAC339F4E33874767DF8F`.
+- Published App DLL hash matches the same-build `win-x64` Release output; `.deps.json` and `.runtimeconfig.json` are nonempty; staging is absent.
+- The previous current candidate was retained at `publish/archive/v3.2.35-Beta-20260905-171456`.
+- The previously running `publish/current` process was stopped by the authoritative script; `-NoLaunch` left the new candidate stopped.
+- The release-version transaction and serialization fixture passed separately after packaging.
+
 ## Legal and product boundary
 
 - This change removes one provider integration and reduces public technical disclosure; it does not establish that the remaining third-party lyric use is licensed.
@@ -39,5 +53,5 @@
 
 ## Suggested next owner
 
-- Quality & Integration: review the working diff and move it to a clean feature branch before commit.
+- Release, GitHub & Store: push local `main`, wait for ESA synchronization, and verify the production response and expected public copy.
 - Legal & Evidence: retain provider terms or written permission for each remaining online lyric source before external release.
