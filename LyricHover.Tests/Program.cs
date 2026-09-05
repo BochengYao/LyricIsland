@@ -190,6 +190,7 @@ namespace LyricHover.Tests
             suite.Run("island background width reserves shaped edge padding", IslandBackgroundWidthReservesShapedEdgePadding);
             suite.Run("playback controls use media glyphs", PlaybackControlsUseMediaGlyphs);
             suite.Run("playback controls are not consumed by layout drag", PlaybackControlsAreNotConsumedByLayoutDrag);
+            suite.Run("temporary interaction refresh is limited to lyrics modules", TemporaryInteractionRefreshIsLimitedToLyricsModules);
             suite.Run("configured key temporarily suppresses hover transparency", ConfiguredKeyTemporarilySuppressesHoverTransparency);
             suite.Run("snaps module within eighteen pixels", SnapsModuleWithinEighteenPixels);
             suite.Run("moves module after crossing midpoint", MovesModuleAfterCrossingMidpoint);
@@ -2699,6 +2700,8 @@ namespace LyricHover.Tests
             Assert.True(controlsSource.Contains("PlayPauseButton.IsEnabled = session != null"));
             Assert.True(controlsSource.Contains("PlayPauseButton.IsHitTestVisible = value"));
             Assert.True(hostSource.Contains("controls.SetInteractionEnabled(!LayoutEditingEnabled)"));
+            Assert.True(controlsSource.Contains("e.Handled = true"));
+            Assert.True(controlsSource.Contains("ReferenceEquals(button, PlayPauseButton)"));
             Assert.False(windowSource.Contains("SetPlaybackInteractionEnabled("));
             Assert.True(windowSource.Contains("播放控制按钮可直接点击"));
             Assert.True(windowSource.Contains("IsInteractiveMouseSource(InputHitTest(localPoint) as DependencyObject)"));
@@ -2708,6 +2711,59 @@ namespace LyricHover.Tests
             Assert.False(playPauseButton.IsHitTestVisible);
             host.LayoutEditingEnabled = false;
             Assert.True(playPauseButton.IsHitTestVisible);
+        }
+
+        static void TemporaryInteractionRefreshIsLimitedToLyricsModules()
+        {
+            var root = GetSolutionRoot();
+            var windowSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
+            var host = new LyricHover.App.Modules.IslandModuleHost();
+            var profile = new IslandLayoutProfile();
+            profile.Modules.Add(new IslandModuleInstance(IslandModuleType.Lyrics));
+            profile.Modules.Add(new IslandModuleInstance(IslandModuleType.PlaybackControls));
+            host.ApplyLayout(profile);
+            var modulePanelField = typeof(LyricHover.App.Modules.IslandModuleHost).GetField(
+                "ModulePanel",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            var modulePanel = modulePanelField?.GetValue(host) as System.Windows.Controls.StackPanel;
+            var lyrics = modulePanel?.Children.OfType<LyricHover.App.Modules.LyricsModuleView>().Single();
+            var controls = modulePanel?.Children.OfType<LyricHover.App.Modules.PlaybackControlsModuleView>().Single();
+            var playPauseButton = System.Windows.LogicalTreeHelper.FindLogicalNode(controls, "PlayPauseButton")
+                as System.Windows.Controls.Button;
+            var playPauseRequests = 0;
+            controls.AnimationsEnabled = false;
+            controls.PlayPauseRequested += (sender, args) => playPauseRequests++;
+            playPauseButton.IsEnabled = true;
+            var mouseUp = new System.Windows.Input.MouseButtonEventArgs(
+                System.Windows.Input.Mouse.PrimaryDevice,
+                0,
+                System.Windows.Input.MouseButton.Left)
+            {
+                RoutedEvent = System.Windows.UIElement.PreviewMouseLeftButtonUpEvent
+            };
+            var previewMouseUp = typeof(LyricHover.App.Modules.PlaybackControlsModuleView).GetMethod(
+                "Button_PreviewMouseLeftButtonUp",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            previewMouseUp.Invoke(controls, new object[] { playPauseButton, mouseUp });
+            var click = typeof(LyricHover.App.Modules.PlaybackControlsModuleView).GetMethod(
+                "PlayPauseButton_Click",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            click.Invoke(controls, new object[]
+            {
+                playPauseButton,
+                new System.Windows.RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent)
+            });
+
+            Assert.True(windowSource.Contains("IsTemporaryInteractionHeld() &&"));
+            Assert.True(windowSource.Contains("ModuleHost.IsMouseSourceOfType(source, IslandModuleType.Lyrics)"));
+            Assert.True(modulePanel != null);
+            Assert.True(lyrics != null);
+            Assert.True(playPauseButton != null);
+            Assert.True(host.IsMouseSourceOfType(lyrics, IslandModuleType.Lyrics));
+            Assert.False(host.IsMouseSourceOfType(playPauseButton, IslandModuleType.Lyrics));
+            Assert.True(host.IsMouseSourceOfType(playPauseButton, IslandModuleType.PlaybackControls));
+            Assert.True(mouseUp.Handled);
+            Assert.Equal(1, playPauseRequests);
         }
 
         static void ConfiguredKeyTemporarilySuppressesHoverTransparency()

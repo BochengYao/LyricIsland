@@ -172,6 +172,30 @@ namespace LyricHover.App.Modules
             return ModulePanel.DesiredSize;
         }
 
+        public bool IsMouseSourceOfType(DependencyObject source, IslandModuleType type)
+        {
+            while (source != null && !ReferenceEquals(source, this))
+            {
+                var element = source as FrameworkElement;
+                var instanceId = element?.Tag as string;
+                IslandModuleType sourceType;
+                if (!string.IsNullOrWhiteSpace(instanceId) &&
+                    moduleTypesById.TryGetValue(instanceId, out sourceType))
+                {
+                    return sourceType == type;
+                }
+
+                var frameworkElement = source as FrameworkElement;
+                var frameworkContentElement = source as FrameworkContentElement;
+                source = frameworkElement?.Parent ??
+                    frameworkElement?.TemplatedParent ??
+                    frameworkContentElement?.Parent ??
+                    VisualTreeHelper.GetParent(source);
+            }
+
+            return false;
+        }
+
         private void UpdateModuleDragCursors()
         {
             var cursor = LayoutEditingEnabled ? LayoutDragCursors.OpenHand : Cursors.Arrow;

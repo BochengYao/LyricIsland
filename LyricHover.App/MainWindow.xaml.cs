@@ -2796,7 +2796,14 @@ namespace LyricHover.App
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (IsTemporaryInteractionHeld())
+            var source = e.OriginalSource as DependencyObject;
+            if (IsInteractiveMouseSource(source))
+            {
+                return;
+            }
+
+            if (IsTemporaryInteractionHeld() &&
+                ModuleHost.IsMouseSourceOfType(source, IslandModuleType.Lyrics))
             {
                 RefreshCurrentTrackLyrics(true);
                 e.Handled = true;
@@ -2808,12 +2815,7 @@ namespace LyricHover.App
                 return;
             }
 
-            if (layoutEditing && IsModuleHostMouseSource(e.OriginalSource as DependencyObject))
-            {
-                return;
-            }
-
-            if (IsInteractiveMouseSource(e.OriginalSource as DependencyObject))
+            if (layoutEditing && IsModuleHostMouseSource(source))
             {
                 return;
             }
