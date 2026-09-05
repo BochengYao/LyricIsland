@@ -164,7 +164,7 @@ namespace LyricHover.Tests
             suite.Run("about file and MSIX versions share the V3 four segment mapping", AboutFileAndMsixVersionsShareTheV3FourSegmentMapping);
             suite.Run("store package reuses the reserved product identity", StorePackageReusesReservedProductIdentity);
             suite.Run("tutorial waits for required user actions", TutorialWaitsForRequiredUserActions);
-            suite.Run("tutorial rejects control click without temporary interaction", TutorialRejectsControlClickWithoutTemporaryInteraction);
+            suite.Run("tutorial accepts direct playback control clicks", TutorialAcceptsDirectPlaybackControlClicks);
             suite.Run("first launch tutorial is persisted and can be replayed", FirstLaunchTutorialIsPersistedAndCanBeReplayed);
             suite.Run("tutorial overlay is dimmer and cannot cover interactions", TutorialOverlayIsDimmerAndCannotCoverInteractions);
             suite.Run("layout rebuild replays the latest island content", LayoutRebuildReplaysLatestIslandContent);
@@ -2687,12 +2687,27 @@ namespace LyricHover.Tests
             var hostSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Modules", "IslandModuleHost.xaml.cs"));
             var windowSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
             var controlsSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Modules", "PlaybackControlsModuleView.xaml.cs"));
+            var host = new LyricHover.App.Modules.IslandModuleHost();
+            var profile = new IslandLayoutProfile();
+            profile.Modules.Add(new IslandModuleInstance(IslandModuleType.PlaybackControls));
+            host.ApplyLayout(profile);
+            var playPauseButton = System.Windows.LogicalTreeHelper.FindLogicalNode(host, "PlayPauseButton")
+                as System.Windows.Controls.Button;
 
             Assert.True(hostSource.Contains("!LayoutEditingEnabled"));
             Assert.True(windowSource.Contains("IsInteractiveMouseSource"));
             Assert.True(controlsSource.Contains("PlayPauseButton.IsEnabled = session != null"));
             Assert.True(controlsSource.Contains("PlayPauseButton.IsHitTestVisible = value"));
-            Assert.True(windowSource.Contains("SetPlaybackInteractionEnabled(suppressHoverTransparency)"));
+            Assert.True(hostSource.Contains("controls.SetInteractionEnabled(!LayoutEditingEnabled)"));
+            Assert.False(windowSource.Contains("SetPlaybackInteractionEnabled("));
+            Assert.True(windowSource.Contains("播放控制按钮可直接点击"));
+            Assert.True(windowSource.Contains("IsInteractiveMouseSource(InputHitTest(localPoint) as DependencyObject)"));
+            Assert.True(playPauseButton != null);
+            Assert.True(playPauseButton.IsHitTestVisible);
+            host.LayoutEditingEnabled = true;
+            Assert.False(playPauseButton.IsHitTestVisible);
+            host.LayoutEditingEnabled = false;
+            Assert.True(playPauseButton.IsHitTestVisible);
         }
 
         static void ConfiguredKeyTemporarilySuppressesHoverTransparency()
@@ -3931,7 +3946,7 @@ namespace LyricHover.Tests
             Assert.Equal(TutorialStep.ShowingLayouts, tutorial.Step);
         }
 
-        static void TutorialRejectsControlClickWithoutTemporaryInteraction()
+        static void TutorialAcceptsDirectPlaybackControlClicks()
         {
             var tutorial = new TutorialFlowController();
             tutorial.Start();
@@ -3939,9 +3954,12 @@ namespace LyricHover.Tests
             tutorial.SettingsOpened();
             tutorial.BeginControlClickPractice();
 
-            Assert.False(tutorial.ControlClicked(false));
-            Assert.Equal(TutorialStep.AwaitingControlClick, tutorial.Step);
+            var root = GetSolutionRoot();
+            var mainSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
+
             Assert.True(tutorial.ControlClicked(true));
+            Assert.True(mainSource.Contains("tutorialFlow.ControlClicked(temporaryInteractionHeld: true)"));
+            Assert.False(mainSource.Contains("IsTutorialTemporaryInteractionHeld"));
         }
 
         static void FirstLaunchTutorialIsPersistedAndCanBeReplayed()

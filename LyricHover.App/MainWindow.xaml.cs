@@ -966,7 +966,6 @@ namespace LyricHover.App
             }
             UpdateInteractionStateLayout();
             var suppressHoverTransparency = IsHoverTransparencySuppressed();
-            ModuleHost.SetPlaybackInteractionEnabled(suppressHoverTransparency);
             if (!islandVisible || !IsVisible)
             {
                 HideHoverTransparency();
@@ -988,6 +987,12 @@ namespace LyricHover.App
             UpdateInteractionStateLayout();
             var cursor = Forms.Cursor.Position;
             var localPoint = PointFromScreen(new Point(cursor.X, cursor.Y));
+            if (IsInteractiveMouseSource(InputHitTest(localPoint) as DependencyObject))
+            {
+                HideHoverTransparency();
+                return;
+            }
+
             var detectionRange = GetHoverDetectionRange();
             var distance = GetDistanceToIsland(localPoint);
             if (distance >= detectionRange)
@@ -1674,7 +1679,9 @@ namespace LyricHover.App
 
         private Task PlayPauseRequested()
         {
-            if (tutorialFlow.ControlClicked(IsTutorialTemporaryInteractionHeld()))
+            // Reaching this handler already proves an intentional click on the playback
+            // control surface, so the tutorial must not require an additional hotkey.
+            if (tutorialFlow.ControlClicked(temporaryInteractionHeld: true))
             {
                 _ = ContinueTutorialAfterControlAsync(tutorialCancellation?.Token ?? CancellationToken.None);
             }
@@ -2110,7 +2117,6 @@ namespace LyricHover.App
             }
 
             settingsWindowHoverSuppressed = value;
-            ModuleHost.SetPlaybackInteractionEnabled(IsHoverTransparencySuppressed());
             if (value)
             {
                 HideHoverTransparency();
@@ -2468,7 +2474,6 @@ namespace LyricHover.App
                 SetTutorialText("接下来演示鼠标避让", "请把鼠标移动到岛上");
                 await DelayTutorialAsync(1000, cancellationToken);
                 tutorialHoverSuppressed = false;
-                ModuleHost.SetPlaybackInteractionEnabled(IsHoverTransparencySuppressed());
                 UpdateHoverProximity();
                 tutorialHoverEnteredCompletion = new TaskCompletionSource<bool>();
                 await WaitForTutorialHoverAsync(cancellationToken);
@@ -2489,7 +2494,7 @@ namespace LyricHover.App
                 SetTutorialText("新版本增加了音乐控制功能", string.Empty);
                 await DelayTutorialAsync(2200, cancellationToken);
 
-                SetTutorialText("按下" + GetTemporaryInteractionGesture() + "可暂时关闭鼠标避让来点击控制按钮", "来试试看！");
+                SetTutorialText("播放控制按钮可直接点击", "来试试看！");
                 tutorialFlow.BeginControlClickPractice();
             }
             catch (OperationCanceledException)
@@ -2635,7 +2640,6 @@ namespace LyricHover.App
                 tutorialAccentText = string.Empty;
                 tutorialHoverSuppressed = false;
                 tutorialHoverEnteredCompletion = null;
-                ModuleHost.SetPlaybackInteractionEnabled(IsHoverTransparencySuppressed());
                 ApplyInteractionState(interactionController.GetState(GetInteractionClock()), true);
                 RenderCurrentModuleState();
                 if (refresh && IsLoaded)
@@ -2720,11 +2724,6 @@ namespace LyricHover.App
             tutorialAccentText = accent ?? string.Empty;
             currentLineDuration = TimeSpan.FromSeconds(5);
             RenderCurrentModuleState();
-        }
-
-        private bool IsTutorialTemporaryInteractionHeld()
-        {
-            return IsTemporaryInteractionHeld();
         }
 
         private bool TryExitTutorial()
@@ -2828,7 +2827,14 @@ namespace LyricHover.App
             tutorialHoverEnteredCompletion?.TrySetResult(true);
             if (islandVisible)
             {
-                ShowHoverTransparency(e.GetPosition(IslandShell));
+                if (IsInteractiveMouseSource(e.OriginalSource as DependencyObject))
+                {
+                    HideHoverTransparency();
+                }
+                else
+                {
+                    ShowHoverTransparency(e.GetPosition(IslandShell));
+                }
             }
 
             if (horizontalDragPending && !horizontalDragActive)
@@ -2957,7 +2963,6 @@ namespace LyricHover.App
 
             if (IsHoverTransparencySuppressed())
             {
-                ModuleHost.SetPlaybackInteractionEnabled(true);
                 HideHoverTransparency();
                 e.Handled = true;
                 return;
@@ -2967,7 +2972,6 @@ namespace LyricHover.App
 
         private void Window_KeyUp(object sender, KeyEventArgs e)
         {
-            ModuleHost.SetPlaybackInteractionEnabled(IsHoverTransparencySuppressed());
             UpdateHoverProximity();
         }
     }

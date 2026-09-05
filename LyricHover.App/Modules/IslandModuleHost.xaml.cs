@@ -17,7 +17,6 @@ namespace LyricHover.App.Modules
     public partial class IslandModuleHost : UserControl
     {
         private string layoutSignature = string.Empty;
-        private bool playbackInteractionEnabled;
         private IslandRenderState lastRenderState = new IslandRenderState();
         private int insertionPreviewIndex = -1;
         private double insertionPreviewWidth = -1;
@@ -67,6 +66,7 @@ namespace LyricHover.App.Modules
 
                 layoutEditingEnabled = value;
                 UpdateModuleDragCursors();
+                UpdatePlaybackControlInteraction();
             }
         }
 
@@ -127,7 +127,7 @@ namespace LyricHover.App.Modules
                     case IslandModuleType.PlaybackControls:
                         var controls = new PlaybackControlsModuleView();
                         controls.AnimationsEnabled = animationsEnabled;
-                        controls.SetInteractionEnabled(playbackInteractionEnabled);
+                        controls.SetInteractionEnabled(!LayoutEditingEnabled);
                         controls.PreviousRequested += (sender, args) => PreviousRequested?.Invoke(this, EventArgs.Empty);
                         controls.PlayPauseRequested += (sender, args) => PlayPauseRequested?.Invoke(this, EventArgs.Empty);
                         controls.NextRequested += (sender, args) => NextRequested?.Invoke(this, EventArgs.Empty);
@@ -181,6 +181,14 @@ namespace LyricHover.App.Modules
             }
         }
 
+        private void UpdatePlaybackControlInteraction()
+        {
+            foreach (var controls in ModulePanel.Children.OfType<PlaybackControlsModuleView>())
+            {
+                controls.SetInteractionEnabled(!LayoutEditingEnabled);
+            }
+        }
+
         private static void ApplyModuleSettings(FrameworkElement view, IslandModuleInstance module)
         {
             var lyrics = view as LyricsModuleView;
@@ -197,20 +205,6 @@ namespace LyricHover.App.Modules
             foreach (var child in ModulePanel.Children.OfType<IIslandModuleView>())
             {
                 child.Update(state);
-            }
-        }
-
-        public void SetPlaybackInteractionEnabled(bool value)
-        {
-            if (playbackInteractionEnabled == value)
-            {
-                return;
-            }
-
-            playbackInteractionEnabled = value;
-            foreach (var controls in ModulePanel.Children.OfType<PlaybackControlsModuleView>())
-            {
-                controls.SetInteractionEnabled(value);
             }
         }
 
