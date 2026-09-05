@@ -189,6 +189,13 @@ function redactLyricSourceDetails(items, pattern, disclosure) {
 function publicFeatureContent(content) {
   return {
     ...content,
+    summary: {
+      ...content.summary,
+      items_zh: redactLyricSourceDetails(content.summary.items_zh, /歌词来源|歌词源|LRCLIB/i, publicLyricsDisclosure.zh),
+      items_zh_tw: redactLyricSourceDetails(content.summary.items_zh_tw, /歌[词詞](?:来源|來源|源)|LRCLIB/i, publicLyricsDisclosure.zhTw),
+      items_en: redactLyricSourceDetails(content.summary.items_en, /\blyric (?:source|provider)s?\b|\bLRCLIB\b/i, publicLyricsDisclosure.en),
+      items_ja: redactLyricSourceDetails(content.summary.items_ja, /歌詞(?:ソース|提供元)|\blyric (?:source|provider)s?\b|\bLRCLIB\b/i, publicLyricsDisclosure.ja)
+    },
     sections: content.sections.map((section) => ({
       ...section,
       items_zh: redactLyricSourceDetails(section.items_zh, /歌词来源|歌词源|LRCLIB/i, publicLyricsDisclosure.zh),

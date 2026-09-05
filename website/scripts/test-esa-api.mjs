@@ -595,6 +595,22 @@ try {
   managedFeatures.sections[0].title_zh_tw = "後台修改後的標題";
   managedFeatures.sections[0].title_ja = "管理画面で変更した見出し";
   managedFeatures.sections.reverse();
+  managedFeatures.summary.items_zh = [
+    "支持 LRCLIB、腾讯音乐和网易云音乐等歌词来源，自动为正在播放的歌曲寻找同步歌词与翻译。",
+    "保留播放器兼容性摘要。"
+  ];
+  managedFeatures.summary.items_zh_tw = [
+    "支援 LRCLIB、騰訊音樂和網易雲音樂等歌詞來源。",
+    "保留播放器相容性摘要。"
+  ];
+  managedFeatures.summary.items_en = [
+    "Supports LRCLIB and other lyric providers.",
+    "Keeps the player compatibility summary."
+  ];
+  managedFeatures.summary.items_ja = [
+    "LRCLIB などの歌詞ソースに対応します。",
+    "プレーヤー互換性の概要を保持します。"
+  ];
   managedFeatures.sections[0].items_zh = [
     "优化多个歌词来源之间的自动回退。",
     "LRCLIB 按专辑搜索未命中时继续匹配。",
@@ -636,6 +652,7 @@ try {
   assert.equal(featureSaveData.content.sections[4].release_version, "v3.0.0");
   assert.equal(featureSaveData.content.sections[4].major_version, "V3");
   assert.equal(featureSaveData.content.sections[0].id, "feature-06");
+  assert.match(featureSaveData.content.summary.items_zh.join(" "), /LRCLIB/, "admin summary saves must preserve source data");
   assert.match(featureSaveData.content.sections[0].items_zh.join(" "), /LRCLIB/, "admin saves must preserve source data");
 
   const redactedFeaturesResponse = await api.fetch(
@@ -643,6 +660,22 @@ try {
   );
   assert.equal(redactedFeaturesResponse.status, 200);
   const redactedFeaturesData = await redactedFeaturesResponse.json();
+  assert.deepEqual(redactedFeaturesData.content.summary.items_zh, [
+    "在线歌词由第三方来源按需获取。",
+    "保留播放器兼容性摘要。"
+  ]);
+  assert.deepEqual(redactedFeaturesData.content.summary.items_zh_tw, [
+    "在線歌詞由第三方來源按需獲取。",
+    "保留播放器相容性摘要。"
+  ]);
+  assert.deepEqual(redactedFeaturesData.content.summary.items_en, [
+    "Online lyrics are fetched on demand from third-party sources.",
+    "Keeps the player compatibility summary."
+  ]);
+  assert.deepEqual(redactedFeaturesData.content.summary.items_ja, [
+    "オンライン歌詞は、第三者の提供元から必要に応じて取得します。",
+    "プレーヤー互換性の概要を保持します。"
+  ]);
   assert.deepEqual(redactedFeaturesData.content.sections[0].items_zh, [
     "在线歌词由第三方来源按需获取。",
     "保留按歌曲管理的缓存。"

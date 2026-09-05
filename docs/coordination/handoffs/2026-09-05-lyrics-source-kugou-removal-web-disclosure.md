@@ -56,6 +56,13 @@
 - After that deployment, `/`, `/zh-hant/`, `/en/`, `/ja/`, and `/api/features` all returned HTTP 200 with `Server: ESA`; every locale page contained its expected generic disclosure, and none of those responses contained `LRCLIB`.
 - Production `/api/features` retained the KuGou/Kugou Music player-compatibility wording, confirming that only lyric-provider detail was redacted.
 
+## Follow-up correction
+
+- A user screenshot showed that the updates overview could still display `LRCLIB`, Tencent Music, and NetEase Music as lyric providers.
+- Root cause: the first public-output filter covered version-detail `sections` but omitted the overview `summary`; the earlier HTTP checks did not constitute rendered-browser evidence for every visible content region.
+- The correction applies the same locale-aware disclosure replacement to `summary` and re-applies `publicFeatureContent(...)` in `ManagedFeatureContent` immediately before rendering, providing a client-side fail-closed boundary as well as the ESA API boundary.
+- Regression coverage now stores the screenshot-equivalent sentence in the admin summary, proves the admin response retains it, and proves the public summary replaces it with the generic disclosure in all four locales.
+
 ## Legal and product boundary
 
 - This change removes one provider integration and reduces public technical disclosure; it does not establish that the remaining third-party lyric use is licensed.

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Eyebrow } from "@/components/SitePage";
-import { localizedFeatureContent, sanitizeFeatureContent } from "@/data/feature-content";
+import { localizedFeatureContent, publicFeatureContent, sanitizeFeatureContent } from "@/data/feature-content";
 import type { FeatureContent, FeatureContentSection } from "@/data/incentives-types";
 import type { Locale } from "@/data/site-copy";
 import { preloadClientJson } from "@/lib/client-data";
@@ -207,7 +207,7 @@ export function ManagedFeatureContent({
 
     request?.then((data) => {
       if (!active || !data.content) return;
-      const nextContent = sanitizeFeatureContent(data.content);
+      const nextContent = publicFeatureContent(sanitizeFeatureContent(data.content));
       const versions = availableVersions(nextContent);
       setContent(nextContent);
       setSelectedKey((current) => versions.some((version) => version.key === current) ? current : versions[0]?.key ?? "");
