@@ -13,7 +13,6 @@ namespace LyricHover.App.Modules
         private bool lastHasSession;
         private MediaPlaybackStatus? lastPlaybackStatus;
         private bool animationsEnabled = true;
-        private Button mouseReleaseDispatchedButton;
 
         public bool AnimationsEnabled
         {
@@ -63,17 +62,17 @@ namespace LyricHover.App.Modules
 
         private void PreviousButton_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-            DispatchClickRequest((Button)sender);
+            PreviousRequested?.Invoke(this, EventArgs.Empty);
         }
 
         private void PlayPauseButton_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-            DispatchClickRequest((Button)sender);
+            PlayPauseRequested?.Invoke(this, EventArgs.Empty);
         }
 
         private void NextButton_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-            DispatchClickRequest((Button)sender);
+            NextRequested?.Invoke(this, EventArgs.Empty);
         }
 
         private void Button_MouseEnter(object sender, MouseEventArgs e)
@@ -100,52 +99,6 @@ namespace LyricHover.App.Modules
             if (animationsEnabled)
             {
                 AnimateButton(button, Color.FromArgb(0x24, 255, 255, 255), 1.0, 140);
-            }
-
-            if (!button.IsEnabled)
-            {
-                return;
-            }
-
-            // Dispatch the mouse action before the event bubbles back to the island.
-            // This keeps playback controls independent from drag, click-through, and
-            // temporary-interaction gestures. Keyboard activation still uses Click.
-            e.Handled = true;
-            mouseReleaseDispatchedButton = button;
-            DispatchRequest(button);
-            Dispatcher.BeginInvoke(new Action(() =>
-            {
-                if (ReferenceEquals(mouseReleaseDispatchedButton, button))
-                {
-                    mouseReleaseDispatchedButton = null;
-                }
-            }), System.Windows.Threading.DispatcherPriority.Input);
-        }
-
-        private void DispatchClickRequest(Button button)
-        {
-            if (ReferenceEquals(mouseReleaseDispatchedButton, button))
-            {
-                mouseReleaseDispatchedButton = null;
-                return;
-            }
-
-            DispatchRequest(button);
-        }
-
-        private void DispatchRequest(Button button)
-        {
-            if (ReferenceEquals(button, PreviousButton))
-            {
-                PreviousRequested?.Invoke(this, EventArgs.Empty);
-            }
-            else if (ReferenceEquals(button, PlayPauseButton))
-            {
-                PlayPauseRequested?.Invoke(this, EventArgs.Empty);
-            }
-            else if (ReferenceEquals(button, NextButton))
-            {
-                NextRequested?.Invoke(this, EventArgs.Empty);
             }
         }
 

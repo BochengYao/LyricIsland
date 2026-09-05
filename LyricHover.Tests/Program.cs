@@ -2700,8 +2700,8 @@ namespace LyricHover.Tests
             Assert.True(controlsSource.Contains("PlayPauseButton.IsEnabled = session != null"));
             Assert.True(controlsSource.Contains("PlayPauseButton.IsHitTestVisible = value"));
             Assert.True(hostSource.Contains("controls.SetInteractionEnabled(!LayoutEditingEnabled)"));
-            Assert.True(controlsSource.Contains("e.Handled = true"));
-            Assert.True(controlsSource.Contains("ReferenceEquals(button, PlayPauseButton)"));
+            Assert.True(controlsSource.Contains("PlayPauseRequested?.Invoke(this, EventArgs.Empty)"));
+            Assert.False(controlsSource.Contains("mouseReleaseDispatchedButton"));
             Assert.False(windowSource.Contains("SetPlaybackInteractionEnabled("));
             Assert.True(windowSource.Contains("播放控制按钮可直接点击"));
             Assert.True(windowSource.Contains("IsInteractiveMouseSource(InputHitTest(localPoint) as DependencyObject)"));
@@ -2745,6 +2745,7 @@ namespace LyricHover.Tests
                 "Button_PreviewMouseLeftButtonUp",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
             previewMouseUp.Invoke(controls, new object[] { playPauseButton, mouseUp });
+            Assert.Equal(0, playPauseRequests);
             var click = typeof(LyricHover.App.Modules.PlaybackControlsModuleView).GetMethod(
                 "PlayPauseButton_Click",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
@@ -2762,7 +2763,7 @@ namespace LyricHover.Tests
             Assert.True(host.IsMouseSourceOfType(lyrics, IslandModuleType.Lyrics));
             Assert.False(host.IsMouseSourceOfType(playPauseButton, IslandModuleType.Lyrics));
             Assert.True(host.IsMouseSourceOfType(playPauseButton, IslandModuleType.PlaybackControls));
-            Assert.True(mouseUp.Handled);
+            Assert.False(mouseUp.Handled);
             Assert.Equal(1, playPauseRequests);
         }
 
