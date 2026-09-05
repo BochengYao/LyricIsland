@@ -22,6 +22,12 @@ import type {
   RewardStatus,
   SubmissionStatus
 } from "@/data/incentives-types";
+import {
+  formatReleaseTiming,
+  releaseTimingFromTargetDate,
+  targetDateForReleaseTiming,
+  type ReleaseTimingPreset
+} from "@/lib/release-timing";
 
 type AuthState = "checking" | "login" | "ready";
 type Panel = "submissions" | "features" | "previews" | "access" | "promo-codes";
@@ -40,6 +46,15 @@ type TranslationLocale = "en" | "zh-tw" | "ja";
 type LocalizedTranslations = Record<TranslationLocale, Record<string, string>>;
 
 const translationLocales: TranslationLocale[] = ["en", "zh-tw", "ja"];
+const releaseTimingOptions: Array<{ value: ReleaseTimingPreset; label: string }> = [
+  { value: "today", label: "今天" },
+  { value: "tomorrow", label: "明天" },
+  { value: "this-week", label: "本周内" },
+  { value: "two-weeks", label: "两周内" },
+  { value: "this-month", label: "本月内" },
+  { value: "custom-days", label: "自定义天数" },
+  { value: "tbd", label: "待定" }
+];
 type BulkAction =
   | `status:${SubmissionStatus}`
   | `reward:${RewardStatus}`
@@ -354,7 +369,8 @@ export function AdminIncentives() {
   const [bulkMessage, setBulkMessage] = useState("");
   const [saveFeedback, setSaveFeedback] = useState<Record<string, SaveFeedback>>({});
   const [editing, setEditing] = useState<IncentiveSubmission | null>(null);
-  const [previewDateTbd, setPreviewDateTbd] = useState(false);
+  const [previewTimingPreset, setPreviewTimingPreset] = useState<ReleaseTimingPreset>("tbd");
+  const [previewCustomDays, setPreviewCustomDays] = useState(14);
   const [previewDraft, setPreviewDraft] = useState<PreviewDraft>(emptyPreviewDraft);
   const [previewSaving, setPreviewSaving] = useState(false);
   const [draftMenuOpen, setDraftMenuOpen] = useState(false);
@@ -400,7 +416,9 @@ export function AdminIncentives() {
     const currentPreview = previewData.previews[0] ?? previewData.drafts?.[0];
     if (currentPreview) {
       setPreviewDraft(previewToDraft(currentPreview));
-      setPreviewDateTbd(!currentPreview.target_date);
+      const timing = releaseTimingFromTargetDate(currentPreview.target_date);
+      setPreviewTimingPreset(timing.preset);
+      setPreviewCustomDays(timing.days ?? 14);
     }
     setAccessLogs(logData.logs);
     setUnreadAlerts(logData.unreadAlerts);
@@ -804,7 +822,7 @@ export function AdminIncentives() {
           body_en: previewDraft.body_en,
           body_zh_tw: previewDraft.body_zh_tw,
           body_ja: previewDraft.body_ja,
-          target_date: previewDateTbd ? "" : previewDraft.target_date,
+          target_date: targetDateForReleaseTiming(previewTimingPreset, previewCustomDays) ?? "",
           status
         })
       });
@@ -825,7 +843,9 @@ export function AdminIncentives() {
           : [savedPreview, ...items])
         : items.filter((item) => item.id !== savedPreview.id));
       setPreviewDraft(previewToDraft(result.preview));
-      setPreviewDateTbd(!result.preview.target_date);
+      const timing = releaseTimingFromTargetDate(result.preview.target_date);
+      setPreviewTimingPreset(timing.preset);
+      setPreviewCustomDays(timing.days ?? 14);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "保存失败");
     } finally {
@@ -835,14 +855,17 @@ export function AdminIncentives() {
 
   function editPreview(preview: ReleasePreview) {
     setPreviewDraft(previewToDraft(preview));
-    setPreviewDateTbd(!preview.target_date);
+    const timing = releaseTimingFromTargetDate(preview.target_date);
+    setPreviewTimingPreset(timing.preset);
+    setPreviewCustomDays(timing.days ?? 14);
     setDraftMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function newPreview() {
     setPreviewDraft(emptyPreviewDraft);
-    setPreviewDateTbd(true);
+    setPreviewTimingPreset("tbd");
+    setPreviewCustomDays(14);
     setDraftMenuOpen(false);
   }
 
@@ -1186,13 +1209,13 @@ export function AdminIncentives() {
 
         {panel === "previews" && (
           <>
-            <header className="adminPageHeader"><div><p>RELEASE PREVIEW</p><h2>发布版本预告</h2></div><div className="featureAdminActions">{draftPreviews.length > 0 && <div className="previewDraftMenu"><button className="button buttonSecondary" type="button" aria-expanded={draftMenuOpen} onClick={() => setDraftMenuOpen((open) => !open)}>草稿箱（{draftPreviews.length}）</button>{draftMenuOpen && <div className="previewDraftMenuPanel">{draftPreviews.map((preview) => <button type="button" onClick={() => editPreview(preview)} key={preview.id}>{preview.version} · {preview.target_date ?? "待定"}</button>)}</div>}</div>}<button className="button buttonSecondary" type="button" onClick={newPreview}>新建预告</button></div></header>
+            <header className="adminPageHeader"><div><p>RELEASE PREVIEW</p><h2>发布版本预告</h2></div><div className="featureAdminActions">{draftPreviews.length > 0 && <div className="previewDraftMenu"><button className="button buttonSecondary" type="button" aria-expanded={draftMenuOpen} onClick={() => setDraftMenuOpen((open) => !open)}>草稿箱（{draftPreviews.length}）</button>{draftMenuOpen && <div className="previewDraftMenuPanel">{draftPreviews.map((preview) => <button type="button" onClick={() => editPreview(preview)} key={preview.id}>{preview.version} · {formatReleaseTiming(preview.target_date, "zh")}</button>)}</div>}</div>}<button className="button buttonSecondary" type="button" onClick={newPreview}>新建预告</button></div></header>
             <form className="previewEditor" onSubmit={savePreview}>
-              <div className="previewEditorMeta"><label><span>版本号</span><input name="version" placeholder="例如：v2.1 Beta" value={previewDraft.version} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, version: event.target.value }))} required /></label><label><span>预计上线时间</span><input name="target_date" type="date" value={previewDraft.target_date} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, target_date: event.target.value }))} disabled={previewDateTbd} /></label><button className={`previewDateTbdButton ${previewDateTbd ? "isActive" : ""}`} type="button" aria-pressed={previewDateTbd} onClick={() => setPreviewDateTbd((current) => !current)}>上线时间待定</button></div>
+              <div className="previewEditorMeta"><label><span>版本号</span><input name="version" placeholder="例如：v2.1 Beta" value={previewDraft.version} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, version: event.target.value }))} required /></label><label><span>预计上线范围</span><select name="target_timing" value={previewTimingPreset} onChange={(event) => setPreviewTimingPreset(event.target.value as ReleaseTimingPreset)}>{releaseTimingOptions.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>{previewTimingPreset === "custom-days" && <label><span>天数（自动递减）</span><input name="target_days" type="number" min={2} max={365} step={1} value={previewCustomDays} onChange={(event) => setPreviewCustomDays(Number(event.target.value))} required /></label>}</div>
               <div className="previewEditorLanguages"><label><span>更新内容（中文）</span><textarea name="body_zh" rows={9} value={previewDraft.body_zh} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, body_zh: event.target.value }))} required /></label><label><span>Update content (English)</span><textarea name="body_en" rows={9} value={previewDraft.body_en} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, body_en: event.target.value }))} required /></label><label><span>更新內容（繁中）</span><textarea name="body_zh_tw" rows={9} value={previewDraft.body_zh_tw} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, body_zh_tw: event.target.value }))} /></label><label><span>更新内容（日本語）</span><textarea name="body_ja" rows={9} value={previewDraft.body_ja} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, body_ja: event.target.value }))} /></label></div>
               <div className="previewEditorActions"><button className="button buttonSecondary" type="button" disabled={previewSaving || translationSaving === "preview"} onClick={() => void translatePreview()}>{translationSaving === "preview" ? "正在翻译…" : "从中文自动翻译其他语言"}</button><button className="button buttonSecondary" type="submit" name="intent" value="save" disabled={previewSaving}>{previewDraft.status === "published" ? "保存更改" : "保存草稿"}</button><button className="button buttonPrimary" type="submit" name="intent" value="published" disabled={previewSaving}>{previewSaving ? "正在保存…" : previewDraft.status === "published" ? "保持发布并保存" : "发布预告"}</button></div>
             </form>
-            <div className="previewAdminList">{previews.map((preview) => <article key={preview.id}><div><span className="published">已发布到前台</span><small>{preview.version} · 预计上线：{preview.target_date ?? "待定"}</small><p>中文：{[preview.body_zh, ...preview.highlights_zh].filter(Boolean).join(" / ")}</p>{preview.body_en && <p>English: {[preview.body_en, ...preview.highlights_en].filter(Boolean).join(" / ")}</p>}</div><div><button className="button buttonSecondary" type="button" onClick={() => editPreview(preview)}>编辑</button><button className="button buttonSecondary" type="button" onClick={() => void togglePreview(preview)}>撤回为草稿</button></div></article>)}</div>
+            <div className="previewAdminList">{previews.map((preview) => <article key={preview.id}><div><span className="published">已发布到前台</span><small>{preview.version} · 预计上线：{formatReleaseTiming(preview.target_date, "zh")}</small><p>中文：{[preview.body_zh, ...preview.highlights_zh].filter(Boolean).join(" / ")}</p>{preview.body_en && <p>English: {[preview.body_en, ...preview.highlights_en].filter(Boolean).join(" / ")}</p>}</div><div><button className="button buttonSecondary" type="button" onClick={() => editPreview(preview)}>编辑</button><button className="button buttonSecondary" type="button" onClick={() => void togglePreview(preview)}>撤回为草稿</button></div></article>)}</div>
           </>
         )}
 

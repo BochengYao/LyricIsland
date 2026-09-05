@@ -17,6 +17,7 @@ import type {
 import { incentivesByLocale } from "@/data/incentives-copy";
 import { displayBrand, localePath, type Locale } from "@/data/site-copy";
 import { preloadClientJson } from "@/lib/client-data";
+import { formatReleaseTiming } from "@/lib/release-timing";
 
 const IDENTITY_COOKIE = "lyric_island_contributor";
 const LOCAL_LIKES_KEY = "lyric_island_preview_likes";
@@ -576,7 +577,7 @@ export function IncentivePage({ locale }: { locale: Locale }) {
               return (
                 <article className="previewCard" key={preview.id}>
                   <div className="previewCardMeta">
-                    <small>{preview.version} · {copy.preview.target} {preview.target_date ?? (locale === "zh" ? "待定" : "TBD")}</small>
+                    <small>{preview.version} · {copy.preview.target} {formatReleaseTiming(preview.target_date, locale)}</small>
                   </div>
                   <div className="previewCardContent">
                     {title !== preview.version && <h3>{title}</h3>}

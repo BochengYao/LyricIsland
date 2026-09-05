@@ -6,6 +6,7 @@ import { incentivesByLocale } from "@/data/incentives-copy";
 import type { ReleasePreview } from "@/data/incentives-types";
 import type { Locale } from "@/data/site-copy";
 import { preloadClientJson } from "@/lib/client-data";
+import { formatReleaseTiming } from "@/lib/release-timing";
 
 function splitPreviewItems(value: string): string[] {
   return value
@@ -121,7 +122,7 @@ export function VersionPreviewSection({ locale }: { locale: Locale }) {
             <article className="previewCard" key={preview.id}>
               <div className="previewCardMeta">
                 <strong>{preview.version}</strong>
-                <small>{copy.target} {preview.target_date ?? stateCopy.tbd}</small>
+                <small>{copy.target} {formatReleaseTiming(preview.target_date, locale)}</small>
               </div>
               <div className="previewCardContent">
                 {title !== preview.version && <h3>{title}</h3>}
