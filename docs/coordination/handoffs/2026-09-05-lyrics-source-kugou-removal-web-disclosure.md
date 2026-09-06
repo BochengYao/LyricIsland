@@ -76,3 +76,41 @@
 
 - Legal & Evidence: retain provider terms or written permission for each remaining online lyric source before external release.
 - Microsoft Store distribution remains separate and was not uploaded or submitted by this handoff.
+
+## Thread routing — 2026-09-06
+
+### Website & Backend
+
+- Accept the public-content contract: administrator storage may retain historical provider wording, but public `/api/features` and the client render path must filter both `summary` and `sections`.
+- Preserve the four-locale generic disclosure and the client-side fail-closed call in `ManagedFeatureContent`.
+- For later feature-content changes, run TypeScript, ESA API, and ESA static-build gates serially and verify every visible content region rather than only one response body.
+
+### Desktop Core
+
+- Treat KuGou lyrics-provider support as retired. Preserve numeric preference value `3` as reserved migration history; do not remap it to another provider.
+- Continue to distinguish KuGou SMTC player compatibility from lyrics-provider access.
+- QQ Music and NetEase lyrics providers remain present by explicit product decision; this handoff does not establish their licensing status.
+
+### Quality & Release
+
+- Use `27ddbb8`, `9c672ce`, and `9d33314` as the implementation chain and `c9ccc59` as the recorded production-verification point for this task.
+- Preserve the regression boundary: admin content retains source detail, while public four-language `summary` and `sections` do not expose provider names.
+- Do not describe the local `publish/current` candidate as a GitHub Release, Microsoft Store upload/submission, or current release if later desktop-version commits have superseded it.
+
+### Brand & Compliance
+
+- Treat `在线歌词由第三方来源按需获取。` as a limited public disclosure, not as proof of authorization or a transfer of responsibility to users.
+- Retain provider terms, written permissions, takedown contacts, and a source-disable procedure for every remaining online lyrics integration.
+- Keep Musixmatch unintegrated until the applicable plan and written display/distribution rights are confirmed.
+
+### Architecture
+
+- Preserve three distinct boundaries in future decisions: player detection is not a lyrics provider; administrator evidence is not public copy; technical redaction is not copyright authorization.
+- Any proposal to add or restore a provider must route through Desktop Core, Website & Backend, Quality & Release, and Brand & Compliance before external release.
+
+## Open risks and owner actions
+
+- [ ] **Brand & Compliance** — determine and retain the current authorization basis for QQ Music and NetEase lyrics use; record uncertainty rather than inferring rights from technical API accessibility.
+- [ ] **Website & Backend** — keep the public redaction regression test aligned with every new locale and every newly introduced public feature-content field.
+- [ ] **Quality & Release** — require production-visible-page evidence for future lyric-source copy changes; HTTP/API checks alone are insufficient when the browser renders database-backed content.
+- [ ] **Desktop Core** — provide an auditable provider kill switch or equivalent disable path if the existing configuration cannot promptly disable a challenged source.
