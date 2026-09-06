@@ -111,3 +111,17 @@ $env:LYRICHOVER_SKIP_RELEASE_VERSION_FIXTURE='1'
 - 已通过应用线程列表及最近状态确认五个目标会话：Desktop UI & Interaction、Desktop Core、Quality & Release、Architecture、复盘测试当前版本。
 - Computer Use 初始化失败后，已确认原生 `list_threads` / `read_thread` 接口可调用；使用 `send_message_to_thread` 发送交接消息，回执单独记录。消息发送成功不等于已完成领域复核。
 - 编写期间其他线程向 main 增加了独立文档提交；本交接采用单独文档提交集成，保留其他线程文件。候选功能 SHA 和上述产物指纹不因文档集成而改变。
+
+### 实际发送回执（2026-09-06）
+
+文档主线提交：`c04d593df112ec100317a57a92e8d13ffca83198`。通过原生 `send_message_to_thread` 向以下五个会话发送完整文件路径、文档/功能 SHA、候选指纹、测试与实机边界以及各自的复核重点；全部调用返回 `isError=false` 和对应 `threadId`。
+
+| 目标线程（应用当前名称） | threadId | 状态 |
+| --- | --- | --- |
+| Desktop UI & Interaction | `01a02e9b-fac1-7162-9d2e-5fb4e34d69cd` | 消息发送成功，领域复核待返回 |
+| Desktop Core | `01a02e9b-01a5-7452-8245-98c80bbf9497` | 消息发送成功，领域复核待返回 |
+| Quality & Release | `01a02eb1-7236-7ca1-ae3a-f5ea37e82d01` | 消息发送成功，领域复核待返回 |
+| Architecture | `01a02e93-bd3d-78e3-9f7c-4fe991c96b9d` | 消息发送成功，领域复核待返回 |
+| 复盘测试当前版本 | `01a0748d-4e64-7e90-be63-c76864169f84` | 消息发送成功，独立复核继续 |
+
+本次实际发送的是会话消息，没有采用仅打开文件面板的降级方式。回执证明发送成功，不代表全部验收完成。
