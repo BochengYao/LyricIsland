@@ -966,6 +966,7 @@ namespace LyricHover.App
             }
             UpdateInteractionStateLayout();
             var suppressHoverTransparency = IsHoverTransparencySuppressed();
+            ModuleHost.SetPlaybackInteractionEnabled(temporaryInteractionHeld);
             if (!islandVisible || !IsVisible)
             {
                 HideHoverTransparency();
@@ -1281,6 +1282,7 @@ namespace LyricHover.App
         {
             return placementSettings != null &&
                 placementSettings.PassThroughOnHover &&
+                !IsTemporaryInteractionHeld() &&
                 islandVisible &&
                 IsVisible;
         }
@@ -1679,9 +1681,7 @@ namespace LyricHover.App
 
         private Task PlayPauseRequested()
         {
-            // Reaching this handler already proves an intentional click on the playback
-            // control surface, so the tutorial must not require an additional hotkey.
-            if (tutorialFlow.ControlClicked(temporaryInteractionHeld: true))
+            if (tutorialFlow.ControlClicked(IsTemporaryInteractionHeld()))
             {
                 _ = ContinueTutorialAfterControlAsync(tutorialCancellation?.Token ?? CancellationToken.None);
             }
@@ -2494,7 +2494,7 @@ namespace LyricHover.App
                 SetTutorialText("新版本增加了音乐控制功能", string.Empty);
                 await DelayTutorialAsync(2200, cancellationToken);
 
-                SetTutorialText("播放控制按钮可直接点击", "来试试看！");
+                SetTutorialText("按下" + GetTemporaryInteractionGesture() + "可暂时关闭鼠标避让来点击控制按钮", "来试试看！");
                 tutorialFlow.BeginControlClickPractice();
             }
             catch (OperationCanceledException)
@@ -2963,8 +2963,9 @@ namespace LyricHover.App
                 return;
             }
 
-            if (IsHoverTransparencySuppressed())
+            if (IsTemporaryInteractionHeld())
             {
+                ModuleHost.SetPlaybackInteractionEnabled(true);
                 HideHoverTransparency();
                 e.Handled = true;
                 return;
@@ -2974,6 +2975,7 @@ namespace LyricHover.App
 
         private void Window_KeyUp(object sender, KeyEventArgs e)
         {
+            ModuleHost.SetPlaybackInteractionEnabled(IsTemporaryInteractionHeld());
             UpdateHoverProximity();
         }
     }

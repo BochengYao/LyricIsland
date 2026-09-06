@@ -164,7 +164,7 @@ namespace LyricHover.Tests
             suite.Run("about file and MSIX versions share the V3 four segment mapping", AboutFileAndMsixVersionsShareTheV3FourSegmentMapping);
             suite.Run("store package reuses the reserved product identity", StorePackageReusesReservedProductIdentity);
             suite.Run("tutorial waits for required user actions", TutorialWaitsForRequiredUserActions);
-            suite.Run("tutorial accepts direct playback control clicks", TutorialAcceptsDirectPlaybackControlClicks);
+            suite.Run("tutorial requires temporary interaction for playback controls", TutorialRequiresTemporaryInteractionForPlaybackControls);
             suite.Run("first launch tutorial is persisted and can be replayed", FirstLaunchTutorialIsPersistedAndCanBeReplayed);
             suite.Run("tutorial overlay is dimmer and cannot cover interactions", TutorialOverlayIsDimmerAndCannotCoverInteractions);
             suite.Run("layout rebuild replays the latest island content", LayoutRebuildReplaysLatestIslandContent);
@@ -189,7 +189,7 @@ namespace LyricHover.Tests
             suite.Run("lyrics module exposes configurable width", LyricsModuleExposesConfigurableWidth);
             suite.Run("island background width reserves shaped edge padding", IslandBackgroundWidthReservesShapedEdgePadding);
             suite.Run("playback controls use media glyphs", PlaybackControlsUseMediaGlyphs);
-            suite.Run("playback controls are not consumed by layout drag", PlaybackControlsAreNotConsumedByLayoutDrag);
+            suite.Run("playback controls require temporary interaction", PlaybackControlsRequireTemporaryInteraction);
             suite.Run("temporary interaction refresh is limited to lyrics modules", TemporaryInteractionRefreshIsLimitedToLyricsModules);
             suite.Run("configured key temporarily suppresses hover transparency", ConfiguredKeyTemporarilySuppressesHoverTransparency);
             suite.Run("snaps module within eighteen pixels", SnapsModuleWithinEighteenPixels);
@@ -2682,7 +2682,7 @@ namespace LyricHover.Tests
             Assert.False(source.Contains("Text=\"⏭\""));
         }
 
-        static void PlaybackControlsAreNotConsumedByLayoutDrag()
+        static void PlaybackControlsRequireTemporaryInteraction()
         {
             var root = GetSolutionRoot();
             var hostSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Modules", "IslandModuleHost.xaml.cs"));
@@ -2695,22 +2695,27 @@ namespace LyricHover.Tests
             var playPauseButton = System.Windows.LogicalTreeHelper.FindLogicalNode(host, "PlayPauseButton")
                 as System.Windows.Controls.Button;
 
-            Assert.True(hostSource.Contains("!LayoutEditingEnabled"));
+            Assert.True(hostSource.Contains("playbackInteractionEnabled && !LayoutEditingEnabled"));
             Assert.True(windowSource.Contains("IsInteractiveMouseSource"));
             Assert.True(controlsSource.Contains("PlayPauseButton.IsEnabled = session != null"));
             Assert.True(controlsSource.Contains("PlayPauseButton.IsHitTestVisible = value"));
-            Assert.True(hostSource.Contains("controls.SetInteractionEnabled(!LayoutEditingEnabled)"));
+            Assert.True(hostSource.Contains("controls.SetInteractionEnabled(playbackInteractionEnabled && !LayoutEditingEnabled)"));
             Assert.True(controlsSource.Contains("PlayPauseRequested?.Invoke(this, EventArgs.Empty)"));
             Assert.False(controlsSource.Contains("mouseReleaseDispatchedButton"));
-            Assert.False(windowSource.Contains("SetPlaybackInteractionEnabled("));
-            Assert.True(windowSource.Contains("播放控制按钮可直接点击"));
+            Assert.True(windowSource.Contains("SetPlaybackInteractionEnabled(temporaryInteractionHeld)"));
+            Assert.True(windowSource.Contains("!IsTemporaryInteractionHeld()"));
+            Assert.True(windowSource.Contains("可暂时关闭鼠标避让来点击控制按钮"));
             Assert.True(windowSource.Contains("IsInteractiveMouseSource(InputHitTest(localPoint) as DependencyObject)"));
             Assert.True(playPauseButton != null);
+            Assert.False(playPauseButton.IsHitTestVisible);
+            host.SetPlaybackInteractionEnabled(true);
             Assert.True(playPauseButton.IsHitTestVisible);
             host.LayoutEditingEnabled = true;
             Assert.False(playPauseButton.IsHitTestVisible);
             host.LayoutEditingEnabled = false;
             Assert.True(playPauseButton.IsHitTestVisible);
+            host.SetPlaybackInteractionEnabled(false);
+            Assert.False(playPauseButton.IsHitTestVisible);
         }
 
         static void TemporaryInteractionRefreshIsLimitedToLyricsModules()
@@ -4003,7 +4008,7 @@ namespace LyricHover.Tests
             Assert.Equal(TutorialStep.ShowingLayouts, tutorial.Step);
         }
 
-        static void TutorialAcceptsDirectPlaybackControlClicks()
+        static void TutorialRequiresTemporaryInteractionForPlaybackControls()
         {
             var tutorial = new TutorialFlowController();
             tutorial.Start();
@@ -4014,8 +4019,10 @@ namespace LyricHover.Tests
             var root = GetSolutionRoot();
             var mainSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
 
+            Assert.False(tutorial.ControlClicked(false));
             Assert.True(tutorial.ControlClicked(true));
-            Assert.True(mainSource.Contains("tutorialFlow.ControlClicked(temporaryInteractionHeld: true)"));
+            Assert.True(mainSource.Contains("tutorialFlow.ControlClicked(IsTemporaryInteractionHeld())"));
+            Assert.True(mainSource.Contains("可暂时关闭鼠标避让来点击控制按钮"));
             Assert.False(mainSource.Contains("IsTutorialTemporaryInteractionHeld"));
         }
 
