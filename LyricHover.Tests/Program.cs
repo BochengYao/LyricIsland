@@ -191,6 +191,7 @@ namespace LyricHover.Tests
             suite.Run("playback controls use media glyphs", PlaybackControlsUseMediaGlyphs);
             suite.Run("playback controls require temporary interaction", PlaybackControlsRequireTemporaryInteraction);
             suite.Run("temporary interaction refresh is limited to lyrics modules", TemporaryInteractionRefreshIsLimitedToLyricsModules);
+            suite.Run("lyrics refresh hit area covers the complete module", LyricsRefreshHitAreaCoversCompleteModule);
             suite.Run("configured key temporarily suppresses hover transparency", ConfiguredKeyTemporarilySuppressesHoverTransparency);
             suite.Run("snaps module within eighteen pixels", SnapsModuleWithinEighteenPixels);
             suite.Run("moves module after crossing midpoint", MovesModuleAfterCrossingMidpoint);
@@ -2770,6 +2771,54 @@ namespace LyricHover.Tests
             Assert.True(host.IsMouseSourceOfType(playPauseButton, IslandModuleType.PlaybackControls));
             Assert.False(mouseUp.Handled);
             Assert.Equal(1, playPauseRequests);
+        }
+
+        static void LyricsRefreshHitAreaCoversCompleteModule()
+        {
+            foreach (var width in new[] { 240.0, 680.0, 1000.0 })
+            {
+                var host = new LyricHover.App.Modules.IslandModuleHost();
+                host.SetAnimationsEnabled(false);
+                var profile = new IslandLayoutProfile();
+                profile.Modules.Add(new IslandModuleInstance(IslandModuleType.Lyrics) { LyricsWidth = width });
+                profile.Modules.Add(new IslandModuleInstance(IslandModuleType.PlaybackControls));
+                host.ApplyLayout(profile);
+                var modulePanel = (System.Windows.Controls.StackPanel)host.FindName("ModulePanel");
+                var lyrics = modulePanel.Children.OfType<LyricHover.App.Modules.LyricsModuleView>().Single();
+                var controls = modulePanel.Children.OfType<LyricHover.App.Modules.PlaybackControlsModuleView>().Single();
+
+                foreach (var text in new[] { string.Empty, "短歌词", "A longer lyric line with empty space on both sides" })
+                {
+                    // The test project also links the snapshot source for isolated Dock tests;
+                    // use the App assembly's parameter type when exercising the real WPF host.
+                    var update = host.GetType().GetMethod("Update");
+                    var state = Activator.CreateInstance(update.GetParameters()[0].ParameterType);
+                    state.GetType().GetProperty("PrimaryLyric").SetValue(state, text);
+                    update.Invoke(host, new[] { state });
+                    host.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+                    host.Arrange(new System.Windows.Rect(new System.Windows.Point(), host.DesiredSize));
+                    host.UpdateLayout();
+                    Assert.True(lyrics.ActualWidth > 0 && lyrics.ActualHeight > 0);
+
+                    foreach (var x in new[] { 0.5, lyrics.ActualWidth / 2, lyrics.ActualWidth - 0.5 })
+                    foreach (var y in new[] { 0.5, lyrics.ActualHeight / 2, lyrics.ActualHeight - 0.5 })
+                    {
+                        var point = lyrics.TranslatePoint(new System.Windows.Point(x, y), host);
+                        var hit = System.Windows.Media.VisualTreeHelper.HitTest(host, point)?.VisualHit;
+                        if (!host.IsMouseSourceOfType(hit, IslandModuleType.Lyrics))
+                        {
+                            throw new InvalidOperationException(
+                                "Lyrics hit missed: width=" + width + ", point=" + point +
+                                ", local=" + x + "," + y + ", hit=" + hit?.GetType().Name);
+                        }
+                    }
+
+                    var controlPoint = controls.TranslatePoint(
+                        new System.Windows.Point(controls.ActualWidth / 2, controls.ActualHeight / 2), host);
+                    Assert.False(host.IsMouseSourceOfType(
+                        System.Windows.Media.VisualTreeHelper.HitTest(host, controlPoint)?.VisualHit, IslandModuleType.Lyrics));
+                }
+            }
         }
 
         static void ConfiguredKeyTemporarilySuppressesHoverTransparency()
