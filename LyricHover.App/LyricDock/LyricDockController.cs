@@ -56,6 +56,7 @@ namespace LyricHover.App.LyricDock
         public event EventHandler WidgetsHidden;
         public event EventHandler WidgetsHidingNeedsSettingsConfirmation;
         public event EventHandler RuntimeRecovered;
+        public event EventHandler StartupRecoveryPending;
         public bool IsEnabled => enabled;
         public LyricDockFailureReason LastFailureReason { get; private set; }
 
@@ -69,7 +70,17 @@ namespace LyricHover.App.LyricDock
             {
                 startupRecoveryPending = true;
                 Interlocked.Increment(ref startupRecoveryGeneration);
-                Disable(LyricDockFailureReason.RegistryOrRefreshFailed, restoreWidgets: false);
+                var pendingReason = LyricDockFailureReason.RegistryOrRefreshFailed;
+                if (requestedEnabled && TryShowWhileStartupRecoveryIsPending(out pendingReason))
+                {
+                    LastFailureReason = LyricDockFailureReason.RegistryOrRefreshFailed;
+                    StartupRecoveryPending?.Invoke(this, EventArgs.Empty);
+                    return true;
+                }
+
+                Disable(pendingReason == LyricDockFailureReason.None
+                    ? LyricDockFailureReason.RegistryOrRefreshFailed
+                    : pendingReason, restoreWidgets: false);
                 return false;
             }
             restoringStartup = true;
@@ -108,6 +119,20 @@ namespace LyricHover.App.LyricDock
             if (startupRecoveryPending)
             {
                 QueueStartupRecovery();
+                if (TryShowWhileStartupRecoveryIsPending(out var pendingReason))
+                {
+                    StartupRecoveryPending?.Invoke(this, EventArgs.Empty);
+                    return true;
+                }
+
+                // The unresolved lease remains untouched.  Auto-hide, fullscreen and
+                // insufficient-space states keep their normal hidden behavior, while a
+                // later environment change or settings apply can safely probe again.
+                LastFailureReason = pendingReason == LyricDockFailureReason.None
+                    ? LyricDockFailureReason.TaskbarNotFound
+                    : pendingReason;
+                enabled = false;
+                surface.Hide();
                 return false;
             }
 
@@ -166,6 +191,25 @@ namespace LyricHover.App.LyricDock
 
         private void EnvironmentChanged(object sender, EventArgs args)
         {
+            if (startupRecoveryPending)
+            {
+                // A pending residual restore owns the old lease, but it must not freeze
+                // the visual safety probe. Environment changes can make a previously
+                // unsafe gap usable again; probe and show it without acquiring anything.
+                var pendingReason = LyricDockFailureReason.RegistryOrRefreshFailed;
+                if (requestedEnabled && TryShowWhileStartupRecoveryIsPending(out pendingReason))
+                {
+                    return;
+                }
+
+                LastFailureReason = pendingReason == LyricDockFailureReason.None
+                    ? LyricDockFailureReason.TaskbarNotFound
+                    : pendingReason;
+                enabled = false;
+                surface.Hide();
+                return;
+            }
+
             RefreshPlacement();
             if (!enabled || !ObserveWidgetsState(out var changedState) || changedState == TaskbarDaValueState.Disabled) return;
 
@@ -191,6 +235,27 @@ namespace LyricHover.App.LyricDock
             return changed;
         }
         private bool CanUse(LyricDockPlacement placement) => placement != null && placement.IsVisible && !placement.IsFullscreenCovered && placement.Width >= MinimumWidth && placement.Height > 0 && placement.DpiScale > 0;
+        private bool TryShowWhileStartupRecoveryIsPending(out LyricDockFailureReason reason)
+        {
+            reason = LyricDockFailureReason.None;
+            if (!environment.IsSupported)
+            {
+                reason = LyricDockFailureReason.UnsupportedOS;
+                return false;
+            }
+
+            if (!environment.TryGetPlacement(screenName, alignment, out var placement, out reason) || !CanUse(placement))
+            {
+                if (reason == LyricDockFailureReason.None) reason = LyricDockFailureReason.TaskbarNotFound;
+                return false;
+            }
+
+            // Recovery owns the existing lease.  Until it succeeds this safe surface may
+            // remain visible, but it must neither acquire nor overwrite another lease.
+            enabled = true;
+            Show(placement);
+            return true;
+        }
         private void Show(LyricDockPlacement placement)
         {
             surface.Place(placement, Math.Min(MaximumWidth, placement.Width));
@@ -214,7 +279,7 @@ namespace LyricHover.App.LyricDock
 
         public void TryHideWidgetsThroughSettingsUi()
         {
-            if (!enabled || disposed) return;
+            if (!enabled || startupRecoveryPending || disposed) return;
             var generation = Interlocked.Increment(ref widgetsHidingGeneration);
             QueueWidgetsOperation(() => widgetLease.TryAcquireThroughSettingsUi(screenName)).ContinueWith(task =>
             {
@@ -230,7 +295,7 @@ namespace LyricHover.App.LyricDock
 
         private void StartWidgetsHidingAttempt()
         {
-            if (widgetsHidingUnavailable || restoringStartup || disposed) return;
+            if (startupRecoveryPending || widgetsHidingUnavailable || restoringStartup || disposed) return;
 
             var generation = Interlocked.Increment(ref widgetsHidingGeneration);
             // Explorer can take seconds to apply TaskbarDa.  The current placement is already
@@ -274,9 +339,11 @@ namespace LyricHover.App.LyricDock
                     startupRecoveryQueued = false;
                     if (task.Status != TaskStatus.RanToCompletion || !task.Result)
                     {
-                        // Keep both the recovery record and the user intent.  A later
-                        // settings apply can retry without allowing the dock to bypass it.
-                        Disable(LyricDockFailureReason.RegistryOrRefreshFailed, restoreWidgets: false);
+                        // Keep the recovery record and a safe already-visible surface.
+                        // A later settings apply can retry, but cannot acquire or replace
+                        // the unresolved lease in the meantime.
+                        LastFailureReason = LyricDockFailureReason.RegistryOrRefreshFailed;
+                        StartupRecoveryPending?.Invoke(this, EventArgs.Empty);
                         return;
                     }
 

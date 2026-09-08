@@ -194,6 +194,8 @@ namespace LyricHover.App
                     lyricDockRuntimeFallbackToIsland = false;
                     settingsWindow?.ClearLyricDockRuntimeStatus();
                 }));
+            LyricDockController.StartupRecoveryPending += (sender, args) =>
+                Dispatcher.BeginInvoke(new Action(() => settingsWindow?.NotifyLyricDockRecoveryPending()));
             LyricDockController.WidgetsHidden += (sender, args) =>
                 Dispatcher.BeginInvoke(new Action(() => LyricDockController.RefreshPlacement()));
             LyricDockController.WidgetsHidingNeedsSettingsConfirmation += (sender, args) =>

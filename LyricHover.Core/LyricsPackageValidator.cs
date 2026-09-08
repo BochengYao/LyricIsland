@@ -41,10 +41,34 @@ namespace LyricHover.Core
             var expectedTitle = Normalize(track.Title);
             var actualTitle = Normalize(lyrics.Title);
             if (actualTitle.Length == 0 || expectedTitle.Length == 0 || actualTitle == expectedTitle) return true;
+            // Providers may append only a content-rating marker to an otherwise identical
+            // title. This is not an arrangement/version alias, so accept that narrow
+            // equivalence without using a broad title-contains rule.
+            if (NormalizeWithoutContentRatingQualifier(track.Title) == NormalizeWithoutContentRatingQualifier(lyrics.Title))
+                return true;
             // Different scripts are not evidence that two titles identify the same song.
             // A string package carries no verified alias provenance, so readable conflicts
             // must fail closed even when the artist matches.
             return false;
+        }
+
+        private static string NormalizeWithoutContentRatingQualifier(string value)
+        {
+            var text = (value ?? string.Empty).Trim();
+            if (text.Length < 3) return Normalize(text);
+
+            var closing = text[text.Length - 1];
+            var opening = closing == ')' ? '(' : closing == ']' ? '[' : '\0';
+            if (opening == '\0') return Normalize(text);
+
+            var openingIndex = text.LastIndexOf(opening);
+            if (openingIndex <= 0) return Normalize(text);
+            var qualifier = text.Substring(openingIndex + 1, text.Length - openingIndex - 2).Trim();
+            if (!qualifier.Equals("explicit", StringComparison.OrdinalIgnoreCase) &&
+                !qualifier.Equals("clean", StringComparison.OrdinalIgnoreCase))
+                return Normalize(text);
+
+            return Normalize(text.Substring(0, openingIndex));
         }
 
         private static string Normalize(string value)

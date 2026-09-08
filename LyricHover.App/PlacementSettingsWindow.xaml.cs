@@ -489,6 +489,13 @@ namespace LyricHover.App
             LyricDockRuntimeStatusText.Visibility = Visibility.Visible;
         }
 
+        public void NotifyLyricDockRecoveryPending()
+        {
+            LyricDockRuntimeStatusText.Text = UiLanguageService.Translate(
+                "歌词坞已显示，但 Widgets 恢复尚未完成；不会修改新的系统设置，请稍后再次应用设置重试。");
+            LyricDockRuntimeStatusText.Visibility = Visibility.Visible;
+        }
+
         public void ClearLyricDockRuntimeStatus()
         {
             LyricDockRuntimeStatusText.Visibility = Visibility.Collapsed;

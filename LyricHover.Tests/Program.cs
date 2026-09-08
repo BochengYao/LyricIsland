@@ -45,6 +45,7 @@ namespace LyricHover.Tests
             suite.Run("parses synced lrc lines and metadata", ParsesSyncedLrcLinesAndMetadata);
             suite.Run("parses QQ QRC word timings and progress", ParsesQrcWordTimingsAndProgress);
             suite.Run("parses NetEase YRC word timings", ParsesYrcWordTimings);
+            suite.Run("parses zero-start QRC and YRC with small word overlap", ParsesZeroStartWordTimingsAndSmallOverlap);
             suite.Run("word timed parsing preserves untimed text and mixed lines", WordTimedParsingPreservesAllVisibleText);
             suite.Run("ambiguous word timing safely degrades to line timing", AmbiguousWordTimingDegradesToLineTiming);
             suite.Run("selects the current lyric line by playback position", SelectsCurrentLyricLineByPlaybackPosition);
@@ -68,6 +69,7 @@ namespace LyricHover.Tests
             suite.Run("builds stable cache paths from song identity", BuildsStableCachePathsFromSongIdentity);
             suite.Run("cache paths preserve complete Unicode identity", CachePathsPreserveUnicodeIdentity);
             suite.Run("lyrics packages reject conflicting readable identity", LyricsPackagesRejectConflictingMetadata);
+            suite.Run("lyrics packages accept only explicit content-rating title variants", LyricsPackagesAcceptContentRatingTitleVariants);
             suite.Run("migrates legacy product data to the renamed directory", MigratesLegacyProductDataDirectory);
             suite.Run("reuses cached lyrics when reported duration drifts", ReusesCachedLyricsWhenReportedDurationDrifts);
             suite.Run("evicts least recently used song cache files to stay under size limit", EvictsLeastRecentlyUsedSongCacheFilesToStayUnderSizeLimit);
@@ -83,6 +85,10 @@ namespace LyricHover.Tests
             suite.Run("QQ keeps valid primary lyrics when legacy enrichment fails", QqKeepsPrimaryWhenLegacyFails);
             suite.Run("reads QQ QRC from lyric when qrc is an availability flag", ReadsQqQrcFromLyricWhenQrcIsAvailabilityFlag);
             suite.Run("merges fallback translation into word timed lyrics", MergesFallbackTranslationIntoWordTimedLyrics);
+            suite.Run("merges short same-source translation into word timed lyrics", MergesShortSameSourceTranslationIntoWordTimedLyrics);
+            suite.Run("does not reuse one short translation for adjacent same-source lines", DoesNotReuseOneShortTranslationForAdjacentLines);
+            suite.Run("maps fast same-source translations one to one", MapsFastSameSourceTranslationsOneToOne);
+            suite.Run("keeps verified word timing when translation fallback throws", KeepsWordTimingWhenTranslationFallbackThrows);
             suite.Run("fetches translated lyrics from qq music response", FetchesTranslatedLyricsFromQqMusicResponse);
             suite.Run("ignores timestamp only translation from qq music", IgnoresTimestampOnlyTranslationFromQqMusicResponse);
             suite.Run("scores lyric candidates by title artist and duration", ScoresLyricCandidatesByTitleArtistAndDuration);
@@ -131,8 +137,12 @@ namespace LyricHover.Tests
             suite.Run("power saving mode schema defaults to disabled", PowerSavingModeSchemaDefaultsToDisabled);
             suite.Run("taskbar controller restores Widgets and reports unsafe placement", TaskbarControllerRestoresWidgetsForUnsafePlacement);
             suite.Run("taskbar lease fails closed for recovery file IO errors", TaskbarLeaseFailsClosedForIoErrors);
-            suite.Run("taskbar residual lease failure disables the feature and retains recovery", TaskbarResidualLeaseFailureDisablesFeature);
+            suite.Run("taskbar residual lease failure keeps a safe surface and retains recovery", TaskbarResidualLeaseFailureKeepsSafeSurfaceAndRecovery);
             suite.Run("taskbar pending startup recovery cannot be bypassed by settings", TaskbarPendingStartupRecoveryCannotBeBypassedBySettings);
+            suite.Run("taskbar pending recovery keeps a safe visible dock without a new lease", TaskbarPendingRecoveryKeepsSafeVisibleDockWithoutNewLease);
+            suite.Run("taskbar pending recovery blocks changed-event and Settings acquisition", TaskbarPendingRecoveryBlocksChangedEventAndSettingsAcquisition);
+            suite.Run("taskbar pending recovery re-probes a newly safe placement", TaskbarPendingRecoveryReprobesNewlySafePlacement);
+            suite.Run("taskbar pending recovery re-shows a safe gap after a changed event", TaskbarPendingRecoveryReshowsSafeGapAfterChangedEvent);
             suite.Run("taskbar Settings late completion restores after disable and dispose", TaskbarSettingsLateCompletionConvergesAfterDisable);
             suite.Run("taskbar stale acquire cannot restore a newer enabled lease", TaskbarStaleAcquireCannotRestoreNewLease);
             suite.Run("taskbar Settings verification failure retains original recovery", TaskbarSettingsFailureRetainsRecovery);
@@ -311,6 +321,20 @@ namespace LyricHover.Tests
             Assert.Equal("Hello", lyrics.Lines[0].Text);
             Assert.Equal(TimeSpan.Zero, lyrics.Lines[0].Words[0].Offset);
             Assert.Equal(TimeSpan.FromMilliseconds(400), lyrics.Lines[0].Words[1].Offset);
+        }
+
+        static void ParsesZeroStartWordTimingsAndSmallOverlap()
+        {
+            var qrc = LyricsPackageParser.Parse("[0,1000]你(0,500)好(475,525)");
+            Assert.True(qrc.Lines[0].HasWordTiming);
+            Assert.Equal(TimeSpan.FromMilliseconds(475), qrc.Lines[0].Words[1].Offset);
+
+            var yrc = LyricsPackageParser.Parse("[0,1000](0,500,0)Hel(475,525,0)lo");
+            Assert.True(yrc.Lines[0].HasWordTiming);
+            Assert.Equal(TimeSpan.FromMilliseconds(475), yrc.Lines[0].Words[1].Offset);
+
+            var excessiveOverlap = LyricsPackageParser.Parse("[0,1000]a(0,600)b(400,600)");
+            Assert.False(excessiveOverlap.Lines[0].HasWordTiming);
         }
 
         static void WordTimedParsingPreservesAllVisibleText()
@@ -1398,7 +1422,7 @@ namespace LyricHover.Tests
                 var recoveryPath = Path.Combine(Path.GetDirectoryName(path), "taskbar-widgets-lease.txt");
                 File.WriteAllText(recoveryPath, TaskbarDaValueState.Enabled.ToString());
                 var controller = new LyricDockController(environment, new WidgetVisibilityLease(environment, recoveryPath), new FakeTaskbarSurface());
-                Assert.False(controller.Start(true, "DISPLAY1", LyricDockAlignment.Center));
+                Assert.True(controller.Start(true, "DISPLAY1", LyricDockAlignment.Center));
                 controller.Dispose();
                 controller.WaitForWidgetsOperationsAsync().GetAwaiter().GetResult();
 
@@ -4767,6 +4791,91 @@ namespace LyricHover.Tests
             Assert.Equal("你好，世界", parsed.TranslationLines[0].Text);
         }
 
+        static void LyricsPackagesAcceptContentRatingTitleVariants()
+        {
+            var track = new TrackIdentity("You", "Regard/Troye Sivan/Tate McRae", TimeSpan.FromSeconds(190));
+            var package = LyricsPackageParser.CreatePackage(
+                "[ti:You (Explicit)]\n[ar:Regard/Troye Sivan/Tate McRae]\n[0,1000](0,500,0)You(500,500,0) tonight",
+                "[00:00.00]今夜的你",
+                LyricsTranslationLanguage.SimplifiedChinese);
+            Assert.True(LyricsPackageValidator.TryAccept(track, package, out var accepted));
+            Assert.True(accepted.Lines[0].HasWordTiming);
+            Assert.True(accepted.TranslationLines.Count == 1);
+
+            Assert.False(LyricsPackageValidator.TryAccept(track,
+                "[ti:You (Live)]\n[ar:Regard/Troye Sivan/Tate McRae]\n[00:00.00]You", out var ignored));
+            Assert.False(LyricsPackageValidator.TryAccept(track,
+                "[ti:You (Remix)]\n[ar:Regard/Troye Sivan/Tate McRae]\n[00:00.00]You", out ignored));
+            Assert.False(LyricsPackageValidator.TryAccept(track,
+                "[ti:You (Karaoke)]\n[ar:Regard/Troye Sivan/Tate McRae]\n[00:00.00]You", out ignored));
+            Assert.False(LyricsPackageValidator.TryAccept(track,
+                "[ti:You (Instrumental)]\n[ar:Regard/Troye Sivan/Tate McRae]\n[00:00.00]You", out ignored));
+        }
+
+        static void MergesShortSameSourceTranslationIntoWordTimedLyrics()
+        {
+            const string yrc = "[0,1000](0,500,0)ah(500,500,0)!\n[2000,1000](0,500,0)go(500,500,0)!";
+            var fallback = LyricsPackageParser.CreatePackage(
+                "[00:00.00]ah!\n[00:02.00]go!",
+                "[00:00.00]啊！\n[00:02.00]走！",
+                LyricsTranslationLanguage.SimplifiedChinese);
+            var client = new WordTimedPreferredLyricsClient(
+                new ILyricsClient[] { new FakeLyricsClient(yrc) },
+                new FakeLyricsClient(fallback));
+
+            var parsed = LyricsPackageParser.Parse(client.GetSyncedLyricsAsync(
+                new TrackIdentity("test", "artist", TimeSpan.FromSeconds(2))).GetAwaiter().GetResult());
+            Assert.True(parsed.Lines[0].HasWordTiming);
+            Assert.Equal(2, parsed.TranslationLines.Count);
+            Assert.Equal("走！", parsed.TranslationLines[1].Text);
+        }
+
+        static void DoesNotReuseOneShortTranslationForAdjacentLines()
+        {
+            const string yrc = "[0,400](0,200,0)go(200,200,0)!\n[400,400](0,200,0)up(200,200,0)!";
+            var fallback = LyricsPackageParser.CreatePackage(
+                "[00:00.00]go!\n[00:00.40]up!",
+                "[00:00.20]走！",
+                LyricsTranslationLanguage.SimplifiedChinese);
+            var client = new WordTimedPreferredLyricsClient(
+                new ILyricsClient[] { new FakeLyricsClient(yrc) }, new FakeLyricsClient(fallback));
+
+            var package = client.GetSyncedLyricsAsync(new TrackIdentity("test", "artist", TimeSpan.FromSeconds(1)))
+                .GetAwaiter().GetResult();
+            Assert.True(LyricsPackageParser.HasWordTiming(package));
+            Assert.False(LyricsPackageParser.HasTranslation(package));
+        }
+
+        static void MapsFastSameSourceTranslationsOneToOne()
+        {
+            const string yrc = "[0,400](0,200,0)go(200,200,0)!\n[400,400](0,200,0)up(200,200,0)!";
+            var fallback = LyricsPackageParser.CreatePackage(
+                "[00:00.00]go!\n[00:00.40]up!",
+                "[00:00.05]走！\n[00:00.45]上！",
+                LyricsTranslationLanguage.SimplifiedChinese);
+            var client = new WordTimedPreferredLyricsClient(
+                new ILyricsClient[] { new FakeLyricsClient(yrc) }, new FakeLyricsClient(fallback));
+
+            var parsed = LyricsPackageParser.Parse(client.GetSyncedLyricsAsync(
+                new TrackIdentity("test", "artist", TimeSpan.FromSeconds(1))).GetAwaiter().GetResult());
+            Assert.Equal(2, parsed.TranslationLines.Count);
+            Assert.Equal("走！", parsed.TranslationLines[0].Text);
+            Assert.Equal("上！", parsed.TranslationLines[1].Text);
+        }
+
+        static void KeepsWordTimingWhenTranslationFallbackThrows()
+        {
+            const string yrc = "[0,1000](0,500,0)hello(500,500,0) world";
+            var client = new WordTimedPreferredLyricsClient(
+                new ILyricsClient[] { new FakeLyricsClient(yrc) },
+                new ThrowingLyricsClient());
+
+            var package = client.GetSyncedLyricsAsync(new TrackIdentity("test", "artist", TimeSpan.FromSeconds(1)))
+                .GetAwaiter().GetResult();
+            Assert.True(LyricsPackageParser.HasWordTiming(package));
+            Assert.False(LyricsPackageParser.HasTranslation(package));
+        }
+
         static void ReadsQqQrcFromLyricWhenQrcIsAvailabilityFlag()
         {
             const string qrc = "[1000,1000]hello(1000,500) world(1500,500)";
@@ -4791,6 +4900,9 @@ namespace LyricHover.Tests
 
             Assert.True(LyricsPackageParser.HasWordTiming(lyrics));
             Assert.Equal("hello world", LyricsPackageParser.Parse(lyrics).Lines[0].Text);
+            Assert.True(LyricsPackageValidator.TryAccept(
+                new TrackIdentity("test", "artist", TimeSpan.FromSeconds(3)), lyrics, out var accepted));
+            Assert.True(accepted.Lines[0].HasWordTiming);
         }
 
         static void TaskbarSettingsFallbackRehidesWidgetsAfterExistingLeaseChanges()
@@ -5008,7 +5120,7 @@ namespace LyricHover.Tests
             Assert.Equal(TaskbarDaValueState.Enabled, environment.TaskbarDa);
         }
 
-        static void TaskbarResidualLeaseFailureDisablesFeature()
+        static void TaskbarResidualLeaseFailureKeepsSafeSurfaceAndRecovery()
         {
             var environment = new FakeLyricDockEnvironment { TaskbarDa = TaskbarDaValueState.Disabled, FailNextRefresh = true };
             var recoveryPath = Path.Combine(Path.GetTempPath(), "lyrichover-taskbar-" + Guid.NewGuid() + ".txt");
@@ -5021,10 +5133,10 @@ namespace LyricHover.Tests
                 var reported = LyricDockFailureReason.None;
                 controller.FeatureDisabled += (sender, reason) => { notifications++; reported = reason; };
 
-                Assert.False(controller.Start(true, "DISPLAY1", LyricDockAlignment.Center));
-                Assert.False(controller.IsEnabled);
-                Assert.Equal(LyricDockFailureReason.RegistryOrRefreshFailed, reported);
-                Assert.Equal(1, notifications);
+                Assert.True(controller.Start(true, "DISPLAY1", LyricDockAlignment.Center));
+                Assert.True(controller.IsEnabled);
+                Assert.Equal(LyricDockFailureReason.None, reported);
+                Assert.Equal(0, notifications);
                 Assert.Equal(1, environment.PrepareRestoreCalls);
                 Assert.Equal(1, environment.RefreshCalls);
                 Assert.True(File.Exists(recoveryPath));
@@ -5050,10 +5162,10 @@ namespace LyricHover.Tests
                     var recovered = new ManualResetEventSlim(false);
                     controller.RuntimeRecovered += (sender, args) => recovered.Set();
 
-                    Assert.False(controller.Start(true, "DISPLAY1", LyricDockAlignment.Center));
-                    Assert.False(controller.Configure(true, "DISPLAY1", LyricDockAlignment.Center));
-                    Assert.False(controller.IsEnabled);
-                    Assert.False(surface.IsVisible);
+                    Assert.True(controller.Start(true, "DISPLAY1", LyricDockAlignment.Center));
+                    Assert.True(controller.IsEnabled);
+                    Assert.True(surface.IsVisible);
+                    Assert.True(controller.Configure(true, "DISPLAY1", LyricDockAlignment.Center));
                     Assert.True(File.Exists(recoveryPath));
 
                     Assert.True(recovered.Wait(TimeSpan.FromSeconds(3)));
@@ -5065,6 +5177,147 @@ namespace LyricHover.Tests
             finally
             {
                 if (File.Exists(recoveryPath)) File.Delete(recoveryPath);
+            }
+        }
+
+        static void TaskbarPendingRecoveryKeepsSafeVisibleDockWithoutNewLease()
+        {
+            var environment = new FakeLyricDockEnvironment
+            {
+                TaskbarDa = TaskbarDaValueState.Absent,
+                RejectTaskbarDaWrites = true
+            };
+            var recoveryPath = Path.Combine(Path.GetTempPath(), "lyrichover-taskbar-" + Guid.NewGuid() + ".txt");
+            File.WriteAllText(recoveryPath, TaskbarDaValueState.Enabled.ToString());
+            LyricDockController controller = null;
+            try
+            {
+                var surface = new FakeTaskbarSurface();
+                controller = new LyricDockController(environment, new WidgetVisibilityLease(environment, recoveryPath), surface);
+                Assert.True(controller.Start(true, "DISPLAY1", LyricDockAlignment.Center));
+                Assert.True(controller.IsEnabled);
+                Assert.True(surface.IsVisible);
+                Assert.Equal(TaskbarDaValueState.Absent, environment.TaskbarDa);
+                Assert.True(File.Exists(recoveryPath));
+                Assert.Equal(TaskbarDaValueState.Enabled.ToString(), ReadTextWithRetry(recoveryPath));
+                Assert.Equal(1, environment.TaskbarDaWriteCalls);
+                Assert.Equal(0, environment.SettingsUiCalls);
+            }
+            finally
+            {
+                controller?.Dispose();
+                controller?.WaitForWidgetsOperationsAsync().GetAwaiter().GetResult();
+                DeleteFileWithRetry(recoveryPath);
+            }
+        }
+
+        static void TaskbarPendingRecoveryBlocksChangedEventAndSettingsAcquisition()
+        {
+            var environment = new FakeLyricDockEnvironment
+            {
+                TaskbarDa = TaskbarDaValueState.Absent,
+                RejectTaskbarDaWrites = true
+            };
+            var recoveryPath = Path.Combine(Path.GetTempPath(), "lyrichover-taskbar-" + Guid.NewGuid() + ".txt");
+            File.WriteAllText(recoveryPath, TaskbarDaValueState.Enabled.ToString());
+            try
+            {
+                var surface = new FakeTaskbarSurface();
+                using var controller = new LyricDockController(environment, new WidgetVisibilityLease(environment, recoveryPath), surface);
+                Assert.True(controller.Start(true, "DISPLAY1", LyricDockAlignment.Center));
+                Assert.True(surface.IsVisible);
+                var writesAfterRestore = environment.TaskbarDaWriteCalls;
+
+                environment.RaiseChanged();
+                controller.TryHideWidgetsThroughSettingsUi();
+                controller.WaitForWidgetsOperationsAsync().GetAwaiter().GetResult();
+                Assert.True(surface.IsVisible);
+                Assert.Equal(writesAfterRestore, environment.TaskbarDaWriteCalls);
+                Assert.Equal(0, environment.SettingsUiCalls);
+                Assert.Equal(TaskbarDaValueState.Enabled.ToString(), ReadTextWithRetry(recoveryPath));
+
+                environment.PlacementFailure = LyricDockFailureReason.TaskbarAutoHiddenOrFullscreen;
+                environment.RaiseChanged();
+                Assert.False(surface.IsVisible);
+                Assert.False(controller.IsEnabled);
+
+                environment.PlacementFailure = LyricDockFailureReason.None;
+                environment.RaiseChanged();
+                Assert.True(surface.IsVisible);
+                Assert.Equal(writesAfterRestore, environment.TaskbarDaWriteCalls);
+                Assert.Equal(0, environment.SettingsUiCalls);
+                Assert.Equal(TaskbarDaValueState.Enabled.ToString(), ReadTextWithRetry(recoveryPath));
+            }
+            finally
+            {
+                DeleteFileWithRetry(recoveryPath);
+            }
+        }
+
+        static void TaskbarPendingRecoveryReprobesNewlySafePlacement()
+        {
+            var environment = new FakeLyricDockEnvironment
+            {
+                TaskbarDa = TaskbarDaValueState.Disabled,
+                RejectTaskbarDaWrites = true,
+                PlacementFailure = LyricDockFailureReason.InsufficientSafeSpace
+            };
+            var recoveryPath = Path.Combine(Path.GetTempPath(), "lyrichover-taskbar-" + Guid.NewGuid() + ".txt");
+            File.WriteAllText(recoveryPath, TaskbarDaValueState.Enabled.ToString());
+            try
+            {
+                var surface = new FakeTaskbarSurface();
+                using var controller = new LyricDockController(environment, new WidgetVisibilityLease(environment, recoveryPath), surface);
+                Assert.False(controller.Start(true, "DISPLAY1", LyricDockAlignment.Center));
+                Assert.False(surface.IsVisible);
+
+                environment.PlacementFailure = LyricDockFailureReason.None;
+                Assert.True(controller.Configure(true, "DISPLAY2", LyricDockAlignment.Left));
+                Assert.True(controller.IsEnabled);
+                Assert.True(surface.IsVisible);
+                Assert.Equal(LyricDockAlignment.Left, environment.LastAlignment);
+                Assert.Equal(1, environment.TaskbarDaWriteCalls);
+                Assert.True(File.Exists(recoveryPath));
+            }
+            finally
+            {
+                DeleteFileWithRetry(recoveryPath);
+            }
+        }
+
+        static void TaskbarPendingRecoveryReshowsSafeGapAfterChangedEvent()
+        {
+            var environment = new FakeLyricDockEnvironment
+            {
+                TaskbarDa = TaskbarDaValueState.Absent,
+                RejectTaskbarDaWrites = true,
+                PlacementFailure = LyricDockFailureReason.InsufficientSafeSpace
+            };
+            var recoveryPath = Path.Combine(Path.GetTempPath(), "lyrichover-taskbar-" + Guid.NewGuid() + ".txt");
+            File.WriteAllText(recoveryPath, TaskbarDaValueState.Enabled.ToString());
+            LyricDockController controller = null;
+            try
+            {
+                var surface = new FakeTaskbarSurface();
+                controller = new LyricDockController(environment, new WidgetVisibilityLease(environment, recoveryPath), surface);
+                Assert.False(controller.Start(true, "DISPLAY1", LyricDockAlignment.Center));
+                Assert.False(surface.IsVisible);
+                Assert.False(controller.IsEnabled);
+                var writesAfterRestore = environment.TaskbarDaWriteCalls;
+
+                environment.PlacementFailure = LyricDockFailureReason.None;
+                environment.RaiseChanged();
+                Assert.True(controller.IsEnabled);
+                Assert.True(surface.IsVisible);
+                Assert.Equal(writesAfterRestore, environment.TaskbarDaWriteCalls);
+                Assert.Equal(0, environment.SettingsUiCalls);
+                Assert.Equal(TaskbarDaValueState.Enabled.ToString(), ReadTextWithRetry(recoveryPath));
+            }
+            finally
+            {
+                controller?.Dispose();
+                controller?.WaitForWidgetsOperationsAsync().GetAwaiter().GetResult();
+                DeleteFileWithRetry(recoveryPath);
             }
         }
 
@@ -5218,6 +5471,42 @@ namespace LyricHover.Tests
 
             return count;
         }
+
+        static string ReadTextWithRetry(string path)
+        {
+            IOException lastError = null;
+            for (var attempt = 0; attempt < 100; attempt++)
+            {
+                try { return File.ReadAllText(path); }
+                catch (IOException error)
+                {
+                    lastError = error;
+                    Thread.Sleep(20);
+                }
+            }
+
+            throw lastError ?? new IOException("Could not read recovery file.");
+        }
+
+        static void DeleteFileWithRetry(string path)
+        {
+            IOException lastError = null;
+            for (var attempt = 0; attempt < 100; attempt++)
+            {
+                try
+                {
+                    if (File.Exists(path)) File.Delete(path);
+                    return;
+                }
+                catch (IOException error)
+                {
+                    lastError = error;
+                    Thread.Sleep(20);
+                }
+            }
+
+            throw lastError ?? new IOException("Could not delete recovery file.");
+        }
     }
 
     sealed class FakeMonotonicClock : IMonotonicClock
@@ -5238,6 +5527,8 @@ namespace LyricHover.Tests
         public bool PrepareRestoreResult { get; set; } = true;
         public int PrepareRestoreCalls { get; private set; }
         public int RefreshCalls { get; private set; }
+        public int TaskbarDaWriteCalls { get; private set; }
+        public int SettingsUiCalls { get; private set; }
         public ManualResetEventSlim RefreshWaitHandle { get; set; }
         public ManualResetEventSlim SettingsUiWaitHandle { get; set; }
         public ManualResetEventSlim SettingsUiEntered { get; set; }
@@ -5267,9 +5558,10 @@ namespace LyricHover.Tests
             return false;
         }
 
-        public bool TryWriteTaskbarDa(TaskbarDaValueState state) { if (RejectTaskbarDaWrites) return false; TaskbarDa = state; return true; }
+        public bool TryWriteTaskbarDa(TaskbarDaValueState state) { TaskbarDaWriteCalls++; if (RejectTaskbarDaWrites) return false; TaskbarDa = state; return true; }
         public bool TryDisableWidgetsThroughSettingsUi()
         {
+            SettingsUiCalls++;
             SettingsUiEntered?.Set();
             SettingsUiWaitHandle?.Wait();
             TaskbarDa = TaskbarDaValueState.Disabled;

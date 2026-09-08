@@ -12,6 +12,10 @@ namespace LyricHover.Core
         private static readonly Regex MetadataPattern = new Regex(@"^\[(ar|ti):(.+)\]$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex YrcWordPattern = new Regex(@"\((\d+),(\d+)(?:,\d+)?\)([^()]+)", RegexOptions.Compiled);
         private static readonly Regex QrcWordPattern = new Regex(@"(.*?)\((\d+),(\d+)\)", RegexOptions.Compiled);
+        // QQ/NetEase millisecond fixtures can round adjacent token boundaries in opposite
+        // directions. Fifty milliseconds admits only that one-tick overlap while the
+        // parser still rejects reversed starts, larger overlaps, and out-of-range data.
+        private const long MaximumWordOverlapMilliseconds = 50;
 
         public static bool TryParse(string value, out TimedLyrics lyrics)
         {
@@ -101,20 +105,25 @@ namespace LyricHover.Core
             bool useAbsolute;
             if (absolute && !relative) useAbsolute = true;
             else if (relative && !absolute) useAbsolute = false;
-            // The overlap is ambiguous: a first word at lineStart is also a valid
-            // relative offset when the line is long enough.  Do not guess a timeline;
-            // callers retain the complete line as ordinary line-timed lyrics.
+            // At a zero line start, absolute and relative values produce exactly the
+            // same offsets.  This is not an ambiguity and is common in QRC/YRC files.
+            // For every other overlap, the two interpretations differ, so retain the
+            // safe line-timed fallback instead of guessing a timeline.
+            else if (lineStart == 0) useAbsolute = true;
             else return new List<LyricWord>();
 
             var result = new List<LyricWord>();
             long previousEnd = -1;
+            long previousOffset = -1;
             foreach (var item in raw)
             {
                 var offset = useAbsolute ? item.Item1 - lineStart : item.Item1;
                 var end = offset + item.Item2;
-                if (offset < 0 || end < offset || end > lineLength || offset < previousEnd) return new List<LyricWord>();
+                if (offset < 0 || end < offset || end > lineLength || offset < previousOffset ||
+                    offset < previousEnd - MaximumWordOverlapMilliseconds) return new List<LyricWord>();
                 result.Add(new LyricWord(TimeSpan.FromMilliseconds(offset), TimeSpan.FromMilliseconds(item.Item2), item.Item3));
                 previousEnd = end;
+                previousOffset = offset;
             }
             return result;
         }

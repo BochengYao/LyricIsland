@@ -47,6 +47,7 @@ namespace LyricHover.App
             ["开启歌词岛"] = new[] { "开启歌词岛", "開啟歌詞島", "Show lyrics island", "歌詞島を表示" },
             ["开启歌词坞"] = new[] { "开启歌词坞", "開啟歌詞塢", "Show lyrics dock", "歌詞ドックを表示" },
             ["歌词坞已开启，但当前环境暂不可用；下次启动或再次应用设置时会重试。"] = new[] { "歌词坞已开启，但当前环境暂不可用；下次启动或再次应用设置时会重试。", "歌詞塢已開啟，但目前環境暫不可用；下次啟動或再次套用設定時會重試。", "Lyrics dock is enabled but unavailable in the current environment. It will retry on the next launch or when settings are applied again.", "歌詞ドックは有効ですが、現在の環境では利用できません。次回起動時または設定の再適用時に再試行します。" },
+            ["歌词坞已显示，但 Widgets 恢复尚未完成；不会修改新的系统设置，请稍后再次应用设置重试。"] = new[] { "歌词坞已显示，但 Widgets 恢复尚未完成；不会修改新的系统设置，请稍后再次应用设置重试。", "歌詞塢已顯示，但 Widgets 復原尚未完成；不會修改新的系統設定，請稍後再次套用設定重試。", "Lyrics dock is visible, but Widgets recovery is not complete. No new system settings will be changed; apply settings again later to retry.", "歌詞ドックは表示中ですが、Widgets の復元が完了していません。新しいシステム設定は変更せず、後でもう一度設定を適用して再試行します。" },
             ["位置与状态"] = new[] { "位置与状态", "位置與狀態", "Position & status", "位置と状態" },
             ["鼠标避让"] = new[] { "鼠标避让", "滑鼠避讓", "Mouse avoidance", "マウス回避" },
             ["快捷键"] = new[] { "快捷键", "快速鍵", "Shortcuts", "ショートカット" },

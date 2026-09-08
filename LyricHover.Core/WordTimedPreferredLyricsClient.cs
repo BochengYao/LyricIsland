@@ -32,7 +32,17 @@ namespace LyricHover.Core
                 catch { }
             }
 
-            var fallbackLyrics = await fallbackClient.GetSyncedLyricsAsync(track).ConfigureAwait(false);
+            string fallbackLyrics;
+            try
+            {
+                fallbackLyrics = await fallbackClient.GetSyncedLyricsAsync(track).ConfigureAwait(false);
+            }
+            catch
+            {
+                // Translation enrichment is optional.  Once a verified word-timed
+                // package exists, a later fallback failure must not erase it.
+                return wordTimedLyrics;
+            }
             if (string.IsNullOrWhiteSpace(wordTimedLyrics))
             {
                 return fallbackLyrics;

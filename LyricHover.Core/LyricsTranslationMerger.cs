@@ -19,6 +19,16 @@ namespace LyricHover.Core
                 return targetPackage;
             }
 
+            // A word-timed provider commonly returns the same lyric sheet as the normal
+            // provider, just with a different timing encoding.  In that case every source
+            // row and timestamp agrees, so even a one-line chorus is strong enough evidence
+            // to retain its translation.  Keep the older threshold for remix/base-version
+            // reuse below: a couple of coincidental words must not join two different songs.
+            if (TryMapSameSource(target, reference, out var sameSourceLines))
+            {
+                return CreateMergedPackage(targetPackage, sameSourceLines, reference.TranslationLanguage);
+            }
+
             var translationsByOriginal = BuildReferenceMap(reference);
             var mappedLines = new List<LyricLine>();
             foreach (var line in target.Lines)
@@ -37,6 +47,64 @@ namespace LyricHover.Core
                 return targetPackage;
             }
 
+            return CreateMergedPackage(targetPackage, mappedLines, reference.TranslationLanguage);
+        }
+
+        private static bool TryMapSameSource(TimedLyrics target, TimedLyrics reference, out List<LyricLine> mappedLines)
+        {
+            mappedLines = new List<LyricLine>();
+            if (target.Lines.Count != reference.Lines.Count) return false;
+            var nextTranslationIndex = 0;
+
+            for (var index = 0; index < target.Lines.Count; index++)
+            {
+                var targetLine = target.Lines[index];
+                var referenceLine = reference.Lines[index];
+                var targetText = NormalizeText(targetLine.Text);
+                if (targetText.Length == 0 || !string.Equals(targetText, NormalizeText(referenceLine.Text), StringComparison.Ordinal) ||
+                    Math.Abs((targetLine.Timestamp - referenceLine.Timestamp).TotalMilliseconds) > MaximumTimestampDistanceMilliseconds)
+                {
+                    mappedLines.Clear();
+                    return false;
+                }
+
+                var translationIndex = FindClosestTranslationIndex(reference.TranslationLines, referenceLine.Timestamp, nextTranslationIndex);
+                var translation = translationIndex >= 0 ? reference.TranslationLines[translationIndex] : null;
+                if (translation == null || !LyricsPackageParser.IsMeaningfulTranslationText(translation.Text))
+                {
+                    mappedLines.Clear();
+                    return false;
+                }
+
+                mappedLines.Add(new LyricLine(targetLine.Timestamp, translation.Text.Trim()));
+                nextTranslationIndex = translationIndex + 1;
+            }
+
+            return mappedLines.Count > 0;
+        }
+
+        private static int FindClosestTranslationIndex(
+            IReadOnlyList<LyricLine> translationLines,
+            TimeSpan timestamp,
+            int startIndex)
+        {
+            var closestIndex = -1;
+            var closestDistance = MaximumTimestampDistanceMilliseconds + 1;
+            for (var index = startIndex; index < translationLines.Count; index++)
+            {
+                var distance = Math.Abs((translationLines[index].Timestamp - timestamp).TotalMilliseconds);
+                if (distance < closestDistance)
+                {
+                    closestIndex = index;
+                    closestDistance = distance;
+                }
+            }
+
+            return closestDistance <= MaximumTimestampDistanceMilliseconds ? closestIndex : -1;
+        }
+
+        private static string CreateMergedPackage(string targetPackage, IEnumerable<LyricLine> mappedLines, LyricsTranslationLanguage language)
+        {
             var translationLrc = new StringBuilder();
             foreach (var line in mappedLines)
             {
@@ -49,7 +117,7 @@ namespace LyricHover.Core
             return LyricsPackageParser.CreatePackage(
                 LyricsPackageParser.GetOriginalLyrics(targetPackage),
                 translationLrc.ToString(),
-                reference.TranslationLanguage);
+                language);
         }
 
         private static Dictionary<string, string> BuildReferenceMap(TimedLyrics reference)
