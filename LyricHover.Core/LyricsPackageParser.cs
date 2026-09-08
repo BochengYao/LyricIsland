@@ -38,7 +38,29 @@ namespace LyricHover.Core
 
         private static TimedLyrics ParseOriginalLyrics(string value)
         {
-            return WordTimedLyricsParser.TryParse(value, out var timed) ? timed : LrcParser.Parse(value);
+            WordTimedLyricsParser.TryParse(value, out var timed);
+            if (timed.Lines.Count > 0)
+            {
+                // A provider can mix QRC/YRC entries with ordinary LRC entries.  The
+                // word-timed parser deliberately only understands the former, so merge
+                // in readable LRC rows instead of dropping them when millisecond rows exist.
+                var lines = timed.Lines.ToList();
+                var lrc = LrcParser.Parse(value);
+                foreach (var line in lrc.Lines)
+                {
+                    if (!lines.Any(existing => existing.Timestamp == line.Timestamp &&
+                        string.Equals(existing.Text, line.Text, StringComparison.Ordinal)))
+                    {
+                        lines.Add(line);
+                    }
+                }
+
+                return new TimedLyrics(
+                    lines,
+                    string.IsNullOrWhiteSpace(timed.Title) ? lrc.Title : timed.Title,
+                    string.IsNullOrWhiteSpace(timed.Artist) ? lrc.Artist : timed.Artist);
+            }
+            return WordTimedLyricsParser.TryParseLineTimed(value, out timed) ? timed : LrcParser.Parse(value);
         }
 
         public static bool HasTranslation(string value)

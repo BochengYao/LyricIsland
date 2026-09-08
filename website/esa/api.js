@@ -186,22 +186,45 @@ function redactLyricSourceDetails(items, pattern, disclosure) {
   return retained.length === items.length ? items : [disclosure, ...retained];
 }
 
+function redactLyricSourceText(value, pattern, disclosure) {
+  return value === disclosure || !pattern.test(value) ? value : disclosure;
+}
+
+const lyricSourcePatterns = {
+  zh: /歌词来源|歌词源|LRCLIB/i,
+  zhTw: /歌[词詞](?:来源|來源|源)|LRCLIB/i,
+  en: /\blyric (?:source|provider)s?\b|\bLRCLIB\b/i,
+  ja: /歌詞(?:ソース|提供元)|\blyric (?:source|provider)s?\b|\bLRCLIB\b/i
+};
+
 function publicFeatureContent(content) {
   return {
     ...content,
     summary: {
       ...content.summary,
-      items_zh: redactLyricSourceDetails(content.summary.items_zh, /歌词来源|歌词源|LRCLIB/i, publicLyricsDisclosure.zh),
-      items_zh_tw: redactLyricSourceDetails(content.summary.items_zh_tw, /歌[词詞](?:来源|來源|源)|LRCLIB/i, publicLyricsDisclosure.zhTw),
-      items_en: redactLyricSourceDetails(content.summary.items_en, /\blyric (?:source|provider)s?\b|\bLRCLIB\b/i, publicLyricsDisclosure.en),
-      items_ja: redactLyricSourceDetails(content.summary.items_ja, /歌詞(?:ソース|提供元)|\blyric (?:source|provider)s?\b|\bLRCLIB\b/i, publicLyricsDisclosure.ja)
+      label_zh: redactLyricSourceText(content.summary.label_zh, lyricSourcePatterns.zh, publicLyricsDisclosure.zh),
+      label_zh_tw: redactLyricSourceText(content.summary.label_zh_tw, lyricSourcePatterns.zhTw, publicLyricsDisclosure.zhTw),
+      label_en: redactLyricSourceText(content.summary.label_en, lyricSourcePatterns.en, publicLyricsDisclosure.en),
+      label_ja: redactLyricSourceText(content.summary.label_ja, lyricSourcePatterns.ja, publicLyricsDisclosure.ja),
+      items_zh: redactLyricSourceDetails(content.summary.items_zh, lyricSourcePatterns.zh, publicLyricsDisclosure.zh),
+      items_zh_tw: redactLyricSourceDetails(content.summary.items_zh_tw, lyricSourcePatterns.zhTw, publicLyricsDisclosure.zhTw),
+      items_en: redactLyricSourceDetails(content.summary.items_en, lyricSourcePatterns.en, publicLyricsDisclosure.en),
+      items_ja: redactLyricSourceDetails(content.summary.items_ja, lyricSourcePatterns.ja, publicLyricsDisclosure.ja)
     },
     sections: content.sections.map((section) => ({
       ...section,
-      items_zh: redactLyricSourceDetails(section.items_zh, /歌词来源|歌词源|LRCLIB/i, publicLyricsDisclosure.zh),
-      items_zh_tw: redactLyricSourceDetails(section.items_zh_tw, /歌[词詞](?:来源|來源|源)|LRCLIB/i, publicLyricsDisclosure.zhTw),
-      items_en: redactLyricSourceDetails(section.items_en, /\blyric (?:source|provider)s?\b|\bLRCLIB\b/i, publicLyricsDisclosure.en),
-      items_ja: redactLyricSourceDetails(section.items_ja, /歌詞(?:ソース|提供元)|\blyric (?:source|provider)s?\b|\bLRCLIB\b/i, publicLyricsDisclosure.ja)
+      title_zh: redactLyricSourceText(section.title_zh, lyricSourcePatterns.zh, publicLyricsDisclosure.zh),
+      title_zh_tw: redactLyricSourceText(section.title_zh_tw, lyricSourcePatterns.zhTw, publicLyricsDisclosure.zhTw),
+      title_en: redactLyricSourceText(section.title_en, lyricSourcePatterns.en, publicLyricsDisclosure.en),
+      title_ja: redactLyricSourceText(section.title_ja, lyricSourcePatterns.ja, publicLyricsDisclosure.ja),
+      body_zh: redactLyricSourceText(section.body_zh, lyricSourcePatterns.zh, publicLyricsDisclosure.zh),
+      body_zh_tw: redactLyricSourceText(section.body_zh_tw, lyricSourcePatterns.zhTw, publicLyricsDisclosure.zhTw),
+      body_en: redactLyricSourceText(section.body_en, lyricSourcePatterns.en, publicLyricsDisclosure.en),
+      body_ja: redactLyricSourceText(section.body_ja, lyricSourcePatterns.ja, publicLyricsDisclosure.ja),
+      items_zh: redactLyricSourceDetails(section.items_zh, lyricSourcePatterns.zh, publicLyricsDisclosure.zh),
+      items_zh_tw: redactLyricSourceDetails(section.items_zh_tw, lyricSourcePatterns.zhTw, publicLyricsDisclosure.zhTw),
+      items_en: redactLyricSourceDetails(section.items_en, lyricSourcePatterns.en, publicLyricsDisclosure.en),
+      items_ja: redactLyricSourceDetails(section.items_ja, lyricSourcePatterns.ja, publicLyricsDisclosure.ja)
     }))
   };
 }
@@ -693,9 +716,29 @@ async function createSignedUrls(paths) {
 }
 
 async function getPublicIncentives(voterHash, options = {}) {
-  const suggestionRequest = supabase(
-    "/rest/v1/incentive_submissions?select=id,kind,nickname,title,body,created_at,like_count,attachments,reviewer_note,status&order=updated_at.desc&limit=100"
-  );
+  const suggestionRequest = (async () => {
+    const result = [];
+    const pageSize = 100;
+    let cursor;
+    while (result.length < 24) {
+      const params = new URLSearchParams({
+        select: "id,kind,nickname,title,body,created_at,updated_at,like_count,attachments,reviewer_note,status",
+        status: "eq.accepted",
+        order: "updated_at.desc,id.desc",
+        limit: String(pageSize)
+      });
+      if (cursor) {
+        params.set("or", `(updated_at.lt.${cursor.updated_at},and(updated_at.eq.${cursor.updated_at},id.lt.${cursor.id}))`);
+      }
+      const rows = await supabase(
+        `/rest/v1/incentive_submissions?${params.toString()}`
+      );
+      result.push(...rows.filter((row) => decodeReviewMeta(row.reviewer_note).is_public));
+      if (rows.length < pageSize) break;
+      cursor = rows[rows.length - 1];
+    }
+    return result.slice(0, 24);
+  })();
   const likesRequest = voterHash
     ? supabase(
         `/rest/v1/incentive_likes?select=submission_id&voter_token_hash=eq.${encodeURIComponent(voterHash)}&limit=200`
@@ -712,18 +755,25 @@ async function getPublicIncentives(voterHash, options = {}) {
     previewRequest
   ]);
   const likedIds = new Set(likedRows.map((row) => row.submission_id));
-  const publicRows = rows.filter((row) => row.status === "accepted" && decodeReviewMeta(row.reviewer_note).is_public).slice(0, 24);
+  const publicRows = rows;
   const firstAttachments = publicRows
     .map((row) => row.attachments && row.attachments[0])
     .filter(Boolean);
   const signedUrls = await createSignedUrls(firstAttachments.map((item) => item.path));
-  const suggestions = publicRows.map(({ attachments, reviewer_note, status: _status, ...suggestion }) => {
+  const suggestions = publicRows.map((row) => {
+    const { id, kind, nickname, title, body, created_at, like_count, attachments, reviewer_note } = row;
     const first = attachments && attachments[0];
     const url = first ? signedUrls.get(first.path) : undefined;
     return {
-      ...suggestion,
+      id,
+      kind,
+      nickname,
+      title,
+      body,
+      created_at,
+      like_count,
       developer_reply: decodeReviewMeta(reviewer_note).developer_reply,
-      liked: likedIds.has(suggestion.id),
+      liked: likedIds.has(id),
       ...(first && url
         ? { attachment: { name: first.name, type: first.type, url } }
         : {})
@@ -747,31 +797,15 @@ async function getPublicIncentives(voterHash, options = {}) {
 }
 
 async function toggleSuggestionLike(submissionId, voterTokenHash) {
-  const submissions = await supabase(
-    `/rest/v1/incentive_submissions?select=id,like_count,reviewer_note,status&id=eq.${encodeURIComponent(submissionId)}&limit=1`
-  );
-  const submission = submissions[0];
-  if (!submission || submission.status !== "accepted" || !decodeReviewMeta(submission.reviewer_note).is_public) {
-    throw new Error("Suggestion is not available for likes");
-  }
-  const existing = await supabase(
-    `/rest/v1/incentive_likes?select=submission_id&submission_id=eq.${encodeURIComponent(submissionId)}&voter_token_hash=eq.${encodeURIComponent(voterTokenHash)}&limit=1`
-  );
-  if (existing.length > 0) {
-    return { liked: true, like_count: submission.like_count, already_liked: true };
-  }
-  await supabase("/rest/v1/incentive_likes", {
+  const rows = await supabase("/rest/v1/rpc/toggle_incentive_like", {
     method: "POST",
-    headers: supabaseHeaders("return=representation"),
-    body: JSON.stringify({ submission_id: submissionId, voter_token_hash: voterTokenHash })
+    body: JSON.stringify({
+      p_submission_id: submissionId,
+      p_voter_token_hash: voterTokenHash
+    })
   });
-  const likeCount = submission.like_count + 1;
-  await supabase(`/rest/v1/incentive_submissions?id=eq.${encodeURIComponent(submissionId)}`, {
-    method: "PATCH",
-    headers: supabaseHeaders("return=representation"),
-    body: JSON.stringify({ like_count: likeCount })
-  });
-  return { liked: true, like_count: likeCount, already_liked: false };
+  if (!rows[0]) throw new Error("Suggestion is not available for likes");
+  return rows[0];
 }
 
 async function listSubmissions() {
@@ -1936,8 +1970,14 @@ async function handleAdminPromoCodes(request) {
       if (existing[0].distribution_status !== "available") {
         return jsonError(`无法删除状态为 "${existing[0].distribution_status}" 的兑换码`, 400);
       }
-      const oldData = existing[0];
-      await supabase(`/rest/v1/promo_codes?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
+      const deleted = await supabase(
+        `/rest/v1/promo_codes?select=*&id=eq.${encodeURIComponent(id)}&distribution_status=eq.available`,
+        { method: "DELETE", headers: supabaseHeaders("return=representation") }
+      );
+      if (!deleted || deleted.length === 0) {
+        return jsonError("兑换码状态已变化，未删除", 409);
+      }
+      const oldData = deleted[0];
 
       // Insert audit log
       await supabase("/rest/v1/promo_code_logs", {

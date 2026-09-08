@@ -1279,11 +1279,15 @@
                                        Style="{StaticResource SettingsModuleHeadingStyle}"
                                        Text="歌词坞" />
 
-                            <TextBlock Grid.Row="1"
-                                       Grid.Column="0"
-                                       Margin="0,0,16,0"
-                                       Style="{StaticResource SettingLabel}"
-                                       Text="开启歌词坞" />
+                            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,16,0" VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource SettingLabel}" Text="开启歌词坞" />
+                                <TextBlock x:Name="LyricDockRuntimeStatusText"
+                                           Margin="0,2,0,0"
+                                           FontSize="11"
+                                           Foreground="#FFE07A5F"
+                                           TextWrapping="Wrap"
+                                           Visibility="Collapsed" />
+                            </StackPanel>
                             <CheckBox x:Name="LyricDockEnabledCheckBox"
                                       Grid.Row="1"
                                       Grid.Column="1"

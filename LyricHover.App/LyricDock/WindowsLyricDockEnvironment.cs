@@ -232,24 +232,60 @@ namespace LyricHover.App.LyricDock
 
         private static bool TryDisableWidgetsThroughStaHelper()
         {
+            Process helper = null;
             try
             {
                 var executable = Process.GetCurrentProcess().MainModule?.FileName;
                 if (string.IsNullOrWhiteSpace(executable) || !System.IO.File.Exists(executable)) return false;
-                using var helper = Process.Start(new ProcessStartInfo
+                helper = Process.Start(new ProcessStartInfo
                 {
                     FileName = executable,
                     Arguments = "--lyrichover-widgets-settings-toggle",
                     UseShellExecute = false,
                     CreateNoWindow = true
                 });
-                return helper != null && helper.WaitForExit(15000) && helper.ExitCode == 0;
+                if (helper == null) return false;
+                if (helper.WaitForExit(15000)) return helper.ExitCode == 0;
+
+                WriteDiagnosticLog("Windows Settings helper: timed out; stopping owned helper before recovery");
+                StopOwnedHelperAndWait(helper);
+                return false;
             }
             catch (Exception ex)
             {
                 WriteDiagnosticLog("Windows Settings helper: " + ex.GetType().Name + ": " + ex.Message);
+                // A failed wait is not proof that the helper stopped.  Do not let the
+                // serialized lease operation proceed to restore while this owned process
+                // can still change Widgets afterward.
+                if (helper != null) StopOwnedHelperAndWait(helper);
                 return false;
             }
+            finally
+            {
+                helper?.Dispose();
+            }
+        }
+
+        private static void StopOwnedHelperAndWait(Process helper)
+        {
+            try
+            {
+                if (helper.HasExited) return;
+                helper.Kill();
+            }
+            catch (InvalidOperationException)
+            {
+                // The process exited between HasExited and Kill.
+            }
+            catch (Exception ex)
+            {
+                WriteDiagnosticLog("Windows Settings helper stop: " + ex.GetType().Name + ": " + ex.Message);
+            }
+
+            // This method runs inside the controller's background operation queue.  Waiting
+            // here keeps acquire/restore ordered without blocking the WPF Dispatcher.  If
+            // Kill was denied, retain the recovery record until the helper exits naturally.
+            helper.WaitForExit();
         }
 
         internal static bool TryDisableWidgetsFromStaHelper() => TryDisableWidgetsViaSystemSettingsOnStaThread();

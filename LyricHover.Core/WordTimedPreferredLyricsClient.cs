@@ -44,10 +44,7 @@ namespace LyricHover.Core
                 return wordTimedLyrics;
             }
 
-            return LyricsPackageParser.CreatePackage(
-                LyricsPackageParser.GetOriginalLyrics(wordTimedLyrics),
-                LyricsPackageParser.GetTranslationLyrics(fallbackLyrics),
-                LyricsPackageParser.GetTranslationLanguage(fallbackLyrics));
+            return LyricsTranslationMerger.MergeMatchingLines(wordTimedLyrics, fallbackLyrics);
         }
     }
 }

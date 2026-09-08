@@ -83,17 +83,40 @@ function parseDate(
   const trimmed = value.trim();
   if (trimmed === "") return null;
 
-  // Partner Center sentinel for "never expires": 0001/1/1 (with any time suffix).
+  // Partner Center sentinel for "never expires". Accept only a valid midnight
+  // representation instead of allowing every value beginning with 0001/.
   // Treat it as "no expiration" instead of reporting an error.
-  if (/^0001\//.test(trimmed)) return null;
+  if (/^0001\/0?1\/0?1(?:\s+0?0:00)?$/.test(trimmed)) return null;
+
+  const componentsAreValid = (
+    year: number,
+    month: number,
+    day: number,
+    hour = 0,
+    minute = 0,
+    second = 0
+  ) => {
+    if (year < 1 || month < 1 || month > 12 || day < 1 || hour < 0 || hour > 23 || minute < 0 || minute > 59 || second < 0 || second > 59) {
+      return false;
+    }
+    const candidate = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+    return candidate.getUTCFullYear() === year
+      && candidate.getUTCMonth() === month - 1
+      && candidate.getUTCDate() === day
+      && candidate.getUTCHours() === hour
+      && candidate.getUTCMinutes() === minute
+      && candidate.getUTCSeconds() === second;
+  };
 
   // Try ISO: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS
   const isoMatch = trimmed.match(
     /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2}))?$/
   );
   if (isoMatch) {
-    const d = new Date(trimmed);
-    if (!isNaN(d.getTime())) return trimmed;
+    const [, year, month, day, hour = "0", minute = "0", second = "0"] = isoMatch;
+    if (componentsAreValid(Number(year), Number(month), Number(day), Number(hour), Number(minute), Number(second))) {
+      return trimmed;
+    }
   }
 
   // Try slash formats with optional time (Partner Center exports):
@@ -110,12 +133,13 @@ function parseDate(
     const iso = hasTime
       ? `${isoDate}T${slashMatch[7].padStart(2, "0")}:${slashMatch[8]}`
       : isoDate;
-    // Validate via local-time component construction (consistent with the
-    // parser's local-time handling of slash dates).
-    const d = hasTime
-      ? new Date(Number(year), Number(month) - 1, Number(day), Number(slashMatch[7]), Number(slashMatch[8]))
-      : new Date(Number(year), Number(month) - 1, Number(day));
-    if (!isNaN(d.getTime())) return iso;
+    if (componentsAreValid(
+      Number(year),
+      Number(month),
+      Number(day),
+      hasTime ? Number(slashMatch[7]) : 0,
+      hasTime ? Number(slashMatch[8]) : 0
+    )) return iso;
   }
 
   errors.push({

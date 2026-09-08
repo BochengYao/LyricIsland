@@ -26,8 +26,14 @@ namespace LyricHover.App.LyricDock
         private bool requestedEnabled;
         private bool widgetsHidingUnavailable;
         private bool restoringStartup;
+        private bool startupRecoveryPending;
+        private bool startupRecoveryQueued;
         private bool disposed;
         private int widgetsHidingGeneration;
+        private int startupRecoveryGeneration;
+        private readonly SynchronizationContext uiContext;
+        private readonly object widgetsOperationSync = new object();
+        private Task widgetsOperation = Task.CompletedTask;
         private TaskbarDaValueState? observedWidgetsState;
         private string screenName;
         private LyricDockAlignment alignment;
@@ -38,6 +44,7 @@ namespace LyricHover.App.LyricDock
             this.environment = environment ?? throw new ArgumentNullException(nameof(environment));
             this.widgetLease = widgetLease ?? throw new ArgumentNullException(nameof(widgetLease));
             this.surface = surface ?? throw new ArgumentNullException(nameof(surface));
+            uiContext = SynchronizationContext.Current;
             environment.Changed += EnvironmentChanged;
             surface.SettingsRequested += (sender, args) => SettingsRequested?.Invoke(this, EventArgs.Empty);
             surface.RefreshRequested += (sender, args) => RefreshRequested?.Invoke(this, EventArgs.Empty);
@@ -48,16 +55,20 @@ namespace LyricHover.App.LyricDock
         public event EventHandler<LyricDockFailureReason> FeatureDisabled;
         public event EventHandler WidgetsHidden;
         public event EventHandler WidgetsHidingNeedsSettingsConfirmation;
+        public event EventHandler RuntimeRecovered;
         public bool IsEnabled => enabled;
         public LyricDockFailureReason LastFailureReason { get; private set; }
 
         // An old crash may have left Widgets suppressed.  This must occur before the persisted setting is honored.
         public bool Start(bool requestedEnabled, string requestedScreenName, LyricDockAlignment requestedAlignment)
         {
+            this.requestedEnabled = requestedEnabled;
             screenName = requestedScreenName ?? string.Empty;
             alignment = requestedAlignment;
             if (!widgetLease.RestoreResidualLease(screenName))
             {
+                startupRecoveryPending = true;
+                Interlocked.Increment(ref startupRecoveryGeneration);
                 Disable(LyricDockFailureReason.RegistryOrRefreshFailed, restoreWidgets: false);
                 return false;
             }
@@ -82,15 +93,25 @@ namespace LyricHover.App.LyricDock
             this.requestedEnabled = requestedEnabled;
             screenName = requestedScreenName ?? string.Empty;
             alignment = requestedAlignment;
-            LastFailureReason = LyricDockFailureReason.None;
             if (!requestedEnabled)
             {
                 enabled = false;
+                Interlocked.Increment(ref widgetsHidingGeneration);
+                Interlocked.Increment(ref startupRecoveryGeneration);
+                startupRecoveryQueued = false;
                 // Re-arm the Widgets-hiding attempt for the next enable cycle.
                 widgetsHidingUnavailable = false;
-                HideAndRestore();
+                HideAndQueueRestore();
                 return true;
             }
+
+            if (startupRecoveryPending)
+            {
+                QueueStartupRecovery();
+                return false;
+            }
+
+            LastFailureReason = LyricDockFailureReason.None;
 
             if (!environment.IsSupported)
             {
@@ -134,11 +155,13 @@ namespace LyricHover.App.LyricDock
 
         public void Dispose()
         {
+            if (disposed) return;
             environment.Changed -= EnvironmentChanged;
             disposed = true;
             Interlocked.Increment(ref widgetsHidingGeneration);
             enabled = false;
-            HideAndRestore();
+            requestedEnabled = false;
+            HideAndQueueRestore();
         }
 
         private void EnvironmentChanged(object sender, EventArgs args)
@@ -178,22 +201,22 @@ namespace LyricHover.App.LyricDock
         {
             LastFailureReason = reason;
             enabled = false;
-            requestedEnabled = false;
-            if (restoreWidgets) HideAndRestore();
+            Interlocked.Increment(ref widgetsHidingGeneration);
+            if (restoreWidgets) HideAndQueueRestore();
             else surface.Hide();
             FeatureDisabled?.Invoke(this, reason);
         }
-        private void HideAndRestore()
+        private void HideAndQueueRestore()
         {
             surface.Hide();
-            widgetLease.TryRestore();
+            QueueWidgetsOperation(() => widgetLease.TryRestore());
         }
 
         public void TryHideWidgetsThroughSettingsUi()
         {
             if (!enabled || disposed) return;
             var generation = Interlocked.Increment(ref widgetsHidingGeneration);
-            Task.Run(() => widgetLease.TryAcquireThroughSettingsUi(screenName)).ContinueWith(task =>
+            QueueWidgetsOperation(() => widgetLease.TryAcquireThroughSettingsUi(screenName)).ContinueWith(task =>
             {
                 if (disposed || generation != Volatile.Read(ref widgetsHidingGeneration) || !enabled) return;
                 if (task.Status == TaskStatus.RanToCompletion && task.Result)
@@ -212,14 +235,10 @@ namespace LyricHover.App.LyricDock
             var generation = Interlocked.Increment(ref widgetsHidingGeneration);
             // Explorer can take seconds to apply TaskbarDa.  The current placement is already
             // safe with Widgets visible, so its verification must not block the WPF Dispatcher.
-            Task.Run(() => widgetLease.TryAcquire(screenName)).ContinueWith(task =>
+            QueueWidgetsOperation(() => widgetLease.TryAcquire(screenName)).ContinueWith(task =>
             {
                 if (disposed || generation != Volatile.Read(ref widgetsHidingGeneration) || !enabled)
                 {
-                    if (task.Status == TaskStatus.RanToCompletion && task.Result)
-                    {
-                        widgetLease.TryRestore();
-                    }
                     return;
                 }
 
@@ -235,6 +254,71 @@ namespace LyricHover.App.LyricDock
                 widgetsHidingUnavailable = true;
                 WidgetsHidingNeedsSettingsConfirmation?.Invoke(this, EventArgs.Empty);
             }, TaskScheduler.Default);
+        }
+
+        private void QueueStartupRecovery()
+        {
+            if (startupRecoveryQueued || disposed || !requestedEnabled) return;
+
+            startupRecoveryQueued = true;
+            var generation = Volatile.Read(ref startupRecoveryGeneration);
+            QueueWidgetsOperation(() => widgetLease.RestoreResidualLease(screenName)).ContinueWith(task =>
+            {
+                PostToUi(() =>
+                {
+                    if (generation != Volatile.Read(ref startupRecoveryGeneration) || disposed)
+                    {
+                        return;
+                    }
+
+                    startupRecoveryQueued = false;
+                    if (task.Status != TaskStatus.RanToCompletion || !task.Result)
+                    {
+                        // Keep both the recovery record and the user intent.  A later
+                        // settings apply can retry without allowing the dock to bypass it.
+                        Disable(LyricDockFailureReason.RegistryOrRefreshFailed, restoreWidgets: false);
+                        return;
+                    }
+
+                    startupRecoveryPending = false;
+                    if (!requestedEnabled || !Configure(true, screenName, alignment))
+                    {
+                        return;
+                    }
+
+                    RuntimeRecovered?.Invoke(this, EventArgs.Empty);
+                });
+            }, TaskScheduler.Default);
+        }
+
+        private void PostToUi(Action action)
+        {
+            if (uiContext != null)
+            {
+                uiContext.Post(ignored => action(), null);
+                return;
+            }
+
+            action();
+        }
+
+        internal Task WaitForWidgetsOperationsAsync()
+        {
+            lock (widgetsOperationSync) return widgetsOperation;
+        }
+
+        private Task<bool> QueueWidgetsOperation(Func<bool> operation)
+        {
+            lock (widgetsOperationSync)
+            {
+                var result = widgetsOperation.ContinueWith(
+                    ignored => operation(),
+                    CancellationToken.None,
+                    TaskContinuationOptions.None,
+                    TaskScheduler.Default);
+                widgetsOperation = result.ContinueWith(ignored => { }, TaskScheduler.Default);
+                return result;
+            }
         }
     }
 }

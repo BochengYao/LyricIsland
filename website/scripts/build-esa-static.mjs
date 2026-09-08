@@ -11,12 +11,7 @@ const functionTemplate = resolve(root, "esa", "api.js");
 const functionEntry = resolve(functionBuildDirectory, "entry.js");
 const featureContentDefaultPath = resolve(root, "data", "feature-content-default.json");
 const releasePreviewDefaultPath = resolve(root, "data", "release-preview-default.json");
-const nextExecutable = resolve(
-  root,
-  "node_modules",
-  ".bin",
-  process.platform === "win32" ? "next.cmd" : "next"
-);
+const nextCli = resolve(root, "node_modules", "next", "dist", "bin", "next");
 
 await rm(resolve(root, "out"), { recursive: true, force: true });
 await mkdir(stagingDirectory, { recursive: true });
@@ -25,11 +20,11 @@ await rename(apiDirectory, stagedApiDirectory);
 
 try {
   const exitCode = await new Promise((resolveExit, reject) => {
-    const child = spawn(nextExecutable, ["build"], {
+    const child = spawn(process.execPath, [nextCli, "build"], {
       cwd: root,
       env: { ...process.env, ESA_STATIC_EXPORT: "1" },
       stdio: "inherit",
-      shell: process.platform === "win32"
+      shell: false
     });
     child.once("error", reject);
     child.once("exit", (code) => resolveExit(code ?? 1));

@@ -46,6 +46,7 @@ namespace LyricHover.App
             ["歌词坞"] = new[] { "歌词坞", "歌詞塢", "Lyrics dock", "歌詞ドック" },
             ["开启歌词岛"] = new[] { "开启歌词岛", "開啟歌詞島", "Show lyrics island", "歌詞島を表示" },
             ["开启歌词坞"] = new[] { "开启歌词坞", "開啟歌詞塢", "Show lyrics dock", "歌詞ドックを表示" },
+            ["歌词坞已开启，但当前环境暂不可用；下次启动或再次应用设置时会重试。"] = new[] { "歌词坞已开启，但当前环境暂不可用；下次启动或再次应用设置时会重试。", "歌詞塢已開啟，但目前環境暫不可用；下次啟動或再次套用設定時會重試。", "Lyrics dock is enabled but unavailable in the current environment. It will retry on the next launch or when settings are applied again.", "歌詞ドックは有効ですが、現在の環境では利用できません。次回起動時または設定の再適用時に再試行します。" },
             ["位置与状态"] = new[] { "位置与状态", "位置與狀態", "Position & status", "位置と状態" },
             ["鼠标避让"] = new[] { "鼠标避让", "滑鼠避讓", "Mouse avoidance", "マウス回避" },
             ["快捷键"] = new[] { "快捷键", "快速鍵", "Shortcuts", "ショートカット" },

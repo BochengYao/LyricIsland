@@ -482,6 +482,18 @@ namespace LyricHover.App
             QueueDirtyStateUpdate();
         }
 
+        public void NotifyLyricDockUnavailable()
+        {
+            LyricDockRuntimeStatusText.Text = UiLanguageService.Translate(
+                "歌词坞已开启，但当前环境暂不可用；下次启动或再次应用设置时会重试。");
+            LyricDockRuntimeStatusText.Visibility = Visibility.Visible;
+        }
+
+        public void ClearLyricDockRuntimeStatus()
+        {
+            LyricDockRuntimeStatusText.Visibility = Visibility.Collapsed;
+        }
+
         private void WidgetsHelpLink_Click(object sender, RoutedEventArgs e)
         {
             var showing = WidgetsHelpPanel.Visibility == Visibility.Visible;

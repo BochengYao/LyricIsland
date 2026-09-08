@@ -429,12 +429,14 @@ export async function deletePromoCode(id: string): Promise<void> {
     );
   }
 
-  const oldData = existing[0];
-
-  await supabase<void>(
-    `/rest/v1/promo_codes?id=eq.${encodeURIComponent(id)}`,
-    { method: "DELETE" }
+  const deleted = await supabase<PromoCode[]>(
+    `/rest/v1/promo_codes?select=*&id=eq.${encodeURIComponent(id)}&distribution_status=eq.available`,
+    { method: "DELETE", headers: headers("return=representation") }
   );
+  if (!deleted || deleted.length === 0) {
+    throw new Error("Promo code changed before it could be deleted");
+  }
+  const oldData = deleted[0];
 
   // Insert audit log
   await supabase<void>("/rest/v1/promo_code_logs", {

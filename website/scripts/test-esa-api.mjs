@@ -129,6 +129,14 @@ globalThis.fetch = async (input, init = {}) => {
     ]));
     return response({ choices: [{ message: { content: JSON.stringify({ translations }) } }] });
   }
+  if (url.endsWith("/rest/v1/rpc/toggle_incentive_like") && init.method === "POST") {
+    const alreadyLiked = hasLike;
+    if (!alreadyLiked) {
+      hasLike = true;
+      likeCount += 1;
+    }
+    return response([{ liked: true, like_count: likeCount, already_liked: alreadyLiked }]);
+  }
   if (url.endsWith("/rest/v1/incentive_likes") && init.method === "POST") {
     hasLike = true;
     return response([JSON.parse(init.body)], 201);
@@ -139,7 +147,10 @@ globalThis.fetch = async (input, init = {}) => {
   if (url.includes("incentive_submissions?select=id,like_count,reviewer_note,status")) {
     return response([storedSubmission()]);
   }
-  if (url.includes("incentive_submissions?select=id,kind,nickname,title,body,created_at,like_count,attachments,reviewer_note,status")) {
+  if (
+    url.includes("/rest/v1/incentive_submissions?")
+    && new URL(url).searchParams.get("select") === "id,kind,nickname,title,body,created_at,updated_at,like_count,attachments,reviewer_note,status"
+  ) {
     return response([
       {
         id: "11111111-1111-4111-8111-111111111111",
@@ -373,6 +384,18 @@ globalThis.fetch = async (input, init = {}) => {
     return response(found);
   }
 
+  // Conditionally delete only a code that is still available, returning the
+  // actual deleted row for the audit entry.
+  if (url.includes("/rest/v1/promo_codes?select=*&id=eq.") && init.method === "DELETE") {
+    const parsed = new URL(url);
+    const id = String(parsed.searchParams.get("id") || "").replace("eq.", "");
+    const status = String(parsed.searchParams.get("distribution_status") || "").replace("eq.", "");
+    const idx = promoCodeRows.findIndex((r) => r.id === id && r.distribution_status === status);
+    if (idx < 0) return response([]);
+    const [deleted] = promoCodeRows.splice(idx, 1);
+    return response([deleted]);
+  }
+
   // PATCH promo code
   if (url.includes("/rest/v1/promo_codes?id=eq.") && init.method === "PATCH") {
     const id = decodeURIComponent(url.split("id=eq.")[1]);
@@ -478,11 +501,8 @@ try {
   assert.equal(duplicateLikeData.liked, true);
   assert.equal(duplicateLikeData.like_count, 1);
   assert.equal(duplicateLikeData.already_liked, true);
-  assert.equal(calls.length, 2, "a repeated device like must only verify the card and existing vote");
-  assert.ok(
-    calls.every((call) => !["POST", "PATCH", "DELETE"].includes(call.init.method)),
-    "a repeated device like must not mutate either the vote or the count"
-  );
+  assert.equal(calls.length, 1, "a repeated device like must use one transactional RPC");
+  assert.match(calls[0].url, /rpc\/toggle_incentive_like$/);
 
   hasLike = false;
   likeCount = 1;
@@ -504,7 +524,7 @@ try {
   assert.equal(firstLikeData.already_liked, false);
   const voterCookie = firstLikeResponse.headers.get("set-cookie");
   assert.match(voterCookie, /lyric_island_voter=.*HttpOnly/);
-  assert.equal(calls.length, 4, "a first device like must create one vote and update the aggregate count");
+  assert.equal(calls.length, 1, "a first device like must use one transactional RPC");
 
   calls.length = 0;
   const repeatedLikeResponse = await api.fetch(
@@ -522,7 +542,7 @@ try {
   assert.equal(repeatedLikeData.liked, true);
   assert.equal(repeatedLikeData.like_count, 2);
   assert.equal(repeatedLikeData.already_liked, true);
-  assert.equal(calls.length, 2, "the same device cannot increment the same card twice");
+  assert.equal(calls.length, 1, "the same device retry must use one idempotent RPC");
 
   calls.length = 0;
   const publicFeaturesResponse = await api.fetch(

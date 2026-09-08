@@ -62,8 +62,15 @@ namespace LyricHover.Core
                     return hasValidPlayPackage ? package : string.Empty;
                 }
 
-                var lyricJson = await fetchJsonAsync(BuildLyricRequestUri(song.Mid)).ConfigureAwait(false);
-                var legacyPackage = ExtractLegacyLyricsPackage(lyricJson);
+                string legacyPackage;
+                try
+                {
+                    var lyricJson = await fetchJsonAsync(BuildLyricRequestUri(song.Mid)).ConfigureAwait(false);
+                    legacyPackage = ExtractLegacyLyricsPackage(lyricJson);
+                }
+                catch (HttpRequestException) { return hasValidPlayPackage ? package : string.Empty; }
+                catch (TaskCanceledException) { return hasValidPlayPackage ? package : string.Empty; }
+                catch (JsonException) { return hasValidPlayPackage ? package : string.Empty; }
                 var hasValidLegacyPackage = !string.IsNullOrWhiteSpace(legacyPackage) &&
                     LyricsPackageParser.Parse(legacyPackage).Lines.Count > 0;
                 if (!hasValidLegacyPackage)
@@ -75,10 +82,7 @@ namespace LyricHover.Core
                 {
                     return LyricsPackageParser.HasTranslation(package) || !LyricsPackageParser.HasTranslation(legacyPackage)
                         ? package
-                        : LyricsPackageParser.CreatePackage(
-                            LyricsPackageParser.GetOriginalLyrics(package),
-                            LyricsPackageParser.GetTranslationLyrics(legacyPackage),
-                            LyricsPackageParser.GetTranslationLanguage(legacyPackage));
+                        : LyricsTranslationMerger.MergeMatchingLines(package, legacyPackage);
                 }
 
                 return LyricsPackageParser.HasTranslation(legacyPackage) || !hasValidPlayPackage

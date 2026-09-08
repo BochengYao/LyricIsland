@@ -1,5 +1,7 @@
 using System;
 using System.Diagnostics;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -25,6 +27,8 @@ namespace LyricHover.App.Modules
         private bool renderingSubscribed;
         private double displayedProgress = -1;
         private double dimOpacity = 0.45;
+        private readonly List<VisualWordSpan> visualWordSpans = new List<VisualWordSpan>();
+        private double measuredTextWidth;
 
         public WordTrackingTextBlock()
         {
@@ -57,6 +61,7 @@ namespace LyricHover.App.Modules
                 dimText.InvalidateMeasure();
                 highlightText.InvalidateMeasure();
                 InvalidateMeasure();
+                RebuildVisualWordMap();
             }
         }
 
@@ -144,12 +149,13 @@ namespace LyricHover.App.Modules
         {
             Text = text;
             trackingLine = IsMatchingWordTimedLine(line, Text) ? line : null;
+            RebuildVisualWordMap();
             anchorPosition = effectivePosition;
             anchorTimestamp = Stopwatch.GetTimestamp();
             playbackAdvancing = isPlaying && trackingLine != null;
 
             var progress = trackingLine != null
-                ? trackingLine.GetWordProgress(effectivePosition)
+                ? GetVisualProgress(effectivePosition)
                 : fallbackProgress;
             ApplyClip(progress);
             UpdateRenderingSubscription();
@@ -171,7 +177,7 @@ namespace LyricHover.App.Modules
 
             var elapsedTicks = Stopwatch.GetTimestamp() - anchorTimestamp;
             var elapsed = TimeSpan.FromSeconds(elapsedTicks / (double)Stopwatch.Frequency);
-            var progress = trackingLine.GetWordProgress(anchorPosition + elapsed);
+            var progress = GetVisualProgress(anchorPosition + elapsed);
             ApplyClip(progress);
             if (progress >= 1)
             {
@@ -195,7 +201,11 @@ namespace LyricHover.App.Modules
             var normalized = Math.Max(0, Math.Min(1, progress));
             var width = ActualWidth > 0 ? ActualWidth : DesiredSize.Width;
             var height = ActualHeight > 0 ? ActualHeight : DesiredSize.Height;
-            highlightClip.Rect = new Rect(0, 0, Math.Max(0, width * normalized), Math.Max(0, height));
+            var textWidth = measuredTextWidth > 0 ? Math.Min(width, measuredTextWidth) : width;
+            var origin = TextAlignment == TextAlignment.Center
+                ? Math.Max(0, (width - textWidth) / 2)
+                : TextAlignment == TextAlignment.Right ? Math.Max(0, width - textWidth) : 0;
+            highlightClip.Rect = new Rect(origin, 0, Math.Max(0, textWidth * normalized), Math.Max(0, height));
         }
 
         private void UpdateRenderingSubscription()
@@ -221,6 +231,72 @@ namespace LyricHover.App.Modules
         {
             update(dimText);
             update(highlightText);
+            RebuildVisualWordMap();
+        }
+
+        private double GetVisualProgress(TimeSpan position)
+        {
+            if (trackingLine == null || visualWordSpans.Count != trackingLine.Words.Count || measuredTextWidth <= 0)
+                return trackingLine?.GetWordProgress(position) ?? -1;
+            var elapsed = position - trackingLine.Timestamp;
+            if (elapsed <= TimeSpan.Zero) return 0;
+            for (var index = 0; index < trackingLine.Words.Count; index++)
+            {
+                var word = trackingLine.Words[index];
+                var span = visualWordSpans[index];
+                if (elapsed >= word.Offset + word.Duration) continue;
+                if (elapsed <= word.Offset) return span.Start / measuredTextWidth;
+                var fraction = word.Duration <= TimeSpan.Zero
+                    ? 1
+                    : Math.Min(1, (elapsed - word.Offset).TotalMilliseconds / word.Duration.TotalMilliseconds);
+                return Math.Max(0, Math.Min(1, (span.Start + ((span.End - span.Start) * fraction)) / measuredTextWidth));
+            }
+            return 1;
+        }
+
+        private void RebuildVisualWordMap()
+        {
+            visualWordSpans.Clear();
+            measuredTextWidth = MeasureTextWidth(Text);
+            if (trackingLine == null || !trackingLine.HasWordTiming || measuredTextWidth <= 0) return;
+            var cursor = 0;
+            foreach (var word in trackingLine.Words)
+            {
+                var index = Text.IndexOf(word.Text, cursor, StringComparison.Ordinal);
+                if (index < cursor)
+                {
+                    visualWordSpans.Clear();
+                    return;
+                }
+                var start = MeasureTextWidth(Text.Substring(0, index));
+                cursor = index + word.Text.Length;
+                var end = MeasureTextWidth(Text.Substring(0, cursor));
+                visualWordSpans.Add(new VisualWordSpan(start, end));
+            }
+        }
+
+        private double MeasureTextWidth(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return 0;
+            var dpi = 1.0;
+            try { dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip; }
+            catch { }
+            var typeface = new Typeface(FontFamily, FontStyle, FontWeight, FontStretch);
+            return new FormattedText(
+                value,
+                CultureInfo.CurrentUICulture,
+                FlowDirection.LeftToRight,
+                typeface,
+                FontSize,
+                Foreground ?? Brushes.White,
+                dpi).WidthIncludingTrailingWhitespace;
+        }
+
+        private sealed class VisualWordSpan
+        {
+            public VisualWordSpan(double start, double end) { Start = start; End = end; }
+            public double Start { get; }
+            public double End { get; }
         }
 
         private static bool IsMatchingWordTimedLine(LyricLine line, string text)

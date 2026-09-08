@@ -41,6 +41,10 @@ namespace LyricHover.App.LyricDock
                     !environment.TryRefreshTaskbarAndVerify(TaskbarDaValueState.Disabled)) return false;
                 return true;
             }
+            // A previous attempt or process may have changed Widgets and left the
+            // original value on disk. Restore that evidence before starting a new
+            // lease; never replace it with the currently suppressed value.
+            if (HasRecovery() && !TryRestore()) return false;
             if (!environment.TryReadTaskbarDa(out var original)) return false;
             // Capture the taskbar before changing TaskbarDa.  New Windows builds can expose
             // Widgets through a different UIA subtree; the environment preserves a taskbar
@@ -99,6 +103,7 @@ namespace LyricHover.App.LyricDock
                     updatedState == TaskbarDaValueState.Disabled &&
                     environment.TryRefreshTaskbarAndVerify(TaskbarDaValueState.Disabled);
             }
+            if (HasRecovery() && !TryRestore()) return false;
             if (!environment.TryReadTaskbarDa(out var original)) return false;
             if (!environment.TryPrepareWidgetsRestore(screenName)) return false;
             if (original == TaskbarDaValueState.Disabled)
@@ -112,7 +117,10 @@ namespace LyricHover.App.LyricDock
                 actual != TaskbarDaValueState.Disabled ||
                 !environment.TryRefreshTaskbarAndVerify(TaskbarDaValueState.Disabled))
             {
-                TryDeleteRecovery();
+                // The Settings helper may have changed the system even when its
+                // final read or visual verification fails. Only verified restore
+                // is allowed to remove the original-state evidence.
+                TryRestore();
                 return false;
             }
             acquired = true;
@@ -129,6 +137,12 @@ namespace LyricHover.App.LyricDock
         }
 
         public void Dispose() { TryRestore(); }
+
+        private bool HasRecovery()
+        {
+            try { return File.Exists(recoveryPath); }
+            catch { return true; }
+        }
 
         private bool TryReadRecovery(out TaskbarDaValueState state, out bool exists)
         {

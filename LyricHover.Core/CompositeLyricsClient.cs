@@ -58,7 +58,7 @@ namespace LyricHover.Core
                 try
                 {
                     var lyrics = await client.GetSyncedLyricsAsync(track).ConfigureAwait(false);
-                    if (!string.IsNullOrWhiteSpace(lyrics))
+                    if (LyricsPackageValidator.TryAccept(track, lyrics, out var parsed))
                     {
                         if (LyricsPackageParser.HasTranslation(lyrics))
                         {

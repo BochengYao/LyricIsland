@@ -285,14 +285,21 @@ namespace LyricHover.App
 
         public OverlayPlacementSettings Load()
         {
+            if (!File.Exists(path)) return new OverlayPlacementSettings();
+
+            OverlayPlacementSettings settings;
             try
             {
-                if (!File.Exists(path))
-                {
-                    return new OverlayPlacementSettings();
-                }
+                settings = JsonSerializer.Deserialize<OverlayPlacementSettings>(File.ReadAllText(path)) ?? new OverlayPlacementSettings();
+            }
+            catch
+            {
+                TryBackUpCorruptSettings();
+                return new OverlayPlacementSettings();
+            }
 
-                var settings = JsonSerializer.Deserialize<OverlayPlacementSettings>(File.ReadAllText(path)) ?? new OverlayPlacementSettings();
+            try
+            {
                 var originalSchemaVersion = settings.SchemaVersion;
                 var originalEdge = settings.Edge;
                 var originalOffset = settings.OffsetRatio;
@@ -341,21 +348,29 @@ namespace LyricHover.App
                     settings.LyricDockWordTrackingEnabled != originalLyricDockWordTracking ||
                     settings.EnablePowerSavingMode != originalEnablePowerSavingMode)
                 {
-                    Save(settings);
+                    try { Save(settings); }
+                    catch { }
                 }
 
                 return settings;
             }
             catch
             {
-                if (File.Exists(path))
-                {
-                    var backup = path + ".corrupt-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
-                    File.Copy(path, backup, true);
-                }
-
-                return new OverlayPlacementSettings();
+                // A readable legacy configuration remains useful even when a
+                // normalization edge cannot be persisted on this launch.
+                return settings ?? new OverlayPlacementSettings();
             }
+        }
+
+        private void TryBackUpCorruptSettings()
+        {
+            try
+            {
+                if (!File.Exists(path)) return;
+                var backup = path + ".corrupt-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
+                File.Copy(path, backup, true);
+            }
+            catch { }
         }
 
         public void Save(OverlayPlacementSettings settings)

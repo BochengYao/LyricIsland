@@ -39,6 +39,7 @@ namespace LyricHover.App
         private DateTimeOffset? pausedSinceUtc;
         private DateTimeOffset? noPlaybackSinceUtc;
         private int lyricLoadGeneration;
+        private bool lyricDockRuntimeFallbackToIsland;
         private readonly LyricsCache cache;
         private readonly OverlaySettingsStore settingsStore;
         private readonly SettingsRuntimeStateCoordinator settingsStateCoordinator;
@@ -114,6 +115,8 @@ namespace LyricHover.App
         private readonly LayoutDropCommitGuard committedModuleDrops = new LayoutDropCommitGuard();
         private bool moduleDragPreviewQueued;
         private bool moduleContentSizeUpdateQueued;
+        private bool shutdownWaitingForDockRestore;
+        private bool shutdownFinalizing;
         private IslandLayoutDragPayload queuedModuleDragPayload;
         private double queuedModuleDragPointerX;
         private int trackChangeGeneration;
@@ -185,6 +188,12 @@ namespace LyricHover.App
                 Dispatcher.BeginInvoke(new Action(() => RefreshCurrentTrackLyrics(true)));
             LyricDockController.FeatureDisabled += (sender, reason) =>
                 Dispatcher.BeginInvoke(new Action(() => DisableTaskbarLyrics(reason)));
+            LyricDockController.RuntimeRecovered += (sender, args) =>
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    lyricDockRuntimeFallbackToIsland = false;
+                    settingsWindow?.ClearLyricDockRuntimeStatus();
+                }));
             LyricDockController.WidgetsHidden += (sender, args) =>
                 Dispatcher.BeginInvoke(new Action(() => LyricDockController.RefreshPlacement()));
             LyricDockController.WidgetsHidingNeedsSettingsConfirmation += (sender, args) =>
@@ -248,11 +257,9 @@ namespace LyricHover.App
                 InstallWindowMessageHook();
                 RegisterGlobalHotkeys();
             };
+            Closing += MainWindow_Closing;
             Closed += (sender, args) =>
             {
-                StopRuntimeActivity();
-                tutorialCancellation?.Cancel();
-                CloseTutorialWindows();
                 hotkeyService?.Dispose();
                 LyricDockController?.Dispose();
                 lyricDockEnvironment?.Dispose();
@@ -265,7 +272,7 @@ namespace LyricHover.App
         {
             trayMenu = TrayContextMenuFactory.Create(
                 () => Dispatcher.BeginInvoke(new Action(() => OpenPlacementSettingsWindow())),
-                () => Dispatcher.BeginInvoke(new Action(() => System.Windows.Application.Current.Shutdown())));
+                () => Dispatcher.BeginInvoke(new Action(RequestApplicationShutdown)));
             trayMenu.Opening += (sender, args) => ApplyTrayMenuTheme();
             ApplyTrayMenuTheme();
 
@@ -473,7 +480,7 @@ namespace LyricHover.App
                     mediaSessions.WindowsCurrentSessionId);
                 currentSession = selected;
 
-                if (!placementSettings.IslandEnabled)
+                if (!placementSettings.IslandEnabled && !lyricDockRuntimeFallbackToIsland)
                 {
                     HideIsland(true);
                 }
@@ -645,29 +652,54 @@ namespace LyricHover.App
 
         private async Task LoadLyricsAsync(TrackIdentity track, bool forceRefresh, int generation)
         {
+            string acceptedPackage = string.Empty;
+            TimedLyrics acceptedLyrics = null;
+            var freshAccepted = false;
             try
             {
-                string lrc;
-                var cacheHit = cache.TryRead(track, out lrc);
-                var cachedLyrics = cacheHit ? LyricsPackageParser.Parse(lrc) : null;
+                string cachedPackage = string.Empty;
+                var cacheHit = false;
+                try
+                {
+                    cacheHit = cache.TryRead(track, out cachedPackage) &&
+                        LyricsPackageValidator.TryAccept(track, cachedPackage, out acceptedLyrics);
+                }
+                catch
+                {
+                    // Cache storage is optional. A read failure is a miss and must not
+                    // prevent the provider chain from recovering the current track.
+                    cacheHit = false;
+                }
+                if (cacheHit) acceptedPackage = cachedPackage;
+
                 var needsTranslation = (placementSettings.ShowTranslation || placementSettings.LyricDockShowTranslation) &&
-                    !LyricsPackageParser.HasTranslation(lrc) &&
-                    !LyricsDisplaySelector.ShouldIgnoreTranslation(cachedLyrics);
-                var needsWordTracking = IsWordTrackingRequested(placementSettings) && !LyricsPackageParser.HasWordTiming(lrc);
+                    !LyricsPackageParser.HasTranslation(acceptedPackage) &&
+                    !LyricsDisplaySelector.ShouldIgnoreTranslation(acceptedLyrics);
+                var needsWordTracking = IsWordTrackingRequested(placementSettings) && !LyricsPackageParser.HasWordTiming(acceptedPackage);
                 if (forceRefresh || !cacheHit || needsTranslation || needsWordTracking)
                 {
-                    var freshLrc = await lyricsClient.GetSyncedLyricsAsync(track);
-                    if (!string.IsNullOrWhiteSpace(freshLrc))
+                    try
                     {
-                        lrc = freshLrc;
-                        cache.Write(track, lrc);
+                        var freshPackage = await lyricsClient.GetSyncedLyricsAsync(track);
+                        if (LyricsPackageValidator.TryAccept(track, freshPackage, out var freshLyrics))
+                        {
+                            acceptedPackage = freshPackage;
+                            acceptedLyrics = freshLyrics;
+                            freshAccepted = true;
+                        }
                     }
+                    catch { }
                 }
 
                 if (generation == lyricLoadGeneration && IsSameTrack(track, currentTrack))
                 {
-                    currentLyrics = LyricsPackageParser.Parse(lrc);
+                    currentLyrics = acceptedLyrics ?? new TimedLyrics(new LyricLine[0]);
                     lyricsSearchFinished = true;
+                    if (freshAccepted)
+                    {
+                        try { cache.Write(track, acceptedPackage); }
+                        catch { }
+                    }
                 }
             }
             catch
@@ -709,7 +741,7 @@ namespace LyricHover.App
 
         private void ShowIsland()
         {
-            if (!placementSettings.IslandEnabled)
+            if (!placementSettings.IslandEnabled && !lyricDockRuntimeFallbackToIsland)
             {
                 return;
             }
@@ -1160,17 +1192,15 @@ namespace LyricHover.App
             cache.SetMaxBytes(GetCacheLimitBytes(runtimeSettings));
             selectedLyricsSource = runtimeSettings.LyricsSource;
             lyricsClient = CreateLyricsClient(runtimeSettings.LyricsSourcePriority, IsWordTrackingRequested(runtimeSettings));
-            var taskbarWasRequested = runtimeSettings.LyricDockEnabled;
-            if (!LyricDockController.Configure(runtimeSettings.LyricDockEnabled, runtimeSettings.ScreenName, runtimeSettings.LyricDockAlignment) && taskbarWasRequested)
-            {
-                runtimeSettings.LyricDockEnabled = false;
-            }
+            var dockConfigured = LyricDockController.Configure(runtimeSettings.LyricDockEnabled, runtimeSettings.ScreenName, runtimeSettings.LyricDockAlignment);
+            lyricDockRuntimeFallbackToIsland = runtimeSettings.LyricDockEnabled && !dockConfigured && !runtimeSettings.IslandEnabled;
+            if (dockConfigured) settingsWindow?.ClearLyricDockRuntimeStatus();
             UiLanguageService.SetPreference(runtimeSettings.Language);
             ApplyTrayMenuTheme(runtimeSettings.SettingsTheme);
             RegisterGlobalHotkeys();
             UpdateIslandShape();
             ApplyPowerSavingState();
-            if (!runtimeSettings.IslandEnabled)
+            if (!runtimeSettings.IslandEnabled && !lyricDockRuntimeFallbackToIsland)
             {
                 HideIsland(true);
             }
@@ -1877,17 +1907,53 @@ namespace LyricHover.App
 
         private void DisableTaskbarLyrics(LyricDockFailureReason reason)
         {
-            // Persisting "off" must also force the controller off, so the dock surface can
-            // never keep showing while the stored setting says disabled.
-            LyricDockController.Configure(false, placementSettings.ScreenName, placementSettings.LyricDockAlignment);
-            settingsWindow?.NotifyTaskbarLyricsDisabled();
-            if (!placementSettings.LyricDockEnabled)
+            // FeatureDisabled is a runtime safety state. Keep the persisted user intent
+            // so a later settings retry or the next launch can attempt recovery again.
+            // The controller has already hidden its surface and queued lease restoration.
+            lyricDockRuntimeFallbackToIsland = placementSettings.LyricDockEnabled && !placementSettings.IslandEnabled;
+            settingsWindow?.NotifyLyricDockUnavailable();
+            if (lyricDockRuntimeFallbackToIsland) ShowIsland();
+        }
+
+        private void RequestApplicationShutdown()
+        {
+            Close();
+        }
+
+        private async void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs args)
+        {
+            if (shutdownFinalizing)
             {
                 return;
             }
 
-            settingsStateCoordinator.CommitRuntimeMutation(settings => settings.LyricDockEnabled = false);
-            settingsWindow?.NotifyTaskbarLyricsDisabled();
+            args.Cancel = true;
+            if (shutdownWaitingForDockRestore)
+            {
+                return;
+            }
+
+            shutdownWaitingForDockRestore = true;
+            StopRuntimeActivity();
+            tutorialCancellation?.Cancel();
+            CloseTutorialWindows();
+            LyricDockController?.Dispose();
+            try
+            {
+                if (LyricDockController != null)
+                {
+                    await LyricDockController.WaitForWidgetsOperationsAsync();
+                }
+            }
+            finally
+            {
+                shutdownFinalizing = true;
+                // An already-completed queue resumes this async handler inside the
+                // current Closing stack. Schedule application shutdown after that stack
+                // returns: Close alone leaves the independently-created, hidden dock
+                // window alive under the default OnLastWindowClose policy.
+                _ = Dispatcher.BeginInvoke(new Action(() => Application.Current.Shutdown()));
+            }
         }
 
         private void ShowWidgetsSettingsConfirmation()

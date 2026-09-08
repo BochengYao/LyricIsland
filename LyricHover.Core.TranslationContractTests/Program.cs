@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using System.Linq;
 using LyricHover.Core;
 
 namespace LyricHover.Core.TranslationContractTests
@@ -226,8 +227,14 @@ namespace LyricHover.Core.TranslationContractTests
                 .GetResult();
 
             Assert(result.Contains("Lovefool"), "QQ Music localized title fallback did not fetch lyrics.");
-            Assert(requests.Count == 3 && Uri.UnescapeDataString(requests[1].Query).Contains("w=蔡依林"),
+            Assert(requests.Count(uri => uri.AbsolutePath.EndsWith("/client_search_cp", StringComparison.OrdinalIgnoreCase)) == 2,
+                "QQ Music localized title lookup did not perform primary and artist searches.");
+            Assert(Uri.UnescapeDataString(requests[1].Query).Contains("w=蔡依林"),
                 "QQ Music localized title fallback did not use the artist query.");
+            Assert(requests.Count(uri => uri.Host.Equals("u.y.qq.com", StringComparison.OrdinalIgnoreCase)) == 1,
+                "QQ Music primary lyric request was not issued exactly once.");
+            Assert(requests.Count(uri => uri.AbsolutePath.Contains("/lyric/fcgi-bin/", StringComparison.OrdinalIgnoreCase)) == 1,
+                "QQ Music legacy enrichment request was not issued exactly once.");
         }
 
         private static void Assert(bool condition, string message)

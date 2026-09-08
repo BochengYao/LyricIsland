@@ -112,22 +112,45 @@ function redactLyricSourceDetails(items: string[], pattern: RegExp, disclosure: 
   return retained.length === items.length ? items : [disclosure, ...retained];
 }
 
+function redactLyricSourceText(value: string, pattern: RegExp, disclosure: string) {
+  return value === disclosure || !pattern.test(value) ? value : disclosure;
+}
+
+const lyricSourcePatterns = {
+  zh: /歌词来源|歌词源|LRCLIB/i,
+  zhTw: /歌[词詞](?:来源|來源|源)|LRCLIB/i,
+  en: /\blyric (?:source|provider)s?\b|\bLRCLIB\b/i,
+  ja: /歌詞(?:ソース|提供元)|\blyric (?:source|provider)s?\b|\bLRCLIB\b/i
+};
+
 export function publicFeatureContent(content: FeatureContent): FeatureContent {
   return {
     ...content,
     summary: {
       ...content.summary,
-      items_zh: redactLyricSourceDetails(content.summary.items_zh, /歌词来源|歌词源|LRCLIB/i, publicLyricsDisclosure.zh),
-      items_zh_tw: redactLyricSourceDetails(content.summary.items_zh_tw, /歌[词詞](?:来源|來源|源)|LRCLIB/i, publicLyricsDisclosure.zhTw),
-      items_en: redactLyricSourceDetails(content.summary.items_en, /\blyric (?:source|provider)s?\b|\bLRCLIB\b/i, publicLyricsDisclosure.en),
-      items_ja: redactLyricSourceDetails(content.summary.items_ja, /歌詞(?:ソース|提供元)|\blyric (?:source|provider)s?\b|\bLRCLIB\b/i, publicLyricsDisclosure.ja)
+      label_zh: redactLyricSourceText(content.summary.label_zh, lyricSourcePatterns.zh, publicLyricsDisclosure.zh),
+      label_zh_tw: redactLyricSourceText(content.summary.label_zh_tw, lyricSourcePatterns.zhTw, publicLyricsDisclosure.zhTw),
+      label_en: redactLyricSourceText(content.summary.label_en, lyricSourcePatterns.en, publicLyricsDisclosure.en),
+      label_ja: redactLyricSourceText(content.summary.label_ja, lyricSourcePatterns.ja, publicLyricsDisclosure.ja),
+      items_zh: redactLyricSourceDetails(content.summary.items_zh, lyricSourcePatterns.zh, publicLyricsDisclosure.zh),
+      items_zh_tw: redactLyricSourceDetails(content.summary.items_zh_tw, lyricSourcePatterns.zhTw, publicLyricsDisclosure.zhTw),
+      items_en: redactLyricSourceDetails(content.summary.items_en, lyricSourcePatterns.en, publicLyricsDisclosure.en),
+      items_ja: redactLyricSourceDetails(content.summary.items_ja, lyricSourcePatterns.ja, publicLyricsDisclosure.ja)
     },
     sections: content.sections.map((section) => ({
       ...section,
-      items_zh: redactLyricSourceDetails(section.items_zh, /歌词来源|歌词源|LRCLIB/i, publicLyricsDisclosure.zh),
-      items_zh_tw: redactLyricSourceDetails(section.items_zh_tw, /歌[词詞](?:来源|來源|源)|LRCLIB/i, publicLyricsDisclosure.zhTw),
-      items_en: redactLyricSourceDetails(section.items_en, /\blyric (?:source|provider)s?\b|\bLRCLIB\b/i, publicLyricsDisclosure.en),
-      items_ja: redactLyricSourceDetails(section.items_ja, /歌詞(?:ソース|提供元)|\blyric (?:source|provider)s?\b|\bLRCLIB\b/i, publicLyricsDisclosure.ja)
+      title_zh: redactLyricSourceText(section.title_zh, lyricSourcePatterns.zh, publicLyricsDisclosure.zh),
+      title_zh_tw: redactLyricSourceText(section.title_zh_tw, lyricSourcePatterns.zhTw, publicLyricsDisclosure.zhTw),
+      title_en: redactLyricSourceText(section.title_en, lyricSourcePatterns.en, publicLyricsDisclosure.en),
+      title_ja: redactLyricSourceText(section.title_ja, lyricSourcePatterns.ja, publicLyricsDisclosure.ja),
+      body_zh: redactLyricSourceText(section.body_zh, lyricSourcePatterns.zh, publicLyricsDisclosure.zh),
+      body_zh_tw: redactLyricSourceText(section.body_zh_tw, lyricSourcePatterns.zhTw, publicLyricsDisclosure.zhTw),
+      body_en: redactLyricSourceText(section.body_en, lyricSourcePatterns.en, publicLyricsDisclosure.en),
+      body_ja: redactLyricSourceText(section.body_ja, lyricSourcePatterns.ja, publicLyricsDisclosure.ja),
+      items_zh: redactLyricSourceDetails(section.items_zh, lyricSourcePatterns.zh, publicLyricsDisclosure.zh),
+      items_zh_tw: redactLyricSourceDetails(section.items_zh_tw, lyricSourcePatterns.zhTw, publicLyricsDisclosure.zhTw),
+      items_en: redactLyricSourceDetails(section.items_en, lyricSourcePatterns.en, publicLyricsDisclosure.en),
+      items_ja: redactLyricSourceDetails(section.items_ja, lyricSourcePatterns.ja, publicLyricsDisclosure.ja)
     }))
   };
 }

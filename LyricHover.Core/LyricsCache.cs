@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Security.Cryptography;
 
 namespace LyricHover.Core
 {
@@ -43,7 +44,14 @@ namespace LyricHover.Core
             }
 
             var seconds = Math.Max(0, (int)Math.Round(track.Duration.TotalSeconds));
-            var slug = Slugify(track.Artist + "-" + track.Title + "-" + seconds);
+            var displaySlug = Slugify(track.Artist + "-" + track.Title);
+            if (string.IsNullOrEmpty(displaySlug)) displaySlug = "lyrics";
+            if (displaySlug.Length > 48) displaySlug = displaySlug.Substring(0, 48).Trim('-');
+            var identity = NormalizeIdentity(track.Artist) + "\n" +
+                NormalizeIdentity(track.Title) + "\n" +
+                NormalizeIdentity(track.Album) + "\n" +
+                seconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var slug = displaySlug + "-" + ComputeHash(identity);
             var languageCode = LyricsTranslationLanguages.ToCode(targetTranslationLanguage);
             var suffix = string.IsNullOrEmpty(languageCode) ? string.Empty : "." + languageCode.ToLowerInvariant();
             return Path.Combine(rootDirectory, slug + suffix + ".lrc");
@@ -220,6 +228,22 @@ namespace LyricHover.Core
             }
 
             return builder.ToString().Trim('-');
+        }
+
+        private static string NormalizeIdentity(string value)
+        {
+            return (value ?? string.Empty).Normalize(NormalizationForm.FormKC).Trim().ToLowerInvariant();
+        }
+
+        private static string ComputeHash(string value)
+        {
+            using (var sha = SHA256.Create())
+            {
+                var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(value ?? string.Empty));
+                var builder = new StringBuilder(bytes.Length * 2);
+                foreach (var item in bytes) builder.Append(item.ToString("x2"));
+                return builder.ToString();
+            }
         }
     }
 }

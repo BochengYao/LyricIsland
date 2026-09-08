@@ -322,32 +322,64 @@ export async function createSubmission(input: {
 }
 
 export async function getPublicIncentives(voterHash?: string, options: PublicPreviewPageOptions = {}) {
-  const rows = await supabase<Array<Pick<StoredSubmission, "id" | "kind" | "nickname" | "title" | "body" | "created_at" | "like_count" | "attachments" | "reviewer_note" | "status">>>(
-    "/rest/v1/incentive_submissions?select=id,kind,nickname,title,body,created_at,like_count,attachments,reviewer_note,status&order=updated_at.desc&limit=100"
-  );
-  const likedRows = voterHash
-    ? await supabase<Array<{ submission_id: string }>>(
+  type PublicSubmissionRow = Pick<StoredSubmission, "id" | "kind" | "nickname" | "title" | "body" | "created_at" | "updated_at" | "like_count" | "attachments" | "reviewer_note" | "status">;
+  const publicRowsRequest = (async () => {
+    const result: PublicSubmissionRow[] = [];
+    const pageSize = 100;
+    let cursor: Pick<PublicSubmissionRow, "updated_at" | "id"> | undefined;
+    while (result.length < 24) {
+      const params = new URLSearchParams({
+        select: "id,kind,nickname,title,body,created_at,updated_at,like_count,attachments,reviewer_note,status",
+        status: "eq.accepted",
+        order: "updated_at.desc,id.desc",
+        limit: String(pageSize)
+      });
+      if (cursor) {
+        params.set("or", `(updated_at.lt.${cursor.updated_at},and(updated_at.eq.${cursor.updated_at},id.lt.${cursor.id}))`);
+      }
+      const rows = await supabase<PublicSubmissionRow[]>(
+        `/rest/v1/incentive_submissions?${params.toString()}`
+      );
+      result.push(...rows.filter((row) => decodeReviewMeta(row.reviewer_note).is_public));
+      if (rows.length < pageSize) break;
+      cursor = rows[rows.length - 1];
+    }
+    return result.slice(0, 24);
+  })();
+  const likedRowsRequest = voterHash
+    ? supabase<Array<{ submission_id: string }>>(
         `/rest/v1/incentive_likes?select=submission_id&voter_token_hash=eq.${encodeURIComponent(voterHash)}&limit=200`
       )
-    : [];
+    : Promise.resolve([] as Array<{ submission_id: string }>);
+  const previewLimit = options.limit ?? DEFAULT_PUBLIC_PREVIEW_LIMIT;
+  const previewRowsRequest = supabase<ReleasePreview[]>(publicPreviewQuery({
+    limit: previewLimit,
+    cursor: options.cursor
+  }));
+  const [publicRows, likedRows, previewRows] = await Promise.all([
+    publicRowsRequest,
+    likedRowsRequest,
+    previewRowsRequest
+  ]);
   const likedIds = new Set(likedRows.map((row) => row.submission_id));
-  const publicRows = rows.filter((row) => row.status === "accepted" && decodeReviewMeta(row.reviewer_note).is_public).slice(0, 24);
-  const suggestions = await Promise.all(publicRows.map(async ({ attachments, reviewer_note, status: _status, ...suggestion }) => {
+  const suggestions = await Promise.all(publicRows.map(async (row) => {
+    const { id, kind, nickname, title, body, created_at, like_count, attachments, reviewer_note } = row;
     const first = attachments?.[0];
     const url = first ? await createSignedUrl(first.path) : undefined;
     return {
-      ...suggestion,
+      id,
+      kind,
+      nickname,
+      title,
+      body,
+      created_at,
+      like_count,
       developer_reply: decodeReviewMeta(reviewer_note).developer_reply,
-      liked: likedIds.has(suggestion.id),
+      liked: likedIds.has(id),
       ...(first && url
         ? { attachment: { name: first.name, type: first.type, url } }
         : {})
     };
-  }));
-  const previewLimit = options.limit ?? DEFAULT_PUBLIC_PREVIEW_LIMIT;
-  const previewRows = await supabase<ReleasePreview[]>(publicPreviewQuery({
-    limit: previewLimit,
-    cursor: options.cursor
   }));
   const hasMorePreviews = previewRows.length > previewLimit;
   const previews = previewRows.slice(0, previewLimit).map(toPublicReleasePreview);
@@ -364,30 +396,18 @@ export async function toggleSuggestionLike(
   submissionId: string,
   voterTokenHash: string
 ) {
-  const submissions = await supabase<Array<{ id: string; like_count: number; reviewer_note: string | null; status: SubmissionStatus }>>(
-    `/rest/v1/incentive_submissions?select=id,like_count,reviewer_note,status&id=eq.${encodeURIComponent(submissionId)}&limit=1`
-  );
-  const submission = submissions[0];
-  if (!submission || submission.status !== "accepted" || !decodeReviewMeta(submission.reviewer_note).is_public) {
-    throw new Error("Suggestion is not available for likes");
-  }
-  const existing = await supabase<Array<{ submission_id: string }>>(
-    `/rest/v1/incentive_likes?select=submission_id&submission_id=eq.${encodeURIComponent(submissionId)}&voter_token_hash=eq.${encodeURIComponent(voterTokenHash)}&limit=1`
-  );
-  if (existing.length > 0) {
-    return { liked: true, like_count: submission.like_count, already_liked: true };
-  }
-  await supabase<Array<{ submission_id: string }>>("/rest/v1/incentive_likes", {
+  const rows = await supabase<Array<{ liked: boolean; like_count: number; already_liked: boolean }>>(
+    "/rest/v1/rpc/toggle_incentive_like",
+    {
     method: "POST",
-    headers: headers("return=representation"),
-    body: JSON.stringify({ submission_id: submissionId, voter_token_hash: voterTokenHash })
-  });
-  const likeCount = submission.like_count + 1;
-  await supabase<StoredSubmission[]>(
-    `/rest/v1/incentive_submissions?id=eq.${encodeURIComponent(submissionId)}`,
-    { method: "PATCH", headers: headers("return=representation"), body: JSON.stringify({ like_count: likeCount }) }
+      body: JSON.stringify({
+        p_submission_id: submissionId,
+        p_voter_token_hash: voterTokenHash
+      })
+    }
   );
-  return { liked: true, like_count: likeCount, already_liked: false };
+  if (!rows[0]) throw new Error("Suggestion is not available for likes");
+  return rows[0];
 }
 
 async function createSignedUrl(path: string) {
