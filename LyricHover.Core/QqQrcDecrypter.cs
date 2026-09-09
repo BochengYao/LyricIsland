@@ -37,7 +37,7 @@ namespace LyricHover.Core
         private const uint Decrypt = 0;
         private static readonly byte[] QqKey = Encoding.ASCII.GetBytes("!@#)(*$%123ZXC!@!@#)(NHL");
         private static readonly Regex LyricContentPattern = new Regex(
-            "LyricContent\\s*=\\s*\"(?<content>[^\"]*)\"",
+            "<Lyric_1\\b[^>]*\\bLyricContent\\s*=\\s*\"(?<content>.*?)\"\\s*/>",
             RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase);
 
         private static readonly byte[] SBox1 = {
@@ -95,11 +95,7 @@ namespace LyricHover.Core
                     Buffer.BlockCopy(outputBlock, 0, decrypted, offset, 8);
                 }
 
-                var xml = InflateZlib(decrypted);
-                var lyricContent = LyricContentPattern.Match(xml);
-                qrcText = lyricContent.Success
-                    ? WebUtility.HtmlDecode(lyricContent.Groups["content"].Value)
-                    : xml;
+                qrcText = ExtractLyricContent(InflateZlib(decrypted));
                 return !string.IsNullOrWhiteSpace(qrcText);
             }
             catch (InvalidDataException)
@@ -114,6 +110,22 @@ namespace LyricHover.Core
             {
                 return false;
             }
+        }
+
+        internal static string ExtractLyricContent(string xml)
+        {
+            if (string.IsNullOrWhiteSpace(xml))
+            {
+                return string.Empty;
+            }
+
+            // QRC is XML-shaped, but QQ can leave literal quotes inside the
+            // LyricContent value.  Anchor on the lyric element terminator instead
+            // of treating the first quote in the song text as the attribute end.
+            var lyricContent = LyricContentPattern.Match(xml);
+            return lyricContent.Success
+                ? WebUtility.HtmlDecode(lyricContent.Groups["content"].Value)
+                : xml;
         }
 
         private static bool TryParseHex(string value, out byte[] bytes)

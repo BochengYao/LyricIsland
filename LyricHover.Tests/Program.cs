@@ -84,6 +84,7 @@ namespace LyricHover.Tests
             suite.Run("falls back to QQ legacy lyrics when QRC payload is not text", FallsBackToQqLegacyLyricsWhenQrcPayloadIsNotText);
             suite.Run("QQ keeps valid primary lyrics when legacy enrichment fails", QqKeepsPrimaryWhenLegacyFails);
             suite.Run("reads QQ QRC from lyric when qrc is an availability flag", ReadsQqQrcFromLyricWhenQrcIsAvailabilityFlag);
+            suite.Run("preserves quoted text in decrypted QQ QRC", PreservesQuotedTextInDecryptedQqQrc);
             suite.Run("merges fallback translation into word timed lyrics", MergesFallbackTranslationIntoWordTimedLyrics);
             suite.Run("merges short same-source translation into word timed lyrics", MergesShortSameSourceTranslationIntoWordTimedLyrics);
             suite.Run("does not reuse one short translation for adjacent same-source lines", DoesNotReuseOneShortTranslationForAdjacentLines);
@@ -4960,6 +4961,30 @@ namespace LyricHover.Tests
             Assert.True(LyricsPackageValidator.TryAccept(
                 new TrackIdentity("test", "artist", TimeSpan.FromSeconds(3)), lyrics, out var accepted));
             Assert.True(accepted.Lines[0].HasWordTiming);
+        }
+
+        static void PreservesQuotedTextInDecryptedQqQrc()
+        {
+            const string qrc =
+                "[10000,2000]He (10000,500)said \"(10500,500)hello\"(11000,1000)\n" +
+                "[14000,1000]next(14000,1000)";
+            var xml = "<QrcInfos><LyricInfo><Lyric_1 LyricType=\"1\" LyricContent=\"" +
+                qrc + "\"/></LyricInfo></QrcInfos>";
+            var decrypter = typeof(QQMusicLyricsClient).Assembly.GetType("LyricHover.Core.QqQrcDecrypter");
+            var extract = decrypter?.GetMethod(
+                "ExtractLyricContent",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.True(extract != null);
+            var extracted = (string)extract.Invoke(null, new object[] { xml });
+            Assert.Equal(qrc, extracted);
+
+            var parsed = LyricsPackageParser.Parse(extracted);
+            Assert.Equal(2, parsed.Lines.Count);
+            Assert.Equal("He said \"hello\"", parsed.Lines[0].Text);
+            Assert.True(parsed.Lines[0].HasWordTiming);
+            Assert.Equal("next", parsed.Lines[1].Text);
+            Assert.True(parsed.Lines[1].HasWordTiming);
         }
 
         static void TaskbarSettingsFallbackRehidesWidgetsAfterExistingLeaseChanges()
