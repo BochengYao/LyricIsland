@@ -3,7 +3,7 @@
 - 日期：2026-09-09
 - 任务线程：Desktop Island, Settings & Interaction UI（Sol 中度编码与初检）
 - 基线提交：`82e921a85182579367bf36ddf25fd2d2b10a9f72`
-- 结果提交：本交接与代码同次提交，以 Git 历史记录为准
+- 结果提交：`5a2a4f60404b0aeec4e12959315670f64e49ebf0`
 - 工作分支：`codex/feature/desktop-album-art-quality`
 - 允许修改范围：`LyricHover.App/Modules/AlbumArtModuleView.xaml`、`LyricHover.Tests/Program.cs`、本任务独立交接记录
 
@@ -40,5 +40,16 @@
 ## 风险与后续
 
 - 已知限制：源码回归与构建不能替代真实封面、不同显示缩放比例和窗口合成下的视觉验收；高质量重采样也不能补回上游原图本身不存在的细节。
-- 交接目标：Astra 轻度最终核验；之后由主任务负责提交与 GitHub 推送。
+- 交接目标：Desktop UI & Interaction 负责真实播放器与 100%、150%、200% DPI 同源 A/B；Quality & Release 依据最终提交与候选指纹复核；Desktop Core 仅对下述缓存风险做 Knowledge Sync，不据此直接改代码。
 - 回滚点：基线 `82e921a85182579367bf36ddf25fd2d2b10a9f72`。
+
+## Cross-domain Evidence / Impact / Suggested Owner
+
+- Evidence：`SmTcMediaSessionService.ReadArtworkAsync` 按 session 与 title/artist/album 签名复用首次封面字节；当前没有真实运行证据证明同曲后到的更高分辨率 Thumbnail 被该缓存挡住。
+- Impact：若 HighQuality A/B 后仍只在“同曲封面稍后变清晰”的播放器上复现，UI 重采样无法解决首次低清字节持续复用；当前不应把该推断当作已确认根因。
+- Suggested Owner：Desktop Core 在取得真实 Thumbnail 像素尺寸、到达顺序和同曲事件证据后决定是否需要独立缓存失效契约；本任务不修改缓存。
+
+## 当前交付状态
+
+- 功能与测试提交已推送到 GitHub 分支 `codex/feature/desktop-album-art-quality`。
+- 本地候选已在后续发布交接中生成至 `D:\AppleMusicDesktopLyrics\publish\current`，版本 `3.2.39-Beta`；候选状态与哈希以 `2026-09-09-release-v3.2.39-beta-album-art.md` 为准。
