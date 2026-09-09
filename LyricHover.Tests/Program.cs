@@ -89,6 +89,9 @@ namespace LyricHover.Tests
             suite.Run("does not reuse one short translation for adjacent same-source lines", DoesNotReuseOneShortTranslationForAdjacentLines);
             suite.Run("maps fast same-source translations one to one", MapsFastSameSourceTranslationsOneToOne);
             suite.Run("keeps verified word timing when translation fallback throws", KeepsWordTimingWhenTranslationFallbackThrows);
+            suite.Run("rejects cached word timing truncated before a complete translation", RejectsTruncatedCachedWordTiming);
+            suite.Run("falls back when word timing ends far before verified line lyrics", FallsBackFromTruncatedWordTiming);
+            suite.Run("keeps word timing when only a sparse late reference line differs", KeepsWordTimingWithSparseLateReference);
             suite.Run("fetches translated lyrics from qq music response", FetchesTranslatedLyricsFromQqMusicResponse);
             suite.Run("ignores timestamp only translation from qq music", IgnoresTimestampOnlyTranslationFromQqMusicResponse);
             suite.Run("scores lyric candidates by title artist and duration", ScoresLyricCandidatesByTitleArtistAndDuration);
@@ -4874,6 +4877,60 @@ namespace LyricHover.Tests
                 .GetAwaiter().GetResult();
             Assert.True(LyricsPackageParser.HasWordTiming(package));
             Assert.False(LyricsPackageParser.HasTranslation(package));
+        }
+
+        static void RejectsTruncatedCachedWordTiming()
+        {
+            var truncated = LyricsPackageParser.CreatePackage(
+                "[ti:Opalite]\n[ar:Taylor Swift]\n" +
+                "[14349,2246]My (14349,225)brother (14574,572)used (15146,201)to (15347,262)call (15609,416)it(16025,570)",
+                "[00:14.35]早期翻译\n[00:45.00]后续一\n[01:30.00]后续二\n[03:48.61]后续三",
+                LyricsTranslationLanguage.SimplifiedChinese);
+
+            Assert.False(LyricsPackageValidator.TryAccept(
+                new TrackIdentity("Opalite", "Taylor Swift", TimeSpan.FromSeconds(235)),
+                truncated,
+                out var ignored));
+        }
+
+        static void FallsBackFromTruncatedWordTiming()
+        {
+            const string truncated =
+                "[7000,1000]first (7000,500)line(7500,500)\n" +
+                "[10600,1000]second (10600,500)line(11100,500)\n" +
+                "[14349,2246]My (14349,225)brother (14574,572)used (15146,201)to (15347,262)call (15609,416)it(16025,570)";
+            const string fallback =
+                "[00:07.00]first line\n[00:10.60]second line\n[00:14.35]My brother used to call it\n" +
+                "[00:45.00]later one\n[01:30.00]later two\n[03:48.61]later three";
+            var client = new WordTimedPreferredLyricsClient(
+                new ILyricsClient[] { new FakeLyricsClient(truncated) },
+                new FakeLyricsClient(fallback));
+
+            var package = client.GetSyncedLyricsAsync(
+                    new TrackIdentity("Opalite", "Taylor Swift", TimeSpan.FromSeconds(235)))
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.Equal(fallback, package);
+            Assert.False(LyricsPackageParser.HasWordTiming(package));
+            Assert.Equal("later two", LyricsPackageParser.Parse(package)
+                .GetCurrentLine(TimeSpan.FromSeconds(90)).Text);
+        }
+
+        static void KeepsWordTimingWithSparseLateReference()
+        {
+            const string wordTimed = "[0,1000](0,500,0)hello(500,500,0) world";
+            const string fallback = "[00:00.00]hello world\n[03:00.00]credit";
+            var client = new WordTimedPreferredLyricsClient(
+                new ILyricsClient[] { new FakeLyricsClient(wordTimed) },
+                new FakeLyricsClient(fallback));
+
+            var package = client.GetSyncedLyricsAsync(
+                    new TrackIdentity("test", "artist", TimeSpan.FromSeconds(200)))
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.True(LyricsPackageParser.HasWordTiming(package));
         }
 
         static void ReadsQqQrcFromLyricWhenQrcIsAvailabilityFlag()

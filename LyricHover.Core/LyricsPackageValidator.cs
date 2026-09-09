@@ -20,6 +20,7 @@ namespace LyricHover.Core
                     if (line.Timestamp < TimeSpan.Zero || line.Timestamp > maximum || string.IsNullOrWhiteSpace(line.Text))
                         return false;
                 }
+                if (!LyricsCoverageValidator.HasSufficientWordTimedOriginalCoverage(parsed)) return false;
                 if (!MetadataMatches(track, parsed)) return false;
                 lyrics = parsed;
                 return true;

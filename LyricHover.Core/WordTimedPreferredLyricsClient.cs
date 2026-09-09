@@ -41,9 +41,14 @@ namespace LyricHover.Core
             {
                 // Translation enrichment is optional.  Once a verified word-timed
                 // package exists, a later fallback failure must not erase it.
-                return wordTimedLyrics;
+                return HasSufficientCoverage(wordTimedLyrics) ? wordTimedLyrics : string.Empty;
             }
             if (string.IsNullOrWhiteSpace(wordTimedLyrics))
+            {
+                return fallbackLyrics;
+            }
+
+            if (!HasSufficientCoverage(wordTimedLyrics, track, fallbackLyrics))
             {
                 return fallbackLyrics;
             }
@@ -55,6 +60,41 @@ namespace LyricHover.Core
             }
 
             return LyricsTranslationMerger.MergeMatchingLines(wordTimedLyrics, fallbackLyrics);
+        }
+
+        private static bool HasSufficientCoverage(string wordTimedLyrics)
+        {
+            try
+            {
+                return LyricsCoverageValidator.HasSufficientWordTimedOriginalCoverage(
+                    LyricsPackageParser.Parse(wordTimedLyrics));
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool HasSufficientCoverage(
+            string wordTimedLyrics,
+            TrackIdentity track,
+            string fallbackLyrics)
+        {
+            try
+            {
+                var candidate = LyricsPackageParser.Parse(wordTimedLyrics);
+                if (!LyricsCoverageValidator.HasSufficientWordTimedOriginalCoverage(candidate))
+                {
+                    return false;
+                }
+
+                return !LyricsPackageValidator.TryAccept(track, fallbackLyrics, out var reference) ||
+                    LyricsCoverageValidator.HasSufficientWordTimedOriginalCoverage(candidate, reference);
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }
