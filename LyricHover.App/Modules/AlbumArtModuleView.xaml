@@ -19,7 +19,8 @@
             ClipToBounds="True">
         <Image x:Name="ArtworkImage"
                Stretch="UniformToFill"
-               SnapsToDevicePixels="True">
+               SnapsToDevicePixels="True"
+               RenderOptions.BitmapScalingMode="HighQuality">
             <Image.Clip>
                 <RectangleGeometry Rect="0,0,42,42" RadiusX="4" RadiusY="4" />
             </Image.Clip>

@@ -9,6 +9,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using LyricHover.Core;
 using LyricHover.Core.Layout;
 using LyricHover.Core.Media;
@@ -156,7 +157,7 @@ namespace LyricHover.Tests
             suite.Run("module host exposes all v2 module views", ModuleHostExposesAllV2ModuleViews);
             suite.Run("track info shows title and artist without album", TrackInfoShowsTitleAndArtistWithoutAlbum);
             suite.Run("calculates adaptive track info widths", CalculatesAdaptiveTrackInfoWidths);
-            suite.Run("album art is centered with a rounded clip", AlbumArtIsCenteredWithRoundedClip);
+            suite.Run("album art uses high quality scaling with a rounded clip", AlbumArtUsesHighQualityScalingWithRoundedClip);
             suite.Run("temporary interaction expands expandable mode", TemporaryInteractionExpandsExpandableMode);
             suite.Run("expandable layout requires the temporary interaction hotkey", ExpandableLayoutRequiresTemporaryInteractionHotkey);
             suite.Run("temporary interaction release uses configured expanded duration", TemporaryInteractionReleaseUsesConfiguredExpandedDuration);
@@ -1588,15 +1589,20 @@ namespace LyricHover.Tests
             Assert.Equal(232.0, TrackInfoWidthCalculator.Calculate(400, 100));
         }
 
-        static void AlbumArtIsCenteredWithRoundedClip()
+        static void AlbumArtUsesHighQualityScalingWithRoundedClip()
         {
             var root = GetSolutionRoot();
-            var albumArt = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Modules", "AlbumArtModuleView.xaml"));
+            var albumArtPath = Path.Combine(root, "LyricHover.App", "Modules", "AlbumArtModuleView.xaml");
+            var albumArt = File.ReadAllText(albumArtPath);
+            var albumArtDocument = XDocument.Load(albumArtPath);
+            var presentation = XNamespace.Get("http://schemas.microsoft.com/winfx/2006/xaml/presentation");
+            var image = albumArtDocument.Descendants(presentation + "Image").Single();
             var mainWindow = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml"));
 
             Assert.True(albumArt.Contains("Width=\"60\""));
             Assert.True(albumArt.Contains("RectangleGeometry Rect=\"0,0,42,42\" RadiusX=\"4\" RadiusY=\"4\""));
             Assert.True(albumArt.Contains("VerticalAlignment=\"Center\""));
+            Assert.Equal("HighQuality", image.Attribute("RenderOptions.BitmapScalingMode")?.Value);
             Assert.True(mainWindow.Contains("TranslateTransform Y=\"-2.5\""));
         }
 
