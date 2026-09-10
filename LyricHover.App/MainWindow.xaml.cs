@@ -395,13 +395,13 @@ namespace LyricHover.App
         private void AdjustLyricOffset(int deltaMilliseconds, bool reset)
         {
             var milliseconds = reset
-                ? placementSettings.DefaultLyricOffsetMilliseconds
+                ? 0
                 : (int)lyricOffset.TotalMilliseconds + deltaMilliseconds;
             milliseconds = Math.Max(-10000, Math.Min(10000, milliseconds));
             lyricOffset = TimeSpan.FromMilliseconds(milliseconds);
             ModuleHost.ShowTransientMessage(
                 "歌词偏移 " + (milliseconds / 1000.0).ToString("+0.0;-0.0;0.0") + "s",
-                TimeSpan.FromSeconds(1.2));
+                TimeSpan.FromSeconds(2.4));
         }
 
         private bool ShouldPassThroughMouseHit()

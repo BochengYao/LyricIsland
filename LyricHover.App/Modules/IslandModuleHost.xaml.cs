@@ -9,6 +9,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using LyricHover.App.LayoutEditing;
 using LyricHover.Core.Layout;
 
@@ -19,6 +20,9 @@ namespace LyricHover.App.Modules
         private string layoutSignature = string.Empty;
         private bool playbackInteractionEnabled;
         private IslandRenderState lastRenderState = new IslandRenderState();
+        private DispatcherTimer transientMessageTimer;
+        private string transientMessage;
+        private TimeSpan transientMessageLineDuration;
         private int insertionPreviewIndex = -1;
         private double insertionPreviewWidth = -1;
         private Point? moduleDragStartPoint;
@@ -238,6 +242,11 @@ namespace LyricHover.App.Modules
         {
             state = state ?? new IslandRenderState();
             lastRenderState = state;
+            PresentRenderState(transientMessage == null ? state : CreateTransientRenderState(state));
+        }
+
+        private void PresentRenderState(IslandRenderState state)
+        {
             foreach (var child in ModulePanel.Children.OfType<IIslandModuleView>())
             {
                 child.Update(state);
@@ -343,12 +352,45 @@ namespace LyricHover.App.Modules
 
         public void ShowTransientMessage(string message, TimeSpan duration)
         {
-            Update(new IslandRenderState
+            transientMessage = message ?? string.Empty;
+            transientMessageLineDuration = duration > TimeSpan.Zero
+                ? duration
+                : TimeSpan.FromSeconds(2.4);
+
+            if (transientMessageTimer == null)
             {
-                PrimaryLyric = message ?? string.Empty,
+                transientMessageTimer = new DispatcherTimer();
+                transientMessageTimer.Tick += (sender, args) =>
+                {
+                    transientMessageTimer.Stop();
+                    transientMessage = null;
+                    PresentRenderState(lastRenderState);
+                };
+            }
+
+            transientMessageTimer.Stop();
+            transientMessageTimer.Interval = transientMessageLineDuration;
+            PresentRenderState(CreateTransientRenderState(lastRenderState));
+            transientMessageTimer.Start();
+        }
+
+        private IslandRenderState CreateTransientRenderState(IslandRenderState state)
+        {
+            state = state ?? new IslandRenderState();
+            return new IslandRenderState
+            {
+                Session = state.Session,
+                PendingPlaybackStatus = state.PendingPlaybackStatus,
+                PrimaryLyric = transientMessage ?? string.Empty,
+                PrimaryAccent = string.Empty,
                 SecondaryLyric = string.Empty,
-                LineDuration = duration
-            });
+                TimelineReliability = state.TimelineReliability,
+                EffectivePosition = state.EffectivePosition,
+                LineDuration = transientMessageLineDuration,
+                PrimaryWordTrackingProgress = -1,
+                PrimaryWordTrackingLine = null,
+                WordTrackingPosition = state.WordTrackingPosition
+            };
         }
 
         public IReadOnlyList<LayoutInsertionTarget> BuildInsertionTargets()

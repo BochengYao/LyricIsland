@@ -3228,6 +3228,8 @@ namespace LyricHover.Tests
             var source = File.ReadAllText(Path.Combine(root, "LyricHover.App", "HotkeySettings.cs"));
             var settingsXaml = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml"));
             var settingsWindowSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml.cs"));
+            var mainWindowSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
+            var moduleHostSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Modules", "IslandModuleHost.xaml.cs"));
 
             Assert.True(source.Contains("Ctrl+Alt+Left"));
             Assert.True(source.Contains("Ctrl+Alt+Right"));
@@ -3241,6 +3243,11 @@ namespace LyricHover.Tests
             Assert.True(settingsXaml.Contains("IsReadOnly=\"True\""));
             Assert.True(settingsXaml.Contains("LinearGradientBrush StartPoint=\"0,0\" EndPoint=\"1,1\""));
             Assert.True(settingsXaml.Contains("Text=\"单击后，按下新的快捷键组合\""));
+            Assert.False(mainWindowSource.Contains("? placementSettings.DefaultLyricOffsetMilliseconds"));
+            Assert.True(mainWindowSource.Contains("TimeSpan.FromSeconds(2.4)"));
+            Assert.True(moduleHostSource.Contains("transientMessageTimer"));
+            Assert.True(moduleHostSource.Contains("CreateTransientRenderState(state)"));
+            Assert.True(moduleHostSource.Contains("PresentRenderState(lastRenderState)"));
             Assert.True(settingsWindowSource.Contains("FormatHotkeyKey"));
             Assert.True(settingsWindowSource.Contains("Keyboard.ClearFocus()"));
             Assert.False(settingsXaml.Contains("组合键使用 + 分隔"));
