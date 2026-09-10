@@ -4,7 +4,7 @@
 - Owner：Desktop Lyrics & Player Core
 - 基线：`210ae8e4e9fd9f39cc2b89c246eacd8850d37d6c`
 - 分支：`codex/fix-qrc-quoted-content`
-- 状态：实现、自动化回归和真实 QQ 在线探针通过；待主线集成与本地候选生成
+- 状态：已集成 `main` 并生成 `v3.2.41 Beta` 本地候选；真实 UI 动画验收待完成
 
 ## 问题证据
 
@@ -29,4 +29,4 @@ QRC 解密结果使用类似 XML 的 `LyricContent` 属性承载正文，但 QQ 
 - 未修改 UI、设置、播放器时间线或用户歌词缓存。
 - 普通 LRC、无法解密的 QRC 和真正残缺的逐字包继续沿用安全降级。
 - 集成候选应强制刷新上述两首歌曲，确认本机旧的逐行缓存被新 QRC 替换，并完成真实 UI 逐字动画验收。
-- 本交接不代表 GitHub 推送、GitHub Release、Microsoft Store 上传或正式发布。
+- `publish/current` 已生成 `v3.2.41 Beta`；本交接不代表 GitHub 推送、GitHub Release、Microsoft Store 上传或正式发布。
