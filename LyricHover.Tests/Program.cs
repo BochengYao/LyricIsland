@@ -279,6 +279,7 @@ namespace LyricHover.Tests
             suite.Run("tray menu vector glyphs stay optically aligned across DPI scales", TrayMenuVectorGlyphsStayAlignedAcrossDpiScales);
             suite.Run("main window keeps startup hint without media session", MainWindowKeepsStartupHintWithoutMediaSession);
             suite.Run("startup hint begins auto retract countdown immediately", StartupHintBeginsAutoRetractCountdownImmediately);
+            suite.Run("repeated launch reveals only a retracted enabled island for thirty seconds", RepeatedLaunchRevealsOnlyRetractedEnabledIslandForThirtySeconds);
             suite.Run("native SMTC service keeps persistent session subscriptions", NativeSmtcServiceKeepsPersistentSessionSubscriptions);
             suite.Run("native playback rejects stale lyrics and removes PowerShell bridge", NativePlaybackRejectsStaleLyricsAndRemovesPowerShellBridge);
             suite.Run("coalesces repeated animation targets while preserving the latest target", CoalescesRepeatedAnimationTargets);
@@ -4195,6 +4196,31 @@ namespace LyricHover.Tests
             Assert.True(hintMethod.Contains("startupHintTimer.Start();"));
             Assert.True(hintMethod.Contains("if (autoRetractSeconds > 0)"));
             Assert.True(hintMethod.Contains("\"LyricHover将在 \" + autoRetractSeconds + \" 秒后自动收起\""));
+        }
+
+        static void RepeatedLaunchRevealsOnlyRetractedEnabledIslandForThirtySeconds()
+        {
+            var root = GetSolutionRoot();
+            var appSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "App.xaml.cs"));
+            var mainWindowSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
+            var revealStart = mainWindowSource.IndexOf(
+                "public void RevealRetractedIslandForRepeatedLaunch()",
+                StringComparison.Ordinal);
+            var revealEnd = mainWindowSource.IndexOf(
+                "private async Task RefreshAsync()",
+                revealStart,
+                StringComparison.Ordinal);
+            var revealMethod = mainWindowSource.Substring(revealStart, revealEnd - revealStart);
+
+            Assert.True(appSource.Contains("window.RevealRetractedIslandForRepeatedLaunch();"));
+            Assert.False(appSource.Contains("window.ShowWaitingForPlaybackHint();"));
+            Assert.True(revealMethod.Contains("if (!placementSettings.IslandEnabled || islandVisible)"));
+            Assert.True(revealMethod.Contains("TimeSpan.FromSeconds(RepeatedLaunchRevealSeconds)"));
+            Assert.True(mainWindowSource.Contains("private const int RepeatedLaunchRevealSeconds = 30;"));
+            Assert.True(revealMethod.Contains("\"LyricHover将在 \" + RepeatedLaunchRevealSeconds + \" 秒后自动收起\""));
+            Assert.True(revealMethod.Contains("repeatedLaunchRevealTimer.Start();"));
+            Assert.True(revealMethod.Contains("ShowIsland();"));
+            Assert.True(mainWindowSource.Contains("IsStartupHintActive() || IsRepeatedLaunchRevealActive()"));
         }
 
         static void NativeSmtcServiceKeepsPersistentSessionSubscriptions()

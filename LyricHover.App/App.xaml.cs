@@ -47,7 +47,7 @@ namespace LyricHover.App
             {
                 if (instanceGuard.ConsumeActivationSignal(System.TimeSpan.Zero) && MainWindow is MainWindow window)
                 {
-                    window.ShowWaitingForPlaybackHint();
+                    window.RevealRetractedIslandForRepeatedLaunch();
                 }
             };
             activationSignalTimer.Start();

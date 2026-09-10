@@ -70,6 +70,7 @@ namespace LyricHover.App
         private string dockLyricSecondaryText = string.Empty;
         private bool dockLyricOverrideActive;
         private DispatcherTimer startupHintTimer;
+        private DispatcherTimer repeatedLaunchRevealTimer;
         private Forms.NotifyIcon trayIcon;
         private Forms.ContextMenuStrip trayMenu;
         private int positionAnimationVersion;
@@ -124,6 +125,7 @@ namespace LyricHover.App
         private const double DragStartThreshold = 4.0;
         private const double IslandHorizontalShapePadding = 144;
         private const double HoverMaskContentRadiusScale = 1.0;
+        private const int RepeatedLaunchRevealSeconds = 30;
         private const int WM_NCHITTEST = 0x0084;
         private const int HTTRANSPARENT = -1;
         private const int VK_RBUTTON = 0x02;
@@ -465,6 +467,44 @@ namespace LyricHover.App
             }
         }
 
+        public void RevealRetractedIslandForRepeatedLaunch()
+        {
+            if (!placementSettings.IslandEnabled || islandVisible)
+            {
+                return;
+            }
+
+            Show();
+            WindowState = WindowState.Normal;
+            Activate();
+            if (currentTrack == null)
+            {
+                SetIslandText(
+                    "暂无播放内容",
+                    "LyricHover将在 " + RepeatedLaunchRevealSeconds + " 秒后自动收起");
+            }
+
+            if (repeatedLaunchRevealTimer == null)
+            {
+                repeatedLaunchRevealTimer = new DispatcherTimer();
+                repeatedLaunchRevealTimer.Tick += (sender, args) =>
+                {
+                    repeatedLaunchRevealTimer.Stop();
+                    if (currentSession == null || currentSession.PlaybackStatus != MediaPlaybackStatus.Playing)
+                    {
+                        noPlaybackSinceUtc = DateTimeOffset.UtcNow -
+                            TimeSpan.FromSeconds(placementSettings.NoPlaybackAutoRetractSeconds);
+                        HideIsland(true);
+                    }
+                };
+            }
+
+            repeatedLaunchRevealTimer.Stop();
+            repeatedLaunchRevealTimer.Interval = TimeSpan.FromSeconds(RepeatedLaunchRevealSeconds);
+            repeatedLaunchRevealTimer.Start();
+            ShowIsland();
+        }
+
         private async Task RefreshAsync()
         {
             await Task.CompletedTask;
@@ -499,7 +539,7 @@ namespace LyricHover.App
                         return;
                     }
 
-                    if (IsStartupHintActive())
+                    if (IsStartupHintActive() || IsRepeatedLaunchRevealActive())
                     {
                         noPlaybackSinceUtc = null;
                         ShowIsland();
@@ -546,6 +586,10 @@ namespace LyricHover.App
 
                 noPlaybackSinceUtc = null;
                 startupHintTimer?.Stop();
+                if (selected.PlaybackStatus == MediaPlaybackStatus.Playing)
+                {
+                    repeatedLaunchRevealTimer?.Stop();
+                }
 
                 if (selected.PlaybackStatus != MediaPlaybackStatus.Playing)
                 {
@@ -564,7 +608,7 @@ namespace LyricHover.App
                     selected.Title,
                     selected.PlaybackStatus,
                     pausedFor,
-                    IsStartupHintActive() || settingsWindow != null,
+                    IsStartupHintActive() || IsRepeatedLaunchRevealActive() || settingsWindow != null,
                     false,
                     placementSettings.NoPlaybackAutoRetractSeconds == 0
                         ? TimeSpan.MaxValue
@@ -877,6 +921,7 @@ namespace LyricHover.App
             timer.Stop();
             hoverProximityTimer.Stop();
             startupHintTimer?.Stop();
+            repeatedLaunchRevealTimer?.Stop();
             islandSizeAnimationVersion++;
             StopIslandSizeAnimationFrames();
             ClearPositionAnimation();
@@ -1130,6 +1175,11 @@ namespace LyricHover.App
         private bool IsStartupHintActive()
         {
             return startupHintTimer != null && startupHintTimer.IsEnabled;
+        }
+
+        private bool IsRepeatedLaunchRevealActive()
+        {
+            return repeatedLaunchRevealTimer != null && repeatedLaunchRevealTimer.IsEnabled;
         }
 
         private OverlayPoint GetVisiblePosition()
