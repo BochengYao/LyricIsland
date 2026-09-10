@@ -291,6 +291,7 @@ namespace LyricHover.Tests
             suite.Run("coalesces identical hover samples without losing changed samples", CoalescesIdenticalHoverSamplesWithoutLosingChangedSamples);
             suite.Run("settings dirty fingerprint avoids a second JSON deep clone", SettingsDirtyFingerprintAvoidsASecondJsonDeepClone);
             suite.Run("user visible product branding uses lyric hover", UserVisibleProductBrandingUsesLyricHover);
+            suite.Run("word-following product name is localized across supported languages", WordFollowingProductNameIsLocalizedAcrossSupportedLanguages);
             return suite.ExitCode;
         }
 
@@ -1301,6 +1302,32 @@ namespace LyricHover.Tests
             var settingsView = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "PlacementSettingsWindow.xaml"));
             Assert.True(settingsView.Contains("IslandWordTrackingCheckBox"));
             Assert.True(settingsView.Contains("DockWordTrackingCheckBox"));
+        }
+
+        static void WordFollowingProductNameIsLocalizedAcrossSupportedLanguages()
+        {
+            var originalPreference = UiLanguageService.Preference;
+            try
+            {
+                var settingsView = File.ReadAllText(Path.Combine(
+                    GetSolutionRoot(), "LyricHover.App", "PlacementSettingsWindow.xaml"));
+                Assert.True(settingsView.Contains("Text=\"逐字跟随\""));
+                Assert.False(settingsView.Contains("逐字追踪"));
+                Assert.False(settingsView.Contains("逐字跟踪"));
+
+                UiLanguageService.SetPreference(AppLanguagePreference.SimplifiedChinese);
+                Assert.Equal("逐字跟随", UiLanguageService.Translate("逐字跟随"));
+                UiLanguageService.SetPreference(AppLanguagePreference.TraditionalChinese);
+                Assert.Equal("逐字跟隨", UiLanguageService.Translate("逐字跟随"));
+                UiLanguageService.SetPreference(AppLanguagePreference.English);
+                Assert.Equal("Word-by-word follow", UiLanguageService.Translate("逐字跟随"));
+                UiLanguageService.SetPreference(AppLanguagePreference.Japanese);
+                Assert.Equal("一語ずつ追従", UiLanguageService.Translate("逐字跟随"));
+            }
+            finally
+            {
+                UiLanguageService.SetPreference(originalPreference);
+            }
         }
 
         static void RemovesRetiredLyricsSourcesFromPersistedSettings()

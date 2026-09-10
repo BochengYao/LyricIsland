@@ -66,6 +66,7 @@ namespace LyricHover.App
             ["单行"] = new[] { "单行", "單行", "Single line", "1 行" },
             ["多行"] = new[] { "多行", "多行", "Multiple lines", "複数行" },
             ["翻译"] = new[] { "翻译", "翻譯", "Translation", "翻訳" },
+            ["逐字跟随"] = new[] { "逐字跟随", "逐字跟隨", "Word-by-word follow", "一語ずつ追従" },
             ["对齐"] = new[] { "对齐", "對齊", "Alignment", "配置" },
             ["左对齐"] = new[] { "左对齐", "左對齊", "Left", "左寄せ" },
             ["显示器"] = new[] { "显示器", "顯示器", "Monitor", "モニター" },

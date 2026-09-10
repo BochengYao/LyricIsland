@@ -1249,7 +1249,7 @@
                                       Style="{StaticResource SettingsSwitchStyle}"
                                       Checked="ShowTranslationCheckBox_Changed"
                                       Unchecked="ShowTranslationCheckBox_Changed" />
-                            <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource SettingLabel}" Text="逐字追踪" />
+                            <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource SettingLabel}" Text="逐字跟随" />
                             <CheckBox x:Name="IslandWordTrackingCheckBox" Grid.Row="4" Grid.Column="1" HorizontalAlignment="Right" Style="{StaticResource SettingsSwitchStyle}" />
                             </Grid>
                             </Border>
@@ -1466,7 +1466,7 @@
                                       Style="{StaticResource SettingsSwitchStyle}"
                                       Checked="DockShowTranslationCheckBox_Changed"
                                       Unchecked="DockShowTranslationCheckBox_Changed" />
-                            <TextBlock Grid.Row="7" Grid.Column="0" Style="{StaticResource SettingLabel}" Text="逐字追踪" />
+                            <TextBlock Grid.Row="7" Grid.Column="0" Style="{StaticResource SettingLabel}" Text="逐字跟随" />
                             <CheckBox x:Name="DockWordTrackingCheckBox" Grid.Row="7" Grid.Column="1" HorizontalAlignment="Right" Style="{StaticResource SettingsSwitchStyle}" />
                             </Grid>
                             </Border>
