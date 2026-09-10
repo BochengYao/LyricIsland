@@ -61,7 +61,6 @@ namespace LyricHover.App.Modules
                 dimText.InvalidateMeasure();
                 highlightText.InvalidateMeasure();
                 InvalidateMeasure();
-                RebuildVisualWordMap();
             }
         }
 
@@ -147,9 +146,16 @@ namespace LyricHover.App.Modules
             bool isPlaying,
             double fallbackProgress = -1)
         {
-            Text = text;
-            trackingLine = IsMatchingWordTimedLine(line, Text) ? line : null;
-            RebuildVisualWordMap();
+            var normalizedText = text ?? string.Empty;
+            var textChanged = !string.Equals(Text, normalizedText, StringComparison.Ordinal);
+            var nextTrackingLine = IsMatchingWordTimedLine(line, normalizedText) ? line : null;
+            var trackingLineChanged = !ReferenceEquals(trackingLine, nextTrackingLine);
+            Text = normalizedText;
+            trackingLine = nextTrackingLine;
+            if (textChanged || trackingLineChanged)
+            {
+                RebuildVisualWordMap();
+            }
             anchorPosition = effectivePosition;
             anchorTimestamp = Stopwatch.GetTimestamp();
             playbackAdvancing = isPlaying && trackingLine != null;

@@ -209,6 +209,7 @@ namespace LyricHover.Tests
             suite.Run("settings stays modeless while editing modules", SettingsStaysModelessWhileEditingModules);
             suite.Run("expandable island animates measured size", ExpandableIslandAnimatesMeasuredSize);
             suite.Run("auto retract delays are configurable", AutoRetractDelaysAreConfigurable);
+            suite.Run("non-layout settings preserve the selected layout mode", NonLayoutSettingsPreserveSelectedLayoutMode);
             suite.Run("settings and temporary interaction restart no playback countdown", SettingsAndTemporaryInteractionRestartNoPlaybackCountdown);
             suite.Run("lyrics module exposes configurable width", LyricsModuleExposesConfigurableWidth);
             suite.Run("island background width reserves shaped edge padding", IslandBackgroundWidthReservesShapedEdgePadding);
@@ -289,6 +290,8 @@ namespace LyricHover.Tests
             suite.Run("module views skip unchanged rendering work", ModuleViewsSkipUnchangedRenderingWork);
             suite.Run("word tracking uses frame-smooth overlay clipping", WordTrackingUsesFrameSmoothOverlayClipping);
             suite.Run("word tracking clip follows glyph width", WordTrackingClipFollowsGlyphWidth);
+            suite.Run("word tracking reuses glyph map for the same line", WordTrackingReusesGlyphMapForSameLine);
+            suite.Run("word tracking refreshes at lyric line boundaries", WordTrackingRefreshesAtLyricLineBoundaries);
             suite.Run("coalesces identical hover samples without losing changed samples", CoalescesIdenticalHoverSamplesWithoutLosingChangedSamples);
             suite.Run("settings dirty fingerprint avoids a second JSON deep clone", SettingsDirtyFingerprintAvoidsASecondJsonDeepClone);
             suite.Run("user visible product branding uses lyric hover", UserVisibleProductBrandingUsesLyricHover);
@@ -2841,6 +2844,23 @@ namespace LyricHover.Tests
             Assert.True(mainWindowSource.Contains("TimeSpan.MaxValue"));
         }
 
+        static void NonLayoutSettingsPreserveSelectedLayoutMode()
+        {
+            var root = GetSolutionRoot();
+            var main = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
+            var settings = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml.cs"));
+            var syncStart = main.IndexOf("private void SynchronizePlacementSettingsRuntime", StringComparison.Ordinal);
+            var syncEnd = main.IndexOf("private void SnapCurrentPositionToNearestEdge", syncStart, StringComparison.Ordinal);
+            var syncMethod = main.Substring(syncStart, syncEnd - syncStart);
+            var captureStart = settings.IndexOf("private OverlayPlacementSettings CaptureSettings", StringComparison.Ordinal);
+            var captureEnd = settings.IndexOf("private static string CreateSettingsFingerprint", captureStart, StringComparison.Ordinal);
+            var captureMethod = settings.Substring(captureStart, captureEnd - captureStart);
+
+            Assert.False(syncMethod.Contains("previousSettings.IslandLayouts"));
+            Assert.False(syncMethod.Contains("runtimeSettings.IslandLayouts ="));
+            Assert.True(captureMethod.Contains("settings.IslandLayouts.Mode = ReadEditedLayoutMode();"));
+        }
+
         static void SettingsAndTemporaryInteractionRestartNoPlaybackCountdown()
         {
             var root = GetSolutionRoot();
@@ -4174,7 +4194,8 @@ namespace LyricHover.Tests
             var root = GetSolutionRoot();
             var mainWindowSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
             var branchStart = mainWindowSource.IndexOf("if (selected == null)", StringComparison.Ordinal);
-            var selectedNullBranch = mainWindowSource.Substring(branchStart, 520);
+            var branchEnd = mainWindowSource.IndexOf("playbackIntents.CancelUnless(selected.SessionId)", branchStart, StringComparison.Ordinal);
+            var selectedNullBranch = mainWindowSource.Substring(branchStart, branchEnd - branchStart);
 
             Assert.True(selectedNullBranch.Contains("IsStartupHintActive()"));
             Assert.True(selectedNullBranch.Contains("ShowIsland();"));
@@ -4709,6 +4730,46 @@ namespace LyricHover.Tests
                         "Glyph clip was not narrower than half the text at scale " + (fontSize / 24d) +
                         ": x=" + clip.Rect.X + ", width=" + clip.Rect.Width + ", measured=" + measured + ".");
             }
+        }
+
+        static void WordTrackingReusesGlyphMapForSameLine()
+        {
+            var line = new LyricLine(
+                TimeSpan.FromSeconds(1),
+                "smooth words",
+                new[]
+                {
+                    new LyricWord(TimeSpan.Zero, TimeSpan.FromSeconds(1), "smooth"),
+                    new LyricWord(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), "words")
+                });
+            var block = new LyricHover.App.Modules.WordTrackingTextBlock
+            {
+                FontFamily = new System.Windows.Media.FontFamily("Arial"),
+                FontSize = 24
+            };
+            block.Present(line.Text, line, TimeSpan.FromSeconds(1.25), true);
+            var field = typeof(LyricHover.App.Modules.WordTrackingTextBlock)
+                .GetField("visualWordSpans", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            var firstMap = (System.Collections.IList)field.GetValue(block);
+            var firstSpan = firstMap[0];
+
+            block.Present(line.Text, line, TimeSpan.FromSeconds(1.5), true);
+            var secondMap = (System.Collections.IList)field.GetValue(block);
+
+            Assert.True(ReferenceEquals(firstMap, secondMap));
+            Assert.True(ReferenceEquals(firstSpan, secondMap[0]));
+        }
+
+        static void WordTrackingRefreshesAtLyricLineBoundaries()
+        {
+            var source = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "LyricHover.App", "MainWindow.xaml.cs"));
+
+            Assert.True(source.Contains("ScheduleLyricLineBoundaryRefresh("));
+            Assert.True(source.Contains("currentLine.Timestamp + lineDuration - adjustedPosition"));
+            Assert.True(source.Contains("new DispatcherTimer(DispatcherPriority.Render)"));
+            Assert.True(source.Contains("_ = RefreshAsync();"));
+            Assert.True(source.Contains("lyricLineBoundaryTimer?.Stop();"));
         }
 
         static void CoalescesIdenticalHoverSamplesWithoutLosingChangedSamples()

@@ -27,6 +27,7 @@ namespace LyricHover.App
     {
         private readonly DispatcherTimer timer;
         private readonly DispatcherTimer hoverProximityTimer;
+        private DispatcherTimer lyricLineBoundaryTimer;
         private readonly IMediaSessionService mediaSessions;
         private readonly TimelineCoordinator timelineCoordinator;
         private readonly PlaybackIntentCoordinator playbackIntents = new PlaybackIntentCoordinator();
@@ -138,6 +139,7 @@ namespace LyricHover.App
         private static readonly TimeSpan NormalTimerInterval = TimeSpan.FromMilliseconds(250);
         private static readonly TimeSpan PowerSavingTimerInterval = TimeSpan.FromMilliseconds(1000);
         private static readonly TimeSpan PowerSavingIdleTimerInterval = TimeSpan.FromSeconds(4);
+        private static readonly TimeSpan MinimumLyricBoundaryDelay = TimeSpan.FromMilliseconds(16);
         private static readonly TimeSpan NormalHoverTimerInterval = TimeSpan.FromMilliseconds(40);
         private static readonly TimeSpan PowerSavingHoverTimerInterval = TimeSpan.FromMilliseconds(500);
         private bool powerSavingActive;
@@ -529,6 +531,7 @@ namespace LyricHover.App
 
                 if (selected == null)
                 {
+                    lyricLineBoundaryTimer?.Stop();
                     playbackIntents.CancelUnless(string.Empty);
                     timelineSessionId = string.Empty;
                     timelineCoordinator.Reset();
@@ -593,6 +596,7 @@ namespace LyricHover.App
 
                 if (selected.PlaybackStatus != MediaPlaybackStatus.Playing)
                 {
+                    lyricLineBoundaryTimer?.Stop();
                     if (!pausedSinceUtc.HasValue) pausedSinceUtc = DateTimeOffset.UtcNow;
                 }
                 else
@@ -635,6 +639,7 @@ namespace LyricHover.App
                 currentTimelineReliability = timeline.Reliability;
                 if (isNewTrack)
                 {
+                    lyricLineBoundaryTimer?.Stop();
                     currentTrack = track;
                     currentLyrics = new TimedLyrics(new LyricLine[0]);
                     lyricsSearchFinished = false;
@@ -646,6 +651,7 @@ namespace LyricHover.App
 
                 if (currentLyrics.Lines.Count == 0)
                 {
+                    lyricLineBoundaryTimer?.Stop();
                     SetIslandText(
                         FormatTrack(track),
                         lyricsSearchFinished ? "未找到同步歌词" : "正在搜索同步歌词...");
@@ -673,6 +679,11 @@ namespace LyricHover.App
                     TimeSpan.FromSeconds(4));
                 var currentLine = currentLyrics.GetCurrentLine(timeline.Position, lyricOffset);
                 var wordProgress = currentLine.GetWordProgress(timeline.Position + lyricOffset);
+                ScheduleLyricLineBoundaryRefresh(
+                    currentLine,
+                    lineDuration,
+                    timeline.Position + lyricOffset,
+                    selected.PlaybackStatus == MediaPlaybackStatus.Playing);
                 SetIslandText(
                     lines.Count > 0 ? lines[0].Text : string.Empty,
                     lines.Count > 1 ? lines[1].Text : string.Empty,
@@ -922,6 +933,7 @@ namespace LyricHover.App
             hoverProximityTimer.Stop();
             startupHintTimer?.Stop();
             repeatedLaunchRevealTimer?.Stop();
+            lyricLineBoundaryTimer?.Stop();
             islandSizeAnimationVersion++;
             StopIslandSizeAnimationFrames();
             ClearPositionAnimation();
@@ -1237,8 +1249,6 @@ namespace LyricHover.App
             OverlayPlacementSettings runtimeSettings)
         {
             var previousShowTranslation = previousSettings.ShowTranslation || previousSettings.LyricDockShowTranslation;
-            var editedLayouts = previousSettings.IslandLayouts;
-            runtimeSettings.IslandLayouts = editedLayouts ?? runtimeSettings.IslandLayouts;
             runtimeSettings.Normalize();
             interactionController.ExpandedDuration = TimeSpan.FromSeconds(runtimeSettings.ExpandedAutoCollapseSeconds);
             cache.SetMaxBytes(GetCacheLimitBytes(runtimeSettings));
@@ -2036,6 +2046,50 @@ namespace LyricHover.App
             return IsPowerSavingRefreshIdle()
                 ? PowerSavingIdleTimerInterval
                 : PowerSavingTimerInterval;
+        }
+
+        private void ScheduleLyricLineBoundaryRefresh(
+            LyricLine currentLine,
+            TimeSpan lineDuration,
+            TimeSpan adjustedPosition,
+            bool isPlaying)
+        {
+            lyricLineBoundaryTimer?.Stop();
+            if (!isPlaying ||
+                currentLine == null ||
+                string.IsNullOrWhiteSpace(currentLine.Text) ||
+                lineDuration <= TimeSpan.Zero)
+            {
+                return;
+            }
+
+            var remaining = currentLine.Timestamp + lineDuration - adjustedPosition;
+            if (remaining <= TimeSpan.Zero)
+            {
+                return;
+            }
+
+            if (lyricLineBoundaryTimer == null)
+            {
+                lyricLineBoundaryTimer = new DispatcherTimer(DispatcherPriority.Render);
+                lyricLineBoundaryTimer.Tick += (sender, args) =>
+                {
+                    lyricLineBoundaryTimer.Stop();
+                    if (refreshingState)
+                    {
+                        lyricLineBoundaryTimer.Interval = MinimumLyricBoundaryDelay;
+                        lyricLineBoundaryTimer.Start();
+                        return;
+                    }
+
+                    _ = RefreshAsync();
+                };
+            }
+
+            lyricLineBoundaryTimer.Interval = remaining < MinimumLyricBoundaryDelay
+                ? MinimumLyricBoundaryDelay
+                : remaining;
+            lyricLineBoundaryTimer.Start();
         }
 
         private bool IsPowerSavingRefreshIdle()
