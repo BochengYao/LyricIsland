@@ -5,7 +5,8 @@
 - 起始提交：`fba162b`
 - 功能提交：`9f9d4e87b0c51395d296f5c4cd1f00ba9389a3b2`
 - 工作分支：`codex/feature/desktop-fullscreen-auto-hide`
-- 状态：实现、自动化验证、本地提交与 `publish/current` 打包完成；真实任务栏/全屏视觉验收待执行
+- 交接对象：Desktop UI & Interaction；Quality & Release
+- 状态：实现、自动化验证、`publish/current` 打包及 GitHub 分支推送完成；真实任务栏/全屏视觉验收待执行
 - 允许范围：`LyricHover.App/`、相关 `LyricHover.Tests/` 回归与本交接
 
 ## Result
@@ -51,6 +52,14 @@ git diff --check
 - App/Core DLL 与最终 Release 输出哈希一致；精确 `staging-v3.2.45-Beta` 不存在。
 - 被替换候选归档：`publish/archive/v3.2.45-Beta-20260914-220648`。
 - 既有 `publish/staging-diagnose-v3.1.39-Beta` 不属于本次打包，保持不动。
+
+## Git / GitHub
+
+- 功能提交：`9f9d4e87b0c51395d296f5c4cd1f00ba9389a3b2`（`fix(ui): hide lyric dock with taskbar`）。
+- 发布证据提交：`36713cda6ea1939194991e99a2b69c6a9a0f85d1`（`docs(release): record lyric dock visibility candidate`）。
+- 远端分支：`origin/codex/feature/desktop-fullscreen-auto-hide`。
+- 功能与候选证据已推送 GitHub；宣传图、Canva 输出和其他本地 WIP 未进入提交。
+- 未创建 GitHub Release、标签或附件；当前候选仍是本地 `publish/current`，不是外部正式发布。
 
 ## Manual Acceptance Pending
 
