@@ -884,7 +884,7 @@ namespace LyricHover.App
             fullscreenMonitorTimer.Interval = powerSavingActive
                 ? PowerSavingFullscreenMonitorInterval
                 : FullscreenMonitorInterval;
-            if (placementSettings.HideIslandInFullscreen)
+            if (placementSettings.HideIslandInFullscreen || placementSettings.LyricDockEnabled)
             {
                 fullscreenMonitorTimer.Start();
                 UpdateFullscreenSuppression();
@@ -897,6 +897,9 @@ namespace LyricHover.App
 
         private void UpdateFullscreenSuppression()
         {
+            // LyricDock must follow the taskbar even when playback/lyrics are idle and
+            // RenderCurrentModuleState is not producing presentation snapshots.
+            LyricDockController?.RefreshPlacement();
             var shouldSuppress = placementSettings.HideIslandInFullscreen &&
                 ForegroundFullscreenDetector.IsForegroundWindowFullscreen(
                     placementSettings.ScreenName,

@@ -133,6 +133,7 @@ namespace LyricHover.Tests
             suite.Run("fullscreen island auto-hide setting persists and stays backward compatible", FullscreenIslandAutoHideSettingPersists);
             suite.Run("fullscreen detection requires complete monitor coverage", FullscreenDetectionRequiresCompleteMonitorCoverage);
             suite.Run("fullscreen island auto-hide keeps desired visibility while suppressed", FullscreenIslandAutoHideKeepsDesiredVisibility);
+            suite.Run("lyric dock monitors taskbar visibility without lyric refreshes", LyricDockMonitorsTaskbarVisibilityWithoutLyricRefreshes);
             suite.Run("taskbar Widgets lease restores absent, disabled, and enabled states", TaskbarWidgetsLeaseRestoresOriginalStates);
             suite.Run("taskbar Widgets lease rolls back after refresh failure", TaskbarWidgetsLeaseRollsBackAfterRefreshFailure);
             suite.Run("taskbar Widgets lease fails fast when the OS blocks TaskbarDa writes", TaskbarWidgetsLeaseFailsFastWhenWritesAreBlocked);
@@ -1581,6 +1582,36 @@ namespace LyricHover.Tests
             Assert.True(mainWindow.Contains("else if (islandVisibilityRequested)"));
             Assert.True(mainWindow.Contains("ConfigureFullscreenMonitor();"));
             Assert.True(mainWindow.Contains("ForegroundFullscreenDetector.IsForegroundWindowFullscreen("));
+        }
+
+        static void LyricDockMonitorsTaskbarVisibilityWithoutLyricRefreshes()
+        {
+            var mainWindow = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "LyricHover.App", "MainWindow.xaml.cs"));
+            Assert.True(mainWindow.Contains(
+                "placementSettings.HideIslandInFullscreen || placementSettings.LyricDockEnabled"));
+            Assert.True(mainWindow.Contains("LyricDockController?.RefreshPlacement();"));
+
+            var environment = new FakeLyricDockEnvironment { TaskbarDa = TaskbarDaValueState.Disabled };
+            var recoveryPath = Path.Combine(Path.GetTempPath(), "lyrichover-taskbar-" + Guid.NewGuid() + ".txt");
+            var surface = new FakeTaskbarSurface();
+            using var controller = new LyricDockController(
+                environment,
+                new WidgetVisibilityLease(environment, recoveryPath),
+                surface);
+
+            Assert.True(controller.Start(true, "DISPLAY1", LyricDockAlignment.Center));
+            Assert.True(surface.IsVisible);
+
+            environment.PlacementFailure = LyricDockFailureReason.TaskbarAutoHiddenOrFullscreen;
+            controller.RefreshPlacement();
+            Assert.False(surface.IsVisible);
+            Assert.True(controller.IsEnabled);
+
+            environment.PlacementFailure = LyricDockFailureReason.None;
+            controller.RefreshPlacement();
+            Assert.True(surface.IsVisible);
+            Assert.True(controller.IsEnabled);
         }
 
         static void WithTemporarySettingsStore(Action<OverlaySettingsStore, string> test)
