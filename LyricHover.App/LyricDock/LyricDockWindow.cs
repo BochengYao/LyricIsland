@@ -22,6 +22,8 @@ namespace LyricHover.App.LyricDock
         private const int WmLButtonDown = 0x0201;
         private const int WmRButtonDown = 0x0204;
         private const int WmRButtonUp = 0x0205;
+        private const int WmNcRButtonDown = 0x00A4;
+        private const int WmNcRButtonUp = 0x00A5;
         private const int WmContextMenu = 0x007B;
         private const int HtClient = 1;
         private const int WsExNoActivate = 0x08000000;
@@ -60,6 +62,7 @@ namespace LyricHover.App.LyricDock
         private TimeSpan displayedWordTrackingPosition;
         private bool displayedWordTrackingPlaying;
         private double displayedWordTrackingProgress = -1;
+        private DateTime lastSettingsRequestUtc = DateTime.MinValue;
 
         public LyricDockWindow(Func<bool> refreshModifierPressed = null)
         {
@@ -95,6 +98,11 @@ namespace LyricHover.App.LyricDock
                 SetWindowLong(handle, GwlExStyle, new IntPtr(style | WsExNoActivate | WsExToolWindow));
                 HwndSource.FromHwnd(handle)?.AddHook(WindowMessageHook);
             };
+            PreviewMouseRightButtonUp += (sender, args) =>
+            {
+                RequestSettingsOnce();
+                args.Handled = true;
+            };
         }
 
         public event EventHandler SettingsRequested;
@@ -119,24 +127,37 @@ namespace LyricHover.App.LyricDock
                 handled = true;
                 return IntPtr.Zero;
             }
-            if (message == WmRButtonDown)
+            if (message == WmRButtonDown || message == WmNcRButtonDown)
             {
-                // Consume the press too: otherwise Explorer can remember it and show the
-                // taskbar context menu after this no-activate overlay handles button-up.
+                // A transparent no-activate window does not reliably receive the matching
+                // button-up message on every taskbar build, so open settings on press.
+                RequestSettingsOnce();
                 handled = true;
                 return IntPtr.Zero;
             }
-            if (message == WmRButtonUp)
+            if (message == WmRButtonUp || message == WmNcRButtonUp)
             {
-                SettingsRequested?.Invoke(this, EventArgs.Empty);
                 handled = true;
                 return IntPtr.Zero;
             }
             if (message == WmContextMenu)
             {
+                RequestSettingsOnce();
                 handled = true;
             }
             return IntPtr.Zero;
+        }
+
+        private void RequestSettingsOnce()
+        {
+            var now = DateTime.UtcNow;
+            if (now - lastSettingsRequestUtc < TimeSpan.FromMilliseconds(250))
+            {
+                return;
+            }
+
+            lastSettingsRequestUtc = now;
+            SettingsRequested?.Invoke(this, EventArgs.Empty);
         }
 
         void ILyricDockSurface.Show()

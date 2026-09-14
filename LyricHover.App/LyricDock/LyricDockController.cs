@@ -29,6 +29,7 @@ namespace LyricHover.App.LyricDock
         private bool startupRecoveryPending;
         private bool startupRecoveryQueued;
         private bool disposed;
+        private DateTime nextRuntimeRetryUtc = DateTime.MinValue;
         private int widgetsHidingGeneration;
         private int startupRecoveryGeneration;
         private readonly SynchronizationContext uiContext;
@@ -70,6 +71,7 @@ namespace LyricHover.App.LyricDock
             {
                 startupRecoveryPending = true;
                 Interlocked.Increment(ref startupRecoveryGeneration);
+                QueueStartupRecovery();
                 var pendingReason = LyricDockFailureReason.RegistryOrRefreshFailed;
                 if (requestedEnabled && TryShowWhileStartupRecoveryIsPending(out pendingReason))
                 {
@@ -164,7 +166,24 @@ namespace LyricHover.App.LyricDock
 
         public void RefreshPlacement()
         {
-            if (!enabled) return;
+            if (!enabled)
+            {
+                if (!requestedEnabled || disposed || DateTime.UtcNow < nextRuntimeRetryUtc)
+                {
+                    return;
+                }
+
+                nextRuntimeRetryUtc = DateTime.UtcNow + TimeSpan.FromSeconds(2);
+                if (startupRecoveryPending)
+                {
+                    QueueStartupRecovery();
+                    TryShowWhileStartupRecoveryIsPending(out var pendingReason);
+                    return;
+                }
+
+                Configure(true, screenName, alignment);
+                return;
+            }
             if (!environment.TryGetPlacement(screenName, alignment, out var placement, out var reason) || !CanUse(placement))
             {
                 if (reason == LyricDockFailureReason.TaskbarAutoHiddenOrFullscreen)
@@ -258,6 +277,7 @@ namespace LyricHover.App.LyricDock
         }
         private void Show(LyricDockPlacement placement)
         {
+            nextRuntimeRetryUtc = DateTime.MinValue;
             surface.Place(placement, Math.Min(MaximumWidth, placement.Width));
             surface.Present(snapshot);
             if (!surface.IsVisible) surface.Show();
@@ -323,7 +343,7 @@ namespace LyricHover.App.LyricDock
 
         private void QueueStartupRecovery()
         {
-            if (startupRecoveryQueued || disposed || !requestedEnabled) return;
+            if (startupRecoveryQueued || disposed) return;
 
             startupRecoveryQueued = true;
             var generation = Volatile.Read(ref startupRecoveryGeneration);

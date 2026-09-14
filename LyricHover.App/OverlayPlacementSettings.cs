@@ -79,6 +79,8 @@ namespace LyricHover.App
 
         public bool IslandEnabled { get; set; } = true;
 
+        public bool HideIslandInFullscreen { get; set; }
+
         public bool LyricDockEnabled { get; set; }
 
         public bool LyricDockUseMultiLineDisplay { get; set; } = true;

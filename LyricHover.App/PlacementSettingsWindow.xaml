@@ -1155,6 +1155,7 @@
                                 <RowDefinition Height="56" />
                                 <RowDefinition Height="56" />
                                 <RowDefinition Height="56" />
+                                <RowDefinition Height="56" />
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="160" />
@@ -1182,8 +1183,22 @@
                                        Grid.Column="0"
                                        Margin="0,0,16,0"
                                        Style="{StaticResource SettingLabel}"
+                                       Text="全屏时自动隐藏" />
+                            <CheckBox x:Name="HideIslandInFullscreenCheckBox"
+                                      Grid.Row="2"
+                                      Grid.Column="1"
+                                      HorizontalAlignment="Right"
+                                      ToolTip="当前台应用覆盖歌词岛所在显示器时收起，退出全屏后恢复。"
+                                      AutomationProperties.Name="全屏时自动隐藏"
+                                      AutomationProperties.HelpText="当前台应用覆盖歌词岛所在显示器时收起，退出全屏后恢复。"
+                                      Style="{StaticResource SettingsSwitchStyle}" />
+
+                            <TextBlock Grid.Row="3"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,0"
+                                       Style="{StaticResource SettingLabel}"
                                        Text="行数" />
-                            <StackPanel Grid.Row="2"
+                            <StackPanel Grid.Row="3"
                                         Grid.Column="1"
                                         Orientation="Horizontal">
                                 <Border x:Name="LineModeSegmentRoot"
@@ -1238,19 +1253,19 @@
                                 </Border>
                             </StackPanel>
 
-                            <TextBlock Grid.Row="3"
+                            <TextBlock Grid.Row="4"
                                        Grid.Column="0"
                                        Style="{StaticResource SettingLabel}"
                                        Text="翻译" />
                             <CheckBox x:Name="ShowTranslationCheckBox"
-                                      Grid.Row="3"
+                                      Grid.Row="4"
                                       Grid.Column="1"
                                       HorizontalAlignment="Right"
                                       Style="{StaticResource SettingsSwitchStyle}"
                                       Checked="ShowTranslationCheckBox_Changed"
                                       Unchecked="ShowTranslationCheckBox_Changed" />
-                            <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource SettingLabel}" Text="逐字跟随" />
-                            <CheckBox x:Name="IslandWordTrackingCheckBox" Grid.Row="4" Grid.Column="1" HorizontalAlignment="Right" Style="{StaticResource SettingsSwitchStyle}" />
+                            <TextBlock Grid.Row="5" Grid.Column="0" Style="{StaticResource SettingLabel}" Text="逐字跟随" />
+                            <CheckBox x:Name="IslandWordTrackingCheckBox" Grid.Row="5" Grid.Column="1" HorizontalAlignment="Right" Style="{StaticResource SettingsSwitchStyle}" />
                             </Grid>
                             </Border>
 

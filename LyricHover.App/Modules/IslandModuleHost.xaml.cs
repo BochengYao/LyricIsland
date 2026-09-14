@@ -112,62 +112,115 @@ namespace LyricHover.App.Modules
 
             layoutSignature = nextSignature;
             ClearInsertionPreview(false);
+            var existingModules = GetModuleElements();
+            var targetTypeCounts = profile.Modules
+                .GroupBy(module => module.Type)
+                .ToDictionary(group => group.Key, group => group.Count());
+            var reusableByUniqueType = existingModules
+                .Where(element => element.Tag is string && moduleTypesById.ContainsKey((string)element.Tag))
+                .GroupBy(element => moduleTypesById[(string)element.Tag])
+                .Where(group => group.Key != IslandModuleType.Divider &&
+                    group.Count() == 1 &&
+                    targetTypeCounts.TryGetValue(group.Key, out var count) &&
+                    count == 1)
+                .ToDictionary(group => group.Key, group => group.Single());
+            var reusedModules = new HashSet<FrameworkElement>();
             ModulePanel.Children.Clear();
             moduleTypesById.Clear();
 
             foreach (var module in profile.Modules)
             {
-                FrameworkElement view;
-                switch (module.Type)
+                FrameworkElement view = null;
+                if (reusableByUniqueType.TryGetValue(module.Type, out var uniqueTypeView) &&
+                    !reusedModules.Contains(uniqueTypeView))
                 {
-                    case IslandModuleType.Lyrics:
-                        var lyrics = new LyricsModuleView();
-                        lyrics.AnimationsEnabled = animationsEnabled;
-                        lyrics.ApplyModuleSettings(module.LyricsWidth);
-                        view = lyrics;
-                        break;
-                    case IslandModuleType.AlbumArt:
-                        view = new AlbumArtModuleView();
-                        break;
-                    case IslandModuleType.PlaybackControls:
-                        var controls = new PlaybackControlsModuleView();
-                        controls.AnimationsEnabled = animationsEnabled;
-                        controls.SetInteractionEnabled(playbackInteractionEnabled && !LayoutEditingEnabled);
-                        controls.PreviousRequested += (sender, args) => PreviousRequested?.Invoke(this, EventArgs.Empty);
-                        controls.PlayPauseRequested += (sender, args) => PlayPauseRequested?.Invoke(this, EventArgs.Empty);
-                        controls.NextRequested += (sender, args) => NextRequested?.Invoke(this, EventArgs.Empty);
-                        view = controls;
-                        break;
-                    case IslandModuleType.TrackInfo:
-                        var trackInfo = new TrackInfoModuleView();
-                        trackInfo.PreferredWidthChanged += (sender, args) =>
-                            ContentSizeChanged?.Invoke(this, EventArgs.Empty);
-                        view = trackInfo;
-                        break;
-                    case IslandModuleType.Progress:
-                        view = new ProgressModuleView();
-                        break;
-                    case IslandModuleType.Divider:
-                        view = new DividerModuleView(module);
-                        break;
-                    default:
-                        continue;
+                    view = uniqueTypeView;
                 }
 
+                if (view == null)
+                {
+                    view = CreateModuleView(module);
+                    if (view == null)
+                    {
+                        continue;
+                    }
+
+                    AttachModuleHandlers(view);
+                }
+
+                reusedModules.Add(view);
+                ApplyRuntimeModuleState(view);
                 ApplyModuleSettings(view, module);
                 view.Tag = module.Id;
                 moduleTypesById[module.Id] = module.Type;
-                view.PreviewMouseLeftButtonDown += ModuleView_PreviewMouseLeftButtonDown;
-                view.PreviewMouseLeftButtonUp += ModuleView_PreviewMouseLeftButtonUp;
-                view.PreviewMouseMove += ModuleView_PreviewMouseMove;
-                view.GiveFeedback += ModuleView_GiveFeedback;
                 view.Cursor = LayoutEditingEnabled ? LayoutDragCursors.OpenHand : Cursors.Arrow;
                 ModulePanel.Children.Add(view);
             }
 
-            // A layout change creates fresh module views. Immediately replay the latest render
-            // state so the island never shows an empty black shell between tutorial steps.
+            // Reusing the shared lyrics/module views preserves their current render and
+            // word-tracking state while the island changes size, avoiding a one-frame reset.
             Update(lastRenderState);
+        }
+
+        private FrameworkElement CreateModuleView(IslandModuleInstance module)
+        {
+            FrameworkElement view;
+            switch (module.Type)
+            {
+                case IslandModuleType.Lyrics:
+                    view = new LyricsModuleView();
+                    break;
+                case IslandModuleType.AlbumArt:
+                    view = new AlbumArtModuleView();
+                    break;
+                case IslandModuleType.PlaybackControls:
+                    var controls = new PlaybackControlsModuleView();
+                    controls.PreviousRequested += (sender, args) => PreviousRequested?.Invoke(this, EventArgs.Empty);
+                    controls.PlayPauseRequested += (sender, args) => PlayPauseRequested?.Invoke(this, EventArgs.Empty);
+                    controls.NextRequested += (sender, args) => NextRequested?.Invoke(this, EventArgs.Empty);
+                    view = controls;
+                    break;
+                case IslandModuleType.TrackInfo:
+                    var trackInfo = new TrackInfoModuleView();
+                    trackInfo.PreferredWidthChanged += (sender, args) =>
+                        ContentSizeChanged?.Invoke(this, EventArgs.Empty);
+                    view = trackInfo;
+                    break;
+                case IslandModuleType.Progress:
+                    view = new ProgressModuleView();
+                    break;
+                case IslandModuleType.Divider:
+                    view = new DividerModuleView(module);
+                    break;
+                default:
+                    return null;
+            }
+
+            return view;
+        }
+
+        private void AttachModuleHandlers(FrameworkElement view)
+        {
+            view.PreviewMouseLeftButtonDown += ModuleView_PreviewMouseLeftButtonDown;
+            view.PreviewMouseLeftButtonUp += ModuleView_PreviewMouseLeftButtonUp;
+            view.PreviewMouseMove += ModuleView_PreviewMouseMove;
+            view.GiveFeedback += ModuleView_GiveFeedback;
+        }
+
+        private void ApplyRuntimeModuleState(FrameworkElement view)
+        {
+            var lyrics = view as LyricsModuleView;
+            if (lyrics != null)
+            {
+                lyrics.AnimationsEnabled = animationsEnabled;
+            }
+
+            var controls = view as PlaybackControlsModuleView;
+            if (controls != null)
+            {
+                controls.AnimationsEnabled = animationsEnabled;
+                controls.SetInteractionEnabled(playbackInteractionEnabled && !LayoutEditingEnabled);
+            }
         }
 
         public Size MeasureContentSize()

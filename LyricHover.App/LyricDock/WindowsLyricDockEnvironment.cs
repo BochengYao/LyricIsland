@@ -62,7 +62,8 @@ namespace LyricHover.App.LyricDock
             failureReason = LyricDockFailureReason.None;
             if (!IsSupported) { failureReason = LyricDockFailureReason.UnsupportedOS; return false; }
             if (!TryFindTaskbar(screenName, out var taskbar, out var screen)) { failureReason = LyricDockFailureReason.TaskbarNotFound; return false; }
-            if (!IsWindowVisible(taskbar) || IsTaskbarAutoHidden() || IsForegroundFullscreen(screen, taskbar))
+            if (!IsWindowVisible(taskbar) || IsTaskbarAutoHidden() ||
+                ForegroundFullscreenDetector.IsForegroundWindowFullscreen(screen.DeviceName, taskbar))
             {
                 failureReason = LyricDockFailureReason.TaskbarAutoHiddenOrFullscreen;
                 return false;
@@ -762,14 +763,6 @@ namespace LyricHover.App.LyricDock
             }
         }
 
-        private static bool IsForegroundFullscreen(Forms.Screen screen, IntPtr taskbar)
-        {
-            var foreground = GetForegroundWindow();
-            if (foreground == IntPtr.Zero || foreground == taskbar || Forms.Screen.FromHandle(foreground).DeviceName != screen.DeviceName || !GetWindowRect(foreground, out var rect)) return false;
-            var bounds = screen.Bounds;
-            return rect.Left <= bounds.Left && rect.Top <= bounds.Top && rect.Right >= bounds.Right && rect.Bottom >= bounds.Bottom;
-        }
-
                 [StructLayout(LayoutKind.Sequential)]
                 private struct APPBARDATA
                 {
@@ -855,7 +848,6 @@ namespace LyricHover.App.LyricDock
         [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hwnd);
         [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr hwnd);
         [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hwnd, out NativeRect rect);
-        [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
         [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "GetClassNameW")] private static extern int GetClassNameNative(IntPtr hwnd, System.Text.StringBuilder className, int maxCount);
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr SendMessageTimeout(IntPtr hwnd, uint message, IntPtr wParam, string lParam, uint flags, uint timeout, out IntPtr result);
         [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr hwnd);

@@ -39,6 +39,8 @@ namespace LyricHover.Tests
                 suite.Run("LyricDock runtime failure preserves persisted user intent", LyricDockRuntimeFailurePreservesPersistedUserIntent);
                 suite.Run("settings runtime state is restored after restart", SettingsRuntimeStateRestoresAfterRestart);
                 suite.Run("settings window lifecycle keeps temporary state out of business state", SettingsWindowLifecycleKeepsTemporaryStateIsolated);
+                suite.Run("fullscreen island auto-hide setting persists and stays backward compatible", FullscreenIslandAutoHideSettingPersists);
+                suite.Run("fullscreen island auto-hide keeps desired visibility while suppressed", FullscreenIslandAutoHideKeepsDesiredVisibility);
                 return suite.ExitCode;
             }
 
@@ -128,6 +130,9 @@ namespace LyricHover.Tests
             suite.Run("LyricDock runtime failure preserves persisted user intent", LyricDockRuntimeFailurePreservesPersistedUserIntent);
             suite.Run("settings runtime state is restored after restart", SettingsRuntimeStateRestoresAfterRestart);
             suite.Run("settings window lifecycle keeps temporary state out of business state", SettingsWindowLifecycleKeepsTemporaryStateIsolated);
+            suite.Run("fullscreen island auto-hide setting persists and stays backward compatible", FullscreenIslandAutoHideSettingPersists);
+            suite.Run("fullscreen detection requires complete monitor coverage", FullscreenDetectionRequiresCompleteMonitorCoverage);
+            suite.Run("fullscreen island auto-hide keeps desired visibility while suppressed", FullscreenIslandAutoHideKeepsDesiredVisibility);
             suite.Run("taskbar Widgets lease restores absent, disabled, and enabled states", TaskbarWidgetsLeaseRestoresOriginalStates);
             suite.Run("taskbar Widgets lease rolls back after refresh failure", TaskbarWidgetsLeaseRollsBackAfterRefreshFailure);
             suite.Run("taskbar Widgets lease fails fast when the OS blocks TaskbarDa writes", TaskbarWidgetsLeaseFailsFastWhenWritesAreBlocked);
@@ -142,6 +147,7 @@ namespace LyricHover.Tests
             suite.Run("taskbar controller restores Widgets and reports unsafe placement", TaskbarControllerRestoresWidgetsForUnsafePlacement);
             suite.Run("taskbar lease fails closed for recovery file IO errors", TaskbarLeaseFailsClosedForIoErrors);
             suite.Run("taskbar residual lease failure keeps a safe surface and retains recovery", TaskbarResidualLeaseFailureKeepsSafeSurfaceAndRecovery);
+            suite.Run("taskbar enabled intent retries an unavailable startup surface", TaskbarEnabledIntentRetriesUnavailableStartupSurface);
             suite.Run("taskbar pending startup recovery cannot be bypassed by settings", TaskbarPendingStartupRecoveryCannotBeBypassedBySettings);
             suite.Run("taskbar pending recovery keeps a safe visible dock without a new lease", TaskbarPendingRecoveryKeepsSafeVisibleDockWithoutNewLease);
             suite.Run("taskbar pending recovery blocks changed-event and Settings acquisition", TaskbarPendingRecoveryBlocksChangedEventAndSettingsAcquisition);
@@ -152,6 +158,7 @@ namespace LyricHover.Tests
             suite.Run("taskbar Settings verification failure retains original recovery", TaskbarSettingsFailureRetainsRecovery);
             suite.Run("taskbar Widgets matcher prefers stable identity and recognizes Traditional Chinese", TaskbarWidgetsMatcherRecognizesStableAndTraditionalChinese);
             suite.Run("taskbar UI declares alignment, theme, and no-activate behavior", TaskbarUiDeclaresSafetyBehaviors);
+            suite.Run("taskbar right click opens settings once across native messages", TaskbarRightClickOpensSettingsOnce);
             suite.Run("taskbar safe slot remains anchored to the Widgets footprint", TaskbarSafeSlotSelectionRespectsOccupiedRectangles);
             suite.Run("taskbar safe slot falls back to the widest gap when Widgets are manually hidden", TaskbarSafeSlotFallsBackToWidestGapWhenWidgetsManuallyHidden);
             suite.Run("lyric dock transition, marquee, and single-line centering match the island", LyricDockWindowMatchesIslandLyricsBehaviors);
@@ -192,6 +199,7 @@ namespace LyricHover.Tests
             suite.Run("first launch tutorial is persisted and can be replayed", FirstLaunchTutorialIsPersistedAndCanBeReplayed);
             suite.Run("tutorial overlay is dimmer and cannot cover interactions", TutorialOverlayIsDimmerAndCannotCoverInteractions);
             suite.Run("layout rebuild replays the latest island content", LayoutRebuildReplaysLatestIslandContent);
+            suite.Run("expandable layout reuses the shared lyrics view", ExpandableLayoutReusesSharedLyricsView);
             suite.Run("escape exits tutorial from island and settings", EscapeExitsTutorialFromIslandAndSettings);
             suite.Run("lyric transition keeps centered canvas position", LyricTransitionKeepsCenteredCanvasPosition);
             suite.Run("word-tracked lyric centers with the current line width", WordTrackedLyricCentersWithCurrentLineWidth);
@@ -1515,6 +1523,64 @@ namespace LyricHover.Tests
             Assert.False(settingsWindow.Contains("setHoverTransparencySuppressed"));
             Assert.True(settingsWindow.Contains("UiLanguageService.SetPreference(acceptedLanguagePreference)"));
             Assert.False(mainWindow.Contains("placementSettings.IslandLayouts.Mode = mode"));
+        }
+
+        static void FullscreenIslandAutoHideSettingPersists()
+        {
+            WithTemporarySettingsStore((store, path) =>
+            {
+                File.WriteAllText(path, "{\"SchemaVersion\":6,\"IslandEnabled\":true}");
+                var legacy = store.Load();
+                Assert.False(legacy.HideIslandInFullscreen);
+
+                legacy.HideIslandInFullscreen = true;
+                store.Save(legacy);
+                Assert.True(store.Load().HideIslandInFullscreen);
+            });
+
+            var root = GetSolutionRoot();
+            var settingsView = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml"));
+            var settingsCode = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml.cs"));
+            Assert.True(settingsView.Contains("HideIslandInFullscreenCheckBox"));
+            Assert.True(settingsView.Contains("Text=\"全屏时自动隐藏\""));
+            Assert.True(settingsCode.Contains("settings.HideIslandInFullscreen = HideIslandInFullscreenCheckBox.IsChecked == true"));
+
+            var originalPreference = UiLanguageService.Preference;
+            try
+            {
+                UiLanguageService.SetPreference(AppLanguagePreference.TraditionalChinese);
+                Assert.Equal("全螢幕時自動隱藏", UiLanguageService.Translate("全屏时自动隐藏"));
+                UiLanguageService.SetPreference(AppLanguagePreference.English);
+                Assert.Equal("Hide in full screen", UiLanguageService.Translate("全屏时自动隐藏"));
+                UiLanguageService.SetPreference(AppLanguagePreference.Japanese);
+                Assert.Equal("全画面時に自動で隠す", UiLanguageService.Translate("全屏时自动隐藏"));
+            }
+            finally
+            {
+                UiLanguageService.SetPreference(originalPreference);
+            }
+        }
+
+        static void FullscreenDetectionRequiresCompleteMonitorCoverage()
+        {
+            Assert.True(ForegroundFullscreenDetector.CoversScreen(0, 0, 1920, 1080, 0, 0, 1920, 1080));
+            Assert.True(ForegroundFullscreenDetector.CoversScreen(-8, -8, 1928, 1088, 0, 0, 1920, 1080));
+            Assert.True(ForegroundFullscreenDetector.CoversScreen(-1920, 0, 0, 1080, -1920, 0, 0, 1080));
+            Assert.False(ForegroundFullscreenDetector.CoversScreen(0, 0, 1920, 1040, 0, 0, 1920, 1080));
+            Assert.False(ForegroundFullscreenDetector.CoversScreen(0, 0, 1919, 1080, 0, 0, 1920, 1080));
+        }
+
+        static void FullscreenIslandAutoHideKeepsDesiredVisibility()
+        {
+            var mainWindow = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "LyricHover.App", "MainWindow.xaml.cs"));
+
+            Assert.True(mainWindow.Contains("islandVisibilityRequested = true;"));
+            Assert.True(mainWindow.Contains("if (islandFullscreenSuppressed)"));
+            Assert.True(mainWindow.Contains("ApplyIslandHiddenState(true);"));
+            Assert.True(mainWindow.Contains("else if (islandVisibilityRequested)"));
+            Assert.True(mainWindow.Contains("ConfigureFullscreenMonitor();"));
+            Assert.True(mainWindow.Contains("ForegroundFullscreenDetector.IsForegroundWindowFullscreen("));
         }
 
         static void WithTemporarySettingsStore(Action<OverlaySettingsStore, string> test)
@@ -4379,6 +4445,33 @@ namespace LyricHover.Tests
             Assert.True(source.Contains("lastRenderState = state;"));
         }
 
+        static void ExpandableLayoutReusesSharedLyricsView()
+        {
+            var host = new LyricHover.App.Modules.IslandModuleHost();
+            var collapsed = new IslandLayoutProfile();
+            collapsed.Modules.Add(new IslandModuleInstance(IslandModuleType.Lyrics));
+            var expanded = new IslandLayoutProfile();
+            expanded.Modules.Add(new IslandModuleInstance(IslandModuleType.AlbumArt));
+            expanded.Modules.Add(new IslandModuleInstance(IslandModuleType.Lyrics));
+            expanded.Modules.Add(new IslandModuleInstance(IslandModuleType.Progress));
+            var modulePanelField = typeof(LyricHover.App.Modules.IslandModuleHost).GetField(
+                "ModulePanel",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            host.ApplyLayout(collapsed);
+            var modulePanel = modulePanelField?.GetValue(host) as System.Windows.Controls.StackPanel;
+            var collapsedLyrics = modulePanel?.Children
+                .OfType<LyricHover.App.Modules.LyricsModuleView>()
+                .Single();
+            host.ApplyLayout(expanded);
+            var expandedLyrics = modulePanel?.Children
+                .OfType<LyricHover.App.Modules.LyricsModuleView>()
+                .Single();
+
+            Assert.True(collapsedLyrics != null);
+            Assert.True(object.ReferenceEquals(collapsedLyrics, expandedLyrics));
+        }
+
         static void EscapeExitsTutorialFromIslandAndSettings()
         {
             var root = GetSolutionRoot();
@@ -5352,6 +5445,31 @@ namespace LyricHover.Tests
             }
         }
 
+        static void TaskbarEnabledIntentRetriesUnavailableStartupSurface()
+        {
+            var environment = new FakeLyricDockEnvironment
+            {
+                TaskbarDa = TaskbarDaValueState.Disabled,
+                PlacementFailure = LyricDockFailureReason.TaskbarNotFound
+            };
+            var recoveryPath = Path.Combine(Path.GetTempPath(), "lyrichover-taskbar-" + Guid.NewGuid() + ".txt");
+            var surface = new FakeTaskbarSurface();
+            using var controller = new LyricDockController(
+                environment,
+                new WidgetVisibilityLease(environment, recoveryPath),
+                surface);
+
+            Assert.False(controller.Start(true, "DISPLAY1", LyricDockAlignment.Left));
+            Assert.False(surface.IsVisible);
+
+            environment.PlacementFailure = LyricDockFailureReason.None;
+            controller.Present(new LyricsPresentationSnapshot { PrimaryText = "ready" });
+
+            Assert.True(controller.IsEnabled);
+            Assert.True(surface.IsVisible);
+            Assert.Equal(LyricDockAlignment.Left, environment.LastAlignment);
+        }
+
         static void TaskbarPendingStartupRecoveryCannotBeBypassedBySettings()
         {
             var environment = new FakeLyricDockEnvironment { TaskbarDa = TaskbarDaValueState.Disabled, FailNextRefresh = true };
@@ -5403,7 +5521,8 @@ namespace LyricHover.Tests
                 Assert.Equal(TaskbarDaValueState.Absent, environment.TaskbarDa);
                 Assert.True(File.Exists(recoveryPath));
                 Assert.Equal(TaskbarDaValueState.Enabled.ToString(), ReadTextWithRetry(recoveryPath));
-                Assert.Equal(1, environment.TaskbarDaWriteCalls);
+                controller.WaitForWidgetsOperationsAsync().GetAwaiter().GetResult();
+                Assert.Equal(2, environment.TaskbarDaWriteCalls);
                 Assert.Equal(0, environment.SettingsUiCalls);
             }
             finally
@@ -5429,6 +5548,7 @@ namespace LyricHover.Tests
                 using var controller = new LyricDockController(environment, new WidgetVisibilityLease(environment, recoveryPath), surface);
                 Assert.True(controller.Start(true, "DISPLAY1", LyricDockAlignment.Center));
                 Assert.True(surface.IsVisible);
+                controller.WaitForWidgetsOperationsAsync().GetAwaiter().GetResult();
                 var writesAfterRestore = environment.TaskbarDaWriteCalls;
 
                 environment.RaiseChanged();
@@ -5564,13 +5684,43 @@ namespace LyricHover.Tests
             Assert.True(window.Contains("IsDarkTheme"));
             Assert.False(File.Exists(Path.Combine(root, "LyricHover.App", "TaskbarLyricsConfirmationWindow.xaml")));
             var mainWindow = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
+            var settingsWindow = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml.cs"));
+            var language = File.ReadAllText(Path.Combine(root, "LyricHover.App", "UiLanguageService.cs"));
             Assert.False(mainWindow.Contains("小组件保持可见"));
             Assert.False(mainWindow.Contains("ShowWidgetsHidingDegradedNotice"));
             Assert.False(mainWindow.Contains("ShowTaskbarLyricsFailure"));
+            Assert.False(mainWindow.Contains("NotifyLyricDockRecoveryPending"));
+            Assert.False(settingsWindow.Contains("Widgets 恢复尚未完成"));
+            Assert.False(language.Contains("Widgets 恢复尚未完成"));
             Assert.True(mainWindow.Contains("ShowWidgetsSettingsConfirmation"));
             Assert.True(mainWindow.Contains("WidgetsHidingNeedsSettingsConfirmation"));
             var app = File.ReadAllText(Path.Combine(root, "LyricHover.App", "App.xaml.cs"));
             Assert.True(app.Contains("TryHandleElevatedTaskbarWrite"));
+        }
+
+        static void TaskbarRightClickOpensSettingsOnce()
+        {
+            var window = new LyricDockWindow();
+            var settingsRequests = 0;
+            window.SettingsRequested += (sender, args) => settingsRequests++;
+            var hook = typeof(LyricDockWindow).GetMethod(
+                "WindowMessageHook",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            Assert.True(hook != null);
+
+            var rightDown = new object[] { IntPtr.Zero, 0x0204, IntPtr.Zero, IntPtr.Zero, false };
+            hook.Invoke(window, rightDown);
+            Assert.True((bool)rightDown[4]);
+            Assert.Equal(1, settingsRequests);
+
+            var rightUp = new object[] { IntPtr.Zero, 0x0205, IntPtr.Zero, IntPtr.Zero, false };
+            hook.Invoke(window, rightUp);
+            var contextMenu = new object[] { IntPtr.Zero, 0x007B, IntPtr.Zero, IntPtr.Zero, false };
+            hook.Invoke(window, contextMenu);
+            Assert.True((bool)rightUp[4]);
+            Assert.True((bool)contextMenu[4]);
+            Assert.Equal(1, settingsRequests);
+            window.Close();
         }
 
         static void LyricDockAlignmentPositionsTextInsideViewport()

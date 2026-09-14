@@ -27,6 +27,7 @@ namespace LyricHover.App
     {
         private readonly DispatcherTimer timer;
         private readonly DispatcherTimer hoverProximityTimer;
+        private readonly DispatcherTimer fullscreenMonitorTimer;
         private DispatcherTimer lyricLineBoundaryTimer;
         private readonly IMediaSessionService mediaSessions;
         private readonly TimelineCoordinator timelineCoordinator;
@@ -58,6 +59,8 @@ namespace LyricHover.App
         private bool refreshingState;
         private bool lyricsSearchFinished;
         private bool islandVisible;
+        private bool islandVisibilityRequested;
+        private bool islandFullscreenSuppressed;
         private TimeSpan lyricOffset = TimeSpan.FromMilliseconds(800);
         private TimeSpan currentEffectivePosition;
         private TimelineReliability currentTimelineReliability;
@@ -139,6 +142,8 @@ namespace LyricHover.App
         private static readonly TimeSpan NormalTimerInterval = TimeSpan.FromMilliseconds(250);
         private static readonly TimeSpan PowerSavingTimerInterval = TimeSpan.FromMilliseconds(1000);
         private static readonly TimeSpan PowerSavingIdleTimerInterval = TimeSpan.FromSeconds(4);
+        private static readonly TimeSpan FullscreenMonitorInterval = TimeSpan.FromMilliseconds(300);
+        private static readonly TimeSpan PowerSavingFullscreenMonitorInterval = TimeSpan.FromSeconds(1);
         private static readonly TimeSpan MinimumLyricBoundaryDelay = TimeSpan.FromMilliseconds(16);
         private static readonly TimeSpan NormalHoverTimerInterval = TimeSpan.FromMilliseconds(40);
         private static readonly TimeSpan PowerSavingHoverTimerInterval = TimeSpan.FromMilliseconds(500);
@@ -198,8 +203,6 @@ namespace LyricHover.App
                     lyricDockRuntimeFallbackToIsland = false;
                     settingsWindow?.ClearLyricDockRuntimeStatus();
                 }));
-            LyricDockController.StartupRecoveryPending += (sender, args) =>
-                Dispatcher.BeginInvoke(new Action(() => settingsWindow?.NotifyLyricDockRecoveryPending()));
             LyricDockController.WidgetsHidden += (sender, args) =>
                 Dispatcher.BeginInvoke(new Action(() => LyricDockController.RefreshPlacement()));
             LyricDockController.WidgetsHidingNeedsSettingsConfirmation += (sender, args) =>
@@ -235,6 +238,15 @@ namespace LyricHover.App
             };
             hoverProximityTimer.Tick += (sender, args) => UpdateHoverProximity();
 
+            fullscreenMonitorTimer = new DispatcherTimer
+            {
+                Interval = powerSavingActive
+                    ? PowerSavingFullscreenMonitorInterval
+                    : FullscreenMonitorInterval
+            };
+            fullscreenMonitorTimer.Tick += (sender, args) => UpdateFullscreenSuppression();
+            ConfigureFullscreenMonitor();
+
             Loaded += async (sender, args) =>
             {
                 HideIsland(false);
@@ -262,6 +274,7 @@ namespace LyricHover.App
             {
                 InstallWindowMessageHook();
                 RegisterGlobalHotkeys();
+                UpdateFullscreenSuppression();
             };
             Closing += MainWindow_Closing;
             Closed += (sender, args) =>
@@ -269,6 +282,7 @@ namespace LyricHover.App
                 hotkeyService?.Dispose();
                 LyricDockController?.Dispose();
                 lyricDockEnvironment?.Dispose();
+                fullscreenMonitorTimer.Stop();
                 mediaSessions.Dispose();
                 DisposeTrayIcon();
             };
@@ -518,6 +532,7 @@ namespace LyricHover.App
             refreshingState = true;
             try
             {
+                UpdateFullscreenSuppression();
                 var selected = SessionSelectionPolicy.Select(
                     mediaSessions.Sessions,
                     placementSettings.LockedSourceAppUserModelId,
@@ -803,6 +818,13 @@ namespace LyricHover.App
                 return;
             }
 
+            islandVisibilityRequested = true;
+            if (islandFullscreenSuppressed)
+            {
+                ApplyIslandHiddenState(true);
+                return;
+            }
+
             if (islandVisible)
             {
                 UpdateInteractionStateLayout();
@@ -827,6 +849,12 @@ namespace LyricHover.App
                 return;
             }
 
+            islandVisibilityRequested = false;
+            ApplyIslandHiddenState(animated);
+        }
+
+        private void ApplyIslandHiddenState(bool animated)
+        {
             if (animated && !islandVisible)
             {
                 return;
@@ -849,6 +877,49 @@ namespace LyricHover.App
             }
 
             islandVisible = false;
+        }
+
+        private void ConfigureFullscreenMonitor()
+        {
+            fullscreenMonitorTimer.Interval = powerSavingActive
+                ? PowerSavingFullscreenMonitorInterval
+                : FullscreenMonitorInterval;
+            if (placementSettings.HideIslandInFullscreen)
+            {
+                fullscreenMonitorTimer.Start();
+                UpdateFullscreenSuppression();
+                return;
+            }
+
+            fullscreenMonitorTimer.Stop();
+            SetFullscreenSuppressed(false);
+        }
+
+        private void UpdateFullscreenSuppression()
+        {
+            var shouldSuppress = placementSettings.HideIslandInFullscreen &&
+                ForegroundFullscreenDetector.IsForegroundWindowFullscreen(
+                    placementSettings.ScreenName,
+                    new WindowInteropHelper(this).Handle);
+            SetFullscreenSuppressed(shouldSuppress);
+        }
+
+        private void SetFullscreenSuppressed(bool suppressed)
+        {
+            if (islandFullscreenSuppressed == suppressed)
+            {
+                return;
+            }
+
+            islandFullscreenSuppressed = suppressed;
+            if (suppressed)
+            {
+                ApplyIslandHiddenState(true);
+            }
+            else if (islandVisibilityRequested)
+            {
+                ShowIsland();
+            }
         }
 
         private void AnimateTo(double targetLeft, double targetTop)
@@ -931,6 +1002,7 @@ namespace LyricHover.App
             runtimeStopped = true;
             timer.Stop();
             hoverProximityTimer.Stop();
+            fullscreenMonitorTimer.Stop();
             startupHintTimer?.Stop();
             repeatedLaunchRevealTimer?.Stop();
             lyricLineBoundaryTimer?.Stop();
@@ -1229,6 +1301,9 @@ namespace LyricHover.App
             powerSavingActive = powerSaving;
             UpdateRefreshTimerInterval();
             hoverProximityTimer.Interval = powerSaving ? PowerSavingHoverTimerInterval : NormalHoverTimerInterval;
+            fullscreenMonitorTimer.Interval = powerSaving
+                ? PowerSavingFullscreenMonitorInterval
+                : FullscreenMonitorInterval;
             ModuleHost.SetAnimationsEnabled(!powerSaving);
             if (powerSaving)
             {
@@ -1262,6 +1337,7 @@ namespace LyricHover.App
             RegisterGlobalHotkeys();
             UpdateIslandShape();
             ApplyPowerSavingState();
+            ConfigureFullscreenMonitor();
             if (!runtimeSettings.IslandEnabled && !lyricDockRuntimeFallbackToIsland)
             {
                 HideIsland(true);

@@ -231,6 +231,7 @@ namespace LyricHover.App
             ShowTranslationCheckBox.IsChecked = settings.ShowTranslation;
             IslandWordTrackingCheckBox.IsChecked = settings.IslandWordTrackingEnabled;
             IslandEnabledSwitch.IsChecked = settings.IslandEnabled;
+            HideIslandInFullscreenCheckBox.IsChecked = settings.HideIslandInFullscreen;
             LyricDockEnabledCheckBox.IsChecked = settings.LyricDockEnabled;
             DockAlignmentCenterRadioButton.IsChecked = settings.LyricDockAlignment != LyricDockAlignment.Left;
             DockAlignmentLeftRadioButton.IsChecked = settings.LyricDockAlignment == LyricDockAlignment.Left;
@@ -489,13 +490,6 @@ namespace LyricHover.App
             LyricDockRuntimeStatusText.Visibility = Visibility.Visible;
         }
 
-        public void NotifyLyricDockRecoveryPending()
-        {
-            LyricDockRuntimeStatusText.Text = UiLanguageService.Translate(
-                "歌词坞已显示，但 Widgets 恢复尚未完成；不会修改新的系统设置，请稍后再次应用设置重试。");
-            LyricDockRuntimeStatusText.Visibility = Visibility.Visible;
-        }
-
         public void ClearLyricDockRuntimeStatus()
         {
             LyricDockRuntimeStatusText.Visibility = Visibility.Collapsed;
@@ -669,6 +663,7 @@ namespace LyricHover.App
             foreach (var toggle in new ToggleButton[]
             {
                 IslandEnabledSwitch,
+                HideIslandInFullscreenCheckBox,
                 SingleLineRadioButton,
                 MultiLineRadioButton,
                 ShowTranslationCheckBox,
@@ -1061,6 +1056,7 @@ namespace LyricHover.App
             var committedSettings = applySettings(settings) ?? settings;
             SaveLayoutEditingIfActive();
             IslandEnabledSwitch.IsChecked = committedSettings.IslandEnabled;
+            HideIslandInFullscreenCheckBox.IsChecked = committedSettings.HideIslandInFullscreen;
             LyricDockEnabledCheckBox.IsChecked = committedSettings.LyricDockEnabled;
             ReflectForcedDockState(committedSettings);
             workingSettings = committedSettings.DeepClone();
@@ -1116,6 +1112,7 @@ namespace LyricHover.App
             settings.ShowTranslation = ShowTranslationCheckBox.IsChecked == true;
             settings.IslandWordTrackingEnabled = IslandWordTrackingCheckBox.IsChecked == true;
             settings.IslandEnabled = IslandEnabledSwitch.IsChecked == true;
+            settings.HideIslandInFullscreen = HideIslandInFullscreenCheckBox.IsChecked == true;
             settings.LyricDockEnabled = LyricDockEnabledCheckBox.IsChecked == true;
             settings.LyricDockAlignment = ReadDockAlignment();
             settings.LyricDockUseMultiLineDisplay = ReadDockUseMultiLineDisplay();
@@ -1482,6 +1479,7 @@ namespace LyricHover.App
             {
                 PowerSavingModeCheckBox,
                 IslandEnabledSwitch,
+                HideIslandInFullscreenCheckBox,
                 ShowTranslationCheckBox,
                 IslandWordTrackingCheckBox,
                 LyricDockEnabledCheckBox,
