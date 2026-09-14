@@ -3,8 +3,9 @@
 - 日期：2026-09-14
 - Owner：Desktop Island, Settings & Interaction UI
 - 起始提交：`fba162b`
+- 功能提交：`9f9d4e87b0c51395d296f5c4cd1f00ba9389a3b2`
 - 工作分支：`codex/feature/desktop-fullscreen-auto-hide`
-- 状态：实现与自动化验证完成；真实任务栏/全屏视觉验收待执行
+- 状态：实现、自动化验证、本地提交与 `publish/current` 打包完成；真实任务栏/全屏视觉验收待执行
 - 允许范围：`LyricHover.App/`、相关 `LyricHover.Tests/` 回归与本交接
 
 ## Result
@@ -27,16 +28,29 @@
 ```powershell
 $env:TargetPlatformSdkPath='C:\Program Files (x86)\Windows Kits\10\'
 $env:TargetPlatformDisplayName='Windows'
-dotnet build LyricHover.sln -c Release --no-restore -v:q /clp:ErrorsOnly /p:OutDir='D:\AppleMusicDesktopLyrics\.tmp\lyricdock-visibility-build\'
-$env:LYRICHOVER_SKIP_RELEASE_VERSION_FIXTURE='1'
-& 'D:\AppleMusicDesktopLyrics\.tmp\lyricdock-visibility-build\LyricHover.Tests.exe'
+$env:NUGET_PACKAGES='C:\Users\14731\.nuget\packages'
+dotnet run --no-restore --configuration Release --project LyricHover.Tests\LyricHover.Tests.csproj -- --release-version-fixture
+& .\publish.ps1 -KeepVersion -NoLaunch
 git diff --check
 ```
 
-- 隔离 Release 构建：退出码 0，0 error，259 warnings。
-- 完整桌面回归：退出码 0，全部 PASS、0 FAIL。
+- 独立版本事务夹具：PASS。
+- 发布脚本完整桌面回归：257 PASS、0 FAIL。
+- win-x64 Release build/publish：0 warning、0 error。
 - `git diff --check`：通过，仅输出既有 LF/CRLF 转换提示。
-- 标准输出目录的首次构建被正在运行的 `LyricHover.App.exe` 文件锁阻挡；未终止用户当前实例，改用隔离 `OutDir` 验证同一 Release 源码。
+- 打包前停止了锁住标准 Release 输出的旧 `LyricHover.App.exe`；使用 `-NoLaunch`，未自动启动最终候选。
+
+## Local Candidate
+
+- 路径：`D:\AppleMusicDesktopLyrics\publish\current`
+- 版本：`3.2.45-Beta`；FileVersion `3.2.45.0`
+- 文件：11 个，共 33,817,846 bytes
+- `LyricHover.App.exe` SHA-256：`C1A8336BB754CCF5C2CDCF2536926A76F240EE3B59F05300E9C1E02AE504D96B`
+- `LyricHover.App.dll` SHA-256：`11BEF3B022CEC85AB8EE800E8CA5447D0FD9B1B3A78FA480995495E49FF4B146`
+- `LyricHover.Core.dll` SHA-256：`E01B53D465CBCFAB6C0CE1BBEF603EB5D221984F09F72B1A524E05C0419E863D`
+- App/Core DLL 与最终 Release 输出哈希一致；精确 `staging-v3.2.45-Beta` 不存在。
+- 被替换候选归档：`publish/archive/v3.2.45-Beta-20260914-220648`。
+- 既有 `publish/staging-diagnose-v3.1.39-Beta` 不属于本次打包，保持不动。
 
 ## Manual Acceptance Pending
 
@@ -49,4 +63,4 @@ git diff --check
 
 - 未修改 `LyricHover.Core/`、播放器、歌词、缓存或时间线语义。
 - 未修改设置键、默认值、Store 标识、单实例名称或数据目录迁移。
-- 未打包、提交、推送或发布外部候选。
+- 未创建 GitHub Release、标签或附件；未上传、验证或提交 Microsoft Store、ESA。
