@@ -62,15 +62,15 @@ namespace LyricHover.App.LyricDock
             failureReason = LyricDockFailureReason.None;
             if (!IsSupported) { failureReason = LyricDockFailureReason.UnsupportedOS; return false; }
             if (!TryFindTaskbar(screenName, out var taskbar, out var screen)) { failureReason = LyricDockFailureReason.TaskbarNotFound; return false; }
-            if (!IsWindowVisible(taskbar) || IsTaskbarAutoHidden() ||
-                ForegroundFullscreenDetector.IsForegroundWindowFullscreen(screen.DeviceName, taskbar))
-            {
-                failureReason = LyricDockFailureReason.TaskbarAutoHiddenOrFullscreen;
-                return false;
-            }
             if (!GetWindowRect(taskbar, out var taskbarRect) || taskbarRect.Width <= taskbarRect.Height || taskbarRect.Height <= 0)
             {
                 failureReason = LyricDockFailureReason.TaskbarNotFound;
+                return false;
+            }
+            if (!IsWindowVisible(taskbar) || IsTaskbarAutoHidden() || !IsTaskbarExposed(taskbar, taskbarRect) ||
+                ForegroundFullscreenDetector.IsForegroundWindowFullscreen(screen.DeviceName, taskbar))
+            {
+                failureReason = LyricDockFailureReason.TaskbarAutoHiddenOrFullscreen;
                 return false;
             }
 
@@ -774,11 +774,32 @@ namespace LyricHover.App.LyricDock
                     public int lParam;
                 }
         
-                private static bool IsTaskbarAutoHidden()
-                {
-                    var data = new APPBARDATA { cbSize = Marshal.SizeOf<APPBARDATA>() };
-                    return (SHAppBarMessage(4, ref data).ToInt64() & 1) != 0;
-                }
+        private static bool IsTaskbarAutoHidden()
+        {
+            var data = new APPBARDATA { cbSize = Marshal.SizeOf<APPBARDATA>() };
+            return (SHAppBarMessage(4, ref data).ToInt64() & 1) != 0;
+        }
+
+        private static bool IsTaskbarExposed(IntPtr taskbar, NativeRect bounds)
+        {
+            // Shell_TrayWnd can remain "visible" and keep its old rectangle while a
+            // fullscreen surface is actually covering it. Sample the rendered taskbar
+            // area itself so the dock follows what the user can see, not only HWND flags.
+            var inset = Math.Max(2, Math.Min(8, bounds.Height / 4));
+            var y = bounds.Top + Math.Max(1, bounds.Height / 2);
+            return LyricDockVisibilityPolicy.HasExposedTaskbarSample(
+                IsPointOwnedByTaskbar(taskbar, bounds.Left + inset, y),
+                IsPointOwnedByTaskbar(taskbar, bounds.Left + bounds.Width / 2, y),
+                IsPointOwnedByTaskbar(taskbar, bounds.Right - inset - 1, y));
+        }
+
+        private static bool IsPointOwnedByTaskbar(IntPtr taskbar, int x, int y)
+        {
+            var hit = WindowFromPoint(new NativePoint { X = x, Y = y });
+            if (hit == IntPtr.Zero) return false;
+            return hit == taskbar || GetAncestor(hit, GaRoot) == taskbar;
+        }
+
         private static bool IsTaskbarDark()
         {
             try { using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", false); return Convert.ToInt32(key?.GetValue("SystemUsesLightTheme", 0)) == 0; }
@@ -843,11 +864,15 @@ namespace LyricHover.App.LyricDock
         private sealed class WidgetCandidate { public WidgetCandidate(AutomationElement element, TaskbarBounds bounds) { Element = element; Bounds = bounds; } public AutomationElement Element { get; } public TaskbarBounds Bounds { get; } }
         private readonly struct Interval { public Interval(double left, double right) { Left = left; Right = right; } public double Left { get; } public double Right { get; } public double Width => Right - Left; }
         [StructLayout(LayoutKind.Sequential)] private struct NativeRect { public int Left; public int Top; public int Right; public int Bottom; public int Width => Right - Left; public int Height => Bottom - Top; public TaskbarBounds ToBounds() => new TaskbarBounds { Left = Left, Top = Top, Right = Right, Bottom = Bottom }; }
+        [StructLayout(LayoutKind.Sequential)] private struct NativePoint { public int X; public int Y; }
+        private const uint GaRoot = 2;
         private delegate bool EnumWindowsProc(IntPtr hwnd, IntPtr parameter);
         [DllImport("user32.dll")] private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr parameter);
         [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hwnd);
         [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr hwnd);
         [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hwnd, out NativeRect rect);
+        [DllImport("user32.dll")] private static extern IntPtr WindowFromPoint(NativePoint point);
+        [DllImport("user32.dll")] private static extern IntPtr GetAncestor(IntPtr hwnd, uint flags);
         [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "GetClassNameW")] private static extern int GetClassNameNative(IntPtr hwnd, System.Text.StringBuilder className, int maxCount);
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr SendMessageTimeout(IntPtr hwnd, uint message, IntPtr wParam, string lParam, uint flags, uint timeout, out IntPtr result);
         [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr hwnd);

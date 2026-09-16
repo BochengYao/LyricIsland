@@ -52,4 +52,44 @@ namespace LyricHover.App.LyricDock
         bool TryPrepareWidgetsRestore(string screenName);
         bool TryRefreshTaskbarAndVerify(TaskbarDaValueState expectedState, bool forceHide = false);
     }
+
+    internal static class LyricDockVisibilityPolicy
+    {
+        public static bool HasExposedTaskbarSample(params bool[] exposedSamples)
+        {
+            if (exposedSamples == null) return false;
+            foreach (var sample in exposedSamples)
+            {
+                if (sample) return true;
+            }
+            return false;
+        }
+    }
+
+    internal static class LyricDockMotionPolicy
+    {
+        public static bool ShouldAnimateHorizontalMove(
+            bool isVisible,
+            bool hasPlacement,
+            double currentTargetLeft,
+            double nextTargetLeft,
+            TaskbarBounds currentTaskbarBounds,
+            TaskbarBounds nextTaskbarBounds,
+            double currentDpiScale,
+            double nextDpiScale)
+        {
+            if (!isVisible || !hasPlacement ||
+                currentTaskbarBounds == null || nextTaskbarBounds == null ||
+                Math.Abs(currentTargetLeft - nextTargetLeft) < 0.5 ||
+                Math.Abs(currentDpiScale - nextDpiScale) >= 0.001)
+            {
+                return false;
+            }
+
+            return Math.Abs(currentTaskbarBounds.Left - nextTaskbarBounds.Left) < 0.5 &&
+                Math.Abs(currentTaskbarBounds.Top - nextTaskbarBounds.Top) < 0.5 &&
+                Math.Abs(currentTaskbarBounds.Right - nextTaskbarBounds.Right) < 0.5 &&
+                Math.Abs(currentTaskbarBounds.Bottom - nextTaskbarBounds.Bottom) < 0.5;
+        }
+    }
 }

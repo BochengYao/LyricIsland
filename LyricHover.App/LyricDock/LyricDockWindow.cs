@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Effects;
 using LyricHover.App.Modules;
 using LyricHover.Core;
 
@@ -34,6 +35,9 @@ namespace LyricHover.App.LyricDock
         private static readonly IntPtr HwndTopmost = new IntPtr(-1);
         private const double PrimaryLineHeight = 18;
         private const double SecondaryLineHeight = 14;
+        private static readonly TimeSpan HorizontalPlacementAnimationDuration = TimeSpan.FromMilliseconds(260);
+        private static readonly DropShadowEffect WhiteTextContrastEffect = CreateContrastEffect(Colors.Black);
+        private static readonly DropShadowEffect BlackTextContrastEffect = CreateContrastEffect(Colors.White);
 
         private readonly LyricTextTransitionTracker transitionTracker = new LyricTextTransitionTracker();
         private readonly Grid textViewport = new Grid { ClipToBounds = true };
@@ -63,6 +67,10 @@ namespace LyricHover.App.LyricDock
         private bool displayedWordTrackingPlaying;
         private double displayedWordTrackingProgress = -1;
         private DateTime lastSettingsRequestUtc = DateTime.MinValue;
+        private bool hasPlacement;
+        private double placementTargetLeft;
+        private double placementDpiScale = 1;
+        private TaskbarBounds placementTaskbarBounds;
 
         public LyricDockWindow(Func<bool> refreshModifierPressed = null)
         {
@@ -238,6 +246,17 @@ namespace LyricHover.App.LyricDock
 
         public void Place(LyricDockPlacement placement, double width)
         {
+            var nextLeft = placement.Left / placement.DpiScale;
+            var shouldAnimateLeft = LyricDockMotionPolicy.ShouldAnimateHorizontalMove(
+                IsVisible,
+                hasPlacement,
+                placementTargetLeft,
+                nextLeft,
+                placementTaskbarBounds,
+                placement.TaskbarBounds,
+                placementDpiScale,
+                placement.DpiScale);
+
             Width = width / placement.DpiScale;
             Height = placement.Height / placement.DpiScale;
             // The alignment setting positions the TEXT inside this window (like the island's
@@ -245,13 +264,66 @@ namespace LyricHover.App.LyricDock
             // at the gap's left edge and spans up to MaximumWidth, and each lyric line is
             // then left-aligned or centered within the viewport.
             textLeftAligned = placement.IsLeftAligned;
-            Left = placement.Left / placement.DpiScale;
+            if (shouldAnimateLeft)
+            {
+                AnimateHorizontalPlacement(nextLeft);
+            }
+            else if (!hasPlacement || Math.Abs(placementTargetLeft - nextLeft) >= 0.5)
+            {
+                BeginAnimation(LeftProperty, null);
+                Left = nextLeft;
+            }
             Top = placement.Top / placement.DpiScale;
+            hasPlacement = true;
+            placementTargetLeft = nextLeft;
+            placementDpiScale = placement.DpiScale;
+            placementTaskbarBounds = placement.TaskbarBounds;
             foreground = placement.IsDarkTheme ? Brushes.White : Brushes.Black;
+            ApplyContrastEffect(placement.IsDarkTheme);
             ApplyForeground(currentPrimary);
             ApplyForeground(currentSecondary);
             ApplyForeground(incomingPrimary);
             ApplyForeground(incomingSecondary);
+        }
+
+        private void AnimateHorizontalPlacement(double targetLeft)
+        {
+            // Retarget from the current rendered coordinate so rapid taskbar icon changes
+            // remain continuous instead of snapping back to the previous base value.
+            var currentLeft = Left;
+            BeginAnimation(LeftProperty, null);
+            Left = targetLeft;
+            BeginAnimation(
+                LeftProperty,
+                new DoubleAnimation(currentLeft, targetLeft, HorizontalPlacementAnimationDuration)
+                {
+                    EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseOut },
+                    FillBehavior = FillBehavior.Stop
+                },
+                HandoffBehavior.SnapshotAndReplace);
+        }
+
+        private static DropShadowEffect CreateContrastEffect(Color color)
+        {
+            var effect = new DropShadowEffect
+            {
+                Color = color,
+                BlurRadius = 2.5,
+                ShadowDepth = 0,
+                Opacity = 0.82,
+                RenderingBias = RenderingBias.Performance
+            };
+            effect.Freeze();
+            return effect;
+        }
+
+        private void ApplyContrastEffect(bool taskbarIsDark)
+        {
+            // Composite the dim/highlight word layers before applying the halo so the
+            // moving word-progress clip never creates a second outline at its boundary.
+            var effect = taskbarIsDark ? WhiteTextContrastEffect : BlackTextContrastEffect;
+            currentPanel.Effect = effect;
+            incomingPanel.Effect = effect;
         }
 
         private static WordTrackingTextBlock CreatePrimaryText()

@@ -134,6 +134,7 @@ namespace LyricHover.Tests
             suite.Run("fullscreen detection requires complete monitor coverage", FullscreenDetectionRequiresCompleteMonitorCoverage);
             suite.Run("fullscreen island auto-hide keeps desired visibility while suppressed", FullscreenIslandAutoHideKeepsDesiredVisibility);
             suite.Run("lyric dock monitors taskbar visibility without lyric refreshes", LyricDockMonitorsTaskbarVisibilityWithoutLyricRefreshes);
+            suite.Run("lyric dock treats a fully covered taskbar as hidden", LyricDockTreatsFullyCoveredTaskbarAsHidden);
             suite.Run("taskbar Widgets lease restores absent, disabled, and enabled states", TaskbarWidgetsLeaseRestoresOriginalStates);
             suite.Run("taskbar Widgets lease rolls back after refresh failure", TaskbarWidgetsLeaseRollsBackAfterRefreshFailure);
             suite.Run("taskbar Widgets lease fails fast when the OS blocks TaskbarDa writes", TaskbarWidgetsLeaseFailsFastWhenWritesAreBlocked);
@@ -164,6 +165,8 @@ namespace LyricHover.Tests
             suite.Run("taskbar safe slot falls back to the widest gap when Widgets are manually hidden", TaskbarSafeSlotFallsBackToWidestGapWhenWidgetsManuallyHidden);
             suite.Run("lyric dock transition, marquee, and single-line centering match the island", LyricDockWindowMatchesIslandLyricsBehaviors);
             suite.Run("taskbar alignment positions lyric text inside the viewport", LyricDockAlignmentPositionsTextInsideViewport);
+            suite.Run("lyric dock smoothly follows left-aligned taskbar icon changes", LyricDockSmoothlyFollowsTaskbarIconChanges);
+            suite.Run("lyric dock text keeps contrast on transparent taskbars", LyricDockTextKeepsContrastOnTransparentTaskbars);
             suite.Run("builds island geometry for measured module size", BuildsIslandGeometryForMeasuredModuleSize);
             suite.Run("module host exposes all v2 module views", ModuleHostExposesAllV2ModuleViews);
             suite.Run("track info shows title and artist without album", TrackInfoShowsTitleAndArtistWithoutAlbum);
@@ -1612,6 +1615,14 @@ namespace LyricHover.Tests
             controller.RefreshPlacement();
             Assert.True(surface.IsVisible);
             Assert.True(controller.IsEnabled);
+        }
+
+        static void LyricDockTreatsFullyCoveredTaskbarAsHidden()
+        {
+            Assert.False(LyricDockVisibilityPolicy.HasExposedTaskbarSample(false, false, false));
+            Assert.True(LyricDockVisibilityPolicy.HasExposedTaskbarSample(true, false, false));
+            Assert.True(LyricDockVisibilityPolicy.HasExposedTaskbarSample(false, true, false));
+            Assert.True(LyricDockVisibilityPolicy.HasExposedTaskbarSample(false, false, true));
         }
 
         static void WithTemporarySettingsStore(Action<OverlaySettingsStore, string> test)
@@ -5766,6 +5777,48 @@ namespace LyricHover.Tests
             Assert.False(window.Contains("SafeGapWidth"));
             Assert.True(placement.Contains("bool leftAligned = false"));
             Assert.True(placement.Contains("leftAligned ? 0 : (available - text) / 2"));
+        }
+
+        static void LyricDockSmoothlyFollowsTaskbarIconChanges()
+        {
+            var bounds = new TaskbarBounds { Left = 0, Top = 1040, Right = 1920, Bottom = 1080 };
+            var movedBounds = new TaskbarBounds { Left = 1920, Top = 1040, Right = 3840, Bottom = 1080 };
+
+            Assert.True(LyricDockMotionPolicy.ShouldAnimateHorizontalMove(
+                true, true, 360, 408, bounds, bounds, 1, 1));
+            Assert.False(LyricDockMotionPolicy.ShouldAnimateHorizontalMove(
+                false, true, 360, 408, bounds, bounds, 1, 1));
+            Assert.False(LyricDockMotionPolicy.ShouldAnimateHorizontalMove(
+                true, false, 360, 408, bounds, bounds, 1, 1));
+            Assert.False(LyricDockMotionPolicy.ShouldAnimateHorizontalMove(
+                true, true, 360, 360.25, bounds, bounds, 1, 1));
+            Assert.False(LyricDockMotionPolicy.ShouldAnimateHorizontalMove(
+                true, true, 360, 408, bounds, movedBounds, 1, 1));
+            Assert.False(LyricDockMotionPolicy.ShouldAnimateHorizontalMove(
+                true, true, 360, 408, bounds, bounds, 1, 1.5));
+
+            var window = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "LyricHover.App", "LyricDock", "LyricDockWindow.cs"));
+            Assert.True(window.Contains("AnimateHorizontalPlacement(nextLeft)"));
+            Assert.True(window.Contains("TimeSpan.FromMilliseconds(260)"));
+            Assert.True(window.Contains("QuarticEase { EasingMode = EasingMode.EaseOut }"));
+            Assert.True(window.Contains("HandoffBehavior.SnapshotAndReplace"));
+        }
+
+        static void LyricDockTextKeepsContrastOnTransparentTaskbars()
+        {
+            var window = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "LyricHover.App", "LyricDock", "LyricDockWindow.cs"));
+
+            Assert.True(window.Contains("WhiteTextContrastEffect = CreateContrastEffect(Colors.Black)"));
+            Assert.True(window.Contains("BlackTextContrastEffect = CreateContrastEffect(Colors.White)"));
+            Assert.True(window.Contains("BlurRadius = 2.5"));
+            Assert.True(window.Contains("ShadowDepth = 0"));
+            Assert.True(window.Contains("Opacity = 0.82"));
+            Assert.True(window.Contains("RenderingBias = RenderingBias.Performance"));
+            Assert.True(window.Contains("ApplyContrastEffect(placement.IsDarkTheme)"));
+            Assert.True(window.Contains("currentPanel.Effect = effect"));
+            Assert.True(window.Contains("incomingPanel.Effect = effect"));
         }
 
         static void LyricDockWindowMatchesIslandLyricsBehaviors()
