@@ -236,6 +236,9 @@ namespace LyricHover.App.LyricDock
                     return;
                 }
 
+                // Preserve the incoming layer's live projection when the transition
+                // settles so the first word cannot flash backwards to a stale snapshot.
+                displayedWordTrackingPosition = incomingPrimary.CapturePlaybackPosition();
                 transitionInProgress = false;
                 ApplyCurrentText(displayedPrimary, displayedSecondary);
                 ResetSlideAnimation();
@@ -426,6 +429,10 @@ namespace LyricHover.App.LyricDock
 
         private void ReapplyCurrentText()
         {
+            if (transitionInProgress)
+            {
+                displayedWordTrackingPosition = incomingPrimary.CapturePlaybackPosition();
+            }
             transitionVersion++;
             transitionInProgress = false;
             ApplyCurrentText(displayedPrimary ?? string.Empty, displayedSecondary ?? string.Empty);

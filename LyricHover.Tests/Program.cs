@@ -308,6 +308,7 @@ namespace LyricHover.Tests
             suite.Run("word tracking reuses glyph map for the same line", WordTrackingReusesGlyphMapForSameLine);
             suite.Run("word tracking shares cached glyph maps across lyric layers", WordTrackingSharesGlyphMapsAcrossLayers);
             suite.Run("lyric transitions freeze outgoing word projection", LyricTransitionsFreezeOutgoingWordProjection);
+            suite.Run("lyric transitions preserve live projection when layers settle", LyricTransitionsPreserveProjectionWhenLayersSettle);
             suite.Run("word tracking refreshes at lyric line boundaries", WordTrackingRefreshesAtLyricLineBoundaries);
             suite.Run("coalesces identical hover samples without losing changed samples", CoalescesIdenticalHoverSamplesWithoutLosingChangedSamples);
             suite.Run("settings dirty fingerprint avoids a second JSON deep clone", SettingsDirtyFingerprintAvoidsASecondJsonDeepClone);
@@ -4973,6 +4974,36 @@ namespace LyricHover.Tests
                 islandTransition.IndexOf("PreparePrimaryLine(", StringComparison.Ordinal));
             Assert.True(dockTransition.IndexOf("currentPrimary.StopPlaybackProjection();", StringComparison.Ordinal) <
                 dockTransition.IndexOf("PreparePrimaryLine(", StringComparison.Ordinal));
+        }
+
+        static void LyricTransitionsPreserveProjectionWhenLayersSettle()
+        {
+            var line = new LyricLine(
+                TimeSpan.Zero,
+                "first word",
+                new[]
+                {
+                    new LyricWord(TimeSpan.Zero, TimeSpan.FromSeconds(1), "first"),
+                    new LyricWord(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), "word")
+                });
+            var incoming = new LyricHover.App.Modules.WordTrackingTextBlock();
+            incoming.Present(line.Text, line, TimeSpan.FromSeconds(0.1), true);
+            var timestamp = typeof(LyricHover.App.Modules.WordTrackingTextBlock)
+                .GetField("anchorTimestamp", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            timestamp.SetValue(incoming, Stopwatch.GetTimestamp() - (Stopwatch.Frequency / 4));
+            var capture = typeof(LyricHover.App.Modules.WordTrackingTextBlock)
+                .GetMethod("CapturePlaybackPosition", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            var projected = (TimeSpan)capture.Invoke(incoming, null);
+            Assert.True(projected >= TimeSpan.FromMilliseconds(340));
+
+            var root = Path.Combine(GetSolutionRoot(), "LyricHover.App");
+            var island = File.ReadAllText(Path.Combine(root, "Modules", "LyricsModuleView.xaml.cs"));
+            var dock = File.ReadAllText(Path.Combine(root, "LyricDock", "LyricDockWindow.cs"));
+            Assert.True(island.Contains(
+                "displayedWordTrackingPosition = IncomingPrimaryLyricText.CapturePlaybackPosition();"));
+            Assert.True(CountOccurrences(
+                dock,
+                "displayedWordTrackingPosition = incomingPrimary.CapturePlaybackPosition();") >= 2);
         }
 
         static void WordTrackingRefreshesAtLyricLineBoundaries()

@@ -130,6 +130,9 @@ namespace LyricHover.App.Modules
                     return;
                 }
 
+                // Hand the live incoming projection to the settled layer. Reusing the
+                // last media snapshot here would move the first word backwards briefly.
+                displayedWordTrackingPosition = IncomingPrimaryLyricText.CapturePlaybackPosition();
                 lyricsTransitionInProgress = false;
                 ApplyCurrentLyricsText(displayedPrimary, displayedSecondary, displayedAccent);
                 ResetLyricsAnimationState();

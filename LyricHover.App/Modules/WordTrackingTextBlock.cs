@@ -192,6 +192,13 @@ namespace LyricHover.App.Modules
             UpdateRenderingSubscription();
         }
 
+        internal TimeSpan CapturePlaybackPosition()
+        {
+            return playbackAdvancing && trackingLine != null
+                ? GetProjectedPosition(Stopwatch.GetTimestamp())
+                : anchorPosition;
+        }
+
         private void Rendering(object sender, EventArgs args)
         {
             if (!playbackAdvancing || trackingLine == null)
