@@ -34,7 +34,7 @@ namespace LyricHover.App.LyricDock
         private const uint SwpNoMove = 0x0002;
         private static readonly IntPtr HwndTopmost = new IntPtr(-1);
         private const double PrimaryLineHeight = 18;
-        private const double SecondaryLineHeight = 14;
+        private const double SecondaryLineHeight = 16;
         private static readonly TimeSpan HorizontalPlacementAnimationDuration = TimeSpan.FromMilliseconds(260);
         private static readonly DropShadowEffect WhiteTextContrastEffect = CreateContrastEffect(Colors.Black);
         private static readonly DropShadowEffect BlackTextContrastEffect = CreateContrastEffect(Colors.White);
@@ -344,8 +344,11 @@ namespace LyricHover.App.LyricDock
         {
             return new TextBlock
             {
-                FontSize = 11,
-                Opacity = .78,
+                // Translated/CJK lyrics need enough fill alpha and stroke weight to
+                // remain legible after the panel-level contrast halo is composited.
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                Opacity = .96,
                 TextTrimming = TextTrimming.None,
                 TextWrapping = TextWrapping.NoWrap,
                 VerticalAlignment = VerticalAlignment.Center,

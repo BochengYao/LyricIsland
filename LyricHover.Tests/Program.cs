@@ -5819,6 +5819,10 @@ namespace LyricHover.Tests
             Assert.True(window.Contains("ApplyContrastEffect(placement.IsDarkTheme)"));
             Assert.True(window.Contains("currentPanel.Effect = effect"));
             Assert.True(window.Contains("incomingPanel.Effect = effect"));
+            Assert.True(window.Contains("private const double SecondaryLineHeight = 16"));
+            Assert.True(window.Contains("FontSize = 12"));
+            Assert.True(window.Contains("FontWeight = FontWeights.SemiBold"));
+            Assert.True(window.Contains("Opacity = .96"));
         }
 
         static void LyricDockWindowMatchesIslandLyricsBehaviors()
