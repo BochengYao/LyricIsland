@@ -71,6 +71,7 @@ namespace LyricHover.App.LyricDock
         private double placementTargetLeft;
         private double placementDpiScale = 1;
         private TaskbarBounds placementTaskbarBounds;
+        private bool placementDarkTheme;
 
         public LyricDockWindow(Func<bool> refreshModifierPressed = null)
         {
@@ -214,6 +215,9 @@ namespace LyricHover.App.LyricDock
 
             ResetSlideAnimation();
             StopAllMarquees();
+            // The outgoing line is visually frozen while it fades. Only the incoming
+            // line should consume CompositionTarget.Rendering during the transition.
+            currentPrimary.StopPlaybackProjection();
             PreparePrimaryLine(incomingPrimary, incomingPrimaryClip, primary, true);
             PrepareSecondaryLine(incomingSecondary, incomingSecondaryClip, secondary, !string.IsNullOrWhiteSpace(secondary));
             incomingPanel.Opacity = 0;
@@ -246,6 +250,7 @@ namespace LyricHover.App.LyricDock
 
         public void Place(LyricDockPlacement placement, double width)
         {
+            var hadPlacement = hasPlacement;
             var nextLeft = placement.Left / placement.DpiScale;
             var shouldAnimateLeft = LyricDockMotionPolicy.ShouldAnimateHorizontalMove(
                 IsVisible,
@@ -278,12 +283,16 @@ namespace LyricHover.App.LyricDock
             placementTargetLeft = nextLeft;
             placementDpiScale = placement.DpiScale;
             placementTaskbarBounds = placement.TaskbarBounds;
-            foreground = placement.IsDarkTheme ? Brushes.White : Brushes.Black;
-            ApplyContrastEffect(placement.IsDarkTheme);
-            ApplyForeground(currentPrimary);
-            ApplyForeground(currentSecondary);
-            ApplyForeground(incomingPrimary);
-            ApplyForeground(incomingSecondary);
+            if (!hadPlacement || placementDarkTheme != placement.IsDarkTheme)
+            {
+                foreground = placement.IsDarkTheme ? Brushes.White : Brushes.Black;
+                ApplyContrastEffect(placement.IsDarkTheme);
+                ApplyForeground(currentPrimary);
+                ApplyForeground(currentSecondary);
+                ApplyForeground(incomingPrimary);
+                ApplyForeground(incomingSecondary);
+            }
+            placementDarkTheme = placement.IsDarkTheme;
         }
 
         private void AnimateHorizontalPlacement(double targetLeft)

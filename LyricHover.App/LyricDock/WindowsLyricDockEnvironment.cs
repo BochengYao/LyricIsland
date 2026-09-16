@@ -19,8 +19,10 @@ namespace LyricHover.App.LyricDock
         private const uint WmSettingChange = 0x001A;
         private const uint SmtoAbortIfHung = 0x0002;
         private static readonly IntPtr HwndBroadcast = new IntPtr(0xffff);
+        private static readonly object TaskbarSearchSync = new object();
         private readonly Forms.Timer changeTimer;
         private readonly Dictionary<string, WidgetAnchor> widgetAnchors = new Dictionary<string, WidgetAnchor>(StringComparer.OrdinalIgnoreCase);
+        private readonly object widgetAnchorsSync = new object();
         private TaskbarDaValueState observedWidgetsState;
         private bool hasObservedWidgetsState;
 
@@ -512,13 +514,19 @@ namespace LyricHover.App.LyricDock
                 var targetScreen = string.IsNullOrWhiteSpace(screenName) ? screen.DeviceName : screenName;
                 if (TryFindWidgetsElement(taskbar, out var element, out var bounds))
                 {
-                    widgetAnchors[targetScreen] = new WidgetAnchor(taskbar, bounds, element, wasVisibleBeforeLease: true);
+                    lock (widgetAnchorsSync)
+                    {
+                        widgetAnchors[targetScreen] = new WidgetAnchor(taskbar, bounds, element, wasVisibleBeforeLease: true);
+                    }
                     return true;
                 }
 
                 // A residual lease was written only after an actual Widgets element was observed.
                 // Preserve that visibility obligation even though the element is currently hidden.
-                widgetAnchors[targetScreen] = new WidgetAnchor(taskbar, null, null, wasVisibleBeforeLease: true);
+                lock (widgetAnchorsSync)
+                {
+                    widgetAnchors[targetScreen] = new WidgetAnchor(taskbar, null, null, wasVisibleBeforeLease: true);
+                }
                 return true;
             }
             catch { return false; }
@@ -582,8 +590,13 @@ namespace LyricHover.App.LyricDock
         {
             // Both directions require a real UIA observation on the cached target taskbar. A registry
             // write or a broadcast alone never proves that Widgets actually disappeared or returned.
-            if (widgetAnchors.Count == 0) return false;
-            foreach (var anchor in widgetAnchors.Values.ToArray())
+            WidgetAnchor[] anchors;
+            lock (widgetAnchorsSync)
+            {
+                if (widgetAnchors.Count == 0) return false;
+                anchors = widgetAnchors.Values.ToArray();
+            }
+            foreach (var anchor in anchors)
             {
                 if (!IsWindow(anchor.TaskbarHandle)) return false;
                 var isVisible = TryFindWidgetsBounds(anchor.TaskbarHandle, out _);
@@ -603,14 +616,29 @@ namespace LyricHover.App.LyricDock
 
         private bool TryGetWidgetsAnchor(IntPtr taskbar, string screenName, out WidgetAnchor anchor)
         {
+            if (TryReadTaskbarDa(out var state) && state == TaskbarDaValueState.Disabled)
+            {
+                lock (widgetAnchorsSync)
+                {
+                    if (widgetAnchors.TryGetValue(screenName, out anchor) &&
+                        anchor.TaskbarHandle == taskbar &&
+                        anchor.Bounds != null &&
+                        IsWindow(taskbar))
+                    {
+                        return true;
+                    }
+                }
+            }
+
             if (TryFindWidgetsElement(taskbar, out var element, out var bounds))
             {
                 anchor = new WidgetAnchor(taskbar, bounds, element, wasVisibleBeforeLease: true);
-                widgetAnchors[screenName] = anchor;
+                lock (widgetAnchorsSync)
+                {
+                    widgetAnchors[screenName] = anchor;
+                }
                 return true;
             }
-            if (TryReadTaskbarDa(out var state) && state == TaskbarDaValueState.Disabled &&
-                widgetAnchors.TryGetValue(screenName, out anchor) && anchor.TaskbarHandle == taskbar && anchor.Bounds != null && IsWindow(taskbar)) return true;
             anchor = null;
             return false;
         }
@@ -722,23 +750,26 @@ namespace LyricHover.App.LyricDock
 
         private static bool TryFindTaskbar(string screenName, out IntPtr taskbar, out Forms.Screen screen)
         {
-            taskbar = IntPtr.Zero;
-            screen = null;
-            var expected = string.IsNullOrWhiteSpace(screenName) ? Forms.Screen.PrimaryScreen.DeviceName : screenName;
-            // Keep the delegate and state in static fields for the duration of the native call so neither can be collected.
-            taskbarSearchState = new TaskbarSearchState { ExpectedDeviceName = expected };
-            activeTaskbarSearch = new EnumWindowsProc(FindTaskbarCallback);
-            try
+            lock (TaskbarSearchSync)
             {
-                EnumWindows(activeTaskbarSearch, IntPtr.Zero);
+                taskbar = IntPtr.Zero;
+                screen = null;
+                var expected = string.IsNullOrWhiteSpace(screenName) ? Forms.Screen.PrimaryScreen.DeviceName : screenName;
+                // Keep the delegate and state in static fields for the duration of the native call so neither can be collected.
+                taskbarSearchState = new TaskbarSearchState { ExpectedDeviceName = expected };
+                activeTaskbarSearch = new EnumWindowsProc(FindTaskbarCallback);
+                try
+                {
+                    EnumWindows(activeTaskbarSearch, IntPtr.Zero);
+                }
+                finally
+                {
+                    activeTaskbarSearch = null;
+                }
+                taskbar = taskbarSearchState.Handle;
+                screen = taskbarSearchState.Screen;
+                return taskbar != IntPtr.Zero && screen != null;
             }
-            finally
-            {
-                activeTaskbarSearch = null;
-            }
-            taskbar = taskbarSearchState.Handle;
-            screen = taskbarSearchState.Screen;
-            return taskbar != IntPtr.Zero && screen != null;
         }
 
         private static EnumWindowsProc activeTaskbarSearch;

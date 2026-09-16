@@ -36,6 +36,11 @@ namespace LyricHover.App.LyricDock
         private readonly object widgetsOperationSync = new object();
         private Task widgetsOperation = Task.CompletedTask;
         private TaskbarDaValueState? observedWidgetsState;
+        private bool placementRefreshInFlight;
+        private bool placementRefreshPending;
+        private int placementRefreshGeneration;
+        private LyricDockPlacement lastAppliedPlacement;
+        private double lastAppliedWidth;
         private string screenName;
         private LyricDockAlignment alignment;
         private LyricsPresentationSnapshot snapshot = new LyricsPresentationSnapshot { IsWaitingForPlayback = true };
@@ -103,6 +108,8 @@ namespace LyricHover.App.LyricDock
 
         public bool Configure(bool requestedEnabled, string requestedScreenName, LyricDockAlignment requestedAlignment)
         {
+            placementRefreshGeneration++;
+            placementRefreshPending = false;
             this.requestedEnabled = requestedEnabled;
             screenName = requestedScreenName ?? string.Empty;
             alignment = requestedAlignment;
@@ -161,7 +168,17 @@ namespace LyricHover.App.LyricDock
         {
             snapshot = value ?? new LyricsPresentationSnapshot { IsWaitingForPlayback = true };
             if (snapshot.IsWaitingForPlayback && string.IsNullOrWhiteSpace(snapshot.PrimaryText)) snapshot.PrimaryText = "等待播放";
-            RefreshPlacement();
+            if (!enabled)
+            {
+                RefreshPlacement();
+                return;
+            }
+
+            // Text and word-tracking anchors must reach WPF immediately. Taskbar UIA can
+            // occasionally take hundreds of milliseconds. Placement is monitored by the
+            // independent fullscreen/taskbar timer, so lyric updates must not start another
+            // Shell scan every 250 ms.
+            surface.Present(snapshot);
         }
 
         public void RefreshPlacement()
@@ -184,7 +201,17 @@ namespace LyricHover.App.LyricDock
                 Configure(true, screenName, alignment);
                 return;
             }
-            if (!environment.TryGetPlacement(screenName, alignment, out var placement, out var reason) || !CanUse(placement))
+
+            QueuePlacementRefresh();
+        }
+
+        private void ApplyPlacementProbe(
+            bool succeeded,
+            LyricDockPlacement placement,
+            LyricDockFailureReason reason,
+            bool presentSnapshot)
+        {
+            if (!succeeded || !CanUse(placement))
             {
                 if (reason == LyricDockFailureReason.TaskbarAutoHiddenOrFullscreen)
                 {
@@ -194,7 +221,7 @@ namespace LyricHover.App.LyricDock
                 Disable(reason == LyricDockFailureReason.None ? LyricDockFailureReason.TaskbarChanged : reason);
                 return;
             }
-            Show(placement);
+            Show(placement, presentSnapshot);
         }
 
         public void Dispose()
@@ -202,6 +229,8 @@ namespace LyricHover.App.LyricDock
             if (disposed) return;
             environment.Changed -= EnvironmentChanged;
             disposed = true;
+            placementRefreshGeneration++;
+            placementRefreshPending = false;
             Interlocked.Increment(ref widgetsHidingGeneration);
             enabled = false;
             requestedEnabled = false;
@@ -229,7 +258,7 @@ namespace LyricHover.App.LyricDock
                 return;
             }
 
-            RefreshPlacement();
+            QueuePlacementRefresh();
             if (!enabled || !ObserveWidgetsState(out var changedState) || changedState == TaskbarDaValueState.Disabled) return;
 
             // A manual Windows Settings change has made Widgets visible again.  Reuse the
@@ -275,21 +304,154 @@ namespace LyricHover.App.LyricDock
             Show(placement);
             return true;
         }
-        private void Show(LyricDockPlacement placement)
+        private void Show(LyricDockPlacement placement, bool presentSnapshot = true)
         {
             nextRuntimeRetryUtc = DateTime.MinValue;
-            surface.Place(placement, Math.Min(MaximumWidth, placement.Width));
-            surface.Present(snapshot);
+            var width = Math.Min(MaximumWidth, placement.Width);
+            if (!AreEquivalentPlacements(lastAppliedPlacement, lastAppliedWidth, placement, width))
+            {
+                surface.Place(placement, width);
+                lastAppliedPlacement = CopyPlacement(placement);
+                lastAppliedWidth = width;
+            }
+            if (presentSnapshot) surface.Present(snapshot);
             if (!surface.IsVisible) surface.Show();
+        }
+
+        internal static bool AreEquivalentPlacements(
+            LyricDockPlacement current,
+            double currentWidth,
+            LyricDockPlacement next,
+            double nextWidth)
+        {
+            if (current == null || next == null) return false;
+            return NearlyEqual(currentWidth, nextWidth) &&
+                NearlyEqual(current.Left, next.Left) &&
+                NearlyEqual(current.Top, next.Top) &&
+                NearlyEqual(current.Width, next.Width) &&
+                NearlyEqual(current.Height, next.Height) &&
+                NearlyEqual(current.DpiScale, next.DpiScale, 0.001) &&
+                current.IsLeftAligned == next.IsLeftAligned &&
+                current.IsVisible == next.IsVisible &&
+                current.IsFullscreenCovered == next.IsFullscreenCovered &&
+                current.IsDarkTheme == next.IsDarkTheme &&
+                AreEquivalentBounds(current.TaskbarBounds, next.TaskbarBounds);
+        }
+
+        private static bool AreEquivalentBounds(TaskbarBounds current, TaskbarBounds next)
+        {
+            if (ReferenceEquals(current, next)) return true;
+            if (current == null || next == null) return false;
+            return NearlyEqual(current.Left, next.Left) &&
+                NearlyEqual(current.Top, next.Top) &&
+                NearlyEqual(current.Right, next.Right) &&
+                NearlyEqual(current.Bottom, next.Bottom);
+        }
+
+        private static bool NearlyEqual(double left, double right, double tolerance = 0.01) =>
+            Math.Abs(left - right) < tolerance;
+
+        private static LyricDockPlacement CopyPlacement(LyricDockPlacement placement)
+        {
+            return new LyricDockPlacement
+            {
+                Left = placement.Left,
+                Top = placement.Top,
+                Width = placement.Width,
+                Height = placement.Height,
+                DpiScale = placement.DpiScale,
+                IsLeftAligned = placement.IsLeftAligned,
+                IsVisible = placement.IsVisible,
+                IsFullscreenCovered = placement.IsFullscreenCovered,
+                IsDarkTheme = placement.IsDarkTheme,
+                TaskbarBounds = CopyBounds(placement.TaskbarBounds),
+                WidgetsBounds = CopyBounds(placement.WidgetsBounds)
+            };
+        }
+
+        private static TaskbarBounds CopyBounds(TaskbarBounds bounds)
+        {
+            return bounds == null ? null : new TaskbarBounds
+            {
+                Left = bounds.Left,
+                Top = bounds.Top,
+                Right = bounds.Right,
+                Bottom = bounds.Bottom
+            };
         }
         private void Disable(LyricDockFailureReason reason, bool restoreWidgets = true)
         {
+            placementRefreshGeneration++;
+            placementRefreshPending = false;
             LastFailureReason = reason;
             enabled = false;
             Interlocked.Increment(ref widgetsHidingGeneration);
             if (restoreWidgets) HideAndQueueRestore();
             else surface.Hide();
             FeatureDisabled?.Invoke(this, reason);
+        }
+
+        private void QueuePlacementRefresh()
+        {
+            if (!enabled || disposed) return;
+            if (placementRefreshInFlight)
+            {
+                placementRefreshPending = true;
+                return;
+            }
+
+            placementRefreshInFlight = true;
+            var generation = placementRefreshGeneration;
+            var requestedScreenName = screenName;
+            var requestedAlignment = alignment;
+            Task.Run(() =>
+            {
+                try
+                {
+                    var succeeded = environment.TryGetPlacement(
+                        requestedScreenName,
+                        requestedAlignment,
+                        out var placement,
+                        out var reason);
+                    return new PlacementProbeResult(succeeded, placement, reason);
+                }
+                catch
+                {
+                    return new PlacementProbeResult(false, null, LyricDockFailureReason.TaskbarChanged);
+                }
+            }).ContinueWith(task => PostToUi(() =>
+            {
+                placementRefreshInFlight = false;
+                if (!disposed &&
+                    enabled &&
+                    generation == placementRefreshGeneration &&
+                    string.Equals(requestedScreenName, screenName, StringComparison.OrdinalIgnoreCase) &&
+                    requestedAlignment == alignment)
+                {
+                    var result = task.Result;
+                    ApplyPlacementProbe(result.Succeeded, result.Placement, result.Reason, presentSnapshot: false);
+                }
+
+                if (placementRefreshPending && enabled && !disposed)
+                {
+                    placementRefreshPending = false;
+                    QueuePlacementRefresh();
+                }
+            }), TaskScheduler.Default);
+        }
+
+        private sealed class PlacementProbeResult
+        {
+            public PlacementProbeResult(bool succeeded, LyricDockPlacement placement, LyricDockFailureReason reason)
+            {
+                Succeeded = succeeded;
+                Placement = placement;
+                Reason = reason;
+            }
+
+            public bool Succeeded { get; }
+            public LyricDockPlacement Placement { get; }
+            public LyricDockFailureReason Reason { get; }
         }
         private void HideAndQueueRestore()
         {

@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -17,6 +18,13 @@ namespace LyricHover.App.Modules
     /// </summary>
     public sealed class WordTrackingTextBlock : Grid
     {
+        private static readonly TimeSpan MaximumContinuousAnchorDrift = TimeSpan.FromMilliseconds(500);
+        private const int MaximumCachedVisualWordMaps = 128;
+        private static readonly object VisualWordMapCacheSync = new object();
+        private static readonly Dictionary<VisualWordMapCacheKey, VisualWordMap> VisualWordMapCache =
+            new Dictionary<VisualWordMapCacheKey, VisualWordMap>();
+        private static readonly Queue<VisualWordMapCacheKey> VisualWordMapCacheOrder =
+            new Queue<VisualWordMapCacheKey>();
         private readonly TextBlock dimText = new TextBlock();
         private readonly TextBlock highlightText = new TextBlock();
         private readonly RectangleGeometry highlightClip = new RectangleGeometry();
@@ -27,7 +35,7 @@ namespace LyricHover.App.Modules
         private bool renderingSubscribed;
         private double displayedProgress = -1;
         private double dimOpacity = 0.45;
-        private readonly List<VisualWordSpan> visualWordSpans = new List<VisualWordSpan>();
+        private IReadOnlyList<VisualWordSpan> visualWordSpans = Array.Empty<VisualWordSpan>();
         private double measuredTextWidth;
 
         public WordTrackingTextBlock()
@@ -150,18 +158,29 @@ namespace LyricHover.App.Modules
             var textChanged = !string.Equals(Text, normalizedText, StringComparison.Ordinal);
             var nextTrackingLine = IsMatchingWordTimedLine(line, normalizedText) ? line : null;
             var trackingLineChanged = !ReferenceEquals(trackingLine, nextTrackingLine);
+            var now = Stopwatch.GetTimestamp();
+            var keepContinuousAnchor = !textChanged &&
+                !trackingLineChanged &&
+                playbackAdvancing &&
+                isPlaying &&
+                nextTrackingLine != null &&
+                Math.Abs((effectivePosition - GetProjectedPosition(now)).TotalMilliseconds) <=
+                    MaximumContinuousAnchorDrift.TotalMilliseconds;
             Text = normalizedText;
             trackingLine = nextTrackingLine;
             if (textChanged || trackingLineChanged)
             {
                 RebuildVisualWordMap();
             }
-            anchorPosition = effectivePosition;
-            anchorTimestamp = Stopwatch.GetTimestamp();
+            if (!keepContinuousAnchor)
+            {
+                anchorPosition = effectivePosition;
+                anchorTimestamp = now;
+            }
             playbackAdvancing = isPlaying && trackingLine != null;
 
             var progress = trackingLine != null
-                ? GetVisualProgress(effectivePosition)
+                ? GetVisualProgress(keepContinuousAnchor ? GetProjectedPosition(now) : effectivePosition)
                 : fallbackProgress;
             ApplyClip(progress);
             UpdateRenderingSubscription();
@@ -181,9 +200,7 @@ namespace LyricHover.App.Modules
                 return;
             }
 
-            var elapsedTicks = Stopwatch.GetTimestamp() - anchorTimestamp;
-            var elapsed = TimeSpan.FromSeconds(elapsedTicks / (double)Stopwatch.Frequency);
-            var progress = GetVisualProgress(anchorPosition + elapsed);
+            var progress = GetVisualProgress(GetProjectedPosition(Stopwatch.GetTimestamp()));
             ApplyClip(progress);
             if (progress >= 1)
             {
@@ -240,6 +257,13 @@ namespace LyricHover.App.Modules
             RebuildVisualWordMap();
         }
 
+        private TimeSpan GetProjectedPosition(long timestamp)
+        {
+            var elapsedTicks = timestamp - anchorTimestamp;
+            var elapsed = TimeSpan.FromSeconds(Math.Max(0, elapsedTicks) / (double)Stopwatch.Frequency);
+            return anchorPosition + elapsed;
+        }
+
         private double GetVisualProgress(TimeSpan position)
         {
             if (trackingLine == null || visualWordSpans.Count != trackingLine.Words.Count || measuredTextWidth <= 0)
@@ -251,51 +275,186 @@ namespace LyricHover.App.Modules
                 var word = trackingLine.Words[index];
                 var span = visualWordSpans[index];
                 if (elapsed >= word.Offset + word.Duration) continue;
-                if (elapsed <= word.Offset) return span.Start / measuredTextWidth;
+                if (elapsed <= word.Offset) return span.Start;
                 var fraction = word.Duration <= TimeSpan.Zero
                     ? 1
                     : Math.Min(1, (elapsed - word.Offset).TotalMilliseconds / word.Duration.TotalMilliseconds);
-                return Math.Max(0, Math.Min(1, (span.Start + ((span.End - span.Start) * fraction)) / measuredTextWidth));
+                return Math.Max(0, Math.Min(1, span.Start + ((span.End - span.Start) * fraction)));
             }
             return 1;
         }
 
         private void RebuildVisualWordMap()
         {
-            visualWordSpans.Clear();
-            measuredTextWidth = MeasureTextWidth(Text);
-            if (trackingLine == null || !trackingLine.HasWordTiming || measuredTextWidth <= 0) return;
+            visualWordSpans = Array.Empty<VisualWordSpan>();
+            measuredTextWidth = 0;
+            if (string.IsNullOrEmpty(Text)) return;
+
+            var dpi = GetPixelsPerDip();
+            if (trackingLine != null && trackingLine.HasWordTiming)
+            {
+                var cacheKey = new VisualWordMapCacheKey(
+                    trackingLine,
+                    Text,
+                    FontFamily?.Source ?? string.Empty,
+                    FontStyle,
+                    FontWeight,
+                    FontStretch,
+                    dpi,
+                    CultureInfo.CurrentUICulture.Name);
+                if (TryGetCachedVisualWordMap(cacheKey, out var cachedMap))
+                {
+                    visualWordSpans = cachedMap.Spans;
+                    measuredTextWidth = CreateFormattedText(Text, dpi).WidthIncludingTrailingWhitespace;
+                    return;
+                }
+
+                var builtMap = BuildVisualWordMap();
+                visualWordSpans = builtMap.Spans;
+                measuredTextWidth = builtMap.TextWidth;
+                CacheVisualWordMap(cacheKey, builtMap);
+                return;
+            }
+
+            measuredTextWidth = CreateFormattedText(Text, dpi).WidthIncludingTrailingWhitespace;
+        }
+
+        private VisualWordMap BuildVisualWordMap()
+        {
+            var formattedText = CreateFormattedText(Text, GetPixelsPerDip());
+            var textWidth = formattedText.WidthIncludingTrailingWhitespace;
+            if (trackingLine == null || !trackingLine.HasWordTiming || textWidth <= 0)
+                return new VisualWordMap(textWidth, Array.Empty<VisualWordSpan>());
+
+            var spans = new List<VisualWordSpan>(trackingLine.Words.Count);
             var cursor = 0;
             foreach (var word in trackingLine.Words)
             {
                 var index = Text.IndexOf(word.Text, cursor, StringComparison.Ordinal);
-                if (index < cursor)
+                if (index < cursor || string.IsNullOrEmpty(word.Text))
                 {
-                    visualWordSpans.Clear();
-                    return;
+                    return new VisualWordMap(textWidth, Array.Empty<VisualWordSpan>());
                 }
-                var start = MeasureTextWidth(Text.Substring(0, index));
                 cursor = index + word.Text.Length;
-                var end = MeasureTextWidth(Text.Substring(0, cursor));
-                visualWordSpans.Add(new VisualWordSpan(start, end));
+                var bounds = formattedText.BuildHighlightGeometry(new Point(0, 0), index, word.Text.Length).Bounds;
+                spans.Add(new VisualWordSpan(bounds.Left / textWidth, bounds.Right / textWidth));
             }
+            return new VisualWordMap(textWidth, spans.ToArray());
         }
 
-        private double MeasureTextWidth(string value)
+        private FormattedText CreateFormattedText(string value, double dpi)
         {
-            if (string.IsNullOrEmpty(value)) return 0;
-            var dpi = 1.0;
-            try { dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip; }
-            catch { }
             var typeface = new Typeface(FontFamily, FontStyle, FontWeight, FontStretch);
             return new FormattedText(
-                value,
+                value ?? string.Empty,
                 CultureInfo.CurrentUICulture,
                 FlowDirection.LeftToRight,
                 typeface,
                 FontSize,
                 Foreground ?? Brushes.White,
-                dpi).WidthIncludingTrailingWhitespace;
+                dpi);
+        }
+
+        private double GetPixelsPerDip()
+        {
+            try { return VisualTreeHelper.GetDpi(this).PixelsPerDip; }
+            catch { return 1.0; }
+        }
+
+        private static bool TryGetCachedVisualWordMap(VisualWordMapCacheKey key, out VisualWordMap map)
+        {
+            lock (VisualWordMapCacheSync)
+            {
+                return VisualWordMapCache.TryGetValue(key, out map);
+            }
+        }
+
+        private static void CacheVisualWordMap(VisualWordMapCacheKey key, VisualWordMap map)
+        {
+            lock (VisualWordMapCacheSync)
+            {
+                if (VisualWordMapCache.ContainsKey(key)) return;
+                while (VisualWordMapCache.Count >= MaximumCachedVisualWordMaps && VisualWordMapCacheOrder.Count > 0)
+                {
+                    VisualWordMapCache.Remove(VisualWordMapCacheOrder.Dequeue());
+                }
+                VisualWordMapCache[key] = map;
+                VisualWordMapCacheOrder.Enqueue(key);
+            }
+        }
+
+        private sealed class VisualWordMap
+        {
+            public VisualWordMap(double textWidth, IReadOnlyList<VisualWordSpan> spans)
+            {
+                TextWidth = textWidth;
+                Spans = spans ?? Array.Empty<VisualWordSpan>();
+            }
+
+            public double TextWidth { get; }
+            public IReadOnlyList<VisualWordSpan> Spans { get; }
+        }
+
+        private readonly struct VisualWordMapCacheKey : IEquatable<VisualWordMapCacheKey>
+        {
+            private readonly LyricLine line;
+            private readonly string text;
+            private readonly string fontFamily;
+            private readonly FontStyle fontStyle;
+            private readonly FontWeight fontWeight;
+            private readonly FontStretch fontStretch;
+            private readonly double pixelsPerDip;
+            private readonly string cultureName;
+
+            public VisualWordMapCacheKey(
+                LyricLine line,
+                string text,
+                string fontFamily,
+                FontStyle fontStyle,
+                FontWeight fontWeight,
+                FontStretch fontStretch,
+                double pixelsPerDip,
+                string cultureName)
+            {
+                this.line = line;
+                this.text = text ?? string.Empty;
+                this.fontFamily = fontFamily ?? string.Empty;
+                this.fontStyle = fontStyle;
+                this.fontWeight = fontWeight;
+                this.fontStretch = fontStretch;
+                this.pixelsPerDip = pixelsPerDip;
+                this.cultureName = cultureName ?? string.Empty;
+            }
+
+            public bool Equals(VisualWordMapCacheKey other)
+            {
+                return ReferenceEquals(line, other.line) &&
+                    string.Equals(text, other.text, StringComparison.Ordinal) &&
+                    string.Equals(fontFamily, other.fontFamily, StringComparison.Ordinal) &&
+                    fontStyle == other.fontStyle &&
+                    fontWeight == other.fontWeight &&
+                    fontStretch == other.fontStretch &&
+                    pixelsPerDip.Equals(other.pixelsPerDip) &&
+                    string.Equals(cultureName, other.cultureName, StringComparison.Ordinal);
+            }
+
+            public override bool Equals(object obj) => obj is VisualWordMapCacheKey other && Equals(other);
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    var hash = RuntimeHelpers.GetHashCode(line);
+                    hash = (hash * 397) ^ text.GetHashCode();
+                    hash = (hash * 397) ^ fontFamily.GetHashCode();
+                    hash = (hash * 397) ^ fontStyle.GetHashCode();
+                    hash = (hash * 397) ^ fontWeight.GetHashCode();
+                    hash = (hash * 397) ^ fontStretch.GetHashCode();
+                    hash = (hash * 397) ^ pixelsPerDip.GetHashCode();
+                    hash = (hash * 397) ^ cultureName.GetHashCode();
+                    return hash;
+                }
+            }
         }
 
         private sealed class VisualWordSpan

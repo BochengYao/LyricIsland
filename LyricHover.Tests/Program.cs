@@ -142,6 +142,8 @@ namespace LyricHover.Tests
             suite.Run("taskbar controller re-hides Widgets after a manual Windows Settings change", TaskbarControllerRehidesWidgetsAfterManualSettingsChange);
             suite.Run("taskbar controller keeps lyrics when Widgets hiding is unavailable", TaskbarControllerKeepsLyricsWhenWidgetsHidingUnavailable);
             suite.Run("taskbar controller renders before slow Widgets verification", TaskbarControllerRendersBeforeSlowWidgetsVerification);
+            suite.Run("taskbar lyrics render before slow placement probing", TaskbarLyricsRenderBeforeSlowPlacementProbing);
+            suite.Run("taskbar controller skips unchanged placement work", TaskbarControllerSkipsUnchangedPlacementWork);
             suite.Run("taskbar controller shares a snapshot and honors width limits", TaskbarControllerSharesSnapshotAndHonorsWidthLimits);
             suite.Run("taskbar settings schema defaults to disabled", TaskbarSettingsSchemaDefaultsToDisabled);
             suite.Run("taskbar setting remains disabled when loading legacy settings", TaskbarSettingIsCompatibleWithLegacySettings);
@@ -301,8 +303,11 @@ namespace LyricHover.Tests
             suite.Run("tracks reference changes without treating equal content as the same object", TracksReferenceChangesWithoutTreatingEqualContentAsTheSameObject);
             suite.Run("module views skip unchanged rendering work", ModuleViewsSkipUnchangedRenderingWork);
             suite.Run("word tracking uses frame-smooth overlay clipping", WordTrackingUsesFrameSmoothOverlayClipping);
+            suite.Run("word tracking preserves its projection across small timeline jitter", WordTrackingPreservesProjectionAcrossSmallTimelineJitter);
             suite.Run("word tracking clip follows glyph width", WordTrackingClipFollowsGlyphWidth);
             suite.Run("word tracking reuses glyph map for the same line", WordTrackingReusesGlyphMapForSameLine);
+            suite.Run("word tracking shares cached glyph maps across lyric layers", WordTrackingSharesGlyphMapsAcrossLayers);
+            suite.Run("lyric transitions freeze outgoing word projection", LyricTransitionsFreezeOutgoingWordProjection);
             suite.Run("word tracking refreshes at lyric line boundaries", WordTrackingRefreshesAtLyricLineBoundaries);
             suite.Run("coalesces identical hover samples without losing changed samples", CoalescesIdenticalHoverSamplesWithoutLosingChangedSamples);
             suite.Run("settings dirty fingerprint avoids a second JSON deep clone", SettingsDirtyFingerprintAvoidsASecondJsonDeepClone);
@@ -1608,11 +1613,13 @@ namespace LyricHover.Tests
 
             environment.PlacementFailure = LyricDockFailureReason.TaskbarAutoHiddenOrFullscreen;
             controller.RefreshPlacement();
+            Assert.True(SpinWait.SpinUntil(() => !surface.IsVisible, TimeSpan.FromSeconds(3)));
             Assert.False(surface.IsVisible);
             Assert.True(controller.IsEnabled);
 
             environment.PlacementFailure = LyricDockFailureReason.None;
             controller.RefreshPlacement();
+            Assert.True(SpinWait.SpinUntil(() => surface.IsVisible, TimeSpan.FromSeconds(3)));
             Assert.True(surface.IsVisible);
             Assert.True(controller.IsEnabled);
         }
@@ -4831,13 +4838,31 @@ namespace LyricHover.Tests
 
             Assert.True(presenter.Contains("CompositionTarget.Rendering += Rendering"));
             Assert.True(presenter.Contains("RectangleGeometry"));
-            Assert.True(presenter.Contains("GetVisualProgress(anchorPosition + elapsed)"));
+            Assert.True(presenter.Contains("GetVisualProgress(GetProjectedPosition(Stopwatch.GetTimestamp()))"));
             Assert.True(island.Contains("WordTrackingTextBlock"));
             Assert.True(dock.Contains("WordTrackingTextBlock"));
             Assert.True(snapshot.Contains("PrimaryWordTrackingLine"));
             Assert.True(snapshot.Contains("WordTrackingPosition"));
             Assert.False(island.Contains("Math.Round(text.Length * wordTrackingProgress)"));
             Assert.False(dock.Contains("Math.Round(text.Length * wordTrackingProgress)"));
+        }
+
+        static void WordTrackingPreservesProjectionAcrossSmallTimelineJitter()
+        {
+            var line = new LyricLine(
+                TimeSpan.Zero,
+                "smooth",
+                new[] { new LyricWord(TimeSpan.Zero, TimeSpan.FromSeconds(4), "smooth") });
+            var block = new LyricHover.App.Modules.WordTrackingTextBlock();
+            var anchorPosition = typeof(LyricHover.App.Modules.WordTrackingTextBlock)
+                .GetField("anchorPosition", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            block.Present(line.Text, line, TimeSpan.FromSeconds(1), true);
+            block.Present(line.Text, line, TimeSpan.FromSeconds(1.2), true);
+            Assert.Equal(TimeSpan.FromSeconds(1), (TimeSpan)anchorPosition.GetValue(block));
+
+            block.Present(line.Text, line, TimeSpan.FromSeconds(3), true);
+            Assert.Equal(TimeSpan.FromSeconds(3), (TimeSpan)anchorPosition.GetValue(block));
         }
 
         static void WordTrackingClipFollowsGlyphWidth()
@@ -4900,6 +4925,54 @@ namespace LyricHover.Tests
 
             Assert.True(ReferenceEquals(firstMap, secondMap));
             Assert.True(ReferenceEquals(firstSpan, secondMap[0]));
+        }
+
+        static void WordTrackingSharesGlyphMapsAcrossLayers()
+        {
+            var line = new LyricLine(
+                TimeSpan.FromSeconds(1),
+                "shared glyph map",
+                new[]
+                {
+                    new LyricWord(TimeSpan.Zero, TimeSpan.FromSeconds(1), "shared"),
+                    new LyricWord(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), "glyph"),
+                    new LyricWord(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(1), "map")
+                });
+            var first = new LyricHover.App.Modules.WordTrackingTextBlock
+            {
+                FontFamily = new System.Windows.Media.FontFamily("Arial"),
+                FontSize = 24
+            };
+            var second = new LyricHover.App.Modules.WordTrackingTextBlock
+            {
+                FontFamily = first.FontFamily,
+                FontSize = 13
+            };
+
+            first.Present(line.Text, line, TimeSpan.FromSeconds(1.25), true);
+            second.Present(line.Text, line, TimeSpan.FromSeconds(1.25), true);
+            var field = typeof(LyricHover.App.Modules.WordTrackingTextBlock)
+                .GetField("visualWordSpans", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.True(ReferenceEquals(field.GetValue(first), field.GetValue(second)));
+            var source = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "LyricHover.App", "Modules", "WordTrackingTextBlock.cs"));
+            Assert.True(source.Contains("BuildHighlightGeometry"));
+            Assert.False(source.Contains("MeasureTextWidth(Text.Substring"));
+        }
+
+        static void LyricTransitionsFreezeOutgoingWordProjection()
+        {
+            var root = Path.Combine(GetSolutionRoot(), "LyricHover.App");
+            var island = File.ReadAllText(Path.Combine(root, "Modules", "LyricsModuleView.xaml.cs"));
+            var dock = File.ReadAllText(Path.Combine(root, "LyricDock", "LyricDockWindow.cs"));
+            var islandTransition = island.Substring(island.IndexOf("private void SetIslandText", StringComparison.Ordinal));
+            var dockTransition = dock.Substring(dock.IndexOf("public void Present", StringComparison.Ordinal));
+
+            Assert.True(islandTransition.IndexOf("PrimaryLyricText.StopPlaybackProjection();", StringComparison.Ordinal) <
+                islandTransition.IndexOf("PreparePrimaryLine(", StringComparison.Ordinal));
+            Assert.True(dockTransition.IndexOf("currentPrimary.StopPlaybackProjection();", StringComparison.Ordinal) <
+                dockTransition.IndexOf("PreparePrimaryLine(", StringComparison.Ordinal));
         }
 
         static void WordTrackingRefreshesAtLyricLineBoundaries()
@@ -5368,6 +5441,97 @@ namespace LyricHover.Tests
             finally
             {
                 environment.RefreshWaitHandle.Set();
+                if (File.Exists(recoveryPath)) File.Delete(recoveryPath);
+            }
+        }
+
+        static void TaskbarLyricsRenderBeforeSlowPlacementProbing()
+        {
+            var environment = new FakeLyricDockEnvironment { TaskbarDa = TaskbarDaValueState.Disabled };
+            var recoveryPath = Path.Combine(Path.GetTempPath(), "lyrichover-taskbar-" + Guid.NewGuid() + ".txt");
+            var surface = new FakeTaskbarSurface();
+            using var controller = new LyricDockController(environment, new WidgetVisibilityLease(environment, recoveryPath), surface);
+            Assert.True(controller.Start(true, "DISPLAY1", LyricDockAlignment.Center));
+
+            environment.PlacementEntered = new ManualResetEventSlim(false);
+            environment.PlacementWaitHandle = new ManualResetEventSlim(false);
+            var snapshot = new LyricsPresentationSnapshot { PrimaryText = "next frame" };
+            try
+            {
+                controller.RefreshPlacement();
+                Assert.True(environment.PlacementEntered.Wait(TimeSpan.FromSeconds(3)));
+                var started = Stopwatch.StartNew();
+                controller.Present(snapshot);
+                Assert.True(started.Elapsed < TimeSpan.FromMilliseconds(100));
+                Assert.True(ReferenceEquals(snapshot, surface.LastSnapshot));
+            }
+            finally
+            {
+                environment.PlacementWaitHandle.Set();
+                if (File.Exists(recoveryPath)) File.Delete(recoveryPath);
+            }
+        }
+
+        static void TaskbarControllerSkipsUnchangedPlacementWork()
+        {
+            var bounds = new TaskbarBounds { Left = 0, Top = 1040, Right = 1920, Bottom = 1080 };
+            var first = new LyricDockPlacement
+            {
+                Left = 420,
+                Top = 1040,
+                Width = 360,
+                Height = 40,
+                DpiScale = 1,
+                IsVisible = true,
+                IsDarkTheme = true,
+                TaskbarBounds = bounds
+            };
+            var same = new LyricDockPlacement
+            {
+                Left = first.Left,
+                Top = first.Top,
+                Width = first.Width,
+                Height = first.Height,
+                DpiScale = first.DpiScale,
+                IsVisible = first.IsVisible,
+                IsDarkTheme = first.IsDarkTheme,
+                TaskbarBounds = new TaskbarBounds
+                {
+                    Left = bounds.Left,
+                    Top = bounds.Top,
+                    Right = bounds.Right,
+                    Bottom = bounds.Bottom
+                }
+            };
+
+            Assert.True(LyricDockController.AreEquivalentPlacements(first, 360, same, 360));
+            var environment = new FakeLyricDockEnvironment
+            {
+                TaskbarDa = TaskbarDaValueState.Disabled,
+                Placement = first
+            };
+            var recoveryPath = Path.Combine(Path.GetTempPath(), "lyrichover-taskbar-" + Guid.NewGuid() + ".txt");
+            var surface = new FakeTaskbarSurface();
+            using var controller = new LyricDockController(
+                environment,
+                new WidgetVisibilityLease(environment, recoveryPath),
+                surface);
+            try
+            {
+                Assert.True(controller.Start(true, "DISPLAY1", LyricDockAlignment.Center));
+                var show = typeof(LyricDockController).GetMethod(
+                    "Show",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                show.Invoke(controller, new object[] { same, false });
+                Assert.Equal(1, surface.PlaceCalls);
+
+                same.Left += 2;
+                Assert.False(LyricDockController.AreEquivalentPlacements(first, 360, same, 360));
+                show.Invoke(controller, new object[] { same, false });
+                Assert.Equal(2, surface.PlaceCalls);
+            }
+            finally
+            {
                 if (File.Exists(recoveryPath)) File.Delete(recoveryPath);
             }
         }
@@ -5973,6 +6137,8 @@ namespace LyricHover.Tests
         public ManualResetEventSlim RefreshWaitHandle { get; set; }
         public ManualResetEventSlim SettingsUiWaitHandle { get; set; }
         public ManualResetEventSlim SettingsUiEntered { get; set; }
+        public ManualResetEventSlim PlacementWaitHandle { get; set; }
+        public ManualResetEventSlim PlacementEntered { get; set; }
         public LyricDockFailureReason PlacementFailure { get; set; }
         public LyricDockAlignment LastAlignment { get; private set; }
         public LyricDockPlacement Placement { get; set; } = new LyricDockPlacement
@@ -5986,6 +6152,8 @@ namespace LyricHover.Tests
         public event EventHandler Changed;
         public bool TryGetPlacement(string screenName, LyricDockAlignment alignment, out LyricDockPlacement placement, out LyricDockFailureReason failureReason)
         {
+            PlacementEntered?.Set();
+            PlacementWaitHandle?.Wait();
             LastAlignment = alignment;
             failureReason = PlacementFailure;
             placement = Placement;
@@ -6031,10 +6199,11 @@ namespace LyricHover.Tests
         public LyricsPresentationSnapshot LastSnapshot { get; private set; }
         public double LastWidth { get; private set; }
         public LyricDockPlacement LastPlacement { get; private set; }
+        public int PlaceCalls { get; private set; }
         public void Show() { IsVisible = true; }
         public void Hide() { IsVisible = false; }
         public void Present(LyricsPresentationSnapshot snapshot) { LastSnapshot = snapshot; }
-        public void Place(LyricDockPlacement placement, double width) { LastPlacement = placement; LastWidth = width; }
+        public void Place(LyricDockPlacement placement, double width) { PlaceCalls++; LastPlacement = placement; LastWidth = width; }
         public void RaiseSettingsRequested() { SettingsRequested?.Invoke(this, EventArgs.Empty); }
     }
 

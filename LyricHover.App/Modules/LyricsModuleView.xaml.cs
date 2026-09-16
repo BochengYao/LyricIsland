@@ -91,6 +91,9 @@ namespace LyricHover.App.Modules
 
             ResetLyricsAnimationState();
             StopMarquee();
+            // The outgoing line is only being translated/faded now. Freeze its word
+            // projection so a page transition never leaves two render callbacks active.
+            PrimaryLyricText.StopPlaybackProjection();
             PreparePrimaryLine(
                 IncomingPrimaryLyricLinePanel,
                 IncomingPrimaryLyricText,
