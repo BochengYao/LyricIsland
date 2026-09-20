@@ -25,6 +25,7 @@ const FEATURE_CONTENT_VERSION = "__FEATURE_CONTENT_V1__";
 const LEGACY_FEATURE_RELEASE_VERSION = "早期更新";
 const AUDIT_VERSION = "__AUDIT_LOG_V1__";
 const RELEASE_PREVIEW_SCHEMA_VERSION = 2;
+const RELEASE_PREVIEW_PROGRESS_ANCHORS = [0, 10, 30, 50, 65, 80, 90, 95];
 const KNOWN_V32_NOTE_ZH = "新版本的主要功能已基本完成，目前正在进一步优化性能、功耗与长期运行体验，发布时间调整至本月内。";
 const DEFAULT_FEATURE_CONTENT = JSON.parse("__ESA_FEATURE_CONTENT_JSON__");
 const DEFAULT_RELEASE_PREVIEW = JSON.parse("__ESA_RELEASE_PREVIEW_JSON__");
@@ -269,14 +270,15 @@ function splitPreviewItems(value) {
 
 function safePreviewProgress(value) {
   if (typeof value !== "number" || !Number.isFinite(value)) return 0;
-  return Math.min(100, Math.max(0, Math.round(value)));
+  const rounded = Math.min(100, Math.max(0, Math.round(value)));
+  if (rounded === 100) return 100;
+  return [...RELEASE_PREVIEW_PROGRESS_ANCHORS].reverse().find((anchor) => anchor <= rounded) ?? 0;
 }
 
 function safePreviewStage(value, progress) {
   if (progress !== 100) return "development";
   if (value === "ready") return "ready";
-  if (value === "testing") return "testing";
-  return "development";
+  return "testing";
 }
 
 function stableLegacyPreviewFeatureId(previewId, content, position) {
@@ -1298,16 +1300,19 @@ function previewFeatures(value) {
     const progress = item.progress === null || item.progress === undefined || item.progress === ""
       ? 0
       : item.progress;
-    if (typeof progress !== "number" || !Number.isInteger(progress) || progress < 0 || progress > 100) {
-      throw new PreviewValidationError("功能进度必须是 0–100 的整数");
+    if (typeof progress !== "number" || !Number.isInteger(progress)) {
+      throw new PreviewValidationError("功能进度必须使用指定锚点");
     }
     const rawStage = item.stage === undefined || item.stage === null || item.stage === "" ? "development" : item.stage;
     if (rawStage !== "development" && rawStage !== "testing" && rawStage !== "ready") {
       throw new PreviewValidationError("功能状态无效");
     }
     const stage = rawStage;
+    if (stage === "development" && !RELEASE_PREVIEW_PROGRESS_ANCHORS.includes(progress)) {
+      throw new PreviewValidationError("开发进度必须使用 0、10、30、50、65、80、90 或 95");
+    }
     if (stage !== "development" && progress !== 100) {
-      throw new PreviewValidationError("待测试或待上线状态必须先达到 100%");
+      throw new PreviewValidationError("测试中或待上线状态必须使用完成进度");
     }
     const localizedText = (field) => typeof item[field] === "string"
       ? item[field].trim().slice(0, 2400)

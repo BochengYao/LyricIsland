@@ -12,7 +12,7 @@ type LegendItem = {
 const legendItems: LegendItem[] = [
   { state: "notStarted", progress: 0, stage: "development" },
   { state: "inProgress", progress: 65, stage: "development" },
-  { state: "testing", progress: 100, stage: "development" },
+  { state: "testing", progress: 100, stage: "testing" },
   { state: "ready", progress: 100, stage: "ready" }
 ];
 
@@ -31,25 +31,25 @@ function stateFor(progress: number, stage: ReleasePreviewFeatureStage): PreviewR
 function stateLabel(locale: Locale, state: PreviewRingState, progress: number) {
   if (locale === "zh") {
     if (state === "notStarted") return "未开始";
-    if (state === "testing") return "开发完成，待测试";
-    if (state === "ready") return "测试完成，待上线";
+    if (state === "testing") return "测试中";
+    if (state === "ready") return "待上线";
     return `开发中，进度 ${progress}%`;
   }
   if (locale === "zhHant") {
     if (state === "notStarted") return "尚未開始";
-    if (state === "testing") return "開發完成，等待測試";
-    if (state === "ready") return "測試完成，等待上線";
+    if (state === "testing") return "測試中";
+    if (state === "ready") return "等待上線";
     return `開發中，進度 ${progress}%`;
   }
   if (locale === "ja") {
     if (state === "notStarted") return "未着手";
-    if (state === "testing") return "開発完了・テスト待ち";
-    if (state === "ready") return "テスト完了・リリース待ち";
+    if (state === "testing") return "テスト中";
+    if (state === "ready") return "リリース待ち";
     return `開発中、進捗 ${progress}%`;
   }
   if (state === "notStarted") return "Not started";
-  if (state === "testing") return "Development complete, awaiting testing";
-  if (state === "ready") return "Testing complete, ready for release";
+  if (state === "testing") return "Testing";
+  if (state === "ready") return "Ready for release";
   return `In development, ${progress}% complete`;
 }
 
@@ -92,7 +92,9 @@ export function ReleasePreviewProgressRing({
       } : {})}
     >
       {!decorative && <title>{label}</title>}
-      <circle className="previewProgressRingTrack" cx="8" cy="8" r="7" />
+      {state !== "testing" && state !== "ready" && (
+        <circle className="previewProgressRingTrack" cx="8" cy="8" r="7" />
+      )}
       {state !== "notStarted" && (
         <circle
           className="previewProgressRingValue"

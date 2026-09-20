@@ -6,7 +6,10 @@ import {
   updateReleasePreview
 } from "@/lib/incentive-store";
 import type { ReleasePreviewFeature } from "@/data/incentives-types";
-import { encodeReleasePreviewFeatures } from "@/data/release-preview-content";
+import {
+  encodeReleasePreviewFeatures,
+  RELEASE_PREVIEW_PROGRESS_ANCHORS
+} from "@/data/release-preview-content";
 
 class PreviewValidationError extends Error {}
 
@@ -32,16 +35,21 @@ function previewFeatures(value: unknown): ReleasePreviewFeature[] {
     const progress = source.progress === null || source.progress === undefined || source.progress === ""
       ? 0
       : source.progress;
-    if (typeof progress !== "number" || !Number.isInteger(progress) || progress < 0 || progress > 100) {
-      throw new PreviewValidationError("功能进度必须是 0–100 的整数");
+    if (typeof progress !== "number" || !Number.isInteger(progress)) {
+      throw new PreviewValidationError("功能进度必须使用指定锚点");
     }
     const rawStage = source.stage === undefined || source.stage === null || source.stage === "" ? "development" : source.stage;
     if (rawStage !== "development" && rawStage !== "testing" && rawStage !== "ready") {
       throw new PreviewValidationError("功能状态无效");
     }
     const stage = rawStage;
+    if (stage === "development" && !RELEASE_PREVIEW_PROGRESS_ANCHORS.includes(
+      progress as typeof RELEASE_PREVIEW_PROGRESS_ANCHORS[number]
+    )) {
+      throw new PreviewValidationError("开发进度必须使用 0、10、30、50、65、80、90 或 95");
+    }
     if (stage !== "development" && progress !== 100) {
-      throw new PreviewValidationError("待测试或待上线状态必须先达到 100%");
+      throw new PreviewValidationError("测试中或待上线状态必须使用完成进度");
     }
     const localizedText = (field: "content_zh" | "content_en" | "content_zh_tw" | "content_ja") =>
       typeof source[field] === "string" ? source[field].trim().slice(0, 2400) : "";

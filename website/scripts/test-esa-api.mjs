@@ -980,7 +980,7 @@ try {
     {
       id: "feature-word-follow",
       sort_order: 98,
-      progress: 85,
+      progress: 80,
       content_zh: "新增逐字跟随。",
       content_en: "Add word-by-word follow.",
       content_zh_tw: "新增逐字跟隨。",
@@ -989,7 +989,7 @@ try {
     {
       id: "feature-dock",
       sort_order: 97,
-      progress: 60,
+      progress: 65,
       content_zh: "新增歌词坞。",
       content_en: "Add Lyric Dock.",
       content_zh_tw: "新增歌詞塢。",
@@ -998,7 +998,8 @@ try {
     {
       id: "feature-refresh",
       sort_order: 96,
-      progress: 30,
+      progress: 100,
+      stage: "testing",
       content_zh: "支持手动刷新歌词。",
       content_en: "Support manual lyric refresh.",
       content_zh_tw: "支援手動重新整理歌詞。",
@@ -1050,9 +1051,9 @@ try {
     previewData.preview.features.map(({ id, sort_order, progress, stage }) => ({ id, sort_order, progress, stage })),
     [
       { id: "feature-power", sort_order: 1, progress: 100, stage: "ready" },
-      { id: "feature-word-follow", sort_order: 2, progress: 85, stage: "development" },
-      { id: "feature-dock", sort_order: 3, progress: 60, stage: "development" },
-      { id: "feature-refresh", sort_order: 4, progress: 30, stage: "development" },
+      { id: "feature-word-follow", sort_order: 2, progress: 80, stage: "development" },
+      { id: "feature-dock", sort_order: 3, progress: 65, stage: "development" },
+      { id: "feature-refresh", sort_order: 4, progress: 100, stage: "testing" },
       { id: "feature-legacy-progress", sort_order: 5, progress: 0, stage: "development" }
     ],
     "structured preview creation must persist every progress value and normalize sort order"
@@ -1153,12 +1154,12 @@ try {
         version: "v2.3 Invalid",
         note_zh: "非法进度不应保存。",
         note_en: "Invalid progress must not be saved.",
-        features: [{ ...structuredPreviewFeatures[0], id: "feature-invalid", progress: 101 }],
+        features: [{ ...structuredPreviewFeatures[0], id: "feature-invalid", progress: 42, stage: "development" }],
         status: "draft"
       })
     })
   );
-  assert.equal(invalidProgressResponse.status, 400, "progress outside 0-100 must be rejected");
+  assert.equal(invalidProgressResponse.status, 400, "non-anchor development progress must be rejected");
   assert.deepEqual(releasePreviewRows, beforeInvalidProgress, "invalid progress must not overwrite or append data");
 
   const beforeReservedId = structuredClone(releasePreviewRows);
@@ -1244,11 +1245,11 @@ try {
   assert.deepEqual(
     structuredPublicPreview.features.map(({ id, progress, stage }) => ({ id, progress, stage })),
     [
-      { id: "feature-dock", progress: 60, stage: "development" },
+      { id: "feature-dock", progress: 65, stage: "development" },
       { id: "feature-power", progress: 100, stage: "ready" },
-      { id: "feature-word-follow", progress: 85, stage: "development" },
+      { id: "feature-word-follow", progress: 80, stage: "development" },
       { id: "feature-legacy-progress", progress: 0, stage: "development" },
-      { id: "feature-refresh", progress: 30, stage: "development" }
+      { id: "feature-refresh", progress: 100, stage: "testing" }
     ]
   );
 

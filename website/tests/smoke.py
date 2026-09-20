@@ -1011,6 +1011,9 @@ def test_incentive_page(page: Page, path: str, lang: str, mobile: bool = False) 
     expect(preview_card.locator('[role="img"]')).to_have_attribute("aria-label", "Not started" if lang == "en" else "未开始")
     expect(page.locator(".previewLegend li")).to_have_count(4)
     expect(page.locator(".previewLegend")).to_contain_text("Not started" if lang == "en" else "未开始")
+    testing_legend = page.locator(".previewLegend li").filter(has_text="Testing" if lang == "en" else "测试中")
+    expect(testing_legend).to_have_count(1)
+    expect(testing_legend.locator("circle")).to_have_count(1)
     expect(preview_card.locator(".previewNote")).to_have_text("More polish for avoidance." if lang == "en" else "继续打磨避让。")
     expect(preview_card.locator(".previewItems p")).to_have_text(
         ["Add power-saving mode.", "Smoother retraction."] if lang == "en" else ["新增省电模式。", "收起体验更加顺滑。"]
@@ -1308,8 +1311,10 @@ def test_admin_dashboard(page: Page) -> None:
     page.get_by_role("button", name="解析为功能项").click()
     expect(page.locator(".previewFeatureEditor")).to_have_count(4)
     progress_slider = page.get_by_label("功能 1 开发进度与状态")
-    expect(progress_slider).to_have_attribute("max", "102")
+    expect(progress_slider).to_have_attribute("max", "9")
     expect(progress_slider).to_have_attribute("min", "0")
+    expect(page.locator(f'#{progress_slider.get_attribute("list")} option')).to_have_count(10)
+    expect(page.locator(".previewFeatureEditor .previewProgressRing")).to_have_count(0)
 
 
 def test_submission_validation(page: Page) -> None:

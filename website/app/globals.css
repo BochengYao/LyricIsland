@@ -7210,12 +7210,6 @@ button.danger,
 }
 
 
-.previewProgressRing.isTesting .previewProgressRingTrack,
-.previewProgressRing.isReady .previewProgressRingTrack {
-  stroke: var(--orbit);
-  opacity: 0.22;
-}
-
 .previewProgressRing.isTesting .previewProgressRingValue,
 .previewProgressRing.isReady .previewProgressRingValue {
   stroke: var(--orbit);
@@ -7223,11 +7217,11 @@ button.danger,
 
 .previewProgressRing.isTesting .previewProgressRingValue {
   transform-origin: center;
-  animation: previewTestingPulse 1.8s ease-in-out infinite;
+  animation: previewTestingPulse 1.05s ease-in-out infinite;
 }
 
 @keyframes previewTestingPulse {
-  0%, 100% { opacity: 0.62; }
+  0%, 100% { opacity: 0.24; }
   50% { opacity: 1; }
 }
 
@@ -7267,7 +7261,7 @@ button.danger,
 }
 
 .previewProgressEditor {
-  grid-template-columns: minmax(260px, 1fr) 24px minmax(150px, auto);
+  grid-template-columns: minmax(260px, 1fr) minmax(110px, auto);
 }
 
 .previewProgressSelect {
@@ -7301,7 +7295,7 @@ button.danger,
   }
 
   .previewProgressEditor {
-    grid-template-columns: minmax(0, 1fr) 24px;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .previewProgressEditorStatus {
