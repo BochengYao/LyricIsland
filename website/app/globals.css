@@ -7254,8 +7254,7 @@ button.danger,
   stroke: var(--orbit);
 }
 
-.previewProgressRing.isTesting .previewProgressRingValue {
-  transform-origin: center;
+.previewProgressRing.isTesting {
   animation: previewTestingPulse 1.05s ease-in-out infinite;
 }
 
@@ -7297,6 +7296,8 @@ button.danger,
 
 .previewLegend .previewProgressRing {
   flex: 0 0 16px;
+  align-self: center;
+  margin-top: 0;
 }
 
 .previewProgressEditor {
@@ -7380,7 +7381,7 @@ button.danger,
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .previewProgressRing.isTesting .previewProgressRingValue {
+  .previewProgressRing.isTesting {
     animation: none;
     opacity: 1;
   }

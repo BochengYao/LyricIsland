@@ -1014,6 +1014,20 @@ def test_incentive_page(page: Page, path: str, lang: str, mobile: bool = False) 
     testing_legend = page.locator(".previewLegend li").filter(has_text="Testing" if lang == "en" else "测试中")
     expect(testing_legend).to_have_count(1)
     expect(testing_legend.locator("circle")).to_have_count(1)
+    testing_alignment = testing_legend.evaluate(
+        """(item) => {
+          const icon = item.querySelector('svg').getBoundingClientRect();
+          const label = item.querySelector('span').getBoundingClientRect();
+          return {
+            iconWidth: icon.width,
+            iconHeight: icon.height,
+            centerDelta: Math.abs((icon.top + icon.height / 2) - (label.top + label.height / 2))
+          };
+        }"""
+    )
+    assert testing_alignment["iconWidth"] == 16
+    assert testing_alignment["iconHeight"] == 16
+    assert testing_alignment["centerDelta"] <= 1
     expect(preview_card.locator(".previewNote")).to_have_text("More polish for avoidance." if lang == "en" else "继续打磨避让。")
     expect(preview_card.locator(".previewItems p")).to_have_text(
         ["Add power-saving mode.", "Smoother retraction."] if lang == "en" else ["新增省电模式。", "收起体验更加顺滑。"]
