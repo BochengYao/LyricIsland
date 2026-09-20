@@ -168,6 +168,7 @@ namespace LyricHover.Tests
             suite.Run("lyric dock transition, marquee, and single-line centering match the island", LyricDockWindowMatchesIslandLyricsBehaviors);
             suite.Run("taskbar alignment positions lyric text inside the viewport", LyricDockAlignmentPositionsTextInsideViewport);
             suite.Run("lyric dock smoothly follows left-aligned taskbar icon changes", LyricDockSmoothlyFollowsTaskbarIconChanges);
+            suite.Run("lyric dock keeps its placement while the taskbar context menu is open", LyricDockKeepsPlacementWhileTaskbarContextMenuIsOpen);
             suite.Run("lyric dock text keeps contrast on transparent taskbars", LyricDockTextKeepsContrastOnTransparentTaskbars);
             suite.Run("builds island geometry for measured module size", BuildsIslandGeometryForMeasuredModuleSize);
             suite.Run("module host exposes all v2 module views", ModuleHostExposesAllV2ModuleViews);
@@ -5998,6 +5999,46 @@ namespace LyricHover.Tests
             Assert.True(window.Contains("TimeSpan.FromMilliseconds(260)"));
             Assert.True(window.Contains("QuarticEase { EasingMode = EasingMode.EaseOut }"));
             Assert.True(window.Contains("HandoffBehavior.SnapshotAndReplace"));
+        }
+
+        static void LyricDockKeepsPlacementWhileTaskbarContextMenuIsOpen()
+        {
+            var taskbar = new TaskbarBounds { Left = 0, Top = 1040, Right = 1920, Bottom = 1080 };
+            var previous = new LyricDockPlacement
+            {
+                Left = 688,
+                Top = 1040,
+                Width = 360,
+                Height = 40,
+                DpiScale = 1,
+                IsLeftAligned = false,
+                IsVisible = true,
+                TaskbarBounds = taskbar,
+                WidgetsBounds = new TaskbarBounds { Left = 688, Top = 1040, Right = 748, Bottom = 1080 }
+            };
+
+            var retained = LyricDockPlacementStabilityPolicy.RetainForTaskbarContextMenu(
+                true, previous, taskbar, isLeftAligned: true, isDarkTheme: true);
+            Assert.True(retained != null);
+            Assert.Equal(688.0, retained.Left);
+            Assert.True(retained.IsLeftAligned);
+            Assert.True(retained.IsDarkTheme);
+            Assert.False(ReferenceEquals(previous, retained));
+            Assert.False(ReferenceEquals(previous.TaskbarBounds, retained.TaskbarBounds));
+            Assert.True(LyricDockPlacementStabilityPolicy.IsNativeMenuMode(0x00000004));
+            Assert.True(LyricDockPlacementStabilityPolicy.IsNativeMenuMode(0x00000010));
+            Assert.False(LyricDockPlacementStabilityPolicy.IsNativeMenuMode(0));
+
+            Assert.True(LyricDockPlacementStabilityPolicy.RetainForTaskbarContextMenu(
+                false, previous, taskbar, isLeftAligned: false, isDarkTheme: false) == null);
+            Assert.True(LyricDockPlacementStabilityPolicy.RetainForTaskbarContextMenu(
+                true,
+                previous,
+                new TaskbarBounds { Left = 1920, Top = 1040, Right = 3840, Bottom = 1080 },
+                isLeftAligned: false,
+                isDarkTheme: false) == null);
+            Assert.True(LyricDockPlacementStabilityPolicy.RetainForTaskbarContextMenu(
+                true, null, taskbar, isLeftAligned: false, isDarkTheme: false) == null);
         }
 
         static void LyricDockTextKeepsContrastOnTransparentTaskbars()

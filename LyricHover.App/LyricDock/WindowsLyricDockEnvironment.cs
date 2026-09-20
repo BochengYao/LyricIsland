@@ -23,6 +23,8 @@ namespace LyricHover.App.LyricDock
         private readonly Forms.Timer changeTimer;
         private readonly Dictionary<string, WidgetAnchor> widgetAnchors = new Dictionary<string, WidgetAnchor>(StringComparer.OrdinalIgnoreCase);
         private readonly object widgetAnchorsSync = new object();
+        private readonly Dictionary<string, LyricDockPlacement> lastStablePlacements = new Dictionary<string, LyricDockPlacement>(StringComparer.OrdinalIgnoreCase);
+        private readonly object lastStablePlacementsSync = new object();
         private TaskbarDaValueState observedWidgetsState;
         private bool hasObservedWidgetsState;
 
@@ -77,6 +79,23 @@ namespace LyricHover.App.LyricDock
             }
 
             var targetScreen = string.IsNullOrWhiteSpace(screenName) ? screen.DeviceName : screenName;
+            LyricDockPlacement lastStablePlacement;
+            lock (lastStablePlacementsSync)
+            {
+                lastStablePlacements.TryGetValue(targetScreen, out lastStablePlacement);
+            }
+            var retainedPlacement = LyricDockPlacementStabilityPolicy.RetainForTaskbarContextMenu(
+                IsTaskbarContextMenuOpen(taskbar, taskbarRect),
+                lastStablePlacement,
+                taskbarRect.ToBounds(),
+                alignment == LyricDockAlignment.Left,
+                IsTaskbarDark());
+            if (retainedPlacement != null)
+            {
+                placement = retainedPlacement;
+                return true;
+            }
+
             WidgetAnchor widgets = null;
             var widgetsDiscoveryUnavailable = false;
             if (!TryGetWidgetsAnchor(taskbar, targetScreen, out widgets))
@@ -112,6 +131,10 @@ namespace LyricHover.App.LyricDock
                 TaskbarBounds = taskbarRect.ToBounds(),
                 WidgetsBounds = widgets?.Bounds
             };
+            lock (lastStablePlacementsSync)
+            {
+                lastStablePlacements[targetScreen] = placement;
+            }
             return true;
         }
 
@@ -831,6 +854,64 @@ namespace LyricHover.App.LyricDock
             return hit == taskbar || GetAncestor(hit, GaRoot) == taskbar;
         }
 
+        private static bool IsTaskbarContextMenuOpen(IntPtr taskbar, NativeRect taskbarBounds)
+        {
+            try
+            {
+                var taskbarThread = GetWindowThreadProcessId(taskbar, out var taskbarProcessId);
+                var threadInfo = new GuiThreadInfo { Size = Marshal.SizeOf<GuiThreadInfo>() };
+                if (taskbarThread != 0 &&
+                    GetGUIThreadInfo(taskbarThread, ref threadInfo) &&
+                    LyricDockPlacementStabilityPolicy.IsNativeMenuMode(threadInfo.Flags))
+                {
+                    return true;
+                }
+
+                var foreground = GetForegroundWindow();
+                if (foreground == IntPtr.Zero || foreground == taskbar || !IsWindowVisible(foreground) ||
+                    !GetWindowRect(foreground, out var popupBounds))
+                {
+                    return false;
+                }
+
+                var taskbarHeight = Math.Max(1, taskbarBounds.Height);
+                var horizontallyNear = popupBounds.Left < taskbarBounds.Right && popupBounds.Right > taskbarBounds.Left;
+                var verticallyNear = popupBounds.Top < taskbarBounds.Top &&
+                    popupBounds.Bottom <= taskbarBounds.Bottom &&
+                    taskbarBounds.Top - popupBounds.Bottom <= Math.Max(96, taskbarHeight * 3);
+                var compactPopup = popupBounds.Width > 0 &&
+                    popupBounds.Height > 0 &&
+                    popupBounds.Width < taskbarBounds.Width * 0.75 &&
+                    popupBounds.Height < Math.Max(720, taskbarHeight * 14);
+                if (!horizontallyNear || !verticallyNear || !compactPopup) return false;
+
+                GetWindowThreadProcessId(foreground, out var foregroundProcessId);
+                var belongsToTaskbar = taskbarProcessId != 0 && taskbarProcessId == foregroundProcessId;
+                var rootOwner = GetAncestor(foreground, GaRootOwner);
+                if (!belongsToTaskbar && rootOwner != taskbar) return false;
+
+                var className = GetClassName(foreground);
+                if (string.Equals(className, "#32768", StringComparison.Ordinal) ||
+                    className.IndexOf("Popup", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    className.IndexOf("Menu", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return true;
+                }
+
+                var root = AutomationElement.FromHandle(foreground);
+                if (root == null) return false;
+                if (root.Current.ControlType == ControlType.Menu) return true;
+                return root.FindFirst(
+                    TreeScope.Descendants,
+                    new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.MenuItem)) != null;
+            }
+            catch
+            {
+                // A failed popup probe must not suppress ordinary placement discovery.
+                return false;
+            }
+        }
+
         private static bool IsTaskbarDark()
         {
             try { using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", false); return Convert.ToInt32(key?.GetValue("SystemUsesLightTheme", 0)) == 0; }
@@ -896,12 +977,17 @@ namespace LyricHover.App.LyricDock
         private readonly struct Interval { public Interval(double left, double right) { Left = left; Right = right; } public double Left { get; } public double Right { get; } public double Width => Right - Left; }
         [StructLayout(LayoutKind.Sequential)] private struct NativeRect { public int Left; public int Top; public int Right; public int Bottom; public int Width => Right - Left; public int Height => Bottom - Top; public TaskbarBounds ToBounds() => new TaskbarBounds { Left = Left, Top = Top, Right = Right, Bottom = Bottom }; }
         [StructLayout(LayoutKind.Sequential)] private struct NativePoint { public int X; public int Y; }
+        [StructLayout(LayoutKind.Sequential)] private struct GuiThreadInfo { public int Size; public uint Flags; public IntPtr Active; public IntPtr Focus; public IntPtr Capture; public IntPtr MenuOwner; public IntPtr MoveSize; public IntPtr Caret; public NativeRect CaretRect; }
         private const uint GaRoot = 2;
+        private const uint GaRootOwner = 3;
         private delegate bool EnumWindowsProc(IntPtr hwnd, IntPtr parameter);
         [DllImport("user32.dll")] private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr parameter);
         [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hwnd);
         [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr hwnd);
         [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hwnd, out NativeRect rect);
+        [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+        [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint processId);
+        [DllImport("user32.dll")] private static extern bool GetGUIThreadInfo(uint threadId, ref GuiThreadInfo threadInfo);
         [DllImport("user32.dll")] private static extern IntPtr WindowFromPoint(NativePoint point);
         [DllImport("user32.dll")] private static extern IntPtr GetAncestor(IntPtr hwnd, uint flags);
         [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "GetClassNameW")] private static extern int GetClassNameNative(IntPtr hwnd, System.Text.StringBuilder className, int maxCount);

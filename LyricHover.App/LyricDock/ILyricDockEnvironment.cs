@@ -66,6 +66,71 @@ namespace LyricHover.App.LyricDock
         }
     }
 
+    internal static class LyricDockPlacementStabilityPolicy
+    {
+        private const uint GuiInMenuMode = 0x00000004;
+        private const uint GuiPopupMenuMode = 0x00000010;
+
+        public static bool IsNativeMenuMode(uint guiThreadFlags) =>
+            (guiThreadFlags & (GuiInMenuMode | GuiPopupMenuMode)) != 0;
+
+        public static LyricDockPlacement RetainForTaskbarContextMenu(
+            bool contextMenuOpen,
+            LyricDockPlacement lastPlacement,
+            TaskbarBounds currentTaskbarBounds,
+            bool isLeftAligned,
+            bool isDarkTheme)
+        {
+            if (!contextMenuOpen ||
+                lastPlacement == null ||
+                !lastPlacement.IsVisible ||
+                lastPlacement.Width <= 0 ||
+                lastPlacement.Height <= 0 ||
+                lastPlacement.DpiScale <= 0 ||
+                !AreEquivalent(lastPlacement.TaskbarBounds, currentTaskbarBounds))
+            {
+                return null;
+            }
+
+            return new LyricDockPlacement
+            {
+                Left = lastPlacement.Left,
+                Top = lastPlacement.Top,
+                Width = lastPlacement.Width,
+                Height = lastPlacement.Height,
+                DpiScale = lastPlacement.DpiScale,
+                IsLeftAligned = isLeftAligned,
+                IsVisible = true,
+                IsFullscreenCovered = false,
+                IsDarkTheme = isDarkTheme,
+                TaskbarBounds = Copy(lastPlacement.TaskbarBounds),
+                WidgetsBounds = Copy(lastPlacement.WidgetsBounds)
+            };
+        }
+
+        private static bool AreEquivalent(TaskbarBounds left, TaskbarBounds right)
+        {
+            if (left == null || right == null) return false;
+            return NearlyEqual(left.Left, right.Left) &&
+                NearlyEqual(left.Top, right.Top) &&
+                NearlyEqual(left.Right, right.Right) &&
+                NearlyEqual(left.Bottom, right.Bottom);
+        }
+
+        private static TaskbarBounds Copy(TaskbarBounds bounds)
+        {
+            return bounds == null ? null : new TaskbarBounds
+            {
+                Left = bounds.Left,
+                Top = bounds.Top,
+                Right = bounds.Right,
+                Bottom = bounds.Bottom
+            };
+        }
+
+        private static bool NearlyEqual(double left, double right) => Math.Abs(left - right) < 0.5;
+    }
+
     internal static class LyricDockMotionPolicy
     {
         public static bool ShouldAnimateHorizontalMove(
