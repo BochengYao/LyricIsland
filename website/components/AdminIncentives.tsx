@@ -146,6 +146,42 @@ function newPreviewFeature(contentZh = ""): ReleasePreviewFeature {
   };
 }
 
+function autoSizePreviewFeatureTextarea(element: HTMLTextAreaElement | null) {
+  if (!element) return;
+  element.style.height = "auto";
+  element.style.height = `${element.scrollHeight}px`;
+}
+
+function PreviewFeatureTextarea({
+  value,
+  disabled,
+  required,
+  onChange
+}: {
+  value: string;
+  disabled: boolean;
+  required: boolean;
+  onChange: (value: string) => void;
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    autoSizePreviewFeatureTextarea(textareaRef.current);
+  }, [value]);
+
+  return (
+    <textarea
+      ref={textareaRef}
+      rows={2}
+      value={value}
+      disabled={disabled}
+      onInput={(event) => autoSizePreviewFeatureTextarea(event.currentTarget)}
+      onChange={(event) => onChange(event.target.value)}
+      required={required}
+    />
+  );
+}
+
 function previewToDraft(preview: ReleasePreview): PreviewDraft {
   const content = normalizeReleasePreviewContent(preview);
   return {
@@ -1462,7 +1498,12 @@ export function AdminIncentives() {
                     </header>
                     <label>
                       <span>{previewLocaleOptions.find((option) => option.value === previewLocale)?.label} 内容</span>
-                      <textarea rows={3} value={feature[previewFeatureFields[previewLocale]]} disabled={previewTranslationLocked} onChange={(event) => updatePreviewFeature(feature.id, { [previewFeatureFields[previewLocale]]: event.target.value })} required={previewLocale === "zh" || previewLocale === "en"} />
+                      <PreviewFeatureTextarea
+                        value={feature[previewFeatureFields[previewLocale]]}
+                        disabled={previewTranslationLocked}
+                        onChange={(value) => updatePreviewFeature(feature.id, { [previewFeatureFields[previewLocale]]: value })}
+                        required={previewLocale === "zh" || previewLocale === "en"}
+                      />
                     </label>
                     <div className="previewProgressEditor">
                       <label className="previewProgressSelect">

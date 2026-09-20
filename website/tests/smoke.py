@@ -1315,6 +1315,34 @@ def test_admin_dashboard(page: Page) -> None:
     expect(progress_slider).to_have_attribute("min", "0")
     expect(page.locator(f'#{progress_slider.get_attribute("list")} option')).to_have_count(10)
     expect(page.locator(".previewFeatureEditor .previewProgressRing")).to_have_count(0)
+    first_feature = page.locator(".previewFeatureEditor").first
+    feature_textarea = first_feature.locator("textarea")
+    feature_layout = first_feature.evaluate(
+        """(feature) => {
+          const header = feature.querySelector('header');
+          const textarea = feature.querySelector('textarea');
+          const progress = feature.querySelector('.previewProgressEditor');
+          return {
+            height: feature.getBoundingClientRect().height,
+            headerHeight: header?.getBoundingClientRect().height ?? 0,
+            textareaHeight: textarea?.getBoundingClientRect().height ?? 0,
+            progressHeight: progress?.getBoundingClientRect().height ?? 0,
+            textareaScrollHeight: textarea?.scrollHeight ?? 0
+          };
+        }"""
+    )
+    assert feature_layout["height"] <= 160
+    assert feature_layout["headerHeight"] <= 42
+    assert 60 <= feature_layout["textareaHeight"] <= 82
+    assert feature_layout["textareaHeight"] >= feature_layout["textareaScrollHeight"] - 1
+    assert feature_layout["progressHeight"] <= 52
+
+    feature_textarea.fill("第一行内容。\n第二行内容更长，用于确认文本框会自动增高并完整显示。\n第三行内容。")
+    expanded_textarea = feature_textarea.evaluate(
+        "(textarea) => ({ height: textarea.getBoundingClientRect().height, scrollHeight: textarea.scrollHeight })"
+    )
+    assert expanded_textarea["height"] > feature_layout["textareaHeight"]
+    assert expanded_textarea["height"] >= expanded_textarea["scrollHeight"] - 1
 
 
 def test_submission_validation(page: Page) -> None:
