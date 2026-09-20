@@ -1307,6 +1307,9 @@ def test_admin_dashboard(page: Page) -> None:
     bulk_input.fill("新增省电模式。\n新增逐字跟随。\n新增歌词坞。\n支持手动刷新。")
     page.get_by_role("button", name="解析为功能项").click()
     expect(page.locator(".previewFeatureEditor")).to_have_count(4)
+    progress_slider = page.get_by_label("功能 1 开发进度与状态")
+    expect(progress_slider).to_have_attribute("max", "102")
+    expect(progress_slider).to_have_attribute("min", "0")
 
 
 def test_submission_validation(page: Page) -> None:

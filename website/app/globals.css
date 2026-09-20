@@ -7227,8 +7227,8 @@ button.danger,
 }
 
 @keyframes previewTestingPulse {
-  0%, 100% { opacity: 0.62; filter: drop-shadow(0 0 0 transparent); }
-  50% { opacity: 1; filter: drop-shadow(0 0 2px color-mix(in srgb, var(--orbit) 60%, transparent)); }
+  0%, 100% { opacity: 0.62; }
+  50% { opacity: 1; }
 }
 
 .previewLegend {
@@ -7275,8 +7275,17 @@ button.danger,
   gap: 6px;
 }
 
-.previewProgressEditor .previewProgressSelect select {
+.previewProgressEditor .previewProgressSelect input[type="range"] {
+  width: 100%;
   min-height: 42px;
+  accent-color: var(--orbit);
+}
+
+.previewProgressEditor .previewProgressSelect datalist {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .previewProgressEditorStatus {
@@ -7304,6 +7313,5 @@ button.danger,
   .previewProgressRing.isTesting .previewProgressRingValue {
     animation: none;
     opacity: 1;
-    filter: none;
   }
 }

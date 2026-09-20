@@ -37,9 +37,9 @@
 
 为兼容既有数据库记录，繁中缺失时服务端回退简中；日文缺失时依次回退英文、简中。管理端 `POST`/`PATCH /api/incentives/admin/previews` 可选接收 `body_zh_tw`、`body_ja`；未传字段不会在更新时被清空。`POST /api/incentives/admin/translate` 支持同一次请求指定 `en`、`zh-tw`、`ja` 目标语言，并按目标语言键分别返回翻译结果。公开预告接口支持游标分页：`preview_limit` 可选（默认 20，最大 50），`preview_cursor` 使用上一页返回的 `next_preview_cursor`；响应始终返回 `next_preview_cursor`（无下一页时为 `null`）。分页只作用于预告，建议数据保持原有返回方式。公开页面必须继续经上述接口读取，且由官网前台线程负责将 `zh-TW`、`ja` 路由映射到对应字段并在分页结果中按 `major_version` 分组。
 
-版本预告的结构化正文继续复用 `release_previews` 表，不新增数据库列：版本级说明写入既有四语 `body_*`；`highlights_zh` JSONB 写入兼容数组，首项为 `{ "schema_version": 2, "features": [...] }` 元数据，其后继续双写中文功能字符串供旧运行时读取。每条 feature 包含稳定唯一 `id`、`sort_order`、离散锚点 `progress`（仅 0、10、30、50、65、80、90、95、100）以及 `stage`（`development` 或 `ready`）和四语 `content_*`。`stage=ready` 只能与 `progress=100` 一起保存；公开和管理接口规范化返回 `note_zh`、`note_en`、`note_zh_tw`、`note_ja` 与 `features[]`，并继续派生旧的 `body_*` / `highlights_*` 字段供兼容调用方读取。旧数组记录仍可读；已有 `body + highlights` 按 Note + Features 适配，无法安全判断的旧长文本统一按 `progress=0`、`stage=development` 读取，表示尚未开始，不猜测为已完成。指定的 V3.2 总说明仅在中文首条精确匹配时迁入 Note。
+版本预告的结构化正文继续复用 `release_previews` 表，不新增数据库列：版本级说明写入既有四语 `body_*`；`highlights_zh` JSONB 写入兼容数组，首项为 `{ "schema_version": 2, "features": [...] }` 元数据，其后继续双写中文功能字符串供旧运行时读取。每条 feature 包含稳定唯一 `id`、`sort_order`、滑块整数 `progress`（0–100）以及 `stage`（`development`、`testing` 或 `ready`）和四语 `content_*`。`stage=testing` / `stage=ready` 只能与 `progress=100` 一起保存；公开和管理接口规范化返回 `note_zh`、`note_en`、`note_zh_tw`、`note_ja` 与 `features[]`，并继续派生旧的 `body_*` / `highlights_*` 字段供兼容调用方读取。旧数组记录仍可读；已有 `body + highlights` 按 Note + Features 适配，无法安全判断的旧长文本统一按 `progress=0`、`stage=development` 读取，表示尚未开始，不猜测为已完成。指定的 V3.2 总说明仅在中文首条精确匹配时迁入 Note。
 
-管理端结构化保存必须拒绝缺失/重复 feature ID、历史适配器保留的 `legacy-` ID 前缀、不在离散锚点中的 progress、非法 stage 或 stage=ready 但 progress 非 100，以及缺失中英文正文；排序只更新 `sort_order`，不改变 ID 和多语言对应关系。翻译请求以 `note` 与 `feature.<稳定ID>` 为键；服务端要求每个目标语言完整返回同一键集合，拒绝缺失、重复或额外键。任一翻译批次失败时，管理端不得覆盖现有译文；“仅翻译缺失内容”只填空字段。
+管理端结构化保存必须拒绝缺失/重复 feature ID、历史适配器保留的 `legacy-` ID 前缀、超出 0–100 的 progress、非法 stage 或 testing/ready 状态但 progress 非 100，以及缺失中英文正文；排序只更新 `sort_order`，不改变 ID 和多语言对应关系。翻译请求以 `note` 与 `feature.<稳定ID>` 为键；服务端要求每个目标语言完整返回同一键集合，拒绝缺失、重复或额外键。任一翻译批次失败时，管理端不得覆盖现有译文；“仅翻译缺失内容”只填空字段。
 
 已保存为 schema v2 的预告不接受旧版维护者客户端仅携带 `body_*` 的正文 PATCH；接口返回 `409` 并要求刷新后台，避免旧表单静默清空稳定 ID、progress 与逐语翻译。状态切换 PATCH 不受影响，尚未结构化的历史记录仍可按旧格式更新。
 

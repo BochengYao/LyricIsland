@@ -26,7 +26,8 @@ import type {
 } from "@/data/incentives-types";
 import {
   normalizeReleasePreviewContent,
-  RELEASE_PREVIEW_PROGRESS_ANCHORS,
+  RELEASE_PREVIEW_SLIDER_READY_VALUE,
+  RELEASE_PREVIEW_SLIDER_TESTING_VALUE,
   splitPreviewLines
 } from "@/data/release-preview-content";
 import {
@@ -1465,29 +1466,40 @@ export function AdminIncentives() {
                     </label>
                     <div className="previewProgressEditor">
                       <label className="previewProgressSelect">
-                        <span>开发状态与进度</span>
-                        <select
-                          value={feature.stage === "ready" ? "ready" : String(feature.progress)}
+                        <span>开发进度与状态</span>
+                        <input
+                          type="range"
+                          min={0}
+                          max={RELEASE_PREVIEW_SLIDER_READY_VALUE}
+                          step={1}
+                          value={feature.stage === "ready"
+                            ? RELEASE_PREVIEW_SLIDER_READY_VALUE
+                            : feature.stage === "testing"
+                              ? RELEASE_PREVIEW_SLIDER_TESTING_VALUE
+                              : feature.progress}
+                          list={`preview-progress-stops-${feature.id}`}
                           disabled={previewTranslationLocked}
                           onChange={(event) => {
-                            const value = event.target.value;
-                            updatePreviewFeature(feature.id, value === "ready"
+                            const value = Number(event.target.value);
+                            updatePreviewFeature(feature.id, value === RELEASE_PREVIEW_SLIDER_READY_VALUE
                               ? { progress: 100, stage: "ready" }
-                              : { progress: Number(value), stage: "development" });
+                              : value === RELEASE_PREVIEW_SLIDER_TESTING_VALUE
+                                ? { progress: 100, stage: "testing" }
+                                : { progress: value, stage: "development" });
                           }}
-                          aria-label={`功能 ${index + 1} 开发状态与进度`}
-                        >
-                          {RELEASE_PREVIEW_PROGRESS_ANCHORS.map((progress) => (
-                            <option value={progress} key={progress}>
-                              {progress === 0 ? "未开始 · 0%" : progress === 100 ? "开发完成，待测试 · 100%" : `开发中 · ${progress}%`}
-                            </option>
-                          ))}
-                          <option value="ready">测试完成，待上线</option>
-                        </select>
+                          aria-label={`功能 ${index + 1} 开发进度与状态`}
+                          aria-valuetext={feature.stage === "ready" ? "测试完成，待上线" : feature.stage === "testing" ? "开发完成，待测试" : `${feature.progress}%`}
+                        />
+                        <datalist id={`preview-progress-stops-${feature.id}`}>
+                          <option value="0" label="未开始" />
+                          <option value="100" label="100%" />
+                          <option value={RELEASE_PREVIEW_SLIDER_TESTING_VALUE} label="待测试" />
+                          <option value={RELEASE_PREVIEW_SLIDER_READY_VALUE} label="待上线" />
+                        </datalist>
                       </label>
                       <ReleasePreviewProgressRing progress={feature.progress} stage={feature.stage} locale="zh" decorative />
                       <span className="previewProgressEditorStatus" aria-live="polite">
-                        {feature.stage === "ready" ? "测试完成，待上线" : feature.progress === 0 ? "未开始" : feature.progress === 100 ? "开发完成，待测试" : `开发中 · ${feature.progress}%`}
+                        {feature.stage === "ready" ? "测试完成，待上线" : feature.stage === "testing" ? "开发完成，待测试" : feature.progress === 0 ? "未开始" : `开发中 · ${feature.progress}%`}
                       </span>
                     </div>
                   </article>

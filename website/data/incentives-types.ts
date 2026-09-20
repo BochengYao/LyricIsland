@@ -78,7 +78,7 @@ export type ReleasePreviewFeature = {
   content_ja: string;
 };
 
-export type ReleasePreviewFeatureStage = "development" | "ready";
+export type ReleasePreviewFeatureStage = "development" | "testing" | "ready";
 
 export type PublicReleasePreview = ReleasePreview & {
   major_version: string;

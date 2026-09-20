@@ -1,7 +1,8 @@
 import type { ReleasePreviewFeature } from "@/data/incentives-types";
 
 export const RELEASE_PREVIEW_SCHEMA_VERSION = 2;
-export const RELEASE_PREVIEW_PROGRESS_ANCHORS = [0, 10, 30, 50, 65, 80, 90, 95, 100] as const;
+export const RELEASE_PREVIEW_SLIDER_TESTING_VALUE = 101;
+export const RELEASE_PREVIEW_SLIDER_READY_VALUE = 102;
 export const KNOWN_V32_NOTE_ZH = "新版本的主要功能已基本完成，目前正在进一步优化性能、功耗与长期运行体验，发布时间调整至本月内。";
 
 export type StoredReleasePreviewFeatures = {
@@ -63,14 +64,14 @@ function lines(value: unknown) {
 
 function safeProgress(value: unknown): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return 0;
-  const rounded = Math.min(100, Math.max(0, Math.round(value)));
-  return RELEASE_PREVIEW_PROGRESS_ANCHORS.includes(rounded as typeof RELEASE_PREVIEW_PROGRESS_ANCHORS[number])
-    ? rounded
-    : 0;
+  return Math.min(100, Math.max(0, Math.round(value)));
 }
 
 function safeStage(value: unknown, progress: number): ReleasePreviewFeature["stage"] {
-  return value === "ready" && progress === 100 ? "ready" : "development";
+  if (progress !== 100) return "development";
+  if (value === "ready") return "ready";
+  if (value === "testing") return "testing";
+  return "development";
 }
 
 function stableLegacyFeatureId(previewId: string, content: string, position: number) {

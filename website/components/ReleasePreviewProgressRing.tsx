@@ -22,6 +22,7 @@ function normalizeProgress(progress: number) {
 
 function stateFor(progress: number, stage: ReleasePreviewFeatureStage): PreviewRingState {
   if (stage === "ready" && progress === 100) return "ready";
+  if (stage === "testing" && progress === 100) return "testing";
   if (progress === 0) return "notStarted";
   if (progress === 100) return "testing";
   return "inProgress";

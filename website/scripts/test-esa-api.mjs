@@ -980,7 +980,7 @@ try {
     {
       id: "feature-word-follow",
       sort_order: 98,
-      progress: 80,
+      progress: 85,
       content_zh: "新增逐字跟随。",
       content_en: "Add word-by-word follow.",
       content_zh_tw: "新增逐字跟隨。",
@@ -989,7 +989,7 @@ try {
     {
       id: "feature-dock",
       sort_order: 97,
-      progress: 65,
+      progress: 60,
       content_zh: "新增歌词坞。",
       content_en: "Add Lyric Dock.",
       content_zh_tw: "新增歌詞塢。",
@@ -1050,8 +1050,8 @@ try {
     previewData.preview.features.map(({ id, sort_order, progress, stage }) => ({ id, sort_order, progress, stage })),
     [
       { id: "feature-power", sort_order: 1, progress: 100, stage: "ready" },
-      { id: "feature-word-follow", sort_order: 2, progress: 80, stage: "development" },
-      { id: "feature-dock", sort_order: 3, progress: 65, stage: "development" },
+      { id: "feature-word-follow", sort_order: 2, progress: 85, stage: "development" },
+      { id: "feature-dock", sort_order: 3, progress: 60, stage: "development" },
       { id: "feature-refresh", sort_order: 4, progress: 30, stage: "development" },
       { id: "feature-legacy-progress", sort_order: 5, progress: 0, stage: "development" }
     ],
@@ -1153,12 +1153,12 @@ try {
         version: "v2.3 Invalid",
         note_zh: "非法进度不应保存。",
         note_en: "Invalid progress must not be saved.",
-        features: [{ ...structuredPreviewFeatures[0], id: "feature-invalid", progress: 42 }],
+        features: [{ ...structuredPreviewFeatures[0], id: "feature-invalid", progress: 101 }],
         status: "draft"
       })
     })
   );
-  assert.equal(invalidProgressResponse.status, 400, "non-anchor progress must be rejected");
+  assert.equal(invalidProgressResponse.status, 400, "progress outside 0-100 must be rejected");
   assert.deepEqual(releasePreviewRows, beforeInvalidProgress, "invalid progress must not overwrite or append data");
 
   const beforeReservedId = structuredClone(releasePreviewRows);
@@ -1244,9 +1244,9 @@ try {
   assert.deepEqual(
     structuredPublicPreview.features.map(({ id, progress, stage }) => ({ id, progress, stage })),
     [
-      { id: "feature-dock", progress: 65, stage: "development" },
+      { id: "feature-dock", progress: 60, stage: "development" },
       { id: "feature-power", progress: 100, stage: "ready" },
-      { id: "feature-word-follow", progress: 80, stage: "development" },
+      { id: "feature-word-follow", progress: 85, stage: "development" },
       { id: "feature-legacy-progress", progress: 0, stage: "development" },
       { id: "feature-refresh", progress: 30, stage: "development" }
     ]
