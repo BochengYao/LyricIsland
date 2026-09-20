@@ -70,12 +70,15 @@ export type ReleasePreview = {
 export type ReleasePreviewFeature = {
   id: string;
   sort_order: number;
-  progress: number | null;
+  progress: number;
+  stage: ReleasePreviewFeatureStage;
   content_zh: string;
   content_en: string;
   content_zh_tw: string;
   content_ja: string;
 };
+
+export type ReleasePreviewFeatureStage = "development" | "ready";
 
 export type PublicReleasePreview = ReleasePreview & {
   major_version: string;

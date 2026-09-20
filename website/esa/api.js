@@ -25,6 +25,7 @@ const FEATURE_CONTENT_VERSION = "__FEATURE_CONTENT_V1__";
 const LEGACY_FEATURE_RELEASE_VERSION = "早期更新";
 const AUDIT_VERSION = "__AUDIT_LOG_V1__";
 const RELEASE_PREVIEW_SCHEMA_VERSION = 2;
+const RELEASE_PREVIEW_PROGRESS_ANCHORS = [0, 10, 30, 50, 65, 80, 90, 95, 100];
 const KNOWN_V32_NOTE_ZH = "新版本的主要功能已基本完成，目前正在进一步优化性能、功耗与长期运行体验，发布时间调整至本月内。";
 const DEFAULT_FEATURE_CONTENT = JSON.parse("__ESA_FEATURE_CONTENT_JSON__");
 const DEFAULT_RELEASE_PREVIEW = JSON.parse("__ESA_RELEASE_PREVIEW_JSON__");
@@ -268,9 +269,13 @@ function splitPreviewItems(value) {
 }
 
 function safePreviewProgress(value) {
-  if (value === null || value === undefined || value === "") return null;
-  if (typeof value !== "number" || !Number.isFinite(value)) return null;
-  return Math.min(100, Math.max(0, Math.round(value)));
+  if (typeof value !== "number" || !Number.isFinite(value)) return 0;
+  const rounded = Math.min(100, Math.max(0, Math.round(value)));
+  return RELEASE_PREVIEW_PROGRESS_ANCHORS.includes(rounded) ? rounded : 0;
+}
+
+function safePreviewStage(value, progress) {
+  return value === "ready" && progress === 100 ? "ready" : "development";
 }
 
 function stableLegacyPreviewFeatureId(previewId, content, position) {
@@ -294,10 +299,12 @@ function sanitizeReleasePreviewFeature(value, fallbackOrder) {
   const rawOrder = typeof value.sort_order === "number" && Number.isFinite(value.sort_order)
     ? Math.round(value.sort_order)
     : fallbackOrder;
+  const progress = safePreviewProgress(value.progress);
   return {
     id,
     sort_order: Math.max(0, rawOrder),
-    progress: safePreviewProgress(value.progress),
+    progress,
+    stage: safePreviewStage(value.stage, progress),
     content_zh: contentZh,
     content_en: contentEn,
     content_zh_tw: contentZhTw,
@@ -324,7 +331,8 @@ function releasePreviewFeatureFromLegacy(previewId, index, zh, en, zhTw, ja) {
   return {
     id: stableLegacyPreviewFeatureId(previewId, primary, index),
     sort_order: index + 1,
-    progress: null,
+    progress: 0,
+    stage: "development",
     content_zh: zh[index] || "",
     content_en: en[index] || "",
     content_zh_tw: zhTw[index] || "",
@@ -1287,12 +1295,14 @@ function previewFeatures(value) {
     }
     usedIds.add(id);
     const progress = item.progress === null || item.progress === undefined || item.progress === ""
-      ? null
+      ? 0
       : item.progress;
-    if (progress !== null && (
-      typeof progress !== "number" || !Number.isInteger(progress) || progress < 0 || progress > 100
-    )) {
-      throw new PreviewValidationError("功能进度必须是 0–100 的整数");
+    if (typeof progress !== "number" || !Number.isInteger(progress) || !RELEASE_PREVIEW_PROGRESS_ANCHORS.includes(progress)) {
+      throw new PreviewValidationError("功能进度只能选择 0%、10%、30%、50%、65%、80%、90%、95% 或 100%");
+    }
+    const stage = item.stage === "ready" ? "ready" : "development";
+    if (stage === "ready" && progress !== 100) {
+      throw new PreviewValidationError("待上线状态必须先达到 100% 并完成测试");
     }
     const localizedText = (field) => typeof item[field] === "string"
       ? item[field].trim().slice(0, 2400)
@@ -1304,6 +1314,7 @@ function previewFeatures(value) {
       id,
       sort_order: index + 1,
       progress,
+      stage,
       content_zh: contentZh,
       content_en: contentEn,
       content_zh_tw: localizedText("content_zh_tw"),

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { DatabasePreload } from "@/components/DatabasePreload";
 import { Eyebrow, LogoLockup, PrimaryNavigation } from "@/components/SitePage";
-import { ReleasePreviewProgressRing } from "@/components/ReleasePreviewProgressRing";
+import { ReleasePreviewLegend, ReleasePreviewProgressRing } from "@/components/ReleasePreviewProgressRing";
 import { SelectiveTextReveal } from "@/components/SelectiveTextReveal";
 import {
   SubmissionTicket,
@@ -557,6 +557,7 @@ export function IncentivePage({ locale }: { locale: Locale }) {
             <Eyebrow reveal>{copy.preview.eyebrow}</Eyebrow>
             <h2 data-text-reveal="title">{copy.preview.title}</h2>
             <p>{copy.preview.body}</p>
+            <ReleasePreviewLegend locale={locale} />
           </div>
           <div className="previewList">
             {publicDataState === "loading" ? (
@@ -582,7 +583,7 @@ export function IncentivePage({ locale }: { locale: Locale }) {
                     <ul className="previewItems">
                       {features.map(({ feature, content }) => (
                         <li key={feature.id}>
-                          <ReleasePreviewProgressRing progress={feature.progress} locale={locale} />
+                          <ReleasePreviewProgressRing progress={feature.progress} stage={feature.stage} locale={locale} />
                           <p>{content}</p>
                         </li>
                       ))}

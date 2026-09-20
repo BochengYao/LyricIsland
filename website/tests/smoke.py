@@ -981,8 +981,8 @@ def test_incentive_page(page: Page, path: str, lang: str, mobile: bool = False) 
                 '"body_en":"More polish for avoidance.","highlights_zh":["收起体验更加顺滑。"],'
                 '"highlights_en":["Smoother retraction."],"note_zh":"继续打磨避让。",'
                 '"note_en":"More polish for avoidance.","note_zh_tw":"","note_ja":"",'
-                '"features":[{"id":"preview-feature-1","sort_order":1,"progress":85,"content_zh":"新增省电模式。","content_en":"Add power-saving mode.","content_zh_tw":"","content_ja":""},'
-                '{"id":"preview-feature-2","sort_order":2,"progress":null,"content_zh":"收起体验更加顺滑。","content_en":"Smoother retraction.","content_zh_tw":"","content_ja":""}],"target_date":"2026-09-01",'
+                '"features":[{"id":"preview-feature-1","sort_order":1,"progress":80,"stage":"development","content_zh":"新增省电模式。","content_en":"Add power-saving mode.","content_zh_tw":"","content_ja":""},'
+                '{"id":"preview-feature-2","sort_order":2,"progress":0,"stage":"development","content_zh":"收起体验更加顺滑。","content_en":"Smoother retraction.","content_zh_tw":"","content_ja":""}],"target_date":"2026-09-01",'
                 '"status":"published","created_at":"2026-07-14T00:00:00Z",'
                 '"updated_at":"2026-07-14T00:00:00Z","published_at":"2026-07-14T00:00:00Z"}]}'
             ),
@@ -1007,8 +1007,10 @@ def test_incentive_page(page: Page, path: str, lang: str, mobile: bool = False) 
     expect(preview_card.locator(".previewCardMeta")).to_contain_text("v2.1 Preview")
     expect(preview_card.locator(".previewItemNumber")).to_have_count(0)
     expect(preview_card.locator(".previewProgressRing")).to_have_count(2)
-    expect(preview_card.locator('[role="progressbar"]')).to_have_attribute("aria-valuenow", "85")
-    expect(preview_card.locator('[role="img"]')).to_have_attribute("aria-label", "Development progress unknown" if lang == "en" else "开发进度未知")
+    expect(preview_card.locator('[role="progressbar"]')).to_have_attribute("aria-valuenow", "80")
+    expect(preview_card.locator('[role="img"]')).to_have_attribute("aria-label", "Not started" if lang == "en" else "未开始")
+    expect(page.locator(".previewLegend li")).to_have_count(4)
+    expect(page.locator(".previewLegend")).to_contain_text("Not started" if lang == "en" else "未开始")
     expect(preview_card.locator(".previewNote")).to_have_text("More polish for avoidance." if lang == "en" else "继续打磨避让。")
     expect(preview_card.locator(".previewItems p")).to_have_text(
         ["Add power-saving mode.", "Smoother retraction."] if lang == "en" else ["新增省电模式。", "收起体验更加顺滑。"]
@@ -1270,7 +1272,7 @@ def test_admin_dashboard(page: Page) -> None:
                 '"body_zh":"继续打磨避让和收起体验。","body_en":"More polish.",'
                 '"highlights_zh":["新增省电模式。"],"highlights_en":["Add power-saving mode."],'
                 '"note_zh":"继续打磨避让和收起体验。","note_en":"More polish.","note_zh_tw":"","note_ja":"",'
-                '"features":[{"id":"feature-1","sort_order":1,"progress":60,"content_zh":"新增省电模式。","content_en":"Add power-saving mode.","content_zh_tw":"","content_ja":""}],"target_date":"2026-09-01",'
+                '"features":[{"id":"feature-1","sort_order":1,"progress":65,"content_zh":"新增省电模式。","content_en":"Add power-saving mode.","content_zh_tw":"","content_ja":""}],"target_date":"2026-09-01",'
                 '"status":"published","created_at":"2026-07-14T00:00:00Z",'
                 '"updated_at":"2026-07-14T00:00:00Z","published_at":"2026-07-14T00:00:00Z"}]}'
             ),

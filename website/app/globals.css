@@ -7208,3 +7208,102 @@ button.danger,
     grid-template-columns: 1fr;
   }
 }
+
+
+.previewProgressRing.isTesting .previewProgressRingTrack,
+.previewProgressRing.isReady .previewProgressRingTrack {
+  stroke: var(--orbit);
+  opacity: 0.22;
+}
+
+.previewProgressRing.isTesting .previewProgressRingValue,
+.previewProgressRing.isReady .previewProgressRingValue {
+  stroke: var(--orbit);
+}
+
+.previewProgressRing.isTesting .previewProgressRingValue {
+  transform-origin: center;
+  animation: previewTestingPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes previewTestingPulse {
+  0%, 100% { opacity: 0.62; filter: drop-shadow(0 0 0 transparent); }
+  50% { opacity: 1; filter: drop-shadow(0 0 2px color-mix(in srgb, var(--orbit) 60%, transparent)); }
+}
+
+.previewLegend {
+  display: grid;
+  gap: 10px;
+  margin-top: 22px;
+  color: var(--muted);
+}
+
+.previewLegendTitle {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.previewLegend ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, max-content));
+  gap: 9px 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.previewLegend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.previewLegend .previewProgressRing {
+  flex: 0 0 16px;
+}
+
+.previewProgressEditor {
+  grid-template-columns: minmax(260px, 1fr) 24px minmax(150px, auto);
+}
+
+.previewProgressSelect {
+  display: grid;
+  gap: 6px;
+}
+
+.previewProgressEditor .previewProgressSelect select {
+  min-height: 42px;
+}
+
+.previewProgressEditorStatus {
+  align-self: center;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+@media (max-width: 700px) {
+  .previewLegend ul {
+    grid-template-columns: 1fr;
+  }
+
+  .previewProgressEditor {
+    grid-template-columns: minmax(0, 1fr) 24px;
+  }
+
+  .previewProgressEditorStatus {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .previewProgressRing.isTesting .previewProgressRingValue {
+    animation: none;
+    opacity: 1;
+    filter: none;
+  }
+}

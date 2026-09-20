@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AdminNav } from "@/components/AdminNav";
 import { AdminPromoCodes } from "@/components/AdminPromoCodes";
+import { ReleasePreviewProgressRing } from "@/components/ReleasePreviewProgressRing";
 import { ExternalArrow } from "@/components/ExternalArrow";
 import { LogoLockup } from "@/components/SitePage";
 import {
@@ -23,7 +24,11 @@ import type {
   RewardStatus,
   SubmissionStatus
 } from "@/data/incentives-types";
-import { normalizeReleasePreviewContent, splitPreviewLines } from "@/data/release-preview-content";
+import {
+  normalizeReleasePreviewContent,
+  RELEASE_PREVIEW_PROGRESS_ANCHORS,
+  splitPreviewLines
+} from "@/data/release-preview-content";
 import {
   formatReleaseTiming,
   releaseTimingFromTargetDate,
@@ -131,7 +136,8 @@ function newPreviewFeature(contentZh = ""): ReleasePreviewFeature {
   return {
     id: newPreviewFeatureId(),
     sort_order: 1,
-    progress: null,
+    progress: 0,
+    stage: "development",
     content_zh: contentZh,
     content_en: "",
     content_zh_tw: "",
@@ -1458,10 +1464,31 @@ export function AdminIncentives() {
                       <textarea rows={3} value={feature[previewFeatureFields[previewLocale]]} disabled={previewTranslationLocked} onChange={(event) => updatePreviewFeature(feature.id, { [previewFeatureFields[previewLocale]]: event.target.value })} required={previewLocale === "zh" || previewLocale === "en"} />
                     </label>
                     <div className="previewProgressEditor">
-                      <label><span>进度</span><input type="range" min={0} max={100} step={1} value={feature.progress ?? 0} disabled={previewTranslationLocked} onChange={(event) => updatePreviewFeature(feature.id, { progress: Number(event.target.value) })} aria-label={`功能 ${index + 1} 进度`} /></label>
-                      <label><span className="srOnly">进度数值</span><input type="number" min={0} max={100} step={1} value={feature.progress ?? ""} placeholder="未设置" disabled={previewTranslationLocked} onChange={(event) => updatePreviewFeature(feature.id, { progress: event.target.value === "" ? null : Number(event.target.value) })} aria-label={`功能 ${index + 1} 进度数值`} /></label>
-                      <span aria-live="polite">{feature.progress === null ? "未设置" : `${feature.progress}%`}</span>
-                      {feature.progress !== null && <button type="button" disabled={previewTranslationLocked} onClick={() => updatePreviewFeature(feature.id, { progress: null })}>清空</button>}
+                      <label className="previewProgressSelect">
+                        <span>开发状态与进度</span>
+                        <select
+                          value={feature.stage === "ready" ? "ready" : String(feature.progress)}
+                          disabled={previewTranslationLocked}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            updatePreviewFeature(feature.id, value === "ready"
+                              ? { progress: 100, stage: "ready" }
+                              : { progress: Number(value), stage: "development" });
+                          }}
+                          aria-label={`功能 ${index + 1} 开发状态与进度`}
+                        >
+                          {RELEASE_PREVIEW_PROGRESS_ANCHORS.map((progress) => (
+                            <option value={progress} key={progress}>
+                              {progress === 0 ? "未开始 · 0%" : progress === 100 ? "开发完成，待测试 · 100%" : `开发中 · ${progress}%`}
+                            </option>
+                          ))}
+                          <option value="ready">测试完成，待上线</option>
+                        </select>
+                      </label>
+                      <ReleasePreviewProgressRing progress={feature.progress} stage={feature.stage} locale="zh" decorative />
+                      <span className="previewProgressEditorStatus" aria-live="polite">
+                        {feature.stage === "ready" ? "测试完成，待上线" : feature.progress === 0 ? "未开始" : feature.progress === 100 ? "开发完成，待测试" : `开发中 · ${feature.progress}%`}
+                      </span>
                     </div>
                   </article>
                 ))}

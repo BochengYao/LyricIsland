@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ReleasePreviewProgressRing } from "@/components/ReleasePreviewProgressRing";
+import { ReleasePreviewLegend, ReleasePreviewProgressRing } from "@/components/ReleasePreviewProgressRing";
 import { Eyebrow } from "@/components/SitePage";
 import { incentivesByLocale } from "@/data/incentives-copy";
 import type { ReleasePreview } from "@/data/incentives-types";
@@ -68,6 +68,7 @@ export function VersionPreviewSection({ locale }: { locale: Locale }) {
         <Eyebrow reveal>{copy.eyebrow}</Eyebrow>
         <h2 data-text-reveal="title">{copy.title}</h2>
         <p>{copy.body}</p>
+        <ReleasePreviewLegend locale={locale} />
       </div>
       <div className={`previewList${loading ? "" : " databaseContentReveal"}`} aria-live="polite">
         {previews.length ? [...previews].sort(comparePreviewVersions).map((preview) => {
@@ -88,7 +89,7 @@ export function VersionPreviewSection({ locale }: { locale: Locale }) {
                 <ul className="previewItems">
                   {features.map(({ feature, content }) => (
                     <li key={feature.id}>
-                      <ReleasePreviewProgressRing progress={feature.progress} locale={locale} />
+                      <ReleasePreviewProgressRing progress={feature.progress} stage={feature.stage} locale={locale} />
                       <p>{content}</p>
                     </li>
                   ))}

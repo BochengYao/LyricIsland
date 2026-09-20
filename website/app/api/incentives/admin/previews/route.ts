@@ -6,7 +6,7 @@ import {
   updateReleasePreview
 } from "@/lib/incentive-store";
 import type { ReleasePreviewFeature } from "@/data/incentives-types";
-import { encodeReleasePreviewFeatures } from "@/data/release-preview-content";
+import { encodeReleasePreviewFeatures, RELEASE_PREVIEW_PROGRESS_ANCHORS } from "@/data/release-preview-content";
 
 class PreviewValidationError extends Error {}
 
@@ -30,10 +30,14 @@ function previewFeatures(value: unknown): ReleasePreviewFeature[] {
     }
     usedIds.add(id);
     const progress = source.progress === null || source.progress === undefined || source.progress === ""
-      ? null
+      ? 0
       : source.progress;
-    if (progress !== null && (typeof progress !== "number" || !Number.isInteger(progress) || progress < 0 || progress > 100)) {
-      throw new PreviewValidationError("功能进度必须是 0–100 的整数");
+    if (typeof progress !== "number" || !Number.isInteger(progress) || !RELEASE_PREVIEW_PROGRESS_ANCHORS.includes(progress as typeof RELEASE_PREVIEW_PROGRESS_ANCHORS[number])) {
+      throw new PreviewValidationError("功能进度只能选择 0%、10%、30%、50%、65%、80%、90%、95% 或 100%");
+    }
+    const stage = source.stage === "ready" ? "ready" : "development";
+    if (stage === "ready" && progress !== 100) {
+      throw new PreviewValidationError("待上线状态必须先达到 100% 并完成测试");
     }
     const localizedText = (field: "content_zh" | "content_en" | "content_zh_tw" | "content_ja") =>
       typeof source[field] === "string" ? source[field].trim().slice(0, 2400) : "";
@@ -44,6 +48,7 @@ function previewFeatures(value: unknown): ReleasePreviewFeature[] {
       id,
       sort_order: index + 1,
       progress,
+      stage,
       content_zh: contentZh,
       content_en: contentEn,
       content_zh_tw: localizedText("content_zh_tw"),

@@ -9,23 +9,29 @@
 
 - 沿用 `release_previews` 表与现有 `target_date`、四语字段，不新增 Supabase 列，不执行真实数据写入或不可逆 migration。
 - Note 使用既有 `body_*`；结构化 Features 写入 `highlights_zh` JSONB 的兼容信封数组：首项为 schema v2 元数据对象，后续项为中文功能文案。公开响应保留旧 `body_*` / `highlights_*` 兼容字段。
-- 旧 `body + highlights` 安全适配为 Note + Features；未知 progress 保持 `null`。无法判断 Note 的旧长文本不自动挪动，只有需求指定的 V3.2 中文首条总说明采用精确匹配迁移。
-- 后台保留批量中文粘贴解析，并提供稳定 ID、四语逐项内容、排序、删除、新增、range + number 进度输入；不引入拖拽库。
+- 旧 `body + highlights` 安全适配为 Note + Features；未知 progress 保持 `null`。无法判断 Note 的旧长文本不自动挪动，只有需求指定的 V3.2 中文首条总说明采用精确匹配迁移；旧进度缺失读取为 0% 未开始。
+- 后台保留批量中文粘贴解析，并提供稳定 ID、四语逐项内容、排序、删除、新增、离散锚点状态选择；不引入拖拽库。进度锚点固定为 0、10、30、50、65、80、90、95、100；100% 表示开发完成待测试，另以 `stage=ready` 表示测试完成待上线。
 - 翻译使用 `note` / `feature.<id>` 键并严格校验完整键集合；提供“翻译全部”和“仅翻译缺失内容”。
-- 公开页保持原双栏与留白，左侧增加 Note，右侧编号替换为 16px SVG 圆环；不显示百分比、状态标签或横向进度条。`null` 使用弱化空心圆并提供辅助技术文本。
+- 公开页保持原双栏与留白，左侧增加 Note，右侧编号替换为 16px SVG 圆环；不显示百分比、状态标签或横向进度条。四种状态为灰色 0%、橙黄开发中进度环、100% 待测试呼吸环、待上线橙黄纯色环；前台两处版本预告入口均显示四语图例。
 
 ## 数据回滚
 
 - 代码回滚后，旧运行时会忽略信封首项对象并继续显示后续中文字符串；现有历史记录未被批量重写或删除。
 - 若回滚后再用旧后台编辑这些记录，旧代码不会保留结构化进度元数据；正式回滚前如已用新后台保存记录，应先导出对应行以便恢复。
 - 新 API 在混合部署期间会拒绝旧客户端对 schema v2 记录的正文 PATCH（`409`，状态切换仍可用），避免静默降级回写。
-- 本任务不连接真实 Supabase，不执行生产迁移、发布或删除。
+- 本任务不连接真实 Supabase，不执行生产迁移、发布或删除。代码发布需在隔离 worktree 完成构建、测试后推送 main。
 
 ## 验证
 
 - `node node_modules/typescript/bin/tsc --noEmit`：通过
-- `node scripts/test-esa-api.mjs`：通过，覆盖结构化新增、刷新读取、排序、`100/85/60/30/null`、非法输入、旧数据与旧客户端降级写入保护
+- `node scripts/test-esa-api.mjs`：通过，覆盖结构化新增、刷新读取、排序、离散锚点、四态 stage、非法输入、旧数据与旧客户端降级写入保护
 - `node scripts/build-esa-static.mjs`：完整通过一次，17 个静态页面生成完成；最后补充保留 ID 前缀校验后，`tsc`、ESA API 测试与语法检查再次通过。再次重复构建时 Windows 返回“内存资源不足”，不是代码编译错误。
 - `node --check esa/api.js`、`python -m py_compile tests/smoke.py`、`git diff --check`：通过
 
 本机 Python 环境未安装 Playwright，Codex 内置浏览器运行时又存在版本缺失，因此本轮无法执行 `tests/smoke.py` 的真实 Chrome 视觉流程；没有把静态构建冒充为 Desktop/Mobile 视觉验收。生产 ESA、真实管理员会话、真实 AI 服务和四语页面的最终人工验收仍由质量/发布流程完成。
+
+## 2026-09-20 后续变更
+
+- 后台进度编辑改为原生离散选择，仅允许 0%、10%、30%、50%、65%、80%、90%、95%、100% 和“测试完成，待上线”。
+- `ReleasePreviewFeature.stage` 仅保存 `development` / `ready`；`ready` 强制要求 100%。旧 null 或非锚点历史值读取为 0% 未开始。
+- 圆环状态：0% 全灰；1–99% 橙黄进度环；100% 开发完成待测试并呼吸；测试完成待上线为橙黄纯色静态环。前台 updates 与 incentives 均加入四语图例。

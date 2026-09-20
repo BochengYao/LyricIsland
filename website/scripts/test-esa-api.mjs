@@ -451,7 +451,7 @@ try {
     "legacy highlight arrays must remain readable as structured features"
   );
   assert.ok(
-    publicData.previews[0].features.every((feature) => feature.id.startsWith("legacy-") && feature.progress === null),
+    publicData.previews[0].features.every((feature) => feature.id.startsWith("legacy-") && feature.progress === 0 && feature.stage === "development"),
     "legacy features must receive stable IDs without inventing progress"
   );
   assert.equal(publicData.previews[0].body_zh_tw, publicData.previews[0].body_zh);
@@ -971,6 +971,7 @@ try {
       id: "feature-power",
       sort_order: 99,
       progress: 100,
+      stage: "ready",
       content_zh: "新增省电模式。",
       content_en: "Add power-saving mode.",
       content_zh_tw: "新增省電模式。",
@@ -979,7 +980,7 @@ try {
     {
       id: "feature-word-follow",
       sort_order: 98,
-      progress: 85,
+      progress: 80,
       content_zh: "新增逐字跟随。",
       content_en: "Add word-by-word follow.",
       content_zh_tw: "新增逐字跟隨。",
@@ -988,7 +989,7 @@ try {
     {
       id: "feature-dock",
       sort_order: 97,
-      progress: 60,
+      progress: 65,
       content_zh: "新增歌词坞。",
       content_en: "Add Lyric Dock.",
       content_zh_tw: "新增歌詞塢。",
@@ -1046,13 +1047,13 @@ try {
   assert.equal(previewData.preview.body_zh, previewData.preview.note_zh, "legacy body fields must remain compatible");
   assert.equal(previewData.preview.body_en, previewData.preview.note_en, "legacy body fields must remain compatible");
   assert.deepEqual(
-    previewData.preview.features.map(({ id, sort_order, progress }) => ({ id, sort_order, progress })),
+    previewData.preview.features.map(({ id, sort_order, progress, stage }) => ({ id, sort_order, progress, stage })),
     [
-      { id: "feature-power", sort_order: 1, progress: 100 },
-      { id: "feature-word-follow", sort_order: 2, progress: 85 },
-      { id: "feature-dock", sort_order: 3, progress: 60 },
-      { id: "feature-refresh", sort_order: 4, progress: 30 },
-      { id: "feature-legacy-progress", sort_order: 5, progress: null }
+      { id: "feature-power", sort_order: 1, progress: 100, stage: "ready" },
+      { id: "feature-word-follow", sort_order: 2, progress: 80, stage: "development" },
+      { id: "feature-dock", sort_order: 3, progress: 65, stage: "development" },
+      { id: "feature-refresh", sort_order: 4, progress: 30, stage: "development" },
+      { id: "feature-legacy-progress", sort_order: 5, progress: 0, stage: "development" }
     ],
     "structured preview creation must persist every progress value and normalize sort order"
   );
@@ -1152,12 +1153,12 @@ try {
         version: "v2.3 Invalid",
         note_zh: "非法进度不应保存。",
         note_en: "Invalid progress must not be saved.",
-        features: [{ ...structuredPreviewFeatures[0], id: "feature-invalid", progress: 101 }],
+        features: [{ ...structuredPreviewFeatures[0], id: "feature-invalid", progress: 42 }],
         status: "draft"
       })
     })
   );
-  assert.equal(invalidProgressResponse.status, 400, "progress outside 0-100 must be rejected");
+  assert.equal(invalidProgressResponse.status, 400, "non-anchor progress must be rejected");
   assert.deepEqual(releasePreviewRows, beforeInvalidProgress, "invalid progress must not overwrite or append data");
 
   const beforeReservedId = structuredClone(releasePreviewRows);
@@ -1241,13 +1242,13 @@ try {
     "public responses must retain legacy localized highlight arrays"
   );
   assert.deepEqual(
-    structuredPublicPreview.features.map(({ id, progress }) => ({ id, progress })),
+    structuredPublicPreview.features.map(({ id, progress, stage }) => ({ id, progress, stage })),
     [
-      { id: "feature-dock", progress: 60 },
-      { id: "feature-power", progress: 100 },
-      { id: "feature-word-follow", progress: 85 },
-      { id: "feature-legacy-progress", progress: null },
-      { id: "feature-refresh", progress: 30 }
+      { id: "feature-dock", progress: 65, stage: "development" },
+      { id: "feature-power", progress: 100, stage: "ready" },
+      { id: "feature-word-follow", progress: 80, stage: "development" },
+      { id: "feature-legacy-progress", progress: 0, stage: "development" },
+      { id: "feature-refresh", progress: 30, stage: "development" }
     ]
   );
 
@@ -1276,8 +1277,8 @@ try {
     "the remaining legacy V3.2 lines must become features"
   );
   assert.ok(
-    legacyV32Preview.features.every((feature) => feature.progress === null),
-    "migrated legacy V3.2 features must not invent progress"
+    legacyV32Preview.features.every((feature) => feature.progress === 0 && feature.stage === "development"),
+    "migrated legacy V3.2 features must default to not-started"
   );
   assert.deepEqual(
     legacyV32Preview.features.map((feature) => [feature.content_en, feature.content_zh_tw, feature.content_ja]),
