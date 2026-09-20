@@ -3,6 +3,7 @@
 - 日期：2026-09-16
 - Owner：Desktop Island, Settings & Interaction UI
 - 起始提交：`eb9e859`
+- 功能与候选提交：`036289326ee66efdc03d8ed35d33898d89e8d037`
 - 工作分支：`codex/feature/desktop-fullscreen-auto-hide`
 - 状态：实现、自动化验证、本地 `3.2.48-Beta` 候选打包和本地 Git 提交完成；真实 Windows 任务栏右键目测待执行
 - 允许范围：`LyricHover.App/LyricDock/`、相关 `LyricHover.Tests/` 回归与本交接
@@ -66,7 +67,8 @@ git diff --check -- LyricHover.App/LyricDock/ILyricDockEnvironment.cs LyricHover
 
 ## Git / Release State
 
-- 本修复和发布证据由包含本交接文档的本地提交记录；尚未推送。
+- 功能、版本源、更新日志与初版交接已提交为 `036289326ee66efdc03d8ed35d33898d89e8d037`；本文件的最终交接补充由其后的 `docs(handoff)` 提交记录。
+- 当前分支仅本地提交，尚未推送 GitHub；接收线程不可把“消息已送达”当作已合并或已发布。
 - `publish.ps1 -NoLaunch` 已生成并替换 `publish/current`：`3.2.48-Beta`，8 个文件，共 24,576,663 bytes。
 - App EXE SHA-256：`31DD553FFA252A5CAFF0D40AEA535C2D041FE5D599CCCBFC2D49C20F68834739`。
 - App DLL SHA-256：`ED1990E5A46A4328B878AE915F996F9D418B9F34FF4EA66ECE89D5ED22DC934C`。
