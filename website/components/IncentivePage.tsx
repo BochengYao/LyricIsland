@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { DatabasePreload } from "@/components/DatabasePreload";
 import { Eyebrow, LogoLockup, PrimaryNavigation } from "@/components/SitePage";
+import { ReleasePreviewProgressRing } from "@/components/ReleasePreviewProgressRing";
 import { SelectiveTextReveal } from "@/components/SelectiveTextReveal";
 import {
   SubmissionTicket,
@@ -15,6 +16,7 @@ import type {
   SubmissionKind
 } from "@/data/incentives-types";
 import { incentivesByLocale } from "@/data/incentives-copy";
+import { localizedFeatureContent, localizedPreviewNote, normalizeReleasePreviewContent } from "@/data/release-preview-content";
 import { displayBrand, localePath, type Locale } from "@/data/site-copy";
 import { preloadClientJson } from "@/lib/client-data";
 import { formatReleaseTiming } from "@/lib/release-timing";
@@ -23,13 +25,6 @@ const IDENTITY_COOKIE = "lyric_island_contributor";
 const LOCAL_LIKES_KEY = "lyric_island_preview_likes";
 
 type Identity = { nickname: string; email: string };
-
-function splitPreviewItems(value: string): string[] {
-  return value
-    .split(/\r?\n/)
-    .map((line) => line.trim().replace(/^(?:[-–—•·*]+|\d+[.)、])\s*/, "").trim())
-    .filter(Boolean);
-}
 
 function readIdentity(): Identity {
   if (typeof document === "undefined") return { nickname: "", email: "" };
@@ -570,25 +565,28 @@ export function IncentivePage({ locale }: { locale: Locale }) {
                 <span className="databaseLoadingPulse" aria-hidden="true" />
               </div>
             ) : previews.length ? previews.map((preview) => {
-              const title = locale === "zh" ? preview.title_zh : preview.title_en || preview.title_zh;
-              const body = locale === "zh" ? preview.body_zh : preview.body_en || preview.body_zh;
-              const highlights = locale === "zh" ? preview.highlights_zh : preview.highlights_en.length ? preview.highlights_en : preview.highlights_zh;
-              const items = [...splitPreviewItems(body), ...highlights.map((item) => item.trim()).filter(Boolean)];
+              const previewContent = normalizeReleasePreviewContent(preview);
+              const note = localizedPreviewNote(previewContent, locale);
+              const features = [...previewContent.features]
+                .sort((left, right) => left.sort_order - right.sort_order)
+                .map((feature) => ({ feature, content: localizedFeatureContent(feature, locale).trim() }))
+                .filter(({ content }) => Boolean(content));
               return (
                 <article className="previewCard" key={preview.id}>
                   <div className="previewCardMeta">
-                    <small>{preview.version} · {copy.preview.target} {formatReleaseTiming(preview.target_date, locale)}</small>
+                    <strong>{preview.version}</strong>
+                    <small>{copy.preview.target} {formatReleaseTiming(preview.target_date, locale)}</small>
+                    {note && <p className="previewNote">{note}</p>}
                   </div>
                   <div className="previewCardContent">
-                    {title !== preview.version && <h3>{title}</h3>}
-                    <ol className="previewItems">
-                      {items.map((item, itemIndex) => (
-                        <li key={`${itemIndex}-${item}`}>
-                          <span className="previewItemNumber" aria-hidden="true">{String(itemIndex + 1).padStart(2, "0")}</span>
-                          <p>{item}</p>
+                    <ul className="previewItems">
+                      {features.map(({ feature, content }) => (
+                        <li key={feature.id}>
+                          <ReleasePreviewProgressRing progress={feature.progress} locale={locale} />
+                          <p>{content}</p>
                         </li>
                       ))}
-                    </ol>
+                    </ul>
                   </div>
                 </article>
               );

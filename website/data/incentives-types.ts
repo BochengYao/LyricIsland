@@ -55,11 +55,26 @@ export type ReleasePreview = {
   highlights_en: string[];
   highlights_zh_tw: string[];
   highlights_ja: string[];
+  note_zh: string;
+  note_en: string;
+  note_zh_tw: string;
+  note_ja: string;
+  features: ReleasePreviewFeature[];
   target_date: string | null;
   status: "draft" | "published";
   created_at: string;
   updated_at: string;
   published_at: string | null;
+};
+
+export type ReleasePreviewFeature = {
+  id: string;
+  sort_order: number;
+  progress: number | null;
+  content_zh: string;
+  content_en: string;
+  content_zh_tw: string;
+  content_ja: string;
 };
 
 export type PublicReleasePreview = ReleasePreview & {

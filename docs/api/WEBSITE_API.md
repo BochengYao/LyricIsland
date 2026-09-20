@@ -37,6 +37,12 @@
 
 为兼容既有数据库记录，繁中缺失时服务端回退简中；日文缺失时依次回退英文、简中。管理端 `POST`/`PATCH /api/incentives/admin/previews` 可选接收 `body_zh_tw`、`body_ja`；未传字段不会在更新时被清空。`POST /api/incentives/admin/translate` 支持同一次请求指定 `en`、`zh-tw`、`ja` 目标语言，并按目标语言键分别返回翻译结果。公开预告接口支持游标分页：`preview_limit` 可选（默认 20，最大 50），`preview_cursor` 使用上一页返回的 `next_preview_cursor`；响应始终返回 `next_preview_cursor`（无下一页时为 `null`）。分页只作用于预告，建议数据保持原有返回方式。公开页面必须继续经上述接口读取，且由官网前台线程负责将 `zh-TW`、`ja` 路由映射到对应字段并在分页结果中按 `major_version` 分组。
 
+版本预告的结构化正文继续复用 `release_previews` 表，不新增数据库列：版本级说明写入既有四语 `body_*`；`highlights_zh` JSONB 写入兼容数组，首项为 `{ "schema_version": 2, "features": [...] }` 元数据，其后继续双写中文功能字符串供旧运行时读取。每条 feature 包含稳定唯一 `id`、`sort_order`、可空的 `progress`（整数 0–100）以及四语 `content_*`。公开和管理接口规范化返回 `note_zh`、`note_en`、`note_zh_tw`、`note_ja` 与 `features[]`，并继续派生旧的 `body_*` / `highlights_*` 字段供兼容调用方读取。旧数组记录仍可读；已有 `body + highlights` 按 Note + Features 适配，无法安全判断的旧长文本保持为 progress 为 `null` 的功能项，不猜测完成度。指定的 V3.2 总说明仅在中文首条精确匹配时迁入 Note。
+
+管理端结构化保存必须拒绝缺失/重复 feature ID、历史适配器保留的 `legacy-` ID 前缀、非整数或超出 0–100 的 progress，以及缺失中英文正文；排序只更新 `sort_order`，不改变 ID 和多语言对应关系。翻译请求以 `note` 与 `feature.<稳定ID>` 为键；服务端要求每个目标语言完整返回同一键集合，拒绝缺失、重复或额外键。任一翻译批次失败时，管理端不得覆盖现有译文；“仅翻译缺失内容”只填空字段。
+
+已保存为 schema v2 的预告不接受旧版维护者客户端仅携带 `body_*` 的正文 PATCH；接口返回 `409` 并要求刷新后台，避免旧表单静默清空稳定 ID、progress 与逐语翻译。状态切换 PATCH 不受影响，尚未结构化的历史记录仍可按旧格式更新。
+
 ## 鉴权与变更规则
 
 管理端接口必须在每个请求路径验证管理员会话；登录、退出和会话 cookie 的具体实现以相邻路由和服务端工具函数为准。公开接口不等于无限制接口：应验证输入、限制写入权限，并避免泄露内部字段。

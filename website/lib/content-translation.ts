@@ -20,15 +20,20 @@ function translationConfig() {
 
 function cleanEntries(value: unknown): TranslationEntry[] {
   if (!Array.isArray(value)) return [];
-  const usedKeys = new Set<string>();
-  return value
+  const entries = value
     .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
     .map((item) => ({
       key: typeof item.key === "string" ? item.key.trim().slice(0, 120) : "",
       text: typeof item.text === "string" ? item.text.trim().slice(0, MAX_TEXT_LENGTH) : ""
     }))
-    .filter((item) => item.key && item.text && !usedKeys.has(item.key) && (usedKeys.add(item.key), true))
-    .slice(0, MAX_ENTRIES);
+    .filter((item) => item.key && item.text);
+  if (entries.length > MAX_ENTRIES) throw new Error(`翻译内容不能超过 ${MAX_ENTRIES} 项`);
+  const usedKeys = new Set<string>();
+  for (const entry of entries) {
+    if (usedKeys.has(entry.key)) throw new Error(`翻译键重复：${entry.key}`);
+    usedKeys.add(entry.key);
+  }
+  return entries;
 }
 
 function cleanTargetLocales(value: unknown) {
@@ -46,11 +51,16 @@ function parseTranslations(value: unknown, targets: string[], entries: Translati
   const translations = source.translations && typeof source.translations === "object"
     ? source.translations as Record<string, unknown>
     : source;
+  const extraLocales = Object.keys(translations).filter((locale) => !targets.includes(locale));
+  if (extraLocales.length) throw new Error(`Translation response contains unexpected locale ${extraLocales[0]}`);
   const result: TranslationResult = {};
+  const expectedKeys = new Set(entries.map((entry) => entry.key));
   for (const locale of targets) {
     const language = translations[locale];
     if (!language || typeof language !== "object") throw new Error(`Translation response is missing ${locale}`);
     const fields = language as Record<string, unknown>;
+    const extraKeys = Object.keys(fields).filter((key) => !expectedKeys.has(key));
+    if (extraKeys.length) throw new Error(`Translation response contains unexpected key ${locale}.${extraKeys[0]}`);
     result[locale] = {};
     for (const entry of entries) {
       const translated = fields[entry.key];

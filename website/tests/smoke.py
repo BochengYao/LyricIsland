@@ -977,9 +977,12 @@ def test_incentive_page(page: Page, path: str, lang: str, mobile: bool = False) 
                 '"body":"为不同桌面保存独立的歌词岛布局。","created_at":"2026-07-11T00:00:00Z","like_count":3,"liked":false}'
                 '],"previews":['
                 '{"id":"preview-1","version":"v2.1 Preview","title_zh":"更安静的桌面交互",'
-                '"title_en":"Quieter desktop interactions","body_zh":"继续打磨避让。\\n- 收起体验更加顺滑。",'
-                '"body_en":"More polish for avoidance.\\n- Smoother retraction.","highlights_zh":[],'
-                '"highlights_en":[],"target_date":"2026-09-01",'
+                '"title_en":"Quieter desktop interactions","body_zh":"继续打磨避让。",'
+                '"body_en":"More polish for avoidance.","highlights_zh":["收起体验更加顺滑。"],'
+                '"highlights_en":["Smoother retraction."],"note_zh":"继续打磨避让。",'
+                '"note_en":"More polish for avoidance.","note_zh_tw":"","note_ja":"",'
+                '"features":[{"id":"preview-feature-1","sort_order":1,"progress":85,"content_zh":"新增省电模式。","content_en":"Add power-saving mode.","content_zh_tw":"","content_ja":""},'
+                '{"id":"preview-feature-2","sort_order":2,"progress":null,"content_zh":"收起体验更加顺滑。","content_en":"Smoother retraction.","content_zh_tw":"","content_ja":""}],"target_date":"2026-09-01",'
                 '"status":"published","created_at":"2026-07-14T00:00:00Z",'
                 '"updated_at":"2026-07-14T00:00:00Z","published_at":"2026-07-14T00:00:00Z"}]}'
             ),
@@ -1002,9 +1005,13 @@ def test_incentive_page(page: Page, path: str, lang: str, mobile: bool = False) 
     assert 0 < page.locator(".acceptedAttachment").count() < page.locator(".acceptedCard").count()
     preview_card = page.locator(".previewCard")
     expect(preview_card.locator(".previewCardMeta")).to_contain_text("v2.1 Preview")
-    expect(preview_card.locator(".previewItemNumber")).to_have_text(["01", "02"])
+    expect(preview_card.locator(".previewItemNumber")).to_have_count(0)
+    expect(preview_card.locator(".previewProgressRing")).to_have_count(2)
+    expect(preview_card.locator('[role="progressbar"]')).to_have_attribute("aria-valuenow", "85")
+    expect(preview_card.locator('[role="img"]')).to_have_attribute("aria-label", "Development progress unknown" if lang == "en" else "开发进度未知")
+    expect(preview_card.locator(".previewNote")).to_have_text("More polish for avoidance." if lang == "en" else "继续打磨避让。")
     expect(preview_card.locator(".previewItems p")).to_have_text(
-        ["More polish for avoidance.", "Smoother retraction."] if lang == "en" else ["继续打磨避让。", "收起体验更加顺滑。"]
+        ["Add power-saving mode.", "Smoother retraction."] if lang == "en" else ["新增省电模式。", "收起体验更加顺滑。"]
     )
     expect(page.locator(".acceptedTime").first).to_be_visible()
     expect(page.locator(".acceptedWaterfallColumn")).to_have_count(4)
@@ -1261,7 +1268,9 @@ def test_admin_dashboard(page: Page) -> None:
                 '{"previews":[{"id":"p1","version":"v2.1 Preview",'
                 '"title_zh":"更安静的桌面交互","title_en":"Quieter desktop interactions",'
                 '"body_zh":"继续打磨避让和收起体验。","body_en":"More polish.",'
-                '"highlights_zh":[],"highlights_en":[],"target_date":"2026-09-01",'
+                '"highlights_zh":["新增省电模式。"],"highlights_en":["Add power-saving mode."],'
+                '"note_zh":"继续打磨避让和收起体验。","note_en":"More polish.","note_zh_tw":"","note_ja":"",'
+                '"features":[{"id":"feature-1","sort_order":1,"progress":60,"content_zh":"新增省电模式。","content_en":"Add power-saving mode.","content_zh_tw":"","content_ja":""}],"target_date":"2026-09-01",'
                 '"status":"published","created_at":"2026-07-14T00:00:00Z",'
                 '"updated_at":"2026-07-14T00:00:00Z","published_at":"2026-07-14T00:00:00Z"}]}'
             ),
@@ -1288,13 +1297,14 @@ def test_admin_dashboard(page: Page) -> None:
     page.get_by_role("button", name="版本预告").click()
     expect(page.get_by_role("heading", name="发布版本预告")).to_be_visible()
     expect(page.locator(".previewEditor")).to_be_visible()
-    expect(page.get_by_label("更新内容（中文）")).to_be_visible()
-    expect(page.get_by_label("Update content (English)")).to_be_visible()
-    tbd_button = page.get_by_role("button", name="上线时间待定")
-    expect(tbd_button).to_be_visible()
-    tbd_button.click()
-    expect(tbd_button).to_have_attribute("aria-pressed", "true")
-    expect(page.get_by_label("预计上线时间")).to_be_disabled()
+    expect(page.get_by_label("版本说明 Note（中文）")).to_be_visible()
+    page.get_by_role("tab", name="English").click()
+    expect(page.get_by_label("Version Note (English)")).to_be_visible()
+    expect(page.get_by_label("预计上线范围")).to_be_visible()
+    bulk_input = page.get_by_label("快速批量导入中文功能项")
+    bulk_input.fill("新增省电模式。\n新增逐字跟随。\n新增歌词坞。\n支持手动刷新。")
+    page.get_by_role("button", name="解析为功能项").click()
+    expect(page.locator(".previewFeatureEditor")).to_have_count(4)
 
 
 def test_submission_validation(page: Page) -> None:

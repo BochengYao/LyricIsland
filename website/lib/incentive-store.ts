@@ -19,6 +19,10 @@ import {
   releasePreviewFallback,
   type ReleasePreviewInput
 } from "@/data/release-preview";
+import {
+  localizedFeatureContent,
+  normalizeReleasePreviewContent
+} from "@/data/release-preview-content";
 import type { AccessEventSource } from "@/lib/access-log";
 
 type SupabaseConfig = {
@@ -32,10 +36,18 @@ type StoredSubmission = Omit<
   "developer_reply" | "is_flagged" | "is_public"
 > & { reviewer_note: string | null };
 
-type StoredFeatureRow = Omit<ReleasePreview, "highlights_zh" | "highlights_en"> & {
+type StoredReleasePreview = Omit<
+  ReleasePreview,
+  "note_zh" | "note_en" | "note_zh_tw" | "note_ja" | "features" |
+  "highlights_zh" | "highlights_en" | "highlights_zh_tw" | "highlights_ja"
+> & {
   highlights_zh: unknown;
-  highlights_en: unknown;
+  highlights_en?: unknown;
+  highlights_zh_tw?: unknown;
+  highlights_ja?: unknown;
 };
+
+type StoredFeatureRow = StoredReleasePreview;
 
 function firstText(...values: unknown[]) {
   for (const value of values) {
@@ -55,27 +67,40 @@ function firstLines(...values: unknown[]) {
   return [] as string[];
 }
 
-function normalizeReleasePreview(preview: ReleasePreview): ReleasePreview {
+function hasStructuredPreviewFeatures(value: unknown) {
+  const candidate = Array.isArray(value)
+    ? value.find((item) => Boolean(item) && typeof item === "object" && !Array.isArray(item))
+    : value;
+  return Boolean(candidate) && typeof candidate === "object" && !Array.isArray(candidate) &&
+    (candidate as { schema_version?: unknown }).schema_version === 2;
+}
+
+function normalizeReleasePreview(preview: StoredReleasePreview): ReleasePreview {
   const titleZh = firstText(preview.title_zh);
   const titleEn = firstText(preview.title_en, titleZh);
-  const bodyZh = firstText(preview.body_zh);
-  const bodyEn = firstText(preview.body_en, bodyZh);
-  const highlightsZh = firstLines(preview.highlights_zh);
-  const highlightsEn = firstLines(preview.highlights_en, highlightsZh);
+  const content = normalizeReleasePreviewContent(preview);
+  const structured = hasStructuredPreviewFeatures(preview.highlights_zh);
+  const highlightsZh = content.features.map((feature) => localizedFeatureContent(feature, "zh")).filter(Boolean);
+  const highlightsEn = content.features.map((feature) => localizedFeatureContent(feature, "en")).filter(Boolean);
+  const highlightsZhTw = content.features.map((feature) => localizedFeatureContent(feature, "zhHant")).filter(Boolean);
+  const highlightsJa = content.features.map((feature) => localizedFeatureContent(feature, "ja")).filter(Boolean);
+  const rawBodyZh = firstText(preview.body_zh);
+  const rawBodyEn = firstText(preview.body_en, rawBodyZh);
   return {
     ...preview,
     title_zh: titleZh,
     title_en: titleEn,
     title_zh_tw: firstText(preview.title_zh_tw, titleZh),
     title_ja: firstText(preview.title_ja, titleEn, titleZh),
-    body_zh: bodyZh,
-    body_en: bodyEn,
-    body_zh_tw: firstText(preview.body_zh_tw, bodyZh),
-    body_ja: firstText(preview.body_ja, bodyEn, bodyZh),
-    highlights_zh: highlightsZh,
-    highlights_en: highlightsEn,
-    highlights_zh_tw: firstLines(preview.highlights_zh_tw, highlightsZh),
-    highlights_ja: firstLines(preview.highlights_ja, highlightsEn, highlightsZh)
+    body_zh: rawBodyZh,
+    body_en: rawBodyEn,
+    body_zh_tw: firstText(preview.body_zh_tw, rawBodyZh),
+    body_ja: firstText(preview.body_ja, rawBodyEn, rawBodyZh),
+    highlights_zh: structured ? highlightsZh : firstLines(preview.highlights_zh),
+    highlights_en: structured ? highlightsEn : firstLines(preview.highlights_en, preview.highlights_zh),
+    highlights_zh_tw: structured ? highlightsZhTw : firstLines(preview.highlights_zh_tw, preview.highlights_zh),
+    highlights_ja: structured ? highlightsJa : firstLines(preview.highlights_ja, preview.highlights_en, preview.highlights_zh),
+    ...content
   };
 }
 
@@ -111,7 +136,7 @@ export function parsePublicPreviewPageOptions(request: Request): PublicPreviewPa
   return { limit, cursor: { publishedAt, id } };
 }
 
-function publicPreviewCursor(preview: ReleasePreview) {
+function publicPreviewCursor(preview: StoredReleasePreview) {
   if (!preview.published_at) return null;
   return `${encodeURIComponent(preview.published_at)}~${encodeURIComponent(preview.id)}`;
 }
@@ -121,7 +146,7 @@ function majorVersionOf(version: string) {
   return match ? `V${match[1]}` : "OTHER";
 }
 
-function toPublicReleasePreview(preview: ReleasePreview): PublicReleasePreview {
+function toPublicReleasePreview(preview: StoredReleasePreview): PublicReleasePreview {
   const normalized = normalizeReleasePreview(preview);
   return { ...normalized, major_version: majorVersionOf(normalized.version) };
 }
@@ -352,7 +377,7 @@ export async function getPublicIncentives(voterHash?: string, options: PublicPre
       )
     : Promise.resolve([] as Array<{ submission_id: string }>);
   const previewLimit = options.limit ?? DEFAULT_PUBLIC_PREVIEW_LIMIT;
-  const previewRowsRequest = supabase<ReleasePreview[]>(publicPreviewQuery({
+  const previewRowsRequest = supabase<StoredReleasePreview[]>(publicPreviewQuery({
     limit: previewLimit,
     cursor: options.cursor
   }));
@@ -529,7 +554,7 @@ export async function deleteSubmission(id: string) {
 }
 
 export async function listReleasePreviews() {
-  const rows = await supabase<ReleasePreview[]>(
+  const rows = await supabase<StoredReleasePreview[]>(
     "/rest/v1/release_previews?select=*&version=not.in.(__FEATURE_CONTENT_V1__,__AUDIT_LOG_V1__)&order=created_at.desc&limit=50"
   );
   const previews = rows.filter((row) => !row.version.startsWith("__"));
@@ -541,7 +566,7 @@ export async function createReleasePreview(
   input: ReleasePreviewInput
 ) {
   const now = new Date().toISOString();
-  const rows = await supabase<ReleasePreview[]>("/rest/v1/release_previews", {
+  const rows = await supabase<StoredReleasePreview[]>("/rest/v1/release_previews", {
     method: "POST",
     headers: headers("return=representation"),
     body: JSON.stringify({
@@ -555,10 +580,10 @@ export async function createReleasePreview(
 export async function updateReleasePreview(
   id: string,
   input: Partial<
-    Omit<ReleasePreview, "id" | "created_at" | "updated_at" | "published_at">
+    ReleasePreviewInput
   >
 ) {
-  const rows = await supabase<ReleasePreview[]>(
+  const rows = await supabase<StoredReleasePreview[]>(
     `/rest/v1/release_previews?id=eq.${encodeURIComponent(id)}`,
     {
       method: "PATCH",
@@ -576,13 +601,13 @@ export async function updateReleasePreview(
 }
 
 export async function deleteReleasePreview(id: string) {
-  const existingRows = await supabase<ReleasePreview[]>(
+  const existingRows = await supabase<StoredReleasePreview[]>(
     `/rest/v1/release_previews?id=eq.${encodeURIComponent(id)}&limit=1`
   );
   const existing = existingRows[0];
   if (!existing) throw new Error("Release preview not found");
   if (existing.version.startsWith("__")) throw new Error("Internal content cannot be deleted");
-  const rows = await supabase<ReleasePreview[]>(
+  const rows = await supabase<StoredReleasePreview[]>(
     `/rest/v1/release_previews?id=eq.${encodeURIComponent(id)}`,
     {
       method: "DELETE",

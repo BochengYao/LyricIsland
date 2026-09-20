@@ -444,6 +444,16 @@ try {
     "自定义字体、颜色",
     "自定义各模块颜色"
   ]);
+  assert.equal(publicData.previews[0].note_zh, publicData.previews[0].body_zh);
+  assert.deepEqual(
+    publicData.previews[0].features.map((feature) => feature.content_zh),
+    publicData.previews[0].highlights_zh,
+    "legacy highlight arrays must remain readable as structured features"
+  );
+  assert.ok(
+    publicData.previews[0].features.every((feature) => feature.id.startsWith("legacy-") && feature.progress === null),
+    "legacy features must receive stable IDs without inventing progress"
+  );
   assert.equal(publicData.previews[0].body_zh_tw, publicData.previews[0].body_zh);
   assert.equal(publicData.previews[0].body_ja, publicData.previews[0].body_en);
   assert.deepEqual(publicData.previews[0].highlights_zh_tw, publicData.previews[0].highlights_zh);
@@ -582,16 +592,44 @@ try {
       },
       body: JSON.stringify({
         targetLocales: ["en", "zh-tw", "ja"],
-        entries: [{ key: "preview.body", text: "支持自定义歌词岛形状" }]
+        entries: [
+          { key: "preview.note", text: "支持自定义歌词岛形状" },
+          { key: "preview.feature.feature-power", text: "新增省电模式" }
+        ]
       })
     })
   );
   assert.equal(translationResponse.status, 200);
   const translationData = await translationResponse.json();
-  assert.equal(translationData.translations.en["preview.body"], "en:支持自定义歌词岛形状");
-  assert.equal(translationData.translations["zh-tw"]["preview.body"], "zh-tw:支持自定义歌词岛形状");
-  assert.equal(translationData.translations.ja["preview.body"], "ja:支持自定义歌词岛形状");
+  assert.equal(translationData.translations.en["preview.note"], "en:支持自定义歌词岛形状");
+  assert.equal(translationData.translations["zh-tw"]["preview.note"], "zh-tw:支持自定义歌词岛形状");
+  assert.equal(translationData.translations.ja["preview.note"], "ja:支持自定义歌词岛形状");
+  assert.equal(
+    translationData.translations.en["preview.feature.feature-power"],
+    "en:新增省电模式",
+    "feature translations must retain the stable feature ID in their entry key"
+  );
   assert.equal(calls.length, 1, "translation must make exactly one server-side DeepSeek request");
+
+  const duplicateTranslationKeyResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/translate", {
+      method: "POST",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({
+        targetLocales: ["en"],
+        entries: [
+          { key: "feature.feature-power", text: "新增省电模式" },
+          { key: "feature.feature-power", text: "不应接受重复键" }
+        ]
+      })
+    })
+  );
+  assert.equal(duplicateTranslationKeyResponse.status, 400, "duplicate translation keys must be rejected before calling AI");
+  assert.equal(calls.length, 1, "invalid structured translation input must not call DeepSeek");
 
   const invalidFeatures = structuredClone(publicFeaturesData.content);
   invalidFeatures.sections[0].release_version = "";
@@ -928,6 +966,54 @@ try {
   assert.equal(previewUpdateData.preview.body_zh, "保留并更新当前预告");
   assert.equal(releasePreviewRows.length, 1, "editing must update the current preview instead of duplicating it");
 
+  const structuredPreviewFeatures = [
+    {
+      id: "feature-power",
+      sort_order: 99,
+      progress: 100,
+      content_zh: "新增省电模式。",
+      content_en: "Add power-saving mode.",
+      content_zh_tw: "新增省電模式。",
+      content_ja: "省電力モードを追加。"
+    },
+    {
+      id: "feature-word-follow",
+      sort_order: 98,
+      progress: 85,
+      content_zh: "新增逐字跟随。",
+      content_en: "Add word-by-word follow.",
+      content_zh_tw: "新增逐字跟隨。",
+      content_ja: "一語ずつ追従を追加。"
+    },
+    {
+      id: "feature-dock",
+      sort_order: 97,
+      progress: 60,
+      content_zh: "新增歌词坞。",
+      content_en: "Add Lyric Dock.",
+      content_zh_tw: "新增歌詞塢。",
+      content_ja: "歌詞ドックを追加。"
+    },
+    {
+      id: "feature-refresh",
+      sort_order: 96,
+      progress: 30,
+      content_zh: "支持手动刷新歌词。",
+      content_en: "Support manual lyric refresh.",
+      content_zh_tw: "支援手動重新整理歌詞。",
+      content_ja: "歌詞の手動更新に対応。"
+    },
+    {
+      id: "feature-legacy-progress",
+      sort_order: 95,
+      progress: null,
+      content_zh: "兼容尚未填写进度的功能。",
+      content_en: "Keep features without recorded progress compatible.",
+      content_zh_tw: "相容尚未填寫進度的功能。",
+      content_ja: "進捗未入力の機能との互換性を維持。"
+    }
+  ];
+
   calls.length = 0;
   const previewResponse = await api.fetch(
     new Request("https://lyric-island.top/api/incentives/admin/previews", {
@@ -939,10 +1025,11 @@ try {
       },
       body: JSON.stringify({
         version: "v2.2 Preview",
-        body_zh: "中文更新内容。",
-        body_en: "English release notes.",
-        body_zh_tw: "繁中更新內容。",
-        body_ja: "日本語の更新内容。",
+        note_zh: "中文版本说明。",
+        note_en: "English version note.",
+        note_zh_tw: "繁中版本說明。",
+        note_ja: "日本語のバージョンノート。",
+        features: structuredPreviewFeatures,
         target_date: "",
         status: "draft"
       })
@@ -952,11 +1039,172 @@ try {
   const previewData = await previewResponse.json();
   assert.equal(previewData.preview.title_zh, "v2.2 Preview");
   assert.equal(previewData.preview.title_en, "v2.2 Preview");
-  assert.equal(previewData.preview.body_zh, "中文更新内容。");
-  assert.equal(previewData.preview.body_en, "English release notes.");
-  assert.equal(previewData.preview.body_zh_tw, "繁中更新內容。");
-  assert.equal(previewData.preview.body_ja, "日本語の更新内容。");
+  assert.equal(previewData.preview.note_zh, "中文版本说明。");
+  assert.equal(previewData.preview.note_en, "English version note.");
+  assert.equal(previewData.preview.note_zh_tw, "繁中版本說明。");
+  assert.equal(previewData.preview.note_ja, "日本語のバージョンノート。");
+  assert.equal(previewData.preview.body_zh, previewData.preview.note_zh, "legacy body fields must remain compatible");
+  assert.equal(previewData.preview.body_en, previewData.preview.note_en, "legacy body fields must remain compatible");
+  assert.deepEqual(
+    previewData.preview.features.map(({ id, sort_order, progress }) => ({ id, sort_order, progress })),
+    [
+      { id: "feature-power", sort_order: 1, progress: 100 },
+      { id: "feature-word-follow", sort_order: 2, progress: 85 },
+      { id: "feature-dock", sort_order: 3, progress: 60 },
+      { id: "feature-refresh", sort_order: 4, progress: 30 },
+      { id: "feature-legacy-progress", sort_order: 5, progress: null }
+    ],
+    "structured preview creation must persist every progress value and normalize sort order"
+  );
+  assert.deepEqual(
+    previewData.preview.highlights_zh,
+    structuredPreviewFeatures.map((feature) => feature.content_zh),
+    "legacy highlight fields must remain available in structured responses"
+  );
   assert.equal(previewData.preview.target_date, null);
+
+  const storedStructuredPreview = releasePreviewRows.find((row) => row.id === previewData.preview.id);
+  assert.equal(storedStructuredPreview.body_zh, "中文版本说明。");
+  assert.equal(storedStructuredPreview.highlights_zh[0].schema_version, 2);
+  assert.deepEqual(
+    storedStructuredPreview.highlights_zh[0].features.map(({ id, sort_order, progress }) => ({ id, sort_order, progress })),
+    previewData.preview.features.map(({ id, sort_order, progress }) => ({ id, sort_order, progress })),
+    "Supabase payload must retain stable IDs, order, and progress independently from text"
+  );
+
+  const beforeLegacyOverwrite = structuredClone(releasePreviewRows);
+  const legacyOverwriteResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/previews", {
+      method: "PATCH",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({
+        id: previewData.preview.id,
+        version: "v2.2 Preview",
+        body_zh: "旧客户端合并后的正文",
+        body_en: "Legacy client combined body",
+        status: "draft"
+      })
+    })
+  );
+  assert.equal(legacyOverwriteResponse.status, 409, "legacy clients must not overwrite schema v2 metadata");
+  assert.deepEqual(releasePreviewRows, beforeLegacyOverwrite, "rejected legacy writes must preserve structured preview data");
+
+  const reorderedFeatures = [
+    structuredPreviewFeatures[2],
+    structuredPreviewFeatures[0],
+    structuredPreviewFeatures[1],
+    structuredPreviewFeatures[4],
+    structuredPreviewFeatures[3]
+  ];
+  const structuredUpdateResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/previews", {
+      method: "PATCH",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({
+        id: previewData.preview.id,
+        version: "v2.2 Preview",
+        note_zh: "更新后的中文版本说明。",
+        note_en: "Updated English version note.",
+        note_zh_tw: "更新後的繁中版本說明。",
+        note_ja: "更新後の日本語バージョンノート。",
+        features: reorderedFeatures,
+        target_date: "",
+        status: "draft"
+      })
+    })
+  );
+  assert.equal(structuredUpdateResponse.status, 200);
+  const structuredUpdateData = await structuredUpdateResponse.json();
+  assert.equal(structuredUpdateData.preview.note_zh, "更新后的中文版本说明。");
+  assert.deepEqual(
+    structuredUpdateData.preview.features.map((feature) => feature.id),
+    ["feature-dock", "feature-power", "feature-word-follow", "feature-legacy-progress", "feature-refresh"],
+    "reordering must preserve feature identity"
+  );
+  assert.deepEqual(
+    structuredUpdateData.preview.features.map((feature) => feature.sort_order),
+    [1, 2, 3, 4, 5]
+  );
+  assert.deepEqual(
+    structuredUpdateData.preview.features.map((feature) => [feature.id, feature.content_en, feature.content_zh_tw, feature.content_ja]),
+    reorderedFeatures.map((feature) => [feature.id, feature.content_en, feature.content_zh_tw, feature.content_ja]),
+    "all localized content must remain attached to its stable feature ID after sorting"
+  );
+
+  const beforeInvalidProgress = structuredClone(releasePreviewRows);
+  const invalidProgressResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/previews", {
+      method: "POST",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({
+        version: "v2.3 Invalid",
+        note_zh: "非法进度不应保存。",
+        note_en: "Invalid progress must not be saved.",
+        features: [{ ...structuredPreviewFeatures[0], id: "feature-invalid", progress: 101 }],
+        status: "draft"
+      })
+    })
+  );
+  assert.equal(invalidProgressResponse.status, 400, "progress outside 0-100 must be rejected");
+  assert.deepEqual(releasePreviewRows, beforeInvalidProgress, "invalid progress must not overwrite or append data");
+
+  const beforeReservedId = structuredClone(releasePreviewRows);
+  const reservedIdResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/previews", {
+      method: "POST",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({
+        version: "v2.3 Reserved",
+        note_zh: "保留前缀不能保存。",
+        note_en: "Reserved prefixes must not be saved.",
+        features: [{ ...structuredPreviewFeatures[0], id: "legacy-user-supplied" }],
+        status: "draft"
+      })
+    })
+  );
+  assert.equal(reservedIdResponse.status, 400, "legacy- IDs are reserved for read-time compatibility");
+  assert.deepEqual(releasePreviewRows, beforeReservedId, "reserved IDs must not mutate preview data");
+
+  const beforeDuplicateIds = structuredClone(releasePreviewRows);
+  const duplicateIdResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/previews", {
+      method: "PATCH",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({
+        id: previewData.preview.id,
+        version: "v2.2 Preview",
+        note_zh: "重复 ID 不应覆盖原数据。",
+        note_en: "Duplicate IDs must not overwrite stored data.",
+        features: [
+          structuredPreviewFeatures[0],
+          { ...structuredPreviewFeatures[1], id: structuredPreviewFeatures[0].id }
+        ],
+        status: "draft"
+      })
+    })
+  );
+  assert.equal(duplicateIdResponse.status, 400, "duplicate feature IDs must be rejected");
+  assert.deepEqual(releasePreviewRows, beforeDuplicateIds, "duplicate IDs must leave the stored preview unchanged");
 
   const publishedOnlyResponse = await api.fetch(
     new Request("https://lyric-island.top/api/incentives/admin/previews", {
@@ -982,7 +1230,73 @@ try {
   const multiplePublicPreviews = await api.fetch(
     new Request("https://lyric-island.top/api/incentives/public")
   );
-  assert.equal((await multiplePublicPreviews.json()).previews.length, 2, "every published preview must be returned to the public page");
+  const multiplePublicPreviewData = await multiplePublicPreviews.json();
+  assert.equal(multiplePublicPreviewData.previews.length, 2, "every published preview must be returned to the public page");
+  const structuredPublicPreview = multiplePublicPreviewData.previews.find((preview) => preview.id === previewData.preview.id);
+  assert.equal(structuredPublicPreview.note_zh, "更新后的中文版本说明。");
+  assert.equal(structuredPublicPreview.body_zh, structuredPublicPreview.note_zh, "public responses must retain the legacy body field");
+  assert.deepEqual(
+    structuredPublicPreview.highlights_en,
+    structuredPublicPreview.features.map((feature) => feature.content_en),
+    "public responses must retain legacy localized highlight arrays"
+  );
+  assert.deepEqual(
+    structuredPublicPreview.features.map(({ id, progress }) => ({ id, progress })),
+    [
+      { id: "feature-dock", progress: 60 },
+      { id: "feature-power", progress: 100 },
+      { id: "feature-word-follow", progress: 85 },
+      { id: "feature-legacy-progress", progress: null },
+      { id: "feature-refresh", progress: 30 }
+    ]
+  );
+
+  const knownV32Note = "新版本的主要功能已基本完成，目前正在进一步优化性能、功耗与长期运行体验，发布时间调整至本月内。";
+  releasePreviewRows = [{
+    ...publicPreviewRow("preview-v3-2-legacy", "V3.2", "2026-09-16T00:00:00.000Z"),
+    body_zh: `${knownV32Note}\n新增省电模式。\n新增歌词坞。`,
+    body_en: "The main work is complete and is being optimized.\nAdd power-saving mode.\nAdd Lyric Dock.",
+    body_zh_tw: "主要功能已完成並正在最佳化。\n新增省電模式。\n新增歌詞塢。",
+    body_ja: "主要機能は完成し最適化中です。\n省電力モードを追加。\n歌詞ドックを追加。",
+    highlights_zh: [],
+    highlights_en: [],
+    highlights_zh_tw: [],
+    highlights_ja: []
+  }];
+  const legacyV32Response = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/public")
+  );
+  assert.equal(legacyV32Response.status, 200);
+  const legacyV32Data = await legacyV32Response.json();
+  const legacyV32Preview = legacyV32Data.previews[0];
+  assert.equal(legacyV32Preview.note_zh, knownV32Note, "the known V3.2 overview must migrate to the version note");
+  assert.deepEqual(
+    legacyV32Preview.features.map((feature) => feature.content_zh),
+    ["新增省电模式。", "新增歌词坞。"],
+    "the remaining legacy V3.2 lines must become features"
+  );
+  assert.ok(
+    legacyV32Preview.features.every((feature) => feature.progress === null),
+    "migrated legacy V3.2 features must not invent progress"
+  );
+  assert.deepEqual(
+    legacyV32Preview.features.map((feature) => [feature.content_en, feature.content_zh_tw, feature.content_ja]),
+    [
+      ["Add power-saving mode.", "新增省電模式。", "省電力モードを追加。"],
+      ["Add Lyric Dock.", "新增歌詞塢。", "歌詞ドックを追加。"]
+    ],
+    "legacy V3.2 migration must preserve multilingual line correspondence"
+  );
+  const legacyV32StableIds = legacyV32Preview.features.map((feature) => feature.id);
+  const legacyV32RepeatResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/public")
+  );
+  const legacyV32RepeatData = await legacyV32RepeatResponse.json();
+  assert.deepEqual(
+    legacyV32RepeatData.previews[0].features.map((feature) => feature.id),
+    legacyV32StableIds,
+    "legacy feature IDs must remain stable across reads"
+  );
 
   const form = new FormData();
   form.set("kind", "feature");

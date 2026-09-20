@@ -2395,11 +2395,8 @@ html[lang="en"] :where(
   .previewSection.updatesPreviewSection {
     align-content: start;
     min-block-size: 100svh;
-    block-size: 100svh;
-    max-block-size: 100svh;
     padding-top: clamp(120px, 13svh, 144px);
     padding-bottom: clamp(28px, 4svh, 44px);
-    overflow: hidden;
   }
 
   .previewSection.updatesPreviewSection .previewIntro {
@@ -4058,6 +4055,14 @@ html[lang="en"] :where(
   line-height: 1.1;
 }
 
+.previewNote {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.65;
+  white-space: pre-line;
+}
+
 .previewCard small {
   color: var(--muted);
   font-size: 12px;
@@ -4081,15 +4086,32 @@ html[lang="en"] :where(
 
 .previewItems li {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-columns: 16px minmax(0, 1fr);
   gap: 12px;
-  align-items: baseline;
+  align-items: start;
 }
 
-.previewItemNumber {
-  color: var(--orbit);
-  font-size: 13px;
-  font-weight: 700;
+.previewProgressRing {
+  display: block;
+  width: 16px;
+  height: 16px;
+  margin-top: 0.22em;
+  overflow: visible;
+}
+
+.previewProgressRingTrack,
+.previewProgressRingValue {
+  fill: none;
+  stroke-width: 1.75;
+}
+
+.previewProgressRingTrack {
+  stroke: var(--line);
+}
+
+.previewProgressRingValue {
+  stroke: var(--orbit);
+  stroke-linecap: round;
 }
 
 .previewItems p {
@@ -5634,6 +5656,99 @@ button.danger,
   gap: 12px;
 }
 
+.previewBulkImport {
+  display: grid;
+  gap: 12px;
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.previewBulkImport > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.previewBulkImport small,
+.previewFeatureEmpty {
+  color: var(--muted);
+}
+
+.previewBulkActions,
+.previewFeatureActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.previewFeatureList {
+  display: grid;
+}
+
+.previewFeatureEditor {
+  display: grid;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.previewFeatureEditor > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.previewFeatureActions button,
+.previewProgressEditor button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font: 700 12px/1 inherit;
+  cursor: pointer;
+}
+
+.previewFeatureActions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.previewFeatureActions button.danger {
+  color: #a82620;
+}
+
+.previewProgressEditor {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 96px auto auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.previewProgressEditor input[type="range"] {
+  min-height: 42px;
+  padding-inline: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  accent-color: var(--orbit);
+}
+
+.previewProgressEditor > span {
+  align-self: center;
+  min-width: 58px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.previewFeatureEmpty {
+  margin: 0;
+  padding: 18px 0;
+}
+
 .previewEditor fieldset {
   display: grid;
   gap: 18px;
@@ -6106,8 +6221,8 @@ button.danger,
   }
 
   .previewItems li {
-    grid-template-columns: 34px minmax(0, 1fr);
-    gap: 8px;
+    grid-template-columns: 16px minmax(0, 1fr);
+    gap: 10px;
     min-width: 0;
   }
 
@@ -6300,6 +6415,24 @@ button.danger,
 
   .previewEditorActions .button {
     width: 100%;
+  }
+
+  .previewFeatureEditor > header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .previewFeatureActions {
+    width: 100%;
+  }
+
+  .previewFeatureActions button {
+    flex: 1;
+    min-height: 44px;
+  }
+
+  .previewProgressEditor {
+    grid-template-columns: minmax(0, 1fr) 96px;
   }
 
   .featureRowActions {

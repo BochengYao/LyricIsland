@@ -24,6 +24,8 @@ const REVIEW_META_PREFIX = "[[lyric-island-review:v1]]";
 const FEATURE_CONTENT_VERSION = "__FEATURE_CONTENT_V1__";
 const LEGACY_FEATURE_RELEASE_VERSION = "早期更新";
 const AUDIT_VERSION = "__AUDIT_LOG_V1__";
+const RELEASE_PREVIEW_SCHEMA_VERSION = 2;
+const KNOWN_V32_NOTE_ZH = "新版本的主要功能已基本完成，目前正在进一步优化性能、功耗与长期运行体验，发布时间调整至本月内。";
 const DEFAULT_FEATURE_CONTENT = JSON.parse("__ESA_FEATURE_CONTENT_JSON__");
 const DEFAULT_RELEASE_PREVIEW = JSON.parse("__ESA_RELEASE_PREVIEW_JSON__");
 const ALLOWED_MIME_TYPES = new Set([
@@ -240,15 +242,152 @@ function firstPreviewText(...values) {
   return "";
 }
 
+function previewLines(value) {
+  return Array.isArray(value)
+    ? value
+        .filter((item) => typeof item === "string")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : [];
+}
+
 function firstPreviewLines(...values) {
   for (const value of values) {
-    if (!Array.isArray(value)) continue;
-    const lines = value.filter((item) => typeof item === "string")
-      .map((item) => item.trim())
-      .filter(Boolean);
+    const lines = previewLines(value);
     if (lines.length) return lines;
   }
   return [];
+}
+
+function splitPreviewItems(value) {
+  if (typeof value !== "string") return [];
+  return value
+    .split(/\r?\n|[；;]/)
+    .map((item) => item.replace(/^\s*(?:[-–—*•·]|\d+[.)、])\s*/, "").trim())
+    .filter(Boolean);
+}
+
+function safePreviewProgress(value) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  return Math.min(100, Math.max(0, Math.round(value)));
+}
+
+function stableLegacyPreviewFeatureId(previewId, content, position) {
+  let hash = 2166136261;
+  const source = `${previewId}\u0000${content}\u0000${position}`;
+  for (let index = 0; index < source.length; index += 1) {
+    hash ^= source.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `legacy-${(hash >>> 0).toString(36)}`;
+}
+
+function sanitizeReleasePreviewFeature(value, fallbackOrder) {
+  if (!value || typeof value !== "object") return null;
+  const id = firstPreviewText(value.id).slice(0, 120);
+  const contentZh = firstPreviewText(value.content_zh).slice(0, 2400);
+  const contentEn = firstPreviewText(value.content_en).slice(0, 2400);
+  const contentZhTw = firstPreviewText(value.content_zh_tw).slice(0, 2400);
+  const contentJa = firstPreviewText(value.content_ja).slice(0, 2400);
+  if (!id || (!contentZh && !contentEn && !contentZhTw && !contentJa)) return null;
+  const rawOrder = typeof value.sort_order === "number" && Number.isFinite(value.sort_order)
+    ? Math.round(value.sort_order)
+    : fallbackOrder;
+  return {
+    id,
+    sort_order: Math.max(0, rawOrder),
+    progress: safePreviewProgress(value.progress),
+    content_zh: contentZh,
+    content_en: contentEn,
+    content_zh_tw: contentZhTw,
+    content_ja: contentJa
+  };
+}
+
+function structuredReleasePreviewFeatures(value) {
+  if (!value || typeof value !== "object") return null;
+  const candidate = Array.isArray(value)
+    ? value.find((item) => item && typeof item === "object" && !Array.isArray(item))
+    : value;
+  if (!candidate || candidate.schema_version !== RELEASE_PREVIEW_SCHEMA_VERSION || !Array.isArray(candidate.features)) return null;
+  const usedIds = new Set();
+  return candidate.features
+    .map((feature, index) => sanitizeReleasePreviewFeature(feature, index + 1))
+    .filter((feature) => feature && !usedIds.has(feature.id) && (usedIds.add(feature.id), true))
+    .sort((left, right) => left.sort_order - right.sort_order)
+    .map((feature, index) => ({ ...feature, sort_order: index + 1 }));
+}
+
+function releasePreviewFeatureFromLegacy(previewId, index, zh, en, zhTw, ja) {
+  const primary = zh[index] || en[index] || zhTw[index] || ja[index] || `feature-${index + 1}`;
+  return {
+    id: stableLegacyPreviewFeatureId(previewId, primary, index),
+    sort_order: index + 1,
+    progress: null,
+    content_zh: zh[index] || "",
+    content_en: en[index] || "",
+    content_zh_tw: zhTw[index] || "",
+    content_ja: ja[index] || ""
+  };
+}
+
+function normalizeReleasePreviewContent(preview) {
+  const storedFeatures = structuredReleasePreviewFeatures(preview.highlights_zh);
+  if (storedFeatures) {
+    return {
+      note_zh: firstPreviewText(preview.body_zh),
+      note_en: firstPreviewText(preview.body_en),
+      note_zh_tw: firstPreviewText(preview.body_zh_tw),
+      note_ja: firstPreviewText(preview.body_ja),
+      features: storedFeatures
+    };
+  }
+
+  const previewId = firstPreviewText(preview.id).slice(0, 160) || "release-preview";
+  const highlightZh = previewLines(preview.highlights_zh);
+  const highlightEn = previewLines(preview.highlights_en);
+  const highlightZhTw = previewLines(preview.highlights_zh_tw);
+  const highlightJa = previewLines(preview.highlights_ja);
+  if (highlightZh.length || highlightEn.length || highlightZhTw.length || highlightJa.length) {
+    const length = Math.max(highlightZh.length, highlightEn.length, highlightZhTw.length, highlightJa.length);
+    return {
+      note_zh: firstPreviewText(preview.body_zh),
+      note_en: firstPreviewText(preview.body_en),
+      note_zh_tw: firstPreviewText(preview.body_zh_tw),
+      note_ja: firstPreviewText(preview.body_ja),
+      features: Array.from({ length }, (_, index) =>
+        releasePreviewFeatureFromLegacy(previewId, index, highlightZh, highlightEn, highlightZhTw, highlightJa)
+      )
+    };
+  }
+
+  const bodyZh = splitPreviewItems(preview.body_zh);
+  const bodyEn = splitPreviewItems(preview.body_en);
+  const bodyZhTw = splitPreviewItems(preview.body_zh_tw);
+  const bodyJa = splitPreviewItems(preview.body_ja);
+  const knownNote = bodyZh[0] === KNOWN_V32_NOTE_ZH;
+  const zh = knownNote ? bodyZh.slice(1) : bodyZh;
+  const en = knownNote ? bodyEn.slice(1) : bodyEn;
+  const zhTw = knownNote ? bodyZhTw.slice(1) : bodyZhTw;
+  const ja = knownNote ? bodyJa.slice(1) : bodyJa;
+  const length = Math.max(zh.length, en.length, zhTw.length, ja.length);
+  return {
+    note_zh: knownNote ? bodyZh[0] : "",
+    note_en: knownNote ? (bodyEn[0] || "") : "",
+    note_zh_tw: knownNote ? (bodyZhTw[0] || "") : "",
+    note_ja: knownNote ? (bodyJa[0] || "") : "",
+    features: Array.from({ length }, (_, index) =>
+      releasePreviewFeatureFromLegacy(previewId, index, zh, en, zhTw, ja)
+    )
+  };
+}
+
+function localizedReleasePreviewFeature(feature, locale) {
+  if (locale === "zh") return feature.content_zh;
+  if (locale === "zhHant") return feature.content_zh_tw || feature.content_zh;
+  if (locale === "ja") return feature.content_ja || feature.content_en || feature.content_zh;
+  return feature.content_en || feature.content_zh;
 }
 
 function normalizeReleasePreview(preview) {
@@ -256,8 +395,12 @@ function normalizeReleasePreview(preview) {
   const titleEn = firstPreviewText(preview.title_en, titleZh);
   const bodyZh = firstPreviewText(preview.body_zh);
   const bodyEn = firstPreviewText(preview.body_en, bodyZh);
-  const highlightsZh = firstPreviewLines(preview.highlights_zh);
-  const highlightsEn = firstPreviewLines(preview.highlights_en, highlightsZh);
+  const content = normalizeReleasePreviewContent(preview);
+  const structured = structuredReleasePreviewFeatures(preview.highlights_zh) !== null;
+  const highlightsZh = content.features.map((feature) => localizedReleasePreviewFeature(feature, "zh")).filter(Boolean);
+  const highlightsEn = content.features.map((feature) => localizedReleasePreviewFeature(feature, "en")).filter(Boolean);
+  const highlightsZhTw = content.features.map((feature) => localizedReleasePreviewFeature(feature, "zhHant")).filter(Boolean);
+  const highlightsJa = content.features.map((feature) => localizedReleasePreviewFeature(feature, "ja")).filter(Boolean);
   return {
     ...preview,
     title_zh: titleZh,
@@ -268,10 +411,11 @@ function normalizeReleasePreview(preview) {
     body_en: bodyEn,
     body_zh_tw: firstPreviewText(preview.body_zh_tw, bodyZh),
     body_ja: firstPreviewText(preview.body_ja, bodyEn, bodyZh),
-    highlights_zh: highlightsZh,
-    highlights_en: highlightsEn,
-    highlights_zh_tw: firstPreviewLines(preview.highlights_zh_tw, highlightsZh),
-    highlights_ja: firstPreviewLines(preview.highlights_ja, highlightsEn, highlightsZh),
+    highlights_zh: structured ? highlightsZh : previewLines(preview.highlights_zh),
+    highlights_en: structured ? highlightsEn : firstPreviewLines(preview.highlights_en, preview.highlights_zh),
+    highlights_zh_tw: structured ? highlightsZhTw : firstPreviewLines(preview.highlights_zh_tw, preview.highlights_zh),
+    highlights_ja: structured ? highlightsJa : firstPreviewLines(preview.highlights_ja, preview.highlights_en, preview.highlights_zh),
+    ...content,
     major_version: majorVersionOf(preview.version)
   };
 }
@@ -1127,39 +1271,94 @@ function validEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && value.length <= 180;
 }
 
-function lines(value) {
-  return Array.isArray(value)
-    ? value
-        .filter((item) => typeof item === "string")
-        .map((item) => item.trim())
-        .filter(Boolean)
-        .slice(0, 12)
-    : [];
+class PreviewValidationError extends Error {}
+
+function previewFeatures(value) {
+  if (!Array.isArray(value) || !value.length) {
+    throw new PreviewValidationError("请至少添加一条功能项");
+  }
+  if (value.length > 80) throw new PreviewValidationError("功能项不能超过 80 条");
+  const usedIds = new Set();
+  return value.map((item, index) => {
+    if (!item || typeof item !== "object") throw new PreviewValidationError("功能项格式无效");
+    const id = typeof item.id === "string" ? item.id.trim().slice(0, 120) : "";
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,119}$/.test(id) || id.startsWith("legacy-") || usedIds.has(id)) {
+      throw new PreviewValidationError("功能项 ID 缺失或重复");
+    }
+    usedIds.add(id);
+    const progress = item.progress === null || item.progress === undefined || item.progress === ""
+      ? null
+      : item.progress;
+    if (progress !== null && (
+      typeof progress !== "number" || !Number.isInteger(progress) || progress < 0 || progress > 100
+    )) {
+      throw new PreviewValidationError("功能进度必须是 0–100 的整数");
+    }
+    const localizedText = (field) => typeof item[field] === "string"
+      ? item[field].trim().slice(0, 2400)
+      : "";
+    const contentZh = localizedText("content_zh");
+    const contentEn = localizedText("content_en");
+    if (!contentZh || !contentEn) throw new PreviewValidationError("每条功能项均需填写中英文内容");
+    return {
+      id,
+      sort_order: index + 1,
+      progress,
+      content_zh: contentZh,
+      content_en: contentEn,
+      content_zh_tw: localizedText("content_zh_tw"),
+      content_ja: localizedText("content_ja")
+    };
+  });
 }
 
 function previewPayload(body) {
+  const hasOwn = (field) => Object.prototype.hasOwnProperty.call(body, field);
+  const status = body.status === "published" ? "published" : "draft";
   const version = typeof body.version === "string" ? body.version.trim().slice(0, 40) : "";
-  const optionalLocalizedBody = (field) => Object.prototype.hasOwnProperty.call(body, field)
-    ? { [field]: typeof body[field] === "string" ? body[field].trim().slice(0, 2400) : "" }
+  const structured = Array.isArray(body.features) || ["note_zh", "note_en", "note_zh_tw", "note_ja"].some(hasOwn);
+  const sourceField = (noteField, legacyField) => structured && hasOwn(noteField) ? noteField : legacyField;
+  const bodyZhField = sourceField("note_zh", "body_zh");
+  const bodyEnField = sourceField("note_en", "body_en");
+  const bodyZh = typeof body[bodyZhField] === "string" ? body[bodyZhField].trim().slice(0, 2400) : "";
+  const bodyEn = typeof body[bodyEnField] === "string" ? body[bodyEnField].trim().slice(0, 2400) : "";
+  const optionalLocalizedBody = (noteField, legacyField) => hasOwn(sourceField(noteField, legacyField))
+    ? {
+        [legacyField]: typeof body[sourceField(noteField, legacyField)] === "string"
+          ? body[sourceField(noteField, legacyField)].trim().slice(0, 2400)
+          : ""
+      }
     : {};
+  const features = structured ? previewFeatures(body.features) : null;
   return {
     version,
     title_zh: version,
     title_en: version,
     title_zh_tw: version,
     title_ja: version,
-    body_zh: typeof body.body_zh === "string" ? body.body_zh.trim().slice(0, 2400) : "",
-    body_en: typeof body.body_en === "string" ? body.body_en.trim().slice(0, 2400) : "",
-    highlights_zh: lines(body.highlights_zh),
-    highlights_en: lines(body.highlights_en),
-    ...optionalLocalizedBody("body_zh_tw"),
-    ...optionalLocalizedBody("body_ja"),
+    body_zh: bodyZh,
+    body_en: bodyEn,
+    highlights_zh: features
+      ? [{ schema_version: RELEASE_PREVIEW_SCHEMA_VERSION, features }, ...features.map((feature) => feature.content_zh)]
+      : [],
+    highlights_en: features ? features.map((feature) => feature.content_en) : [],
+    ...(features ? {
+      highlights_zh_tw: features.map((feature) => feature.content_zh_tw),
+      highlights_ja: features.map((feature) => feature.content_ja)
+    } : {}),
+    ...optionalLocalizedBody("note_zh_tw", "body_zh_tw"),
+    ...optionalLocalizedBody("note_ja", "body_ja"),
     target_date:
       typeof body.target_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.target_date)
         ? body.target_date
         : null,
-    status: body.status === "published" ? "published" : "draft"
+    status
   };
+}
+
+function hasStructuredPreviewInput(body) {
+  const hasOwn = (field) => Object.prototype.hasOwnProperty.call(body, field);
+  return Array.isArray(body.features) || ["note_zh", "note_en", "note_zh_tw", "note_ja"].some(hasOwn);
 }
 
 async function handlePublic(request) {
@@ -1536,15 +1735,20 @@ async function handleAdminAccessLogs(request) {
 
 function cleanTranslationEntries(value) {
   if (!Array.isArray(value)) return [];
-  const usedKeys = new Set();
-  return value
+  const entries = value
     .filter((item) => item && typeof item === "object")
     .map((item) => ({
       key: typeof item.key === "string" ? item.key.trim().slice(0, 120) : "",
       text: typeof item.text === "string" ? item.text.trim().slice(0, 2400) : ""
     }))
-    .filter((item) => item.key && item.text && !usedKeys.has(item.key) && (usedKeys.add(item.key), true))
-    .slice(0, 80);
+    .filter((item) => item.key && item.text);
+  if (entries.length > 80) throw new Error("翻译内容不能超过 80 项");
+  const usedKeys = new Set();
+  for (const entry of entries) {
+    if (usedKeys.has(entry.key)) throw new Error(`翻译键重复：${entry.key}`);
+    usedKeys.add(entry.key);
+  }
+  return entries;
 }
 
 function cleanTranslationTargets(value) {
@@ -1562,10 +1766,15 @@ function parseTranslations(value, targets, entries) {
   const translations = source.translations && typeof source.translations === "object"
     ? source.translations
     : source;
+  const extraLocales = Object.keys(translations).filter((locale) => !targets.includes(locale));
+  if (extraLocales.length) throw new Error(`Translation response contains unexpected locale ${extraLocales[0]}`);
   const result = {};
+  const expectedKeys = new Set(entries.map((entry) => entry.key));
   for (const locale of targets) {
     const language = translations[locale];
     if (!language || typeof language !== "object") throw new Error(`Translation response is missing ${locale}`);
+    const extraKeys = Object.keys(language).filter((key) => !expectedKeys.has(key));
+    if (extraKeys.length) throw new Error(`Translation response contains unexpected key ${locale}.${extraKeys[0]}`);
     result[locale] = {};
     for (const entry of entries) {
       const translated = language[entry.key];
@@ -1656,7 +1865,8 @@ async function handleAdminPreviews(request) {
         return jsonError("版本号、中英文更新内容均为必填项");
       }
       return json({ preview: await createReleasePreview(payload) }, 201);
-    } catch {
+    } catch (error) {
+      if (error instanceof PreviewValidationError) return jsonError(error.message);
       return jsonError("发布失败", 500);
     }
   }
@@ -1667,8 +1877,17 @@ async function handleAdminPreviews(request) {
       if (!id || (body.status !== "draft" && body.status !== "published")) {
         return jsonError("Invalid update");
       }
-      const hasContent = ["version", "body_zh", "body_en", "body_zh_tw", "body_ja", "target_date"]
+      const hasContent = [
+        "version", "body_zh", "body_en", "body_zh_tw", "body_ja",
+        "note_zh", "note_en", "note_zh_tw", "note_ja", "features", "target_date"
+      ]
         .some((field) => Object.prototype.hasOwnProperty.call(body, field));
+      if (hasContent && !hasStructuredPreviewInput(body)) {
+        const existing = (await listReleasePreviews()).find((preview) => preview.id === id);
+        if (existing?.features.some((feature) => !feature.id.startsWith("legacy-"))) {
+          return jsonError("该预告已使用结构化功能项，请刷新维护者后台后再编辑", 409);
+        }
+      }
       const payload = hasContent ? previewPayload(body) : { status: body.status };
       if (hasContent && (!payload.version || !payload.body_zh || !payload.body_en)) {
         return jsonError("版本号、中英文更新内容均为必填项");
@@ -1676,7 +1895,8 @@ async function handleAdminPreviews(request) {
       return json({
         preview: await updateReleasePreview(id, payload)
       });
-    } catch {
+    } catch (error) {
+      if (error instanceof PreviewValidationError) return jsonError(error.message);
       return jsonError("更新失败", 500);
     }
   }
