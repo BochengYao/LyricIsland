@@ -1301,7 +1301,11 @@ function previewFeatures(value) {
     if (typeof progress !== "number" || !Number.isInteger(progress) || progress < 0 || progress > 100) {
       throw new PreviewValidationError("功能进度必须是 0–100 的整数");
     }
-    const stage = item.stage === "ready" ? "ready" : item.stage === "testing" ? "testing" : "development";
+    const rawStage = item.stage === undefined || item.stage === null || item.stage === "" ? "development" : item.stage;
+    if (rawStage !== "development" && rawStage !== "testing" && rawStage !== "ready") {
+      throw new PreviewValidationError("功能状态无效");
+    }
+    const stage = rawStage;
     if (stage !== "development" && progress !== 100) {
       throw new PreviewValidationError("待测试或待上线状态必须先达到 100%");
     }
