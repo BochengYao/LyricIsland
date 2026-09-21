@@ -89,6 +89,7 @@ namespace LyricHover.App
         private DateTimeOffset? proEntitlementAcquiredAt;
         private bool proEntitlementRefreshInProgress;
         private SupporterBadgePreviewWindow supporterBadgePreviewWindow;
+        private string targetScreenName;
 
         private const string MicrosoftStoreProductId = "9NRXZP5HMXK2";
         private const string MicrosoftStoreProductUrl = "https://apps.microsoft.com/detail/9nrxzp5hmxk2";
@@ -214,6 +215,7 @@ namespace LyricHover.App
 
             var settings = (currentSettings ?? new OverlayPlacementSettings()).DeepClone();
             settings.Normalize();
+            targetScreenName = settings.ScreenName;
             workingSettings = settings;
             workingSettings.Normalize();
             acceptedSettings = settings.DeepClone();
@@ -313,6 +315,30 @@ namespace LyricHover.App
         private void PlacementSettingsWindow_SourceInitialized(object sender, EventArgs e)
         {
             ApplySettingsTheme();
+            CenterOnTargetScreen();
+            Dispatcher.BeginInvoke(
+                new Action(CenterOnTargetScreen),
+                DispatcherPriority.Loaded);
+        }
+
+        public void MoveToScreen(string screenName)
+        {
+            targetScreenName = screenName ?? string.Empty;
+            CenterOnTargetScreen();
+            Dispatcher.BeginInvoke(
+                new Action(CenterOnTargetScreen),
+                DispatcherPriority.Loaded);
+        }
+
+        private void CenterOnTargetScreen()
+        {
+            var source = PresentationSource.FromVisual(this) as HwndSource;
+            if (source == null || source.Handle == IntPtr.Zero)
+            {
+                return;
+            }
+
+            NativeWindowPlacement.CenterOnScreen(source.Handle, targetScreenName);
         }
 
         private bool TryApplySettingsBackdrop(bool dark, bool reduceEffects)

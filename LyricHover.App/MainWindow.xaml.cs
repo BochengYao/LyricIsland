@@ -2202,6 +2202,7 @@ namespace LyricHover.App
             {
                 SetSettingsWindowHoverSuppressed(true);
                 ShowIsland();
+                settingsWindow.MoveToScreen(placementSettings.ScreenName);
                 settingsWindow.Activate();
                 if (focusTaskbarLyrics) settingsWindow.FocusTaskbarLyricsSettings();
                 return;

@@ -331,6 +331,8 @@ namespace LyricHover.App.LyricDock
                 NearlyEqual(current.Width, next.Width) &&
                 NearlyEqual(current.Height, next.Height) &&
                 NearlyEqual(current.DpiScale, next.DpiScale, 0.001) &&
+                NearlyEqual(current.ScreenLeft, next.ScreenLeft) &&
+                NearlyEqual(current.ScreenTop, next.ScreenTop) &&
                 current.IsLeftAligned == next.IsLeftAligned &&
                 current.IsVisible == next.IsVisible &&
                 current.IsFullscreenCovered == next.IsFullscreenCovered &&
@@ -360,6 +362,8 @@ namespace LyricHover.App.LyricDock
                 Width = placement.Width,
                 Height = placement.Height,
                 DpiScale = placement.DpiScale,
+                ScreenLeft = placement.ScreenLeft,
+                ScreenTop = placement.ScreenTop,
                 IsLeftAligned = placement.IsLeftAligned,
                 IsVisible = placement.IsVisible,
                 IsFullscreenCovered = placement.IsFullscreenCovered,

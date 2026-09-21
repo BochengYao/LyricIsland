@@ -254,7 +254,10 @@ namespace LyricHover.App.LyricDock
         public void Place(LyricDockPlacement placement, double width)
         {
             var hadPlacement = hasPlacement;
-            var nextLeft = placement.Left / placement.DpiScale;
+            var nextLeft = NativeWindowPlacementMath.ToMonitorLogicalCoordinate(
+                placement.Left,
+                placement.ScreenLeft,
+                placement.DpiScale);
             var shouldAnimateLeft = LyricDockMotionPolicy.ShouldAnimateHorizontalMove(
                 IsVisible,
                 hasPlacement,
@@ -281,7 +284,10 @@ namespace LyricHover.App.LyricDock
                 BeginAnimation(LeftProperty, null);
                 Left = nextLeft;
             }
-            Top = placement.Top / placement.DpiScale;
+            Top = NativeWindowPlacementMath.ToMonitorLogicalCoordinate(
+                placement.Top,
+                placement.ScreenTop,
+                placement.DpiScale);
             hasPlacement = true;
             placementTargetLeft = nextLeft;
             placementDpiScale = placement.DpiScale;

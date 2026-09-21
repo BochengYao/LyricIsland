@@ -170,6 +170,7 @@ namespace LyricHover.Tests
             suite.Run("lyric dock smoothly follows left-aligned taskbar icon changes", LyricDockSmoothlyFollowsTaskbarIconChanges);
             suite.Run("lyric dock keeps its placement while the taskbar context menu is open", LyricDockKeepsPlacementWhileTaskbarContextMenuIsOpen);
             suite.Run("lyric dock text keeps contrast on transparent taskbars", LyricDockTextKeepsContrastOnTransparentTaskbars);
+            suite.Run("secondary-monitor windows preserve physical desktop origins", SecondaryMonitorWindowsPreservePhysicalDesktopOrigins);
             suite.Run("builds island geometry for measured module size", BuildsIslandGeometryForMeasuredModuleSize);
             suite.Run("module host exposes all v2 module views", ModuleHostExposesAllV2ModuleViews);
             suite.Run("track info shows title and artist without album", TrackInfoShowsTitleAndArtistWithoutAlbum);
@@ -6059,6 +6060,37 @@ namespace LyricHover.Tests
             Assert.True(window.Contains("FontSize = 12"));
             Assert.True(window.Contains("FontWeight = FontWeights.SemiBold"));
             Assert.True(window.Contains("Opacity = .96"));
+        }
+
+        static void SecondaryMonitorWindowsPreservePhysicalDesktopOrigins()
+        {
+            Assert.Equal(
+                2346.6666666666665,
+                NativeWindowPlacementMath.ToMonitorLogicalCoordinate(2560, 1920, 1.5));
+            Assert.Equal(
+                -1506.3333333333333,
+                NativeWindowPlacementMath.ToMonitorLogicalCoordinate(-1473, -1573, 1.5));
+
+            var settings = NativeWindowPlacementMath.CenterInWorkingArea(
+                -1920,
+                0,
+                1920,
+                1040,
+                1040,
+                720);
+            Assert.Equal(-1480, settings.Left);
+            Assert.Equal(160, settings.Top);
+
+            var root = GetSolutionRoot();
+            var dockWindow = File.ReadAllText(Path.Combine(root, "LyricHover.App", "LyricDock", "LyricDockWindow.cs"));
+            Assert.True(dockWindow.Contains("NativeWindowPlacementMath.ToMonitorLogicalCoordinate"));
+            Assert.False(dockWindow.Contains("Left = placement.Left / placement.DpiScale"));
+            Assert.False(dockWindow.Contains("Top = placement.Top / placement.DpiScale"));
+
+            var settingsWindow = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml.cs"));
+            Assert.True(settingsWindow.Contains("NativeWindowPlacement.CenterOnScreen(source.Handle, targetScreenName)"));
+            var mainWindow = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
+            Assert.True(mainWindow.Contains("settingsWindow.MoveToScreen(placementSettings.ScreenName)"));
         }
 
         static void LyricDockWindowMatchesIslandLyricsBehaviors()

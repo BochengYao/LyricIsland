@@ -23,6 +23,8 @@ namespace LyricHover.App.LyricDock
         public double Width { get; set; }
         public double Height { get; set; }
         public double DpiScale { get; set; } = 1;
+        public double ScreenLeft { get; set; }
+        public double ScreenTop { get; set; }
         public bool IsLeftAligned { get; set; }
         public bool IsVisible { get; set; }
         public bool IsFullscreenCovered { get; set; }
@@ -99,6 +101,8 @@ namespace LyricHover.App.LyricDock
                 Width = lastPlacement.Width,
                 Height = lastPlacement.Height,
                 DpiScale = lastPlacement.DpiScale,
+                ScreenLeft = lastPlacement.ScreenLeft,
+                ScreenTop = lastPlacement.ScreenTop,
                 IsLeftAligned = isLeftAligned,
                 IsVisible = true,
                 IsFullscreenCovered = false,

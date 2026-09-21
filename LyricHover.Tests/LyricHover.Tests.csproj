@@ -18,6 +18,7 @@
     <Compile Include="..\LyricHover.App\LyricDock\LyricDockController.cs" Link="LyricDock\LyricDockController.cs" />
     <Compile Include="..\LyricHover.App\LyricDock\LyricDockSafeSlotCalculator.cs" Link="LyricDock\LyricDockSafeSlotCalculator.cs" />
     <Compile Include="..\LyricHover.App\LyricDock\WidgetsElementMatcher.cs" Link="LyricDock\WidgetsElementMatcher.cs" />
+    <Compile Include="..\LyricHover.App\NativeWindowPlacementMath.cs" Link="NativeWindowPlacementMath.cs" />
   </ItemGroup>
 
 </Project>
