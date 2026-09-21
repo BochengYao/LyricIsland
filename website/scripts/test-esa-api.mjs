@@ -1312,10 +1312,10 @@ try {
   const knownV32Note = "新版本的主要功能已基本完成，目前正在进一步优化性能、功耗与长期运行体验，发布时间调整至本月内。";
   releasePreviewRows = [{
     ...publicPreviewRow("preview-v3-2-legacy", "V3.2", "2026-09-16T00:00:00.000Z"),
-    body_zh: `${knownV32Note}\n新增省电模式，进一步降低后台资源占用。\n新增歌词坞，让当前歌词直接呈现在 Windows 任务栏。`,
-    body_en: "The main work is complete and is being optimized.\nAdd power-saving mode.\nAdd Lyric Dock.",
-    body_zh_tw: "主要功能已完成並正在最佳化。\n新增省電模式。\n新增歌詞塢。",
-    body_ja: "主要機能は完成し最適化中です。\n省電力モードを追加。\n歌詞ドックを追加。",
+    body_zh: `${knownV32Note}\n新增省电模式，进一步降低后台资源占用。\n新增歌词坞，让当前歌词直接呈现在 Windows 任务栏。\n支持手动刷新并重新匹配歌词。\n更多歌词岛形状与自定义轮廓计划于 V3.3 带来。\n模块字体与主题色的独立设置计划于 V3.3 带来。`,
+    body_en: "The main work is complete and is being optimized.\nAdd power-saving mode.\nAdd Lyric Dock.\nRematch lyrics manually.\nMore island shapes are planned for V3.3.\nIndependent module styling is planned for V3.3.",
+    body_zh_tw: "主要功能已完成並正在最佳化。\n新增省電模式。\n新增歌詞塢。\n手動重新配對歌詞。\n更多歌詞島形狀預計於 V3.3 推出。\n模組樣式預計於 V3.3 推出。",
+    body_ja: "主要機能は完成し最適化中です。\n省電力モードを追加。\n歌詞ドックを追加。\n歌詞を手動で再照合。\nより多くの形状は V3.3 で提供予定。\nモジュール設定は V3.3 で提供予定。",
     highlights_zh: [],
     highlights_en: [],
     highlights_zh_tw: [],
@@ -1330,14 +1330,23 @@ try {
   assert.equal(legacyV32Preview.note_zh, knownV32Note, "the known V3.2 overview must migrate to the version note");
   assert.deepEqual(
     legacyV32Preview.features.map((feature) => feature.content_zh),
-    ["新增省电模式，进一步降低后台资源占用。", "新增歌词坞，让当前歌词直接呈现在 Windows 任务栏。"],
+    [
+      "新增省电模式，进一步降低后台资源占用。",
+      "新增歌词坞，让当前歌词直接呈现在 Windows 任务栏。",
+      "支持手动刷新并重新匹配歌词。",
+      "更多歌词岛形状与自定义轮廓计划于 V3.3 带来。",
+      "模块字体与主题色的独立设置计划于 V3.3 带来。"
+    ],
     "known legacy V3.2 lines must remain byte-for-byte available through the compatibility projection"
   );
   assert.deepEqual(
     legacyV32Preview.features.map((feature) => [feature.title_zh, feature.description_zh, feature.display_group]),
     [
       ["省电模式", "进一步降低后台资源占用。", "featured"],
-      ["歌词坞", "让当前歌词直接呈现在 Windows 任务栏。", "featured"]
+      ["歌词坞", "让当前歌词直接呈现在 Windows 任务栏。", "featured"],
+      ["重新匹配歌词", "支持手动刷新并重新匹配当前歌词。", "featured"],
+      ["更多歌词岛形状", "支持更多歌词岛形状与自定义轮廓。", "future"],
+      ["模块个性化", "支持模块字体与主题色独立设置。", "future"]
     ]
   );
   assert.ok(
@@ -1348,7 +1357,10 @@ try {
     legacyV32Preview.features.map((feature) => [feature.content_en, feature.content_zh_tw, feature.content_ja]),
     [
       ["Add power-saving mode.", "新增省電模式。", "省電力モードを追加。"],
-      ["Add Lyric Dock.", "新增歌詞塢。", "歌詞ドックを追加。"]
+      ["Add Lyric Dock.", "新增歌詞塢。", "歌詞ドックを追加。"],
+      ["Rematch lyrics manually.", "手動重新配對歌詞。", "歌詞を手動で再照合。"],
+      ["More island shapes are planned for V3.3.", "更多歌詞島形狀預計於 V3.3 推出。", "より多くの形状は V3.3 で提供予定。"],
+      ["Independent module styling is planned for V3.3.", "模組樣式預計於 V3.3 推出。", "モジュール設定は V3.3 で提供予定。"]
     ],
     "legacy V3.2 migration must preserve multilingual line correspondence"
   );

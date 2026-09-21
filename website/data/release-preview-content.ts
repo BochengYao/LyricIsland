@@ -95,12 +95,15 @@ const safeLegacyMigrations: Record<string, SafeLegacyMigration> = {
   "让当前歌词直接呈现在 Windows 任务栏。": { title: "歌词坞", description: "让当前歌词直接呈现在 Windows 任务栏。", displayGroup: "featured" },
   "新增重新匹配歌词，支持手动刷新并重新匹配当前歌词。": { title: "重新匹配歌词", description: "支持手动刷新并重新匹配当前歌词。", displayGroup: "featured" },
   "支持手动刷新并重新匹配当前歌词。": { title: "重新匹配歌词", description: "支持手动刷新并重新匹配当前歌词。", displayGroup: "featured" },
+  "支持手动刷新并重新匹配歌词。": { title: "重新匹配歌词", description: "支持手动刷新并重新匹配当前歌词。", displayGroup: "featured" },
   "优化歌词匹配逻辑，减少歌词与当前歌曲不一致的情况。": { title: "歌词匹配", description: "优化歌词匹配逻辑，减少歌词与当前歌曲不一致的情况。", displayGroup: "improvement" },
   "支持全屏应用运行时自动隐藏歌词岛。": { title: "全屏体验", description: "支持全屏应用运行时自动隐藏歌词岛。", displayGroup: "improvement" },
   "接入更多歌词来源，进一步提升歌词与翻译的覆盖范围。": { title: "更多歌词来源", description: "接入更多歌词来源，进一步提升歌词与翻译的覆盖范围。", displayGroup: "improvement" },
   "持续优化性能、功耗与长期运行稳定性。": { title: "性能与稳定性", description: "持续优化性能、功耗与长期运行稳定性。", displayGroup: "improvement" },
   "支持更多歌词岛形状与自定义轮廓。": { title: "更多歌词岛形状", description: "支持更多歌词岛形状与自定义轮廓。", displayGroup: "future", targetVersion: "V3.3" },
-  "支持模块字体与主题色独立设置。": { title: "模块个性化", description: "支持模块字体与主题色独立设置。", displayGroup: "future", targetVersion: "V3.3" }
+  "更多歌词岛形状与自定义轮廓计划于 V3.3 带来。": { title: "更多歌词岛形状", description: "支持更多歌词岛形状与自定义轮廓。", displayGroup: "future", targetVersion: "V3.3" },
+  "支持模块字体与主题色独立设置。": { title: "模块个性化", description: "支持模块字体与主题色独立设置。", displayGroup: "future", targetVersion: "V3.3" },
+  "模块字体与主题色的独立设置计划于 V3.3 带来。": { title: "模块个性化", description: "支持模块字体与主题色独立设置。", displayGroup: "future", targetVersion: "V3.3" }
 };
 
 function legacyMigration(version: string, contentZh: string): SafeLegacyMigration | null {
