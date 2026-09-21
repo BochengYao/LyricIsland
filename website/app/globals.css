@@ -4105,12 +4105,8 @@ html[lang="en"] :where(
   list-style: none;
 }
 
-.previewSection.updatesPreviewSection .previewFeaturedList {
+.previewSection.updatesPreviewSection .previewCurrentList {
   gap: 30px;
-}
-
-.previewSection.updatesPreviewSection .previewImprovementList {
-  gap: 22px;
 }
 
 .previewItems li {
@@ -4174,24 +4170,6 @@ html[lang="en"] :where(
 .previewProgressRingValue {
   stroke: var(--orbit);
   stroke-linecap: round;
-}
-
-.previewImprovementGroup {
-  margin-top: 54px;
-}
-
-.previewImprovementList {
-  gap: 22px;
-}
-
-.previewImprovementList .previewFeatureHeading h4 {
-  font-size: 17px;
-}
-
-.previewImprovementList li > p,
-.previewImprovementList .previewLegacyContent {
-  margin-top: 5px;
-  font-size: 15px;
 }
 
 .previewFutureGroup {

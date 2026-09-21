@@ -39,6 +39,8 @@
 
 版本预告的结构化正文继续复用 `release_previews` 表，不新增数据库列：版本级 Development Note 写入既有四语 `body_*`；预计发布时间继续复用 `target_date`，由前台的既有四语时间格式化器生成 `releaseTimeText`，不重复存储可漂移的翻译文本。`highlights_zh` JSONB 写入兼容数组，首项为 `{ "schema_version": 3, "features": [...] }` 元数据，其后继续双写中文功能字符串供旧运行时读取。每条 feature 包含稳定唯一 `id`、`sort_order`、`progress`、`stage`（`development`、`testing` 或 `ready`）、`display_group`（`featured`、`improvement`、`future`）、future 专用 `target_version`，以及四语 `title_*` / `description_*`。`content_*` 仍由标题和描述派生返回，供旧调用方兼容读取。开发阶段只允许 `progress=0/10/30/50/65/80/90/95`；“测试中”和“待上线”分别保存为 `stage=testing/ready` 与 `progress=100`。公开和管理接口规范化返回 `note_zh`、`note_en`、`note_zh_tw`、`note_ja` 与 `features[]`，并继续派生旧的 `body_*` / `highlights_*` 字段。
 
+公开页和管理端只提供“本版本”与“稍后推出”两种展示层级：历史 `featured` 与 `improvement` 均作为本版本功能按 `sort_order` 合并展示，新建本版本功能写入 `featured`；`improvement` 继续作为兼容值由 API 接受和原样保存，不强制改写旧数据。只有 `future` 独立分组，并按 `target_version`、`sort_order` 展示。
+
 旧数组与 schema v2 信封记录仍可读：只有 `content_*` 时将其视作无标题 description，默认归入 `featured`，缺失进度按 0 读取，历史非锚点进度向下归入相邻锚点，历史 100% 记录按“测试中”读取。前台在 title 为空时显示旧版整句 fallback。指定的 V3.2/V3.3 中文功能文案只在版本与整句均精确匹配时安全拆分标题、描述和分组，不对未知用户内容做启发式改写，也不自动写回数据库。
 
 管理端结构化保存必须拒绝缺失/重复 feature ID、历史适配器保留的 `legacy-` ID 前缀、非指定开发锚点、非法 stage、testing/ready 状态但 progress 非 100、development 状态但 progress 为 100、future 缺少 `target_version`，以及缺失中英文 description；title 为兼容旧记录允许为空。排序只更新 `sort_order`，不改变 ID 和多语言对应关系。翻译请求以 `note`、`feature.<稳定ID>.title` 与 `feature.<稳定ID>.description` 为键，分别保持标题和描述的语义职责；服务端要求每个目标语言完整返回同一键集合，拒绝缺失、重复或额外键。任一翻译批次失败时，管理端不得覆盖现有译文；“仅翻译缺失内容”只填空字段。

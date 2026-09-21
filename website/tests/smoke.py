@@ -982,7 +982,8 @@ def test_incentive_page(page: Page, path: str, lang: str, mobile: bool = False) 
                 '"highlights_en":["Smoother retraction."],"note_zh":"继续打磨避让。",'
                 '"note_en":"More polish for avoidance.","note_zh_tw":"","note_ja":"",'
                 '"features":[{"id":"preview-feature-1","sort_order":1,"progress":80,"stage":"development","display_group":"featured","target_version":"","title_zh":"省电模式","title_en":"Power saving","title_zh_tw":"","title_ja":"","description_zh":"进一步降低后台资源占用。","description_en":"Further reduces background resource usage.","description_zh_tw":"","description_ja":"","content_zh":"省电模式 — 进一步降低后台资源占用。","content_en":"Power saving — Further reduces background resource usage.","content_zh_tw":"","content_ja":""},'
-                '{"id":"preview-feature-2","sort_order":2,"progress":0,"stage":"development","display_group":"improvement","target_version":"","title_zh":"收起体验","title_en":"Retraction","title_zh_tw":"","title_ja":"","description_zh":"收起体验更加顺滑。","description_en":"Smoother retraction.","description_zh_tw":"","description_ja":"","content_zh":"收起体验 — 收起体验更加顺滑。","content_en":"Retraction — Smoother retraction.","content_zh_tw":"","content_ja":""}],"target_date":"2026-09-01",'
+                '{"id":"preview-feature-2","sort_order":2,"progress":0,"stage":"development","display_group":"improvement","target_version":"","title_zh":"收起体验","title_en":"Retraction","title_zh_tw":"","title_ja":"","description_zh":"收起体验更加顺滑。","description_en":"Smoother retraction.","description_zh_tw":"","description_ja":"","content_zh":"收起体验 — 收起体验更加顺滑。","content_en":"Retraction — Smoother retraction.","content_zh_tw":"","content_ja":""},'
+                '{"id":"preview-feature-3","sort_order":3,"progress":0,"stage":"development","display_group":"future","target_version":"V3.3","title_zh":"更多歌词岛形状","title_en":"More island shapes","title_zh_tw":"","title_ja":"","description_zh":"支持更多歌词岛形状与自定义轮廓。","description_en":"More island shapes and custom outlines.","description_zh_tw":"","description_ja":"","content_zh":"更多歌词岛形状 — 支持更多歌词岛形状与自定义轮廓。","content_en":"More island shapes — More island shapes and custom outlines.","content_zh_tw":"","content_ja":""}],"target_date":"2026-09-01",'
                 '"status":"published","created_at":"2026-07-14T00:00:00Z",'
                 '"updated_at":"2026-07-14T00:00:00Z","published_at":"2026-07-14T00:00:00Z"}]}'
             ),
@@ -1010,6 +1011,16 @@ def test_incentive_page(page: Page, path: str, lang: str, mobile: bool = False) 
     expect(preview_card.locator('[role="progressbar"]')).to_have_attribute("aria-valuenow", "80")
     expect(preview_card.locator('[role="img"]')).to_have_attribute("aria-label", "Not started" if lang == "en" else "未开始")
     expect(page.locator(".previewLegend")).to_have_count(0)
+    expect(preview_card.locator(".previewCurrentGroup")).to_have_count(1)
+    expect(preview_card.locator(".previewImprovementGroup")).to_have_count(0)
+    expect(preview_card.locator(".previewCurrentGroup > h3")).to_have_text(
+        "Features and improvements" if lang == "en" else "新功能与改进"
+    )
+    expect(preview_card.locator(".previewFutureGroup")).to_have_count(1)
+    expect(preview_card.locator(".previewFutureGroup > h3")).to_have_text(
+        "Coming next · V3.3" if lang == "en" else "接下来 · V3.3"
+    )
+    expect(preview_card.locator(".previewFutureGroup .previewProgressRing")).to_have_count(0)
     expect(preview_card.locator(".previewNote")).to_have_text("More polish for avoidance." if lang == "en" else "继续打磨避让。")
     expect(preview_card.locator(".previewFeatureHeading h4")).to_have_text(
         ["Power saving", "Retraction"] if lang == "en" else ["省电模式", "收起体验"]
@@ -1307,7 +1318,9 @@ def test_admin_dashboard(page: Page) -> None:
     expect(page.get_by_label("预计上线范围")).to_be_visible()
     bulk_input = page.get_by_label("快速批量导入中文功能项")
     page.get_by_role("tab", name="中文").click()
-    expect(page.get_by_label("默认展示分组")).to_be_visible()
+    bulk_group = page.get_by_label("默认展示分组")
+    expect(bulk_group).to_be_visible()
+    expect(bulk_group.locator("option")).to_have_text(["本版本", "稍后推出"])
     bulk_input.fill("省电模式 | 进一步降低后台资源占用。\n逐字跟随｜歌词随着演唱进度逐字呈现。\n新增歌词坞。\n支持手动刷新。")
     page.get_by_role("button", name="解析为功能项").click()
     expect(page.locator(".previewFeatureEditor")).to_have_count(4)

@@ -10,10 +10,10 @@ import type { Locale } from "@/data/site-copy";
 import { formatReleaseTiming } from "@/lib/release-timing";
 
 function groupCopy(locale: Locale) {
-  if (locale === "zh") return { note: "开发说明", featured: "核心功能", improvement: "其他改进", next: "接下来" };
-  if (locale === "zhHant") return { note: "開發說明", featured: "核心功能", improvement: "其他改進", next: "接下來" };
-  if (locale === "ja") return { note: "開発ノート", featured: "主な機能", improvement: "その他の改善", next: "次に登場" };
-  return { note: "Development Note", featured: "Featured", improvement: "Other improvements", next: "Coming next" };
+  if (locale === "zh") return { note: "开发说明", current: "新功能与改进", next: "接下来" };
+  if (locale === "zhHant") return { note: "開發說明", current: "新功能與改進", next: "接下來" };
+  if (locale === "ja") return { note: "開発ノート", current: "新機能と改善", next: "次に登場" };
+  return { note: "Development Note", current: "Features and improvements", next: "Coming next" };
 }
 
 type LocalizedFeature = {
@@ -55,8 +55,7 @@ export function ReleasePreviewArticle({
       description: localizedFeatureDescription(feature, locale).trim()
     }))
     .filter((item) => Boolean(item.description));
-  const featured = features.filter((item) => item.feature.display_group === "featured");
-  const improvements = features.filter((item) => item.feature.display_group === "improvement");
+  const currentFeatures = features.filter((item) => item.feature.display_group !== "future");
   const futureGroups = new Map<string, LocalizedFeature[]>();
   features.filter((item) => item.feature.display_group === "future").forEach((item) => {
     const version = item.feature.target_version.trim() || preview.version;
@@ -75,19 +74,11 @@ export function ReleasePreviewArticle({
           <p className="previewNote">{note}</p>
         </div>
       )}
-      {featured.length > 0 && (
-        <section className="previewFeatureGroup previewFeaturedGroup">
-          <h3>{copy.featured}</h3>
-          <ul className="previewItems previewFeaturedList">
-            {featured.map((item) => <FeatureRow item={item} locale={locale} key={item.feature.id} />)}
-          </ul>
-        </section>
-      )}
-      {improvements.length > 0 && (
-        <section className="previewFeatureGroup previewImprovementGroup">
-          <h3>{copy.improvement}</h3>
-          <ul className="previewItems previewImprovementList">
-            {improvements.map((item) => <FeatureRow item={item} locale={locale} key={item.feature.id} />)}
+      {currentFeatures.length > 0 && (
+        <section className="previewFeatureGroup previewCurrentGroup">
+          <h3>{copy.current}</h3>
+          <ul className="previewItems previewCurrentList">
+            {currentFeatures.map((item) => <FeatureRow item={item} locale={locale} key={item.feature.id} />)}
           </ul>
         </section>
       )}

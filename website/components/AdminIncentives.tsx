@@ -77,8 +77,7 @@ const previewFeatureFields = {
   ja: { title: "title_ja", description: "description_ja" }
 } as const;
 const previewGroupOptions: Array<{ value: ReleasePreviewFeatureGroup; label: string }> = [
-  { value: "featured", label: "核心功能" },
-  { value: "improvement", label: "其他改进" },
+  { value: "featured", label: "本版本" },
   { value: "future", label: "稍后推出" }
 ];
 const releaseTimingOptions: Array<{ value: ReleaseTimingPreset; label: string }> = [
@@ -1538,7 +1537,7 @@ export function AdminIncentives() {
                         </label>
                       </div>
                       <div className="previewFeatureSettings">
-                        <label><span>展示位置</span><select value={feature.display_group} disabled={previewTranslationLocked} onChange={(event) => updatePreviewFeature(feature.id, { display_group: event.target.value as ReleasePreviewFeatureGroup, ...(event.target.value === "future" ? {} : { target_version: "" }) })}>{previewGroupOptions.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>
+                        <label><span>展示位置</span><select value={feature.display_group === "future" ? "future" : "featured"} disabled={previewTranslationLocked} onChange={(event) => updatePreviewFeature(feature.id, { display_group: event.target.value as ReleasePreviewFeatureGroup, ...(event.target.value === "future" ? {} : { target_version: "" }) })}>{previewGroupOptions.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>
                         {feature.display_group === "future" && <label><span>目标版本</span><input value={feature.target_version} disabled={previewTranslationLocked} onChange={(event) => updatePreviewFeature(feature.id, { target_version: event.target.value })} placeholder="例如：V3.3" required /></label>}
                         <div className="previewProgressEditor">
                           <label className="previewProgressSelect">
