@@ -2404,7 +2404,7 @@ html[lang="en"] :where(
   }
 
   .previewSection.updatesPreviewSection .previewItems {
-    gap: 14px;
+    gap: 24px;
   }
 
   .updatesClosingSnap {
@@ -4025,7 +4025,13 @@ html[lang="en"] :where(
 }
 
 .previewIntro p {
+  max-width: 340px;
   color: var(--muted);
+}
+
+.previewSection .eyebrow {
+  margin-bottom: 22px;
+  font-size: 12px;
 }
 
 .previewList {
@@ -4044,9 +4050,11 @@ html[lang="en"] :where(
 
 .previewCardMeta {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 24px;
+  width: 100%;
+  max-width: 660px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .previewCardMeta strong {
@@ -4056,20 +4064,13 @@ html[lang="en"] :where(
 }
 
 .previewNoteBlock {
-  max-width: 680px;
-  margin-top: 30px;
-}
-
-.previewNoteLabel {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 750;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  width: 100%;
+  max-width: 660px;
+  margin-top: 26px;
 }
 
 .previewNote {
-  margin: 8px 0 0;
+  margin: 0;
   color: var(--muted);
   font-size: 17px;
   line-height: 1.65;
@@ -4078,18 +4079,19 @@ html[lang="en"] :where(
 
 .previewCard small {
   color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
 }
 
 .previewFeatureGroup {
-  margin-top: 48px;
+  width: 100%;
+  max-width: 660px;
+  margin-top: 40px;
 }
 
 .previewFeatureGroup > h3 {
-  margin: 0 0 28px;
+  margin: 0 0 24px;
   color: var(--muted);
   font-size: 13px;
   font-weight: 750;
@@ -4099,14 +4101,14 @@ html[lang="en"] :where(
 
 .previewItems {
   display: grid;
-  gap: 30px;
+  gap: 24px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .previewSection.updatesPreviewSection .previewCurrentList {
-  gap: 30px;
+  gap: 24px;
 }
 
 .previewItems li {
@@ -4125,17 +4127,17 @@ html[lang="en"] :where(
   min-width: 0;
   margin: 0;
   color: var(--ink);
-  font-size: 20px;
-  font-weight: 750;
-  line-height: 1.25;
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.3;
   overflow-wrap: anywhere;
 }
 
 .previewItems li > p {
-  max-width: 680px;
-  margin: 8px 36px 0 0;
+  max-width: 620px;
+  margin: 6px 36px 0 0;
   color: var(--muted);
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.62;
   overflow-wrap: anywhere;
 }
@@ -4143,7 +4145,7 @@ html[lang="en"] :where(
 .previewLegacyContent {
   margin: 0;
   color: var(--muted);
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.62;
   overflow-wrap: anywhere;
 }
@@ -4173,15 +4175,15 @@ html[lang="en"] :where(
 }
 
 .previewFutureGroup {
-  margin-top: 56px;
-  padding-top: 34px;
+  margin-top: 48px;
+  padding-top: 30px;
   border-top: 1px solid var(--line);
   opacity: 0.82;
 }
 
 .previewFutureList {
   display: grid;
-  gap: 20px;
+  gap: 24px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -6347,7 +6349,7 @@ button.danger,
   }
 
   .previewFeatureHeading h4 {
-    font-size: 19px;
+    font-size: 18px;
   }
 
   .adminShell {

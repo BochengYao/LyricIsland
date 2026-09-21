@@ -1006,6 +1006,10 @@ def test_incentive_page(page: Page, path: str, lang: str, mobile: bool = False) 
     assert 0 < page.locator(".acceptedAttachment").count() < page.locator(".acceptedCard").count()
     preview_card = page.locator(".previewCard")
     expect(preview_card.locator(".previewCardMeta")).to_contain_text("v2.1 Preview")
+    expect(preview_card.locator(".previewCardMeta small")).to_have_text(
+        "Release timing TBD" if lang == "en" else "推出时间待定"
+    )
+    expect(preview_card.locator(".previewNoteLabel")).to_have_count(0)
     expect(preview_card.locator(".previewItemNumber")).to_have_count(0)
     expect(preview_card.locator(".previewProgressRing")).to_have_count(2)
     expect(preview_card.locator('[role="progressbar"]')).to_have_attribute("aria-valuenow", "80")
@@ -1028,6 +1032,17 @@ def test_incentive_page(page: Page, path: str, lang: str, mobile: bool = False) 
     expect(preview_card.locator(".previewItems li > p")).to_have_text(
         ["Further reduces background resource usage.", "Smoother retraction."] if lang == "en" else ["进一步降低后台资源占用。", "收起体验更加顺滑。"]
     )
+    preview_layout = preview_card.evaluate(
+        """(card) => ({
+          metaDirection: getComputedStyle(card.querySelector('.previewCardMeta')).flexDirection,
+          listWidth: card.querySelector('.previewCurrentGroup').getBoundingClientRect().width,
+          cardWidth: card.getBoundingClientRect().width
+        })"""
+    )
+    assert preview_layout["metaDirection"] == "column"
+    assert preview_layout["listWidth"] <= 661
+    if not mobile:
+        assert preview_layout["listWidth"] < preview_layout["cardWidth"]
     expect(page.locator(".acceptedTime").first).to_be_visible()
     expect(page.locator(".acceptedWaterfallColumn")).to_have_count(4)
     visible_columns = page.locator(".acceptedWaterfallColumn").evaluate_all(
@@ -1318,9 +1333,9 @@ def test_admin_dashboard(page: Page) -> None:
     expect(page.get_by_label("预计上线范围")).to_be_visible()
     bulk_input = page.get_by_label("快速批量导入中文功能项")
     page.get_by_role("tab", name="中文").click()
-    bulk_group = page.get_by_label("默认展示分组")
-    expect(bulk_group).to_be_visible()
-    expect(bulk_group.locator("option")).to_have_text(["本版本", "稍后推出"])
+    bulk_version = page.get_by_label("导入到版本")
+    expect(bulk_version).to_be_visible()
+    expect(bulk_version.locator("option")).to_have_text(["v2.1 Preview", "v2.2 Preview"])
     bulk_input.fill("省电模式 | 进一步降低后台资源占用。\n逐字跟随｜歌词随着演唱进度逐字呈现。\n新增歌词坞。\n支持手动刷新。")
     page.get_by_role("button", name="解析为功能项").click()
     expect(page.locator(".previewFeatureEditor")).to_have_count(4)
@@ -1328,7 +1343,9 @@ def test_admin_dashboard(page: Page) -> None:
     expect(page.get_by_label("中文 功能描述").first).to_have_value("进一步降低后台资源占用。")
     expect(page.get_by_label("中文 功能标题").nth(2)).to_have_value("")
     expect(page.get_by_label("中文 功能描述").nth(2)).to_have_value("新增歌词坞。")
-    progress_slider = page.get_by_label("功能 1 开发进度与状态")
+    expect(page.get_by_label("所属版本")).to_have_count(4)
+    expect(page.get_by_label("所属版本").first).to_have_value("v2.1 Preview")
+    progress_slider = page.get_by_label("v2.1 Preview 功能 1 开发进度与状态")
     expect(progress_slider).to_have_attribute("max", "9")
     expect(progress_slider).to_have_attribute("min", "0")
     expect(page.locator(f'#{progress_slider.get_attribute("list")} option')).to_have_count(10)

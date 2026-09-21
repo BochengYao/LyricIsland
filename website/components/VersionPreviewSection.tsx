@@ -69,7 +69,7 @@ export function VersionPreviewSection({ locale }: { locale: Locale }) {
       </div>
       <div className={`previewList${loading ? "" : " databaseContentReveal"}`} aria-live="polite">
         {previews.length ? [...previews].sort(comparePreviewVersions).map((preview) => (
-          <ReleasePreviewArticle preview={preview} locale={locale} targetLabel={copy.target} key={preview.id} />
+          <ReleasePreviewArticle preview={preview} locale={locale} key={preview.id} />
         )) : <p className="previewEmpty">{loading
           ? stateCopy.loading
           : loadFailed

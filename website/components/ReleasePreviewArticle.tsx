@@ -4,16 +4,31 @@ import {
   localizedFeatureDescription,
   localizedFeatureTitle,
   localizedPreviewNote,
-  normalizeReleasePreviewContent
+  normalizeReleasePreviewContent,
+  releasePreviewFeatureVersion
 } from "@/data/release-preview-content";
 import type { Locale } from "@/data/site-copy";
 import { formatReleaseTiming } from "@/lib/release-timing";
 
 function groupCopy(locale: Locale) {
-  if (locale === "zh") return { note: "开发说明", current: "新功能与改进", next: "接下来" };
-  if (locale === "zhHant") return { note: "開發說明", current: "新功能與改進", next: "接下來" };
-  if (locale === "ja") return { note: "開発ノート", current: "新機能と改善", next: "次に登場" };
-  return { note: "Development Note", current: "Features and improvements", next: "Coming next" };
+  if (locale === "zh") return { current: "新功能与改进", next: "接下来" };
+  if (locale === "zhHant") return { current: "新功能與改進", next: "接下來" };
+  if (locale === "ja") return { current: "新機能と改善", next: "次に登場" };
+  return { current: "Features and improvements", next: "Coming next" };
+}
+
+function releaseTimingText(targetDate: string | null, locale: Locale) {
+  const timing = formatReleaseTiming(targetDate, locale);
+  if (locale === "zh") {
+    if (timing === "待定") return "推出时间待定";
+    return `预计${timing === "本周内" ? "本周" : timing === "本月内" ? "本月" : timing}推出`;
+  }
+  if (locale === "zhHant") {
+    if (timing === "待定") return "推出時間待定";
+    return `預計${timing === "本週內" ? "本週" : timing === "本月內" ? "本月" : timing}推出`;
+  }
+  if (locale === "ja") return timing === "未定" ? "リリース時期未定" : `${timing}にリリース予定`;
+  return timing === "TBD" ? "Release timing TBD" : `Expected ${timing.toLocaleLowerCase("en")}`;
 }
 
 type LocalizedFeature = {
@@ -37,12 +52,10 @@ function FeatureRow({ item, locale }: { item: LocalizedFeature; locale: Locale }
 
 export function ReleasePreviewArticle({
   preview,
-  locale,
-  targetLabel
+  locale
 }: {
   preview: ReleasePreview;
   locale: Locale;
-  targetLabel: string;
 }) {
   const copy = groupCopy(locale);
   const content = normalizeReleasePreviewContent(preview);
@@ -55,10 +68,11 @@ export function ReleasePreviewArticle({
       description: localizedFeatureDescription(feature, locale).trim()
     }))
     .filter((item) => Boolean(item.description));
-  const currentFeatures = features.filter((item) => item.feature.display_group !== "future");
+  const currentVersion = preview.version.trim();
+  const currentFeatures = features.filter((item) => releasePreviewFeatureVersion(item.feature, currentVersion).toLocaleLowerCase() === currentVersion.toLocaleLowerCase());
   const futureGroups = new Map<string, LocalizedFeature[]>();
-  features.filter((item) => item.feature.display_group === "future").forEach((item) => {
-    const version = item.feature.target_version.trim() || preview.version;
+  features.filter((item) => releasePreviewFeatureVersion(item.feature, currentVersion).toLocaleLowerCase() !== currentVersion.toLocaleLowerCase()).forEach((item) => {
+    const version = releasePreviewFeatureVersion(item.feature, currentVersion);
     futureGroups.set(version, [...(futureGroups.get(version) ?? []), item]);
   });
 
@@ -66,11 +80,10 @@ export function ReleasePreviewArticle({
     <article className="previewCard">
       <header className="previewCardMeta">
         <strong>{preview.version}</strong>
-        <small>{targetLabel} {formatReleaseTiming(preview.target_date, locale)}</small>
+        <small>{releaseTimingText(preview.target_date, locale)}</small>
       </header>
       {note && (
         <div className="previewNoteBlock">
-          <span className="previewNoteLabel">{copy.note}</span>
           <p className="previewNote">{note}</p>
         </div>
       )}

@@ -30,7 +30,9 @@ import {
   RELEASE_PREVIEW_SLIDER_READY_INDEX,
   RELEASE_PREVIEW_SLIDER_TESTING_INDEX,
   parseReleasePreviewBulkLine,
-  splitPreviewLines
+  releasePreviewFeatureVersion,
+  splitPreviewLines,
+  suggestedReleasePreviewVersion
 } from "@/data/release-preview-content";
 import {
   formatReleaseTiming,
@@ -76,10 +78,6 @@ const previewFeatureFields = {
   "zh-tw": { title: "title_zh_tw", description: "description_zh_tw" },
   ja: { title: "title_ja", description: "description_ja" }
 } as const;
-const previewGroupOptions: Array<{ value: ReleasePreviewFeatureGroup; label: string }> = [
-  { value: "featured", label: "本版本" },
-  { value: "future", label: "稍后推出" }
-];
 const releaseTimingOptions: Array<{ value: ReleaseTimingPreset; label: string }> = [
   { value: "today", label: "今天" },
   { value: "tomorrow", label: "明天" },
@@ -202,6 +200,20 @@ function previewBulkLine(feature: ReleasePreviewFeature) {
   return feature.title_zh.trim()
     ? `${feature.title_zh.trim()} | ${feature.description_zh.trim()}`
     : feature.description_zh.trim();
+}
+
+function samePreviewVersion(left: string, right: string) {
+  return left.trim().toLocaleLowerCase() === right.trim().toLocaleLowerCase();
+}
+
+function featuresForPreviewVersion(features: ReleasePreviewFeature[], previewVersion: string, version: string) {
+  return features.filter((feature) => samePreviewVersion(releasePreviewFeatureVersion(feature, previewVersion), version));
+}
+
+function previewVersionAssignment(version: string, previewVersion: string): Pick<ReleasePreviewFeature, "display_group" | "target_version"> {
+  return samePreviewVersion(version, previewVersion)
+    ? { display_group: "featured", target_version: "" }
+    : { display_group: "future", target_version: version.trim() };
 }
 
 const eventLabels: Record<string, string> = {
@@ -466,8 +478,7 @@ export function AdminIncentives() {
   const previewDraftRef = useRef(previewDraft);
   const [previewLocale, setPreviewLocale] = useState<PreviewLocale>("zh");
   const [previewBulkInput, setPreviewBulkInput] = useState("");
-  const [previewBulkGroup, setPreviewBulkGroup] = useState<ReleasePreviewFeatureGroup>("featured");
-  const [previewBulkTargetVersion, setPreviewBulkTargetVersion] = useState("V3.3");
+  const [previewBulkVersion, setPreviewBulkVersion] = useState("");
   const [previewSaving, setPreviewSaving] = useState(false);
   const [draftMenuOpen, setDraftMenuOpen] = useState(false);
   const [translationSaving, setTranslationSaving] = useState<"features" | "preview" | null>(null);
@@ -493,6 +504,19 @@ export function AdminIncentives() {
     ? selectedFeatureVersion
     : (featureVersionOptions[0] ?? LEGACY_FEATURE_RELEASE_VERSION);
   const activeFeatureSections = featureContent.sections.filter((section) => section.release_version === activeFeatureVersion);
+
+  const previewVersionOptions = useMemo(() => {
+    const currentVersion = previewDraft.version.trim();
+    const versions = [
+      currentVersion,
+      ...previewDraft.features.map((feature) => releasePreviewFeatureVersion(feature, currentVersion)),
+      suggestedReleasePreviewVersion(currentVersion)
+    ].filter(Boolean);
+    const unique = versions.filter((version, index) => versions.findIndex((candidate) => samePreviewVersion(candidate, version)) === index);
+    return currentVersion
+      ? [currentVersion, ...unique.filter((version) => !samePreviewVersion(version, currentVersion)).sort((left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" }))]
+      : unique;
+  }, [previewDraft.features, previewDraft.version]);
 
   async function loadData() {
     const [submissionResponse, featureResponse, previewResponse, logResponse] = await Promise.all([
@@ -520,7 +544,8 @@ export function AdminIncentives() {
     if (currentPreview) {
       const draft = previewToDraft(currentPreview);
       setPreviewDraft(draft);
-      setPreviewBulkInput(draft.features.map(previewBulkLine).join("\n"));
+      setPreviewBulkVersion(draft.version);
+      setPreviewBulkInput(featuresForPreviewVersion(draft.features, draft.version, draft.version).map(previewBulkLine).join("\n"));
       const timing = releaseTimingFromTargetDate(currentPreview.target_date);
       setPreviewTimingPreset(timing.preset);
       setPreviewCustomDays(timing.days ?? 14);
@@ -832,6 +857,20 @@ export function AdminIncentives() {
     return lines.map((line) => line.trim()).filter(Boolean);
   }
 
+  function selectPreviewBulkVersion(version: string) {
+    const draft = previewDraftRef.current;
+    setPreviewBulkVersion(version);
+    setPreviewBulkInput(featuresForPreviewVersion(draft.features, draft.version, version).map(previewBulkLine).join("\n"));
+  }
+
+  function updatePreviewVersion(version: string) {
+    const previousVersion = previewDraftRef.current.version;
+    setPreviewDraft((draft) => ({ ...draft, version }));
+    if (!previewBulkVersion.trim() || samePreviewVersion(previewBulkVersion, previousVersion)) {
+      setPreviewBulkVersion(version);
+    }
+  }
+
   async function translateManagedFeatures() {
     if (translationRequestRef.current) {
       setFeatureMessage("另一项翻译仍在进行，请稍候");
@@ -898,8 +937,9 @@ export function AdminIncentives() {
 
   function parsePreviewBulkInput() {
     if (previewTranslationLocked) return;
-    if (previewBulkGroup === "future" && !previewBulkTargetVersion.trim()) {
-      setError("批量导入到“稍后推出”时，请先填写目标版本");
+    const selectedVersion = previewBulkVersion.trim() || previewDraftRef.current.version.trim();
+    if (!selectedVersion) {
+      setError("请先填写预告版本号并选择导入版本");
       return;
     }
     const items = splitPreviewLines(previewBulkInput).map(parseReleasePreviewBulkLine);
@@ -908,25 +948,28 @@ export function AdminIncentives() {
       return;
     }
     setPreviewDraft((draft) => {
+      const currentVersion = draft.version.trim();
+      const targetFeatures = featuresForPreviewVersion(draft.features, currentVersion, selectedVersion);
+      const assignment = previewVersionAssignment(selectedVersion, currentVersion);
       const usedIds = new Set<string>();
       const matched = items.map((item) => {
-        const existing = draft.features.find((feature) => !usedIds.has(feature.id) &&
+        const existing = targetFeatures.find((feature) => !usedIds.has(feature.id) &&
           feature.title_zh.trim() === item.title && feature.description_zh.trim() === item.description);
         if (existing) usedIds.add(existing.id);
         return existing ?? null;
       });
-      const exactMatchMoved = matched.some((feature, index) => feature && draft.features[index]?.id !== feature.id);
+      const exactMatchMoved = matched.some((feature, index) => feature && targetFeatures[index]?.id !== feature.id);
       const unmatchedItemIndexes = matched
         .map((feature, index) => feature ? -1 : index)
         .filter((index) => index >= 0);
-      const unmatchedExisting = draft.features.filter((feature) => !usedIds.has(feature.id));
+      const unmatchedExisting = targetFeatures.filter((feature) => !usedIds.has(feature.id));
       const uniqueEditedPair = unmatchedItemIndexes.length === 1 && unmatchedExisting.length === 1
         ? { itemIndex: unmatchedItemIndexes[0], feature: unmatchedExisting[0] }
         : null;
-      const features = items.map((item, index) => {
+      const importedFeatures = items.map((item, index) => {
         const exact = matched[index];
-        if (exact) return { ...exact, sort_order: index + 1 };
-        const positional = !exactMatchMoved ? draft.features[index] : null;
+        if (exact) return exact;
+        const positional = !exactMatchMoved ? targetFeatures[index] : null;
         const inherited = uniqueEditedPair?.itemIndex === index
           ? uniqueEditedPair.feature
           : positional && !usedIds.has(positional.id)
@@ -936,8 +979,7 @@ export function AdminIncentives() {
           usedIds.add(inherited.id);
           return {
             ...inherited,
-            display_group: previewBulkGroup,
-            target_version: previewBulkGroup === "future" ? previewBulkTargetVersion.trim() : "",
+            ...assignment,
             title_zh: item.title,
             description_zh: item.description,
             content_zh: item.title ? `${item.title} — ${item.description}` : item.description,
@@ -949,15 +991,23 @@ export function AdminIncentives() {
             description_ja: "",
             content_en: "",
             content_zh_tw: "",
-            content_ja: "",
-            sort_order: index + 1
+            content_ja: ""
           };
         }
         return {
-          ...newPreviewFeature(item.description, item.title, previewBulkGroup, previewBulkTargetVersion.trim()),
-          sort_order: index + 1
+          ...newPreviewFeature(item.description, item.title, assignment.display_group, assignment.target_version)
         };
       });
+      const versionOrder = [
+        currentVersion,
+        ...draft.features.map((feature) => releasePreviewFeatureVersion(feature, currentVersion)),
+        selectedVersion
+      ].filter((version, index, versions) => Boolean(version) && versions.findIndex((candidate) => samePreviewVersion(candidate, version)) === index);
+      const features = versionOrder
+        .flatMap((version) => samePreviewVersion(version, selectedVersion)
+          ? importedFeatures
+          : featuresForPreviewVersion(draft.features, currentVersion, version))
+        .map((feature, index) => ({ ...feature, sort_order: index + 1 }));
       return { ...draft, features };
     });
     setError("");
@@ -971,12 +1021,34 @@ export function AdminIncentives() {
     }));
   }
 
+  function assignPreviewFeatureVersion(id: string, version: string) {
+    if (previewTranslationLocked) return;
+    setPreviewDraft((draft) => {
+      const assignment = previewVersionAssignment(version, draft.version);
+      const updated = draft.features.map((feature) => feature.id === id ? { ...feature, ...assignment } : feature);
+      const versionOrder = [
+        draft.version.trim(),
+        ...updated.map((feature) => releasePreviewFeatureVersion(feature, draft.version))
+      ].filter((item, index, items) => Boolean(item) && items.findIndex((candidate) => samePreviewVersion(candidate, item)) === index);
+      const features = versionOrder
+        .flatMap((item) => featuresForPreviewVersion(updated, draft.version, item))
+        .map((feature, index) => ({ ...feature, sort_order: index + 1 }));
+      return { ...draft, features };
+    });
+  }
+
   function movePreviewFeature(id: string, direction: -1 | 1) {
     if (previewTranslationLocked) return;
     setPreviewDraft((draft) => {
       const index = draft.features.findIndex((feature) => feature.id === id);
-      const target = index + direction;
-      if (index < 0 || target < 0 || target >= draft.features.length) return draft;
+      if (index < 0) return draft;
+      const version = releasePreviewFeatureVersion(draft.features[index], draft.version);
+      const groupIndexes = draft.features
+        .map((feature, featureIndex) => samePreviewVersion(releasePreviewFeatureVersion(feature, draft.version), version) ? featureIndex : -1)
+        .filter((featureIndex) => featureIndex >= 0);
+      const groupPosition = groupIndexes.indexOf(index);
+      const target = groupIndexes[groupPosition + direction];
+      if (target === undefined) return draft;
       const features = [...draft.features];
       [features[index], features[target]] = [features[target], features[index]];
       return { ...draft, features: features.map((feature, order) => ({ ...feature, sort_order: order + 1 })) };
@@ -995,13 +1067,24 @@ export function AdminIncentives() {
 
   function addPreviewFeature() {
     if (previewTranslationLocked) return;
-    setPreviewDraft((draft) => ({
-      ...draft,
-      features: [...draft.features, {
-        ...newPreviewFeature("", "", previewBulkGroup, previewBulkTargetVersion.trim()),
-        sort_order: draft.features.length + 1
-      }]
-    }));
+    const currentVersion = previewDraftRef.current.version.trim();
+    if (!currentVersion) {
+      setError("请先填写预告版本号并选择所属版本");
+      return;
+    }
+    setPreviewDraft((draft) => {
+      const assignment = previewVersionAssignment(currentVersion, draft.version);
+      const currentIndexes = draft.features
+        .map((feature, index) => samePreviewVersion(releasePreviewFeatureVersion(feature, draft.version), currentVersion) ? index : -1)
+        .filter((index) => index >= 0);
+      const insertAt = currentIndexes.length ? currentIndexes[currentIndexes.length - 1] + 1 : 0;
+      const features = [...draft.features];
+      features.splice(insertAt, 0, newPreviewFeature("", "", assignment.display_group, assignment.target_version));
+      return {
+        ...draft,
+        features: features.map((feature, index) => ({ ...feature, sort_order: index + 1 }))
+      };
+    });
   }
 
   async function translatePreview(mode: "all" | "missing" = "all") {
@@ -1099,7 +1182,8 @@ export function AdminIncentives() {
         : items.filter((item) => item.id !== savedPreview.id));
       const draft = previewToDraft(result.preview);
       setPreviewDraft(draft);
-      setPreviewBulkInput(draft.features.map(previewBulkLine).join("\n"));
+      setPreviewBulkVersion(draft.version);
+      setPreviewBulkInput(featuresForPreviewVersion(draft.features, draft.version, draft.version).map(previewBulkLine).join("\n"));
       const timing = releaseTimingFromTargetDate(result.preview.target_date);
       setPreviewTimingPreset(timing.preset);
       setPreviewCustomDays(timing.days ?? 14);
@@ -1114,7 +1198,8 @@ export function AdminIncentives() {
     if (previewTranslationLocked) return;
     const draft = previewToDraft(preview);
     setPreviewDraft(draft);
-    setPreviewBulkInput(draft.features.map(previewBulkLine).join("\n"));
+    setPreviewBulkVersion(draft.version);
+    setPreviewBulkInput(featuresForPreviewVersion(draft.features, draft.version, draft.version).map(previewBulkLine).join("\n"));
     setPreviewLocale("zh");
     const timing = releaseTimingFromTargetDate(preview.target_date);
     setPreviewTimingPreset(timing.preset);
@@ -1127,8 +1212,7 @@ export function AdminIncentives() {
     if (previewTranslationLocked) return;
     setPreviewDraft(emptyPreviewDraft);
     setPreviewBulkInput("");
-    setPreviewBulkGroup("featured");
-    setPreviewBulkTargetVersion("V3.3");
+    setPreviewBulkVersion("");
     setPreviewLocale("zh");
     setPreviewTimingPreset("tbd");
     setPreviewCustomDays(14);
@@ -1478,7 +1562,7 @@ export function AdminIncentives() {
             <header className="adminPageHeader"><div><p>RELEASE PREVIEW</p><h2>发布版本预告</h2></div><div className="featureAdminActions">{draftPreviews.length > 0 && <div className="previewDraftMenu"><button className="button buttonSecondary" type="button" aria-expanded={draftMenuOpen} disabled={previewTranslationLocked} onClick={() => setDraftMenuOpen((open) => !open)}>草稿箱（{draftPreviews.length}）</button>{draftMenuOpen && <div className="previewDraftMenuPanel">{draftPreviews.map((preview) => <button type="button" disabled={previewTranslationLocked} onClick={() => editPreview(preview)} key={preview.id}>{preview.version} · {formatReleaseTiming(preview.target_date, "zh")}</button>)}</div>}</div>}<button className="button buttonSecondary" type="button" disabled={previewTranslationLocked} onClick={newPreview}>新建预告</button></div></header>
             <form className="previewEditor" onSubmit={savePreview}>
               <div className="previewEditorMeta">
-                <label><span>版本号</span><input name="version" placeholder="例如：v3.2" value={previewDraft.version} disabled={previewTranslationLocked} onChange={(event) => setPreviewDraft((draft) => ({ ...draft, version: event.target.value }))} required /></label>
+                <label><span>版本号</span><input name="version" placeholder="例如：v3.2" value={previewDraft.version} disabled={previewTranslationLocked} onChange={(event) => updatePreviewVersion(event.target.value)} required /></label>
                 <label><span>预计上线范围</span><select name="target_timing" value={previewTimingPreset} disabled={previewTranslationLocked} onChange={(event) => setPreviewTimingPreset(event.target.value as ReleaseTimingPreset)}>{releaseTimingOptions.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>
                 {previewTimingPreset === "custom-days" && <label><span>天数（自动递减）</span><input name="target_days" type="number" min={2} max={365} step={1} value={previewCustomDays} disabled={previewTranslationLocked} onChange={(event) => setPreviewCustomDays(Number(event.target.value))} required /></label>}
               </div>
@@ -1507,21 +1591,23 @@ export function AdminIncentives() {
                   <small>推荐“标题 | 描述”，也支持全角“｜”；旧版一行一句会保留为无标题描述。</small>
                 </div>
                 <div className="previewBulkSettings">
-                  <label><span>默认展示分组</span><select value={previewBulkGroup} disabled={previewTranslationLocked} onChange={(event) => setPreviewBulkGroup(event.target.value as ReleasePreviewFeatureGroup)}>{previewGroupOptions.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>
-                  {previewBulkGroup === "future" && <label><span>目标版本</span><input value={previewBulkTargetVersion} disabled={previewTranslationLocked} onChange={(event) => setPreviewBulkTargetVersion(event.target.value)} placeholder="例如：V3.3" required /></label>}
+                  <label><span>导入到版本</span><select value={previewBulkVersion} disabled={previewTranslationLocked || previewVersionOptions.length === 0} onChange={(event) => selectPreviewBulkVersion(event.target.value)}>{previewVersionOptions.length === 0 && <option value="">请先填写版本号</option>}{previewVersionOptions.map((version) => <option value={version} key={version}>{version}</option>)}</select></label>
                 </div>
                 <textarea aria-label="快速批量导入中文功能项" rows={5} value={previewBulkInput} disabled={previewTranslationLocked} onChange={(event) => setPreviewBulkInput(event.target.value)} placeholder={"逐字跟随 | 歌词随着演唱进度逐字呈现，带来更自然的跟唱体验。\n歌词坞｜让当前歌词直接呈现在 Windows 任务栏。\n新增省电模式，进一步降低后台资源占用。"} />
                 <div className="previewBulkActions"><button className="button buttonSecondary" type="button" disabled={previewTranslationLocked} onClick={parsePreviewBulkInput}>解析为功能项</button><button className="button buttonSecondary" type="button" disabled={previewTranslationLocked} onClick={addPreviewFeature}>新增单项</button></div>
               </section>
 
               <div className="previewFeatureList">
-                {previewDraft.features.map((feature, index) => (
-                  <article className="previewFeatureEditor" key={feature.id}>
+                {previewDraft.features.map((feature) => {
+                  const featureVersion = releasePreviewFeatureVersion(feature, previewDraft.version);
+                  const versionFeatures = featuresForPreviewVersion(previewDraft.features, previewDraft.version, featureVersion);
+                  const versionIndex = versionFeatures.findIndex((candidate) => candidate.id === feature.id);
+                  return <article className="previewFeatureEditor" key={feature.id}>
                     <header>
-                      <strong>功能 {index + 1}</strong>
+                      <strong>{featureVersion || "未指定版本"} · 功能 {versionIndex + 1}</strong>
                       <div className="previewFeatureActions">
-                        <button type="button" disabled={previewTranslationLocked || index === 0} onClick={() => movePreviewFeature(feature.id, -1)}>上移</button>
-                        <button type="button" disabled={previewTranslationLocked || index === previewDraft.features.length - 1} onClick={() => movePreviewFeature(feature.id, 1)}>下移</button>
+                        <button type="button" disabled={previewTranslationLocked || versionIndex === 0} onClick={() => movePreviewFeature(feature.id, -1)}>上移</button>
+                        <button type="button" disabled={previewTranslationLocked || versionIndex === versionFeatures.length - 1} onClick={() => movePreviewFeature(feature.id, 1)}>下移</button>
                         <button className="danger" type="button" disabled={previewTranslationLocked} onClick={() => removePreviewFeature(feature.id)}>删除</button>
                       </div>
                     </header>
@@ -1537,8 +1623,7 @@ export function AdminIncentives() {
                         </label>
                       </div>
                       <div className="previewFeatureSettings">
-                        <label><span>展示位置</span><select value={feature.display_group === "future" ? "future" : "featured"} disabled={previewTranslationLocked} onChange={(event) => updatePreviewFeature(feature.id, { display_group: event.target.value as ReleasePreviewFeatureGroup, ...(event.target.value === "future" ? {} : { target_version: "" }) })}>{previewGroupOptions.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>
-                        {feature.display_group === "future" && <label><span>目标版本</span><input value={feature.target_version} disabled={previewTranslationLocked} onChange={(event) => updatePreviewFeature(feature.id, { target_version: event.target.value })} placeholder="例如：V3.3" required /></label>}
+                        <label><span>所属版本</span><select value={featureVersion} disabled={previewTranslationLocked || previewVersionOptions.length === 0} onChange={(event) => assignPreviewFeatureVersion(feature.id, event.target.value)}>{previewVersionOptions.map((version) => <option value={version} key={version}>{version}</option>)}</select></label>
                         <div className="previewProgressEditor">
                           <label className="previewProgressSelect">
                             <span>开发进度与状态</span>
@@ -1562,7 +1647,7 @@ export function AdminIncentives() {
                                     ? { progress: 100, stage: "testing" }
                                     : { progress: RELEASE_PREVIEW_PROGRESS_ANCHORS[value] ?? 0, stage: "development" });
                               }}
-                              aria-label={`功能 ${index + 1} 开发进度与状态`}
+                              aria-label={`${featureVersion} 功能 ${versionIndex + 1} 开发进度与状态`}
                               aria-valuetext={feature.stage === "ready" ? "待上线" : feature.stage === "testing" ? "测试中" : `${feature.progress}%`}
                             />
                             <datalist id={`preview-progress-stops-${feature.id}`}>
@@ -1579,8 +1664,8 @@ export function AdminIncentives() {
                         </div>
                       </div>
                     </div>
-                  </article>
-                ))}
+                  </article>;
+                })}
                 {!previewDraft.features.length && <p className="previewFeatureEmpty">粘贴中文内容并解析，或新增单项开始编辑。</p>}
               </div>
 

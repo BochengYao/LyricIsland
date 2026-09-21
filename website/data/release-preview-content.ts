@@ -336,6 +336,17 @@ export function parseReleasePreviewBulkLine(value: string) {
   return title && description ? { title, description } : { title: "", description: line };
 }
 
+export function releasePreviewFeatureVersion(feature: ReleasePreviewFeature, previewVersion: string) {
+  return feature.target_version.trim() || previewVersion.trim();
+}
+
+export function suggestedReleasePreviewVersion(version: string) {
+  const normalized = version.trim();
+  const match = normalized.match(/^(.*?)(\d+)(\D*)$/);
+  if (!match) return "";
+  return `${match[1]}${Number(match[2]) + 1}${match[3]}`;
+}
+
 export function localizedPreviewNote(content: NormalizedReleasePreviewContent, locale: "zh" | "en" | "zhHant" | "ja") {
   if (locale === "zh") return content.note_zh;
   if (locale === "zhHant") return content.note_zh_tw || content.note_zh;

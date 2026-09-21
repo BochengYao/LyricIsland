@@ -563,7 +563,7 @@ export function IncentivePage({ locale }: { locale: Locale }) {
                 <span className="databaseLoadingPulse" aria-hidden="true" />
               </div>
             ) : previews.length ? previews.map((preview) => (
-              <ReleasePreviewArticle preview={preview} locale={locale} targetLabel={copy.preview.target} key={preview.id} />
+              <ReleasePreviewArticle preview={preview} locale={locale} key={preview.id} />
             )) : <p className="previewEmpty">{publicDataState === "error" ? (locale === "zh" ? "暂时无法载入版本预告，请稍后刷新。" : "Release previews could not be loaded. Please refresh later.") : copy.preview.empty}</p>}
           </div>
         </section>
