@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ReleasePreviewLegend, ReleasePreviewProgressRing } from "@/components/ReleasePreviewProgressRing";
+import { ReleasePreviewArticle } from "@/components/ReleasePreviewArticle";
 import { Eyebrow } from "@/components/SitePage";
 import { incentivesByLocale } from "@/data/incentives-copy";
 import type { ReleasePreview } from "@/data/incentives-types";
 import type { Locale } from "@/data/site-copy";
 import { preloadClientJson } from "@/lib/client-data";
-import { formatReleaseTiming } from "@/lib/release-timing";
-import { localizedFeatureContent, localizedPreviewNote, normalizeReleasePreviewContent } from "@/data/release-preview-content";
 
 function comparePreviewVersions(left: ReleasePreview, right: ReleasePreview) {
   const leftParts = left.version.match(/\d+/g)?.map(Number) ?? [];
@@ -68,36 +66,11 @@ export function VersionPreviewSection({ locale }: { locale: Locale }) {
         <Eyebrow reveal>{copy.eyebrow}</Eyebrow>
         <h2 data-text-reveal="title">{copy.title}</h2>
         <p>{copy.body}</p>
-        <ReleasePreviewLegend locale={locale} />
       </div>
       <div className={`previewList${loading ? "" : " databaseContentReveal"}`} aria-live="polite">
-        {previews.length ? [...previews].sort(comparePreviewVersions).map((preview) => {
-          const previewContent = normalizeReleasePreviewContent(preview);
-          const note = localizedPreviewNote(previewContent, locale);
-          const features = [...previewContent.features]
-            .sort((left, right) => left.sort_order - right.sort_order)
-            .map((feature) => ({ feature, content: localizedFeatureContent(feature, locale).trim() }))
-            .filter(({ content }) => Boolean(content));
-          return (
-            <article className="previewCard" key={preview.id}>
-              <div className="previewCardMeta">
-                <strong>{preview.version}</strong>
-                <small>{copy.target} {formatReleaseTiming(preview.target_date, locale)}</small>
-                {note && <p className="previewNote">{note}</p>}
-              </div>
-              <div className="previewCardContent">
-                <ul className="previewItems">
-                  {features.map(({ feature, content }) => (
-                    <li key={feature.id}>
-                      <ReleasePreviewProgressRing progress={feature.progress} stage={feature.stage} locale={locale} />
-                      <p>{content}</p>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </article>
-          );
-        }) : <p className="previewEmpty">{loading
+        {previews.length ? [...previews].sort(comparePreviewVersions).map((preview) => (
+          <ReleasePreviewArticle preview={preview} locale={locale} targetLabel={copy.target} key={preview.id} />
+        )) : <p className="previewEmpty">{loading
           ? stateCopy.loading
           : loadFailed
             ? stateCopy.failed

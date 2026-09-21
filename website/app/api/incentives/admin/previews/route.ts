@@ -51,20 +51,45 @@ function previewFeatures(value: unknown): ReleasePreviewFeature[] {
     if (stage !== "development" && progress !== 100) {
       throw new PreviewValidationError("测试中或待上线状态必须使用完成进度");
     }
-    const localizedText = (field: "content_zh" | "content_en" | "content_zh_tw" | "content_ja") =>
-      typeof source[field] === "string" ? source[field].trim().slice(0, 2400) : "";
-    const contentZh = localizedText("content_zh");
-    const contentEn = localizedText("content_en");
-    if (!contentZh || !contentEn) throw new PreviewValidationError("每条功能项均需填写中英文内容");
+    const localizedText = (field: string, maxLength = 2400) =>
+      typeof source[field] === "string" ? source[field].trim().slice(0, maxLength) : "";
+    const titleZh = localizedText("title_zh", 180);
+    const titleEn = localizedText("title_en", 180);
+    const titleZhTw = localizedText("title_zh_tw", 180);
+    const titleJa = localizedText("title_ja", 180);
+    const descriptionZh = localizedText("description_zh") || localizedText("content_zh");
+    const descriptionEn = localizedText("description_en") || localizedText("content_en");
+    const descriptionZhTw = localizedText("description_zh_tw") || localizedText("content_zh_tw");
+    const descriptionJa = localizedText("description_ja") || localizedText("content_ja");
+    if (!descriptionZh || !descriptionEn) throw new PreviewValidationError("每条功能项均需填写中英文描述");
+    if (source.display_group !== undefined && source.display_group !== "featured" && source.display_group !== "improvement" && source.display_group !== "future") {
+      throw new PreviewValidationError("展示分组无效");
+    }
+    const displayGroup = source.display_group === "improvement" || source.display_group === "future"
+      ? source.display_group
+      : "featured";
+    const targetVersion = displayGroup === "future" ? localizedText("target_version", 40) : "";
+    if (displayGroup === "future" && !targetVersion) throw new PreviewValidationError("稍后推出的功能必须填写目标版本");
+    const legacyContent = (title: string, description: string) => title ? `${title} — ${description}` : description;
     return {
       id,
       sort_order: index + 1,
       progress,
       stage,
-      content_zh: contentZh,
-      content_en: contentEn,
-      content_zh_tw: localizedText("content_zh_tw"),
-      content_ja: localizedText("content_ja")
+      display_group: displayGroup,
+      target_version: targetVersion,
+      title_zh: titleZh,
+      title_en: titleEn,
+      title_zh_tw: titleZhTw,
+      title_ja: titleJa,
+      description_zh: descriptionZh,
+      description_en: descriptionEn,
+      description_zh_tw: descriptionZhTw,
+      description_ja: descriptionJa,
+      content_zh: legacyContent(titleZh, descriptionZh),
+      content_en: legacyContent(titleEn, descriptionEn),
+      content_zh_tw: legacyContent(titleZhTw, descriptionZhTw),
+      content_ja: legacyContent(titleJa, descriptionJa)
     };
   });
 }

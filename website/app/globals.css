@@ -4033,9 +4033,7 @@ html[lang="en"] :where(
 }
 
 .previewCard {
-  display: grid;
-  grid-template-columns: minmax(132px, 0.32fr) 1fr;
-  gap: 24px;
+  display: block;
   padding: 48px 0;
   border-top: 1px solid var(--line);
 }
@@ -4045,20 +4043,35 @@ html[lang="en"] :where(
 }
 
 .previewCardMeta {
-  display: grid;
-  align-content: start;
-  gap: 7px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 24px;
 }
 
 .previewCardMeta strong {
-  font-size: 22px;
+  font-size: clamp(30px, 3vw, 34px);
   line-height: 1.1;
+  letter-spacing: -0.035em;
+}
+
+.previewNoteBlock {
+  max-width: 680px;
+  margin-top: 30px;
+}
+
+.previewNoteLabel {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .previewNote {
-  margin: 16px 0 0;
+  margin: 8px 0 0;
   color: var(--muted);
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.65;
   white-space: pre-line;
 }
@@ -4071,31 +4084,80 @@ html[lang="en"] :where(
   text-transform: uppercase;
 }
 
-.previewCard h3 {
-  margin: 0 0 22px;
-  font-size: 30px;
+.previewFeatureGroup {
+  margin-top: 48px;
+}
+
+.previewFeatureGroup > h3 {
+  margin: 0 0 28px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .previewItems {
   display: grid;
-  gap: 18px;
+  gap: 30px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+.previewSection.updatesPreviewSection .previewFeaturedList {
+  gap: 30px;
+}
+
+.previewSection.updatesPreviewSection .previewImprovementList {
+  gap: 22px;
+}
+
 .previewItems li {
-  display: grid;
-  grid-template-columns: 16px minmax(0, 1fr);
-  gap: 12px;
-  align-items: start;
+  min-width: 0;
+}
+
+.previewFeatureHeading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.previewFeatureHeading h4 {
+  min-width: 0;
+  margin: 0;
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 750;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.previewItems li > p {
+  max-width: 680px;
+  margin: 8px 36px 0 0;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.62;
+  overflow-wrap: anywhere;
+}
+
+.previewLegacyContent {
+  margin: 0;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.62;
+  overflow-wrap: anywhere;
 }
 
 .previewProgressRing {
   display: block;
   width: 16px;
   height: 16px;
-  margin-top: 0.22em;
+  flex: 0 0 16px;
+  margin-top: 0;
   overflow: visible;
 }
 
@@ -4114,9 +4176,52 @@ html[lang="en"] :where(
   stroke-linecap: round;
 }
 
-.previewItems p {
+.previewImprovementGroup {
+  margin-top: 54px;
+}
+
+.previewImprovementList {
+  gap: 22px;
+}
+
+.previewImprovementList .previewFeatureHeading h4 {
+  font-size: 17px;
+}
+
+.previewImprovementList li > p,
+.previewImprovementList .previewLegacyContent {
+  margin-top: 5px;
+  font-size: 15px;
+}
+
+.previewFutureGroup {
+  margin-top: 56px;
+  padding-top: 34px;
+  border-top: 1px solid var(--line);
+  opacity: 0.82;
+}
+
+.previewFutureList {
+  display: grid;
+  gap: 20px;
   margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.previewFutureList h4 {
+  margin: 0;
+  color: var(--charcoal);
+  font-size: 17px;
+  line-height: 1.35;
+}
+
+.previewFutureList p {
+  max-width: 680px;
+  margin: 5px 0 0;
   color: var(--muted);
+  font-size: 15px;
+  line-height: 1.6;
 }
 
 .previewEmpty {
@@ -5669,6 +5774,12 @@ button.danger,
   gap: 4px;
 }
 
+.previewBulkSettings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .previewBulkImport small,
 .previewFeatureEmpty {
   color: var(--muted);
@@ -5687,49 +5798,40 @@ button.danger,
 
 .previewFeatureEditor {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(420px, 0.85fr);
-  column-gap: 24px;
-  row-gap: 8px;
-  align-items: end;
-  padding: 12px 0;
+  gap: 12px;
+  padding: 16px 0;
   border-bottom: 1px solid var(--line);
+}
+
+.previewFeatureEditorGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(260px, 2fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.previewFeatureCopyFields,
+.previewFeatureSettings {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.previewFeatureCopyFields textarea {
+  min-height: 92px;
 }
 
 .previewFeatureEditor > header {
   display: flex;
-  grid-column: 1 / -1;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-}
-
-.previewFeatureEditor > header > strong {
-  font-size: 15px;
-}
-
-.previewFeatureEditor > label {
-  grid-template-columns: 88px minmax(0, 1fr);
-  gap: 12px;
-  align-items: start;
-  min-width: 0;
-}
-
-.previewFeatureEditor > label > span {
-  padding-top: 10px;
-}
-
-.previewFeatureEditor > label > textarea {
-  min-height: 64px;
-  padding: 10px 14px;
-  overflow-y: hidden;
-  border-radius: 12px;
-  line-height: 1.45;
+  gap: 16px;
 }
 
 .previewFeatureActions button,
 .previewProgressEditor button {
-  min-height: 30px;
-  padding: 0 9px;
+  min-height: 32px;
+  padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 7px;
   background: transparent;
@@ -5749,24 +5851,13 @@ button.danger,
 
 .previewProgressEditor {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(76px, auto);
-  gap: 12px;
-  align-items: center;
-  min-width: 0;
-}
-
-@media (max-width: 1180px) {
-  .previewFeatureEditor {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .previewFeatureEditor > header {
-    grid-column: auto;
-  }
+  grid-template-columns: minmax(180px, 1fr) 96px auto auto;
+  gap: 10px;
+  align-items: end;
 }
 
 .previewProgressEditor input[type="range"] {
-  min-height: 28px;
+  min-height: 42px;
   padding-inline: 0;
   border: 0;
   border-radius: 0;
@@ -5935,6 +6026,12 @@ button.danger,
 
   .previewEditorLanguages {
     grid-template-columns: 1fr;
+  }
+
+  .previewEditorMeta,
+  .previewFeatureEditorGrid,
+  .previewBulkSettings {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .adminPageHeader,
@@ -6271,8 +6368,8 @@ button.danger,
     overflow-wrap: anywhere;
   }
 
-  .previewCard h3 {
-    font-size: 24px;
+  .previewFeatureHeading h4 {
+    font-size: 19px;
   }
 
   .adminShell {
@@ -6458,7 +6555,11 @@ button.danger,
   .previewFeatureEditor > header {
     align-items: flex-start;
     flex-direction: column;
-    gap: 8px;
+  }
+
+  .previewFeatureEditorGrid,
+  .previewBulkSettings {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .previewFeatureActions {
@@ -7254,7 +7355,8 @@ button.danger,
   stroke: var(--orbit);
 }
 
-.previewProgressRing.isTesting {
+.previewProgressRing.isTesting .previewProgressRingValue {
+  transform-origin: center;
   animation: previewTestingPulse 1.05s ease-in-out infinite;
 }
 
@@ -7263,73 +7365,18 @@ button.danger,
   50% { opacity: 1; }
 }
 
-.previewLegend {
-  display: grid;
-  gap: 10px;
-  margin-top: 22px;
-  color: var(--muted);
-}
-
-.previewLegendTitle {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.previewLegend ul {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, max-content));
-  gap: 9px 20px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.previewLegend li {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  font-size: 12px;
-}
-
-.previewLegend .previewProgressRing {
-  flex: 0 0 16px;
-  align-self: center;
-  margin-top: 0;
-}
-
 .previewProgressEditor {
-  grid-template-columns: minmax(0, 1fr) minmax(76px, auto);
+  grid-template-columns: minmax(260px, 1fr) minmax(110px, auto);
 }
 
 .previewProgressSelect {
   display: grid;
-  grid-template-columns: 88px minmax(0, 1fr);
-  column-gap: 12px;
-  row-gap: 0;
-  align-items: center;
-}
-
-.previewProgressSelect > span {
-  grid-column: 1;
-  grid-row: 1 / 3;
-}
-
-.previewProgressSelect > input {
-  grid-column: 2;
-  grid-row: 1;
-}
-
-.previewProgressSelect > datalist {
-  grid-column: 2;
-  grid-row: 2;
+  gap: 6px;
 }
 
 .previewProgressEditor .previewProgressSelect input[type="range"] {
   width: 100%;
-  min-height: 28px;
+  min-height: 42px;
   accent-color: var(--orbit);
 }
 
@@ -7337,8 +7384,7 @@ button.danger,
   display: flex;
   justify-content: space-between;
   color: var(--muted);
-  font-size: 10px;
-  line-height: 1.2;
+  font-size: 11px;
 }
 
 .previewProgressEditorStatus {
@@ -7349,30 +7395,8 @@ button.danger,
 }
 
 @media (max-width: 700px) {
-  .previewLegend ul {
-    grid-template-columns: 1fr;
-  }
-
-  .previewFeatureEditor > label,
-  .previewProgressSelect {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 6px;
-  }
-
-  .previewFeatureEditor > label > span {
-    padding-top: 0;
-  }
-
-  .previewProgressSelect > span,
-  .previewProgressSelect > input,
-  .previewProgressSelect > datalist {
-    grid-column: 1;
-    grid-row: auto;
-  }
-
   .previewProgressEditor {
     grid-template-columns: minmax(0, 1fr);
-    gap: 4px;
   }
 
   .previewProgressEditorStatus {
@@ -7381,7 +7405,7 @@ button.danger,
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .previewProgressRing.isTesting {
+  .previewProgressRing.isTesting .previewProgressRingValue {
     animation: none;
     opacity: 1;
   }

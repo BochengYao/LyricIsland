@@ -72,6 +72,17 @@ export type ReleasePreviewFeature = {
   sort_order: number;
   progress: number;
   stage: ReleasePreviewFeatureStage;
+  display_group: ReleasePreviewFeatureGroup;
+  target_version: string;
+  title_zh: string;
+  title_en: string;
+  title_zh_tw: string;
+  title_ja: string;
+  description_zh: string;
+  description_en: string;
+  description_zh_tw: string;
+  description_ja: string;
+  /** Legacy one-line projection retained for older API consumers. */
   content_zh: string;
   content_en: string;
   content_zh_tw: string;
@@ -79,6 +90,7 @@ export type ReleasePreviewFeature = {
 };
 
 export type ReleasePreviewFeatureStage = "development" | "testing" | "ready";
+export type ReleasePreviewFeatureGroup = "featured" | "improvement" | "future";
 
 export type PublicReleasePreview = ReleasePreview & {
   major_version: string;

@@ -972,38 +972,48 @@ try {
       sort_order: 99,
       progress: 100,
       stage: "ready",
-      content_zh: "新增省电模式。",
-      content_en: "Add power-saving mode.",
-      content_zh_tw: "新增省電模式。",
-      content_ja: "省電力モードを追加。"
+      display_group: "featured",
+      target_version: "",
+      title_zh: "省电模式",
+      title_en: "Power saving",
+      title_zh_tw: "省電模式",
+      title_ja: "省電力モード",
+      description_zh: "进一步降低后台资源占用。",
+      description_en: "Further reduces background resource usage.",
+      description_zh_tw: "進一步降低背景資源用量。",
+      description_ja: "バックグラウンドのリソース使用量をさらに抑えます。"
     },
     {
       id: "feature-word-follow",
       sort_order: 98,
       progress: 80,
-      content_zh: "新增逐字跟随。",
-      content_en: "Add word-by-word follow.",
-      content_zh_tw: "新增逐字跟隨。",
-      content_ja: "一語ずつ追従を追加。"
+      display_group: "featured",
+      title_zh: "逐字跟随",
+      title_en: "Word-by-word follow",
+      description_zh: "歌词随着演唱进度逐字呈现。",
+      description_en: "Lyrics follow the performance word by word."
     },
     {
       id: "feature-dock",
       sort_order: 97,
       progress: 65,
-      content_zh: "新增歌词坞。",
-      content_en: "Add Lyric Dock.",
-      content_zh_tw: "新增歌詞塢。",
-      content_ja: "歌詞ドックを追加。"
+      display_group: "improvement",
+      title_zh: "歌词坞",
+      title_en: "Lyric Dock",
+      description_zh: "让当前歌词直接呈现在 Windows 任务栏。",
+      description_en: "Shows the current lyric directly on the Windows taskbar."
     },
     {
       id: "feature-refresh",
       sort_order: 96,
       progress: 100,
       stage: "testing",
-      content_zh: "支持手动刷新歌词。",
-      content_en: "Support manual lyric refresh.",
-      content_zh_tw: "支援手動重新整理歌詞。",
-      content_ja: "歌詞の手動更新に対応。"
+      display_group: "future",
+      target_version: "V3.3",
+      title_zh: "重新匹配歌词",
+      title_en: "Rematch lyrics",
+      description_zh: "支持手动刷新并重新匹配当前歌词。",
+      description_en: "Refreshes and rematches the current lyrics manually."
     },
     {
       id: "feature-legacy-progress",
@@ -1060,14 +1070,14 @@ try {
   );
   assert.deepEqual(
     previewData.preview.highlights_zh,
-    structuredPreviewFeatures.map((feature) => feature.content_zh),
+    previewData.preview.features.map((feature) => feature.content_zh),
     "legacy highlight fields must remain available in structured responses"
   );
   assert.equal(previewData.preview.target_date, null);
 
   const storedStructuredPreview = releasePreviewRows.find((row) => row.id === previewData.preview.id);
   assert.equal(storedStructuredPreview.body_zh, "中文版本说明。");
-  assert.equal(storedStructuredPreview.highlights_zh[0].schema_version, 2);
+  assert.equal(storedStructuredPreview.highlights_zh[0].schema_version, 3);
   assert.deepEqual(
     storedStructuredPreview.highlights_zh[0].features.map(({ id, sort_order, progress }) => ({ id, sort_order, progress })),
     previewData.preview.features.map(({ id, sort_order, progress }) => ({ id, sort_order, progress })),
@@ -1092,7 +1102,7 @@ try {
       })
     })
   );
-  assert.equal(legacyOverwriteResponse.status, 409, "legacy clients must not overwrite schema v2 metadata");
+  assert.equal(legacyOverwriteResponse.status, 409, "legacy clients must not overwrite structured preview metadata");
   assert.deepEqual(releasePreviewRows, beforeLegacyOverwrite, "rejected legacy writes must preserve structured preview data");
 
   const reorderedFeatures = [
@@ -1136,9 +1146,15 @@ try {
     [1, 2, 3, 4, 5]
   );
   assert.deepEqual(
-    structuredUpdateData.preview.features.map((feature) => [feature.id, feature.content_en, feature.content_zh_tw, feature.content_ja]),
-    reorderedFeatures.map((feature) => [feature.id, feature.content_en, feature.content_zh_tw, feature.content_ja]),
-    "all localized content must remain attached to its stable feature ID after sorting"
+    structuredUpdateData.preview.features.map((feature) => [feature.id, feature.title_en, feature.description_en, feature.display_group, feature.target_version]),
+    [
+      ["feature-dock", "Lyric Dock", "Shows the current lyric directly on the Windows taskbar.", "improvement", ""],
+      ["feature-power", "Power saving", "Further reduces background resource usage.", "featured", ""],
+      ["feature-word-follow", "Word-by-word follow", "Lyrics follow the performance word by word.", "featured", ""],
+      ["feature-legacy-progress", "", "Keep features without recorded progress compatible.", "featured", ""],
+      ["feature-refresh", "Rematch lyrics", "Refreshes and rematches the current lyrics manually.", "future", "V3.3"]
+    ],
+    "localized title, description, group, and target version must remain attached to the stable feature ID"
   );
 
   const beforeInvalidProgress = structuredClone(releasePreviewRows);
@@ -1161,6 +1177,46 @@ try {
   );
   assert.equal(invalidProgressResponse.status, 400, "non-anchor development progress must be rejected");
   assert.deepEqual(releasePreviewRows, beforeInvalidProgress, "invalid progress must not overwrite or append data");
+
+  const invalidGroupResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/previews", {
+      method: "POST",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({
+        version: "v2.3 Invalid Group",
+        note_zh: "非法分组不应保存。",
+        note_en: "Invalid groups must not be saved.",
+        features: [{ ...structuredPreviewFeatures[0], id: "feature-invalid-group", display_group: "roadmap" }],
+        status: "draft"
+      })
+    })
+  );
+  assert.equal(invalidGroupResponse.status, 400, "unknown display groups must be rejected");
+  assert.deepEqual(releasePreviewRows, beforeInvalidProgress, "invalid groups must not mutate preview data");
+
+  const missingTargetResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/previews", {
+      method: "POST",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({
+        version: "v2.3 Missing Target",
+        note_zh: "稍后推出功能必须指定版本。",
+        note_en: "Future features require a target version.",
+        features: [{ ...structuredPreviewFeatures[0], id: "feature-missing-target", display_group: "future", target_version: "" }],
+        status: "draft"
+      })
+    })
+  );
+  assert.equal(missingTargetResponse.status, 400, "future features without a target version must be rejected");
+  assert.deepEqual(releasePreviewRows, beforeInvalidProgress, "missing target versions must not mutate preview data");
 
   const beforeReservedId = structuredClone(releasePreviewRows);
   const reservedIdResponse = await api.fetch(
@@ -1256,7 +1312,7 @@ try {
   const knownV32Note = "新版本的主要功能已基本完成，目前正在进一步优化性能、功耗与长期运行体验，发布时间调整至本月内。";
   releasePreviewRows = [{
     ...publicPreviewRow("preview-v3-2-legacy", "V3.2", "2026-09-16T00:00:00.000Z"),
-    body_zh: `${knownV32Note}\n新增省电模式。\n新增歌词坞。`,
+    body_zh: `${knownV32Note}\n新增省电模式，进一步降低后台资源占用。\n新增歌词坞，让当前歌词直接呈现在 Windows 任务栏。`,
     body_en: "The main work is complete and is being optimized.\nAdd power-saving mode.\nAdd Lyric Dock.",
     body_zh_tw: "主要功能已完成並正在最佳化。\n新增省電模式。\n新增歌詞塢。",
     body_ja: "主要機能は完成し最適化中です。\n省電力モードを追加。\n歌詞ドックを追加。",
@@ -1274,8 +1330,15 @@ try {
   assert.equal(legacyV32Preview.note_zh, knownV32Note, "the known V3.2 overview must migrate to the version note");
   assert.deepEqual(
     legacyV32Preview.features.map((feature) => feature.content_zh),
-    ["新增省电模式。", "新增歌词坞。"],
-    "the remaining legacy V3.2 lines must become features"
+    ["新增省电模式，进一步降低后台资源占用。", "新增歌词坞，让当前歌词直接呈现在 Windows 任务栏。"],
+    "known legacy V3.2 lines must remain byte-for-byte available through the compatibility projection"
+  );
+  assert.deepEqual(
+    legacyV32Preview.features.map((feature) => [feature.title_zh, feature.description_zh, feature.display_group]),
+    [
+      ["省电模式", "进一步降低后台资源占用。", "featured"],
+      ["歌词坞", "让当前歌词直接呈现在 Windows 任务栏。", "featured"]
+    ]
   );
   assert.ok(
     legacyV32Preview.features.every((feature) => feature.progress === 0 && feature.stage === "development"),

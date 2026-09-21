@@ -94,7 +94,7 @@ export async function translateChineseContent(input: {
       messages: [
         {
           role: "system",
-          content: "You are a localization translator for a software product. Translate Chinese source strings into every requested target locale. Preserve line breaks, list structure, markdown, URLs, code, version numbers, product names, and placeholders exactly when appropriate. Do not add commentary. Return only JSON in this exact shape: {\"translations\": {\"<locale>\": {\"<key>\": \"translated text\"}}}. Every requested locale must contain every input key."
+          content: "You are a localization translator for a software product. Translate Chinese source strings faithfully into every requested target locale. Keys ending in .title are concise feature names; keys ending in .description are explanatory body text; note keys are development notes; release-time keys are short schedule labels. Keep those roles separate, do not merge a title with its description, and do not invent marketing claims. Preserve line breaks, list structure, markdown, URLs, code, version numbers, product names, and placeholders exactly when appropriate. Do not add commentary. Return only JSON in this exact shape: {\"translations\": {\"<locale>\": {\"<key>\": \"translated text\"}}}. Every requested locale must contain every input key."
         },
         {
           role: "user",

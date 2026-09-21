@@ -20,6 +20,7 @@ import type {
   IncentiveSubmission,
   ReleasePreview,
   ReleasePreviewFeature,
+  ReleasePreviewFeatureGroup,
   RewardStatus,
   SubmissionStatus
 } from "@/data/incentives-types";
@@ -28,6 +29,7 @@ import {
   RELEASE_PREVIEW_PROGRESS_ANCHORS,
   RELEASE_PREVIEW_SLIDER_READY_INDEX,
   RELEASE_PREVIEW_SLIDER_TESTING_INDEX,
+  parseReleasePreviewBulkLine,
   splitPreviewLines
 } from "@/data/release-preview-content";
 import {
@@ -69,11 +71,16 @@ const previewNoteFields = {
   ja: "note_ja"
 } as const;
 const previewFeatureFields = {
-  zh: "content_zh",
-  en: "content_en",
-  "zh-tw": "content_zh_tw",
-  ja: "content_ja"
+  zh: { title: "title_zh", description: "description_zh" },
+  en: { title: "title_en", description: "description_en" },
+  "zh-tw": { title: "title_zh_tw", description: "description_zh_tw" },
+  ja: { title: "title_ja", description: "description_ja" }
 } as const;
+const previewGroupOptions: Array<{ value: ReleasePreviewFeatureGroup; label: string }> = [
+  { value: "featured", label: "核心功能" },
+  { value: "improvement", label: "其他改进" },
+  { value: "future", label: "稍后推出" }
+];
 const releaseTimingOptions: Array<{ value: ReleaseTimingPreset; label: string }> = [
   { value: "today", label: "今天" },
   { value: "tomorrow", label: "明天" },
@@ -133,53 +140,32 @@ function newPreviewFeatureId() {
   return globalThis.crypto?.randomUUID?.() ?? `feature-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function newPreviewFeature(contentZh = ""): ReleasePreviewFeature {
+function newPreviewFeature(
+  descriptionZh = "",
+  titleZh = "",
+  displayGroup: ReleasePreviewFeatureGroup = "featured",
+  targetVersion = ""
+): ReleasePreviewFeature {
   return {
     id: newPreviewFeatureId(),
     sort_order: 1,
     progress: 0,
     stage: "development",
-    content_zh: contentZh,
+    display_group: displayGroup,
+    target_version: displayGroup === "future" ? targetVersion : "",
+    title_zh: titleZh,
+    title_en: "",
+    title_zh_tw: "",
+    title_ja: "",
+    description_zh: descriptionZh,
+    description_en: "",
+    description_zh_tw: "",
+    description_ja: "",
+    content_zh: titleZh ? `${titleZh} — ${descriptionZh}` : descriptionZh,
     content_en: "",
     content_zh_tw: "",
     content_ja: ""
   };
-}
-
-function autoSizePreviewFeatureTextarea(element: HTMLTextAreaElement | null) {
-  if (!element) return;
-  element.style.height = "auto";
-  element.style.height = `${element.scrollHeight}px`;
-}
-
-function PreviewFeatureTextarea({
-  value,
-  disabled,
-  required,
-  onChange
-}: {
-  value: string;
-  disabled: boolean;
-  required: boolean;
-  onChange: (value: string) => void;
-}) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    autoSizePreviewFeatureTextarea(textareaRef.current);
-  }, [value]);
-
-  return (
-    <textarea
-      ref={textareaRef}
-      rows={2}
-      value={value}
-      disabled={disabled}
-      onInput={(event) => autoSizePreviewFeatureTextarea(event.currentTarget)}
-      onChange={(event) => onChange(event.target.value)}
-      required={required}
-    />
-  );
 }
 
 function previewToDraft(preview: ReleasePreview): PreviewDraft {
@@ -205,8 +191,18 @@ function previewTranslationSignature(draft: PreviewDraft) {
   return JSON.stringify({
     id: draft.id ?? "",
     note_zh: draft.note_zh,
-    features: draft.features.map((feature) => ({ id: feature.id, content_zh: feature.content_zh }))
+    features: draft.features.map((feature) => ({
+      id: feature.id,
+      title_zh: feature.title_zh,
+      description_zh: feature.description_zh
+    }))
   });
+}
+
+function previewBulkLine(feature: ReleasePreviewFeature) {
+  return feature.title_zh.trim()
+    ? `${feature.title_zh.trim()} | ${feature.description_zh.trim()}`
+    : feature.description_zh.trim();
 }
 
 const eventLabels: Record<string, string> = {
@@ -471,6 +467,8 @@ export function AdminIncentives() {
   const previewDraftRef = useRef(previewDraft);
   const [previewLocale, setPreviewLocale] = useState<PreviewLocale>("zh");
   const [previewBulkInput, setPreviewBulkInput] = useState("");
+  const [previewBulkGroup, setPreviewBulkGroup] = useState<ReleasePreviewFeatureGroup>("featured");
+  const [previewBulkTargetVersion, setPreviewBulkTargetVersion] = useState("V3.3");
   const [previewSaving, setPreviewSaving] = useState(false);
   const [draftMenuOpen, setDraftMenuOpen] = useState(false);
   const [translationSaving, setTranslationSaving] = useState<"features" | "preview" | null>(null);
@@ -523,7 +521,7 @@ export function AdminIncentives() {
     if (currentPreview) {
       const draft = previewToDraft(currentPreview);
       setPreviewDraft(draft);
-      setPreviewBulkInput(draft.features.map((feature) => feature.content_zh).join("\n"));
+      setPreviewBulkInput(draft.features.map(previewBulkLine).join("\n"));
       const timing = releaseTimingFromTargetDate(currentPreview.target_date);
       setPreviewTimingPreset(timing.preset);
       setPreviewCustomDays(timing.days ?? 14);
@@ -901,15 +899,20 @@ export function AdminIncentives() {
 
   function parsePreviewBulkInput() {
     if (previewTranslationLocked) return;
-    const items = splitPreviewLines(previewBulkInput);
+    if (previewBulkGroup === "future" && !previewBulkTargetVersion.trim()) {
+      setError("批量导入到“稍后推出”时，请先填写目标版本");
+      return;
+    }
+    const items = splitPreviewLines(previewBulkInput).map(parseReleasePreviewBulkLine);
     if (!items.length) {
       setError("请先粘贴至少一条中文功能内容");
       return;
     }
     setPreviewDraft((draft) => {
       const usedIds = new Set<string>();
-      const matched = items.map((contentZh) => {
-        const existing = draft.features.find((feature) => !usedIds.has(feature.id) && feature.content_zh.trim() === contentZh);
+      const matched = items.map((item) => {
+        const existing = draft.features.find((feature) => !usedIds.has(feature.id) &&
+          feature.title_zh.trim() === item.title && feature.description_zh.trim() === item.description);
         if (existing) usedIds.add(existing.id);
         return existing ?? null;
       });
@@ -921,9 +924,9 @@ export function AdminIncentives() {
       const uniqueEditedPair = unmatchedItemIndexes.length === 1 && unmatchedExisting.length === 1
         ? { itemIndex: unmatchedItemIndexes[0], feature: unmatchedExisting[0] }
         : null;
-      const features = items.map((contentZh, index) => {
+      const features = items.map((item, index) => {
         const exact = matched[index];
-        if (exact) return { ...exact, content_zh: contentZh, sort_order: index + 1 };
+        if (exact) return { ...exact, sort_order: index + 1 };
         const positional = !exactMatchMoved ? draft.features[index] : null;
         const inherited = uniqueEditedPair?.itemIndex === index
           ? uniqueEditedPair.feature
@@ -934,14 +937,27 @@ export function AdminIncentives() {
           usedIds.add(inherited.id);
           return {
             ...inherited,
-            content_zh: contentZh,
+            display_group: previewBulkGroup,
+            target_version: previewBulkGroup === "future" ? previewBulkTargetVersion.trim() : "",
+            title_zh: item.title,
+            description_zh: item.description,
+            content_zh: item.title ? `${item.title} — ${item.description}` : item.description,
+            title_en: "",
+            title_zh_tw: "",
+            title_ja: "",
+            description_en: "",
+            description_zh_tw: "",
+            description_ja: "",
             content_en: "",
             content_zh_tw: "",
             content_ja: "",
             sort_order: index + 1
           };
         }
-        return { ...newPreviewFeature(contentZh), sort_order: index + 1 };
+        return {
+          ...newPreviewFeature(item.description, item.title, previewBulkGroup, previewBulkTargetVersion.trim()),
+          sort_order: index + 1
+        };
       });
       return { ...draft, features };
     });
@@ -982,7 +998,10 @@ export function AdminIncentives() {
     if (previewTranslationLocked) return;
     setPreviewDraft((draft) => ({
       ...draft,
-      features: [...draft.features, { ...newPreviewFeature(), sort_order: draft.features.length + 1 }]
+      features: [...draft.features, {
+        ...newPreviewFeature("", "", previewBulkGroup, previewBulkTargetVersion.trim()),
+        sort_order: draft.features.length + 1
+      }]
     }));
   }
 
@@ -995,7 +1014,8 @@ export function AdminIncentives() {
     const entries: Array<{ key: string; text: string }> = [];
     if (previewDraft.note_zh.trim()) entries.push({ key: "note", text: previewDraft.note_zh });
     previewDraft.features.forEach((feature) => {
-      if (feature.content_zh.trim()) entries.push({ key: `feature.${feature.id}`, text: feature.content_zh });
+      if (feature.title_zh.trim()) entries.push({ key: `feature.${feature.id}.title`, text: feature.title_zh });
+      if (feature.description_zh.trim()) entries.push({ key: `feature.${feature.id}.description`, text: feature.description_zh });
     });
     if (!entries.length) {
       setError("请先填写中文版本说明或功能内容");
@@ -1016,12 +1036,16 @@ export function AdminIncentives() {
         note_zh_tw: mode === "missing" && draft.note_zh_tw.trim() ? draft.note_zh_tw : (translations["zh-tw"].note ?? draft.note_zh_tw),
         note_ja: mode === "missing" && draft.note_ja.trim() ? draft.note_ja : (translations.ja.note ?? draft.note_ja),
         features: draft.features.map((feature) => {
-          const key = `feature.${feature.id}`;
+          const titleKey = `feature.${feature.id}.title`;
+          const descriptionKey = `feature.${feature.id}.description`;
           return {
             ...feature,
-            content_en: mode === "missing" && feature.content_en.trim() ? feature.content_en : (translations.en[key] ?? feature.content_en),
-            content_zh_tw: mode === "missing" && feature.content_zh_tw.trim() ? feature.content_zh_tw : (translations["zh-tw"][key] ?? feature.content_zh_tw),
-            content_ja: mode === "missing" && feature.content_ja.trim() ? feature.content_ja : (translations.ja[key] ?? feature.content_ja)
+            title_en: mode === "missing" && feature.title_en.trim() ? feature.title_en : (translations.en[titleKey] ?? feature.title_en),
+            title_zh_tw: mode === "missing" && feature.title_zh_tw.trim() ? feature.title_zh_tw : (translations["zh-tw"][titleKey] ?? feature.title_zh_tw),
+            title_ja: mode === "missing" && feature.title_ja.trim() ? feature.title_ja : (translations.ja[titleKey] ?? feature.title_ja),
+            description_en: mode === "missing" && feature.description_en.trim() ? feature.description_en : (translations.en[descriptionKey] ?? feature.description_en),
+            description_zh_tw: mode === "missing" && feature.description_zh_tw.trim() ? feature.description_zh_tw : (translations["zh-tw"][descriptionKey] ?? feature.description_zh_tw),
+            description_ja: mode === "missing" && feature.description_ja.trim() ? feature.description_ja : (translations.ja[descriptionKey] ?? feature.description_ja)
           };
         })
       }));
@@ -1076,7 +1100,7 @@ export function AdminIncentives() {
         : items.filter((item) => item.id !== savedPreview.id));
       const draft = previewToDraft(result.preview);
       setPreviewDraft(draft);
-      setPreviewBulkInput(draft.features.map((feature) => feature.content_zh).join("\n"));
+      setPreviewBulkInput(draft.features.map(previewBulkLine).join("\n"));
       const timing = releaseTimingFromTargetDate(result.preview.target_date);
       setPreviewTimingPreset(timing.preset);
       setPreviewCustomDays(timing.days ?? 14);
@@ -1091,7 +1115,7 @@ export function AdminIncentives() {
     if (previewTranslationLocked) return;
     const draft = previewToDraft(preview);
     setPreviewDraft(draft);
-    setPreviewBulkInput(draft.features.map((feature) => feature.content_zh).join("\n"));
+    setPreviewBulkInput(draft.features.map(previewBulkLine).join("\n"));
     setPreviewLocale("zh");
     const timing = releaseTimingFromTargetDate(preview.target_date);
     setPreviewTimingPreset(timing.preset);
@@ -1104,6 +1128,8 @@ export function AdminIncentives() {
     if (previewTranslationLocked) return;
     setPreviewDraft(emptyPreviewDraft);
     setPreviewBulkInput("");
+    setPreviewBulkGroup("featured");
+    setPreviewBulkTargetVersion("V3.3");
     setPreviewLocale("zh");
     setPreviewTimingPreset("tbd");
     setPreviewCustomDays(14);
@@ -1479,9 +1505,13 @@ export function AdminIncentives() {
               <section className="previewBulkImport" aria-labelledby="preview-bulk-title">
                 <div>
                   <strong id="preview-bulk-title">快速批量导入中文功能项</strong>
-                  <small>每行一条；重新解析会保留精确匹配或唯一无歧义条目的 ID 与进度，中文改写后会清空旧译文。</small>
+                  <small>推荐“标题 | 描述”，也支持全角“｜”；旧版一行一句会保留为无标题描述。</small>
                 </div>
-                <textarea aria-label="快速批量导入中文功能项" rows={5} value={previewBulkInput} disabled={previewTranslationLocked} onChange={(event) => setPreviewBulkInput(event.target.value)} placeholder={"新增省电模式，进一步降低后台资源占用。\n新增逐字跟随，让歌词随演唱进度逐字呈现。\n新增歌词坞，让当前歌词直接呈现在 Windows 任务栏。"} />
+                <div className="previewBulkSettings">
+                  <label><span>默认展示分组</span><select value={previewBulkGroup} disabled={previewTranslationLocked} onChange={(event) => setPreviewBulkGroup(event.target.value as ReleasePreviewFeatureGroup)}>{previewGroupOptions.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>
+                  {previewBulkGroup === "future" && <label><span>目标版本</span><input value={previewBulkTargetVersion} disabled={previewTranslationLocked} onChange={(event) => setPreviewBulkTargetVersion(event.target.value)} placeholder="例如：V3.3" required /></label>}
+                </div>
+                <textarea aria-label="快速批量导入中文功能项" rows={5} value={previewBulkInput} disabled={previewTranslationLocked} onChange={(event) => setPreviewBulkInput(event.target.value)} placeholder={"逐字跟随 | 歌词随着演唱进度逐字呈现，带来更自然的跟唱体验。\n歌词坞｜让当前歌词直接呈现在 Windows 任务栏。\n新增省电模式，进一步降低后台资源占用。"} />
                 <div className="previewBulkActions"><button className="button buttonSecondary" type="button" disabled={previewTranslationLocked} onClick={parsePreviewBulkInput}>解析为功能项</button><button className="button buttonSecondary" type="button" disabled={previewTranslationLocked} onClick={addPreviewFeature}>新增单项</button></div>
               </section>
 
@@ -1496,52 +1526,59 @@ export function AdminIncentives() {
                         <button className="danger" type="button" disabled={previewTranslationLocked} onClick={() => removePreviewFeature(feature.id)}>删除</button>
                       </div>
                     </header>
-                    <label>
-                      <span>{previewLocaleOptions.find((option) => option.value === previewLocale)?.label} 内容</span>
-                      <PreviewFeatureTextarea
-                        value={feature[previewFeatureFields[previewLocale]]}
-                        disabled={previewTranslationLocked}
-                        onChange={(value) => updatePreviewFeature(feature.id, { [previewFeatureFields[previewLocale]]: value })}
-                        required={previewLocale === "zh" || previewLocale === "en"}
-                      />
-                    </label>
-                    <div className="previewProgressEditor">
-                      <label className="previewProgressSelect">
-                        <span>开发进度与状态</span>
-                        <input
-                          type="range"
-                          min={0}
-                          max={RELEASE_PREVIEW_SLIDER_READY_INDEX}
-                          step={1}
-                          value={feature.stage === "ready"
-                            ? RELEASE_PREVIEW_SLIDER_READY_INDEX
-                            : feature.stage === "testing"
-                              ? RELEASE_PREVIEW_SLIDER_TESTING_INDEX
-                              : Math.max(0, RELEASE_PREVIEW_PROGRESS_ANCHORS.indexOf(feature.progress as typeof RELEASE_PREVIEW_PROGRESS_ANCHORS[number]))}
-                          list={`preview-progress-stops-${feature.id}`}
-                          disabled={previewTranslationLocked}
-                          onChange={(event) => {
-                            const value = Number(event.target.value);
-                            updatePreviewFeature(feature.id, value === RELEASE_PREVIEW_SLIDER_READY_INDEX
-                              ? { progress: 100, stage: "ready" }
-                              : value === RELEASE_PREVIEW_SLIDER_TESTING_INDEX
-                                ? { progress: 100, stage: "testing" }
-                                : { progress: RELEASE_PREVIEW_PROGRESS_ANCHORS[value] ?? 0, stage: "development" });
-                          }}
-                          aria-label={`功能 ${index + 1} 开发进度与状态`}
-                          aria-valuetext={feature.stage === "ready" ? "待上线" : feature.stage === "testing" ? "测试中" : `${feature.progress}%`}
-                        />
-                        <datalist id={`preview-progress-stops-${feature.id}`}>
-                          {RELEASE_PREVIEW_PROGRESS_ANCHORS.map((progress, anchorIndex) => (
-                            <option value={anchorIndex} label={`${progress}%`} key={progress} />
-                          ))}
-                          <option value={RELEASE_PREVIEW_SLIDER_TESTING_INDEX} label="测试中" />
-                          <option value={RELEASE_PREVIEW_SLIDER_READY_INDEX} label="待上线" />
-                        </datalist>
-                      </label>
-                      <span className="previewProgressEditorStatus" aria-live="polite">
-                        {feature.stage === "ready" ? "待上线" : feature.stage === "testing" ? "测试中" : feature.progress === 0 ? "未开始" : `开发中 · ${feature.progress}%`}
-                      </span>
+                    <div className="previewFeatureEditorGrid">
+                      <div className="previewFeatureCopyFields">
+                        <label>
+                          <span>{previewLocaleOptions.find((option) => option.value === previewLocale)?.label} 功能标题</span>
+                          <input value={feature[previewFeatureFields[previewLocale].title]} disabled={previewTranslationLocked} onChange={(event) => updatePreviewFeature(feature.id, { [previewFeatureFields[previewLocale].title]: event.target.value })} placeholder={previewLocale === "zh" ? "旧数据可暂时留空" : ""} />
+                        </label>
+                        <label>
+                          <span>{previewLocaleOptions.find((option) => option.value === previewLocale)?.label} 功能描述</span>
+                          <textarea rows={3} value={feature[previewFeatureFields[previewLocale].description]} disabled={previewTranslationLocked} onChange={(event) => updatePreviewFeature(feature.id, { [previewFeatureFields[previewLocale].description]: event.target.value })} required={previewLocale === "zh" || previewLocale === "en"} />
+                        </label>
+                      </div>
+                      <div className="previewFeatureSettings">
+                        <label><span>展示位置</span><select value={feature.display_group} disabled={previewTranslationLocked} onChange={(event) => updatePreviewFeature(feature.id, { display_group: event.target.value as ReleasePreviewFeatureGroup, ...(event.target.value === "future" ? {} : { target_version: "" }) })}>{previewGroupOptions.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>
+                        {feature.display_group === "future" && <label><span>目标版本</span><input value={feature.target_version} disabled={previewTranslationLocked} onChange={(event) => updatePreviewFeature(feature.id, { target_version: event.target.value })} placeholder="例如：V3.3" required /></label>}
+                        <div className="previewProgressEditor">
+                          <label className="previewProgressSelect">
+                            <span>开发进度与状态</span>
+                            <input
+                              type="range"
+                              min={0}
+                              max={RELEASE_PREVIEW_SLIDER_READY_INDEX}
+                              step={1}
+                              value={feature.stage === "ready"
+                                ? RELEASE_PREVIEW_SLIDER_READY_INDEX
+                                : feature.stage === "testing"
+                                  ? RELEASE_PREVIEW_SLIDER_TESTING_INDEX
+                                  : Math.max(0, RELEASE_PREVIEW_PROGRESS_ANCHORS.indexOf(feature.progress as typeof RELEASE_PREVIEW_PROGRESS_ANCHORS[number]))}
+                              list={`preview-progress-stops-${feature.id}`}
+                              disabled={previewTranslationLocked}
+                              onChange={(event) => {
+                                const value = Number(event.target.value);
+                                updatePreviewFeature(feature.id, value === RELEASE_PREVIEW_SLIDER_READY_INDEX
+                                  ? { progress: 100, stage: "ready" }
+                                  : value === RELEASE_PREVIEW_SLIDER_TESTING_INDEX
+                                    ? { progress: 100, stage: "testing" }
+                                    : { progress: RELEASE_PREVIEW_PROGRESS_ANCHORS[value] ?? 0, stage: "development" });
+                              }}
+                              aria-label={`功能 ${index + 1} 开发进度与状态`}
+                              aria-valuetext={feature.stage === "ready" ? "待上线" : feature.stage === "testing" ? "测试中" : `${feature.progress}%`}
+                            />
+                            <datalist id={`preview-progress-stops-${feature.id}`}>
+                              {RELEASE_PREVIEW_PROGRESS_ANCHORS.map((progress, anchorIndex) => (
+                                <option value={anchorIndex} label={`${progress}%`} key={progress} />
+                              ))}
+                              <option value={RELEASE_PREVIEW_SLIDER_TESTING_INDEX} label="测试中" />
+                              <option value={RELEASE_PREVIEW_SLIDER_READY_INDEX} label="待上线" />
+                            </datalist>
+                          </label>
+                          <span className="previewProgressEditorStatus" aria-live="polite">
+                            {feature.stage === "ready" ? "待上线" : feature.stage === "testing" ? "测试中" : feature.progress === 0 ? "未开始" : `开发中 · ${feature.progress}%`}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </article>
                 ))}

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { DatabasePreload } from "@/components/DatabasePreload";
 import { Eyebrow, LogoLockup, PrimaryNavigation } from "@/components/SitePage";
-import { ReleasePreviewLegend, ReleasePreviewProgressRing } from "@/components/ReleasePreviewProgressRing";
+import { ReleasePreviewArticle } from "@/components/ReleasePreviewArticle";
 import { SelectiveTextReveal } from "@/components/SelectiveTextReveal";
 import {
   SubmissionTicket,
@@ -16,10 +16,8 @@ import type {
   SubmissionKind
 } from "@/data/incentives-types";
 import { incentivesByLocale } from "@/data/incentives-copy";
-import { localizedFeatureContent, localizedPreviewNote, normalizeReleasePreviewContent } from "@/data/release-preview-content";
 import { displayBrand, localePath, type Locale } from "@/data/site-copy";
 import { preloadClientJson } from "@/lib/client-data";
-import { formatReleaseTiming } from "@/lib/release-timing";
 
 const IDENTITY_COOKIE = "lyric_island_contributor";
 const LOCAL_LIKES_KEY = "lyric_island_preview_likes";
@@ -557,7 +555,6 @@ export function IncentivePage({ locale }: { locale: Locale }) {
             <Eyebrow reveal>{copy.preview.eyebrow}</Eyebrow>
             <h2 data-text-reveal="title">{copy.preview.title}</h2>
             <p>{copy.preview.body}</p>
-            <ReleasePreviewLegend locale={locale} />
           </div>
           <div className="previewList">
             {publicDataState === "loading" ? (
@@ -565,33 +562,9 @@ export function IncentivePage({ locale }: { locale: Locale }) {
                 <span className="databaseLoadingLabel">{locale === "zh" ? "正在载入版本预告" : "Loading release previews"}</span>
                 <span className="databaseLoadingPulse" aria-hidden="true" />
               </div>
-            ) : previews.length ? previews.map((preview) => {
-              const previewContent = normalizeReleasePreviewContent(preview);
-              const note = localizedPreviewNote(previewContent, locale);
-              const features = [...previewContent.features]
-                .sort((left, right) => left.sort_order - right.sort_order)
-                .map((feature) => ({ feature, content: localizedFeatureContent(feature, locale).trim() }))
-                .filter(({ content }) => Boolean(content));
-              return (
-                <article className="previewCard" key={preview.id}>
-                  <div className="previewCardMeta">
-                    <strong>{preview.version}</strong>
-                    <small>{copy.preview.target} {formatReleaseTiming(preview.target_date, locale)}</small>
-                    {note && <p className="previewNote">{note}</p>}
-                  </div>
-                  <div className="previewCardContent">
-                    <ul className="previewItems">
-                      {features.map(({ feature, content }) => (
-                        <li key={feature.id}>
-                          <ReleasePreviewProgressRing progress={feature.progress} stage={feature.stage} locale={locale} />
-                          <p>{content}</p>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </article>
-              );
-            }) : <p className="previewEmpty">{publicDataState === "error" ? (locale === "zh" ? "暂时无法载入版本预告，请稍后刷新。" : "Release previews could not be loaded. Please refresh later.") : copy.preview.empty}</p>}
+            ) : previews.length ? previews.map((preview) => (
+              <ReleasePreviewArticle preview={preview} locale={locale} targetLabel={copy.preview.target} key={preview.id} />
+            )) : <p className="previewEmpty">{publicDataState === "error" ? (locale === "zh" ? "暂时无法载入版本预告，请稍后刷新。" : "Release previews could not be loaded. Please refresh later.") : copy.preview.empty}</p>}
           </div>
         </section>
       </main>

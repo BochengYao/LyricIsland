@@ -3,19 +3,6 @@ import type { ReleasePreviewFeatureStage } from "@/data/incentives-types";
 
 type PreviewRingState = "notStarted" | "inProgress" | "testing" | "ready";
 
-type LegendItem = {
-  state: PreviewRingState;
-  progress: number;
-  stage: ReleasePreviewFeatureStage;
-};
-
-const legendItems: LegendItem[] = [
-  { state: "notStarted", progress: 0, stage: "development" },
-  { state: "inProgress", progress: 65, stage: "development" },
-  { state: "testing", progress: 100, stage: "testing" },
-  { state: "ready", progress: 100, stage: "ready" }
-];
-
 function normalizeProgress(progress: number) {
   return Number.isFinite(progress) ? Math.min(100, Math.max(0, Math.round(progress))) : 0;
 }
@@ -51,13 +38,6 @@ function stateLabel(locale: Locale, state: PreviewRingState, progress: number) {
   if (state === "testing") return "Testing";
   if (state === "ready") return "Ready for release";
   return `In development, ${progress}% complete`;
-}
-
-function legendLabel(locale: Locale) {
-  if (locale === "zh") return "开发状态图例";
-  if (locale === "zhHant") return "開發狀態圖例";
-  if (locale === "ja") return "開発状態の凡例";
-  return "Development status legend";
 }
 
 export function ReleasePreviewProgressRing({
@@ -108,21 +88,5 @@ export function ReleasePreviewProgressRing({
         />
       )}
     </svg>
-  );
-}
-
-export function ReleasePreviewLegend({ locale }: { locale: Locale }) {
-  return (
-    <div className="previewLegend" aria-label={legendLabel(locale)}>
-      <span className="previewLegendTitle">{legendLabel(locale)}</span>
-      <ul>
-        {legendItems.map((item) => (
-          <li key={item.state}>
-            <ReleasePreviewProgressRing {...item} locale={locale} decorative />
-            <span>{stateLabel(locale, item.state, item.progress)}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }

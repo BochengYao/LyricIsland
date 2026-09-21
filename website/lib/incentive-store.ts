@@ -72,7 +72,7 @@ function hasStructuredPreviewFeatures(value: unknown) {
     ? value.find((item) => Boolean(item) && typeof item === "object" && !Array.isArray(item))
     : value;
   return Boolean(candidate) && typeof candidate === "object" && !Array.isArray(candidate) &&
-    (candidate as { schema_version?: unknown }).schema_version === 2;
+    [2, 3].includes(Number((candidate as { schema_version?: unknown }).schema_version));
 }
 
 function normalizeReleasePreview(preview: StoredReleasePreview): ReleasePreview {

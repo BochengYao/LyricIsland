@@ -1,6 +1,9 @@
-import type { ReleasePreviewFeature } from "@/data/incentives-types";
+import type {
+  ReleasePreviewFeature,
+  ReleasePreviewFeatureGroup
+} from "@/data/incentives-types";
 
-export const RELEASE_PREVIEW_SCHEMA_VERSION = 2;
+export const RELEASE_PREVIEW_SCHEMA_VERSION = 3;
 export const RELEASE_PREVIEW_PROGRESS_ANCHORS = [0, 10, 30, 50, 65, 80, 90, 95] as const;
 export const RELEASE_PREVIEW_SLIDER_TESTING_INDEX = RELEASE_PREVIEW_PROGRESS_ANCHORS.length;
 export const RELEASE_PREVIEW_SLIDER_READY_INDEX = RELEASE_PREVIEW_SLIDER_TESTING_INDEX + 1;
@@ -15,6 +18,7 @@ export type StoredReleasePreviewEnvelope = Array<StoredReleasePreviewFeatures | 
 
 type PreviewContentSource = {
   id?: unknown;
+  version?: unknown;
   note_zh?: unknown;
   note_en?: unknown;
   note_zh_tw?: unknown;
@@ -70,6 +74,40 @@ function safeProgress(value: unknown): number {
   return [...RELEASE_PREVIEW_PROGRESS_ANCHORS].reverse().find((anchor) => anchor <= rounded) ?? 0;
 }
 
+function legacyContent(title: string, description: string) {
+  return title ? `${title} — ${description}` : description;
+}
+
+type SafeLegacyMigration = {
+  title: string;
+  description: string;
+  displayGroup: ReleasePreviewFeatureGroup;
+  targetVersion?: string;
+};
+
+const safeLegacyMigrations: Record<string, SafeLegacyMigration> = {
+  "新增省电模式，进一步降低后台资源占用。": { title: "省电模式", description: "进一步降低后台资源占用。", displayGroup: "featured" },
+  "进一步降低后台资源占用。": { title: "省电模式", description: "进一步降低后台资源占用。", displayGroup: "featured" },
+  "新增逐字追踪，让歌词随演唱进度逐字呈现，带来更自然的跟唱体验。": { title: "逐字跟随", description: "歌词随着演唱进度逐字呈现，带来更自然的跟唱体验。", displayGroup: "featured" },
+  "新增逐字跟随，让歌词随演唱进度逐字呈现，带来更自然的跟唱体验。": { title: "逐字跟随", description: "歌词随着演唱进度逐字呈现，带来更自然的跟唱体验。", displayGroup: "featured" },
+  "歌词随着演唱进度逐字呈现，带来更自然的跟唱体验。": { title: "逐字跟随", description: "歌词随着演唱进度逐字呈现，带来更自然的跟唱体验。", displayGroup: "featured" },
+  "新增歌词坞，让当前歌词直接呈现在 Windows 任务栏。": { title: "歌词坞", description: "让当前歌词直接呈现在 Windows 任务栏。", displayGroup: "featured" },
+  "让当前歌词直接呈现在 Windows 任务栏。": { title: "歌词坞", description: "让当前歌词直接呈现在 Windows 任务栏。", displayGroup: "featured" },
+  "新增重新匹配歌词，支持手动刷新并重新匹配当前歌词。": { title: "重新匹配歌词", description: "支持手动刷新并重新匹配当前歌词。", displayGroup: "featured" },
+  "支持手动刷新并重新匹配当前歌词。": { title: "重新匹配歌词", description: "支持手动刷新并重新匹配当前歌词。", displayGroup: "featured" },
+  "优化歌词匹配逻辑，减少歌词与当前歌曲不一致的情况。": { title: "歌词匹配", description: "优化歌词匹配逻辑，减少歌词与当前歌曲不一致的情况。", displayGroup: "improvement" },
+  "支持全屏应用运行时自动隐藏歌词岛。": { title: "全屏体验", description: "支持全屏应用运行时自动隐藏歌词岛。", displayGroup: "improvement" },
+  "接入更多歌词来源，进一步提升歌词与翻译的覆盖范围。": { title: "更多歌词来源", description: "接入更多歌词来源，进一步提升歌词与翻译的覆盖范围。", displayGroup: "improvement" },
+  "持续优化性能、功耗与长期运行稳定性。": { title: "性能与稳定性", description: "持续优化性能、功耗与长期运行稳定性。", displayGroup: "improvement" },
+  "支持更多歌词岛形状与自定义轮廓。": { title: "更多歌词岛形状", description: "支持更多歌词岛形状与自定义轮廓。", displayGroup: "future", targetVersion: "V3.3" },
+  "支持模块字体与主题色独立设置。": { title: "模块个性化", description: "支持模块字体与主题色独立设置。", displayGroup: "future", targetVersion: "V3.3" }
+};
+
+function legacyMigration(version: string, contentZh: string): SafeLegacyMigration | null {
+  if (!/^v?3\.[23](?:\D|$)/i.test(version.trim())) return null;
+  return safeLegacyMigrations[contentZh] ?? null;
+}
+
 function safeStage(value: unknown, progress: number): ReleasePreviewFeature["stage"] {
   if (progress !== 100) return "development";
   if (value === "ready") return "ready";
@@ -86,42 +124,68 @@ function stableLegacyFeatureId(previewId: string, content: string, position: num
   return `legacy-${(hash >>> 0).toString(36)}`;
 }
 
-function sanitizeFeature(value: unknown, fallbackOrder: number): ReleasePreviewFeature | null {
+function sanitizeFeature(value: unknown, fallbackOrder: number, previewVersion = ""): ReleasePreviewFeature | null {
   if (!value || typeof value !== "object") return null;
   const source = value as Record<string, unknown>;
   const id = text(source.id, 120);
-  const contentZh = text(source.content_zh);
-  const contentEn = text(source.content_en);
-  const contentZhTw = text(source.content_zh_tw);
-  const contentJa = text(source.content_ja);
-  if (!id || (!contentZh && !contentEn && !contentZhTw && !contentJa)) return null;
+  const legacyZh = text(source.content_zh);
+  const legacyEn = text(source.content_en);
+  const legacyZhTw = text(source.content_zh_tw);
+  const legacyJa = text(source.content_ja);
+  const migration = legacyMigration(previewVersion, legacyZh);
+  const titleZh = text(source.title_zh, 180) || migration?.title || "";
+  const titleEn = text(source.title_en, 180);
+  const titleZhTw = text(source.title_zh_tw, 180);
+  const titleJa = text(source.title_ja, 180);
+  const descriptionZh = text(source.description_zh) || migration?.description || legacyZh;
+  const descriptionEn = text(source.description_en) || legacyEn;
+  const descriptionZhTw = text(source.description_zh_tw) || legacyZhTw;
+  const descriptionJa = text(source.description_ja) || legacyJa;
+  if (!id || (!descriptionZh && !descriptionEn && !descriptionZhTw && !descriptionJa)) return null;
   const rawOrder = typeof source.sort_order === "number" && Number.isFinite(source.sort_order)
     ? Math.round(source.sort_order)
     : fallbackOrder;
   const progress = safeProgress(source.progress);
+  const requestedGroup = text(source.display_group, 40);
+  const displayGroup: ReleasePreviewFeatureGroup = requestedGroup === "improvement" || requestedGroup === "future"
+    ? requestedGroup
+    : migration?.displayGroup ?? "featured";
+  const targetVersion = displayGroup === "future"
+    ? text(source.target_version, 40) || migration?.targetVersion || previewVersion
+    : "";
   return {
     id,
     sort_order: Math.max(0, rawOrder),
     progress,
     stage: safeStage(source.stage, progress),
-    content_zh: contentZh,
-    content_en: contentEn,
-    content_zh_tw: contentZhTw,
-    content_ja: contentJa
+    display_group: displayGroup,
+    target_version: targetVersion,
+    title_zh: titleZh,
+    title_en: titleEn,
+    title_zh_tw: titleZhTw,
+    title_ja: titleJa,
+    description_zh: descriptionZh,
+    description_en: descriptionEn,
+    description_zh_tw: descriptionZhTw,
+    description_ja: descriptionJa,
+    content_zh: legacyZh || legacyContent(titleZh, descriptionZh),
+    content_en: legacyEn || legacyContent(titleEn, descriptionEn),
+    content_zh_tw: legacyZhTw || legacyContent(titleZhTw, descriptionZhTw),
+    content_ja: legacyJa || legacyContent(titleJa, descriptionJa)
   };
 }
 
-function structuredFeatures(value: unknown) {
+function structuredFeatures(value: unknown, previewVersion: string) {
   if (!value || typeof value !== "object") return null;
   const candidate = Array.isArray(value)
     ? value.find((item) => Boolean(item) && typeof item === "object" && !Array.isArray(item))
     : value;
   if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return null;
   const source = candidate as Record<string, unknown>;
-  if (source.schema_version !== RELEASE_PREVIEW_SCHEMA_VERSION || !Array.isArray(source.features)) return null;
+  if ((source.schema_version !== 2 && source.schema_version !== RELEASE_PREVIEW_SCHEMA_VERSION) || !Array.isArray(source.features)) return null;
   const usedIds = new Set<string>();
   return source.features
-    .map((feature, index) => sanitizeFeature(feature, index + 1))
+    .map((feature, index) => sanitizeFeature(feature, index + 1, previewVersion))
     .filter((feature): feature is ReleasePreviewFeature => {
       if (!feature || usedIds.has(feature.id)) return false;
       usedIds.add(feature.id);
@@ -133,6 +197,7 @@ function structuredFeatures(value: unknown) {
 
 function featureFromLegacy(
   previewId: string,
+  previewVersion: string,
   index: number,
   zh: string[],
   en: string[],
@@ -140,11 +205,24 @@ function featureFromLegacy(
   ja: string[]
 ): ReleasePreviewFeature {
   const primary = zh[index] || en[index] || zhTw[index] || ja[index] || `feature-${index + 1}`;
+  const migration = legacyMigration(previewVersion, zh[index] ?? "");
+  const descriptionZh = migration?.description || zh[index] || "";
+  const displayGroup = migration?.displayGroup ?? "featured";
   return {
     id: stableLegacyFeatureId(previewId, primary, index),
     sort_order: index + 1,
     progress: 0,
     stage: "development",
+    display_group: displayGroup,
+    target_version: displayGroup === "future" ? migration?.targetVersion || previewVersion : "",
+    title_zh: migration?.title || "",
+    title_en: "",
+    title_zh_tw: "",
+    title_ja: "",
+    description_zh: descriptionZh,
+    description_en: en[index] ?? "",
+    description_zh_tw: zhTw[index] ?? "",
+    description_ja: ja[index] ?? "",
     content_zh: zh[index] ?? "",
     content_en: en[index] ?? "",
     content_zh_tw: zhTw[index] ?? "",
@@ -153,9 +231,10 @@ function featureFromLegacy(
 }
 
 export function normalizeReleasePreviewContent(source: PreviewContentSource): NormalizedReleasePreviewContent {
+  const previewVersion = text(source.version, 40);
   const directFeatures = Array.isArray(source.features)
     ? source.features
-      .map((feature, index) => sanitizeFeature(feature, index + 1))
+      .map((feature, index) => sanitizeFeature(feature, index + 1, previewVersion))
       .filter((feature): feature is ReleasePreviewFeature => Boolean(feature))
       .sort((left, right) => left.sort_order - right.sort_order)
       .map((feature, index) => ({ ...feature, sort_order: index + 1 }))
@@ -169,7 +248,7 @@ export function normalizeReleasePreviewContent(source: PreviewContentSource): No
       features: directFeatures
     };
   }
-  const storedFeatures = structuredFeatures(source.highlights_zh);
+  const storedFeatures = structuredFeatures(source.highlights_zh, previewVersion);
   if (storedFeatures) {
     return {
       note_zh: text(source.body_zh),
@@ -193,7 +272,7 @@ export function normalizeReleasePreviewContent(source: PreviewContentSource): No
       note_en: text(source.body_en),
       note_zh_tw: text(source.body_zh_tw),
       note_ja: text(source.body_ja),
-      features: Array.from({ length }, (_, index) => featureFromLegacy(previewId, index, highlightZh, highlightEn, highlightZhTw, highlightJa))
+      features: Array.from({ length }, (_, index) => featureFromLegacy(previewId, previewVersion, index, highlightZh, highlightEn, highlightZhTw, highlightJa))
     };
   }
 
@@ -212,7 +291,7 @@ export function normalizeReleasePreviewContent(source: PreviewContentSource): No
     note_en: knownNote ? (bodyEn[0] ?? "") : "",
     note_zh_tw: knownNote ? (bodyZhTw[0] ?? "") : "",
     note_ja: knownNote ? (bodyJa[0] ?? "") : "",
-    features: Array.from({ length }, (_, index) => featureFromLegacy(previewId, index, zh, en, zhTw, ja))
+    features: Array.from({ length }, (_, index) => featureFromLegacy(previewId, previewVersion, index, zh, en, zhTw, ja))
   };
 }
 
@@ -229,6 +308,29 @@ export function localizedFeatureContent(feature: ReleasePreviewFeature, locale: 
   if (locale === "zhHant") return feature.content_zh_tw || feature.content_zh;
   if (locale === "ja") return feature.content_ja || feature.content_en || feature.content_zh;
   return feature.content_en || feature.content_zh;
+}
+
+export function localizedFeatureTitle(feature: ReleasePreviewFeature, locale: "zh" | "en" | "zhHant" | "ja") {
+  if (locale === "zh") return feature.title_zh;
+  if (locale === "zhHant") return feature.title_zh_tw || feature.title_zh;
+  if (locale === "ja") return feature.title_ja || feature.title_en || feature.title_zh;
+  return feature.title_en || feature.title_zh;
+}
+
+export function localizedFeatureDescription(feature: ReleasePreviewFeature, locale: "zh" | "en" | "zhHant" | "ja") {
+  if (locale === "zh") return feature.description_zh;
+  if (locale === "zhHant") return feature.description_zh_tw || feature.description_zh;
+  if (locale === "ja") return feature.description_ja || feature.description_en || feature.description_zh;
+  return feature.description_en || feature.description_zh;
+}
+
+export function parseReleasePreviewBulkLine(value: string) {
+  const line = value.trim();
+  const separator = line.search(/[|｜]/);
+  if (separator <= 0) return { title: "", description: line };
+  const title = line.slice(0, separator).trim();
+  const description = line.slice(separator + 1).trim();
+  return title && description ? { title, description } : { title: "", description: line };
 }
 
 export function localizedPreviewNote(content: NormalizedReleasePreviewContent, locale: "zh" | "en" | "zhHant" | "ja") {

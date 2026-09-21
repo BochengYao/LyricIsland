@@ -140,7 +140,7 @@ alter table public.release_previews
   add column if not exists highlights_ja jsonb not null default '[]'::jsonb;
 
 comment on column public.release_previews.highlights_zh is
-  'Legacy string array or release preview schema v2 compatibility envelope whose first item contains stable feature ids, localized content, sort order, and nullable progress.';
+  'Legacy string array or release preview compatibility envelope. Schema v3 stores stable feature ids, localized title and description, display group, future target version, sort order, progress, and stage while retaining legacy strings.';
 
 create index if not exists release_previews_public
   on public.release_previews (status, published_at desc);

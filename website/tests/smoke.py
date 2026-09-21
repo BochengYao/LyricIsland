@@ -981,8 +981,8 @@ def test_incentive_page(page: Page, path: str, lang: str, mobile: bool = False) 
                 '"body_en":"More polish for avoidance.","highlights_zh":["收起体验更加顺滑。"],'
                 '"highlights_en":["Smoother retraction."],"note_zh":"继续打磨避让。",'
                 '"note_en":"More polish for avoidance.","note_zh_tw":"","note_ja":"",'
-                '"features":[{"id":"preview-feature-1","sort_order":1,"progress":80,"stage":"development","content_zh":"新增省电模式。","content_en":"Add power-saving mode.","content_zh_tw":"","content_ja":""},'
-                '{"id":"preview-feature-2","sort_order":2,"progress":0,"stage":"development","content_zh":"收起体验更加顺滑。","content_en":"Smoother retraction.","content_zh_tw":"","content_ja":""}],"target_date":"2026-09-01",'
+                '"features":[{"id":"preview-feature-1","sort_order":1,"progress":80,"stage":"development","display_group":"featured","target_version":"","title_zh":"省电模式","title_en":"Power saving","title_zh_tw":"","title_ja":"","description_zh":"进一步降低后台资源占用。","description_en":"Further reduces background resource usage.","description_zh_tw":"","description_ja":"","content_zh":"省电模式 — 进一步降低后台资源占用。","content_en":"Power saving — Further reduces background resource usage.","content_zh_tw":"","content_ja":""},'
+                '{"id":"preview-feature-2","sort_order":2,"progress":0,"stage":"development","display_group":"improvement","target_version":"","title_zh":"收起体验","title_en":"Retraction","title_zh_tw":"","title_ja":"","description_zh":"收起体验更加顺滑。","description_en":"Smoother retraction.","description_zh_tw":"","description_ja":"","content_zh":"收起体验 — 收起体验更加顺滑。","content_en":"Retraction — Smoother retraction.","content_zh_tw":"","content_ja":""}],"target_date":"2026-09-01",'
                 '"status":"published","created_at":"2026-07-14T00:00:00Z",'
                 '"updated_at":"2026-07-14T00:00:00Z","published_at":"2026-07-14T00:00:00Z"}]}'
             ),
@@ -1009,28 +1009,13 @@ def test_incentive_page(page: Page, path: str, lang: str, mobile: bool = False) 
     expect(preview_card.locator(".previewProgressRing")).to_have_count(2)
     expect(preview_card.locator('[role="progressbar"]')).to_have_attribute("aria-valuenow", "80")
     expect(preview_card.locator('[role="img"]')).to_have_attribute("aria-label", "Not started" if lang == "en" else "未开始")
-    expect(page.locator(".previewLegend li")).to_have_count(4)
-    expect(page.locator(".previewLegend")).to_contain_text("Not started" if lang == "en" else "未开始")
-    testing_legend = page.locator(".previewLegend li").filter(has_text="Testing" if lang == "en" else "测试中")
-    expect(testing_legend).to_have_count(1)
-    expect(testing_legend.locator("circle")).to_have_count(1)
-    testing_alignment = testing_legend.evaluate(
-        """(item) => {
-          const icon = item.querySelector('svg').getBoundingClientRect();
-          const label = item.querySelector('span').getBoundingClientRect();
-          return {
-            iconWidth: icon.width,
-            iconHeight: icon.height,
-            centerDelta: Math.abs((icon.top + icon.height / 2) - (label.top + label.height / 2))
-          };
-        }"""
-    )
-    assert testing_alignment["iconWidth"] == 16
-    assert testing_alignment["iconHeight"] == 16
-    assert testing_alignment["centerDelta"] <= 1
+    expect(page.locator(".previewLegend")).to_have_count(0)
     expect(preview_card.locator(".previewNote")).to_have_text("More polish for avoidance." if lang == "en" else "继续打磨避让。")
-    expect(preview_card.locator(".previewItems p")).to_have_text(
-        ["Add power-saving mode.", "Smoother retraction."] if lang == "en" else ["新增省电模式。", "收起体验更加顺滑。"]
+    expect(preview_card.locator(".previewFeatureHeading h4")).to_have_text(
+        ["Power saving", "Retraction"] if lang == "en" else ["省电模式", "收起体验"]
+    )
+    expect(preview_card.locator(".previewItems li > p")).to_have_text(
+        ["Further reduces background resource usage.", "Smoother retraction."] if lang == "en" else ["进一步降低后台资源占用。", "收起体验更加顺滑。"]
     )
     expect(page.locator(".acceptedTime").first).to_be_visible()
     expect(page.locator(".acceptedWaterfallColumn")).to_have_count(4)
@@ -1321,42 +1306,20 @@ def test_admin_dashboard(page: Page) -> None:
     expect(page.get_by_label("Version Note (English)")).to_be_visible()
     expect(page.get_by_label("预计上线范围")).to_be_visible()
     bulk_input = page.get_by_label("快速批量导入中文功能项")
-    bulk_input.fill("新增省电模式。\n新增逐字跟随。\n新增歌词坞。\n支持手动刷新。")
+    page.get_by_role("tab", name="中文").click()
+    expect(page.get_by_label("默认展示分组")).to_be_visible()
+    bulk_input.fill("省电模式 | 进一步降低后台资源占用。\n逐字跟随｜歌词随着演唱进度逐字呈现。\n新增歌词坞。\n支持手动刷新。")
     page.get_by_role("button", name="解析为功能项").click()
     expect(page.locator(".previewFeatureEditor")).to_have_count(4)
+    expect(page.get_by_label("中文 功能标题").first).to_have_value("省电模式")
+    expect(page.get_by_label("中文 功能描述").first).to_have_value("进一步降低后台资源占用。")
+    expect(page.get_by_label("中文 功能标题").nth(2)).to_have_value("")
+    expect(page.get_by_label("中文 功能描述").nth(2)).to_have_value("新增歌词坞。")
     progress_slider = page.get_by_label("功能 1 开发进度与状态")
     expect(progress_slider).to_have_attribute("max", "9")
     expect(progress_slider).to_have_attribute("min", "0")
     expect(page.locator(f'#{progress_slider.get_attribute("list")} option')).to_have_count(10)
     expect(page.locator(".previewFeatureEditor .previewProgressRing")).to_have_count(0)
-    first_feature = page.locator(".previewFeatureEditor").first
-    feature_textarea = first_feature.locator("textarea")
-    feature_layout = first_feature.evaluate(
-        """(feature) => {
-          const header = feature.querySelector('header');
-          const textarea = feature.querySelector('textarea');
-          const progress = feature.querySelector('.previewProgressEditor');
-          return {
-            height: feature.getBoundingClientRect().height,
-            headerHeight: header?.getBoundingClientRect().height ?? 0,
-            textareaHeight: textarea?.getBoundingClientRect().height ?? 0,
-            progressHeight: progress?.getBoundingClientRect().height ?? 0,
-            textareaScrollHeight: textarea?.scrollHeight ?? 0
-          };
-        }"""
-    )
-    assert feature_layout["height"] <= 160
-    assert feature_layout["headerHeight"] <= 42
-    assert 60 <= feature_layout["textareaHeight"] <= 82
-    assert feature_layout["textareaHeight"] >= feature_layout["textareaScrollHeight"] - 1
-    assert feature_layout["progressHeight"] <= 52
-
-    feature_textarea.fill("第一行内容。\n第二行内容更长，用于确认文本框会自动增高并完整显示。\n第三行内容。")
-    expanded_textarea = feature_textarea.evaluate(
-        "(textarea) => ({ height: textarea.getBoundingClientRect().height, scrollHeight: textarea.scrollHeight })"
-    )
-    assert expanded_textarea["height"] > feature_layout["textareaHeight"]
-    assert expanded_textarea["height"] >= expanded_textarea["scrollHeight"] - 1
 
 
 def test_submission_validation(page: Page) -> None:
