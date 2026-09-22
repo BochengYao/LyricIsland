@@ -201,7 +201,7 @@ namespace LyricHover.Tests
             {
                 suite.Run("release version mutation is transactional and serialized", ReleaseVersionMutationIsTransactionalAndSerialized);
             }
-            suite.Run("about file and MSIX versions share the V3 version prefix", AboutFileAndMsixVersionsShareTheV3VersionPrefix);
+            suite.Run("about file and MSIX versions share the V3 four segment mapping", AboutFileAndMsixVersionsShareTheV3FourSegmentMapping);
             suite.Run("store package reuses the reserved product identity", StorePackageReusesReservedProductIdentity);
             suite.Run("tutorial waits for required user actions", TutorialWaitsForRequiredUserActions);
             suite.Run("tutorial requires temporary interaction for playback controls", TutorialRequiresTemporaryInteractionForPlaybackControls);
@@ -2590,7 +2590,7 @@ namespace LyricHover.Tests
             }
         }
 
-        static void AboutFileAndMsixVersionsShareTheV3VersionPrefix()
+        static void AboutFileAndMsixVersionsShareTheV3FourSegmentMapping()
         {
             var root = GetSolutionRoot();
             var coreAssembly = typeof(ProductVersion).Assembly;
@@ -2614,9 +2614,8 @@ namespace LyricHover.Tests
             Assert.Equal(ProductVersion.FormatDisplayVersion(prefix + "-" + labelMatch.Groups["label"].Value.Trim()), ProductVersion.DisplayVersion);
             Assert.Equal(new Version(major, minor, patch, 0), coreAssembly.GetName().Version);
             Assert.Equal(prefix + ".0", FileVersionInfo.GetVersionInfo(coreAssembly.Location).FileVersion);
-            Assert.True(buildScript.Contains("[Nullable[int]]$PackageRevision"));
-            Assert.True(buildScript.Contains("$resolvedPackageRevision = $maxRevision + 1"));
-            Assert.True(buildScript.Contains("$packageVersion = \"$productVersion.$resolvedPackageRevision\""));
+            Assert.True(buildScript.Contains("$packageVersion = \"$productVersion.0\""));
+            Assert.False(buildScript.Contains("PackageRevision"));
             Assert.True(manifest.Contains("Version=\"__PACKAGE_VERSION__\""));
         }
 
