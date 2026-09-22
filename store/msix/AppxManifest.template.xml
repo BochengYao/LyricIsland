@@ -19,7 +19,10 @@
   </Properties>
 
   <Resources>
-    <Resource Language="zh-CN" />
+    <Resource Language="zh-Hans" />
+    <Resource Language="zh-Hant" />
+    <Resource Language="en" />
+    <Resource Language="ja" />
   </Resources>
 
   <Dependencies>

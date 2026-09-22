@@ -1,6 +1,7 @@
 param(
     [switch]$SkipTests,
-    [switch]$KeepStaging
+    [switch]$KeepStaging,
+    [Nullable[int]]$PackageRevision
 )
 
 $ErrorActionPreference = 'Stop'
@@ -38,11 +39,42 @@ if (-not $versionMatch.Success) {
 }
 
 $productVersion = $versionMatch.Groups['version'].Value
-$packageVersion = "$productVersion.0"
 
 if (-not (Test-Path -LiteralPath $outputRoot)) {
     New-Item -ItemType Directory -Path $outputRoot | Out-Null
 }
+
+if ($null -ne $PackageRevision -and ($PackageRevision.Value -lt 0 -or $PackageRevision.Value -gt 65535)) {
+    throw 'PackageRevision 必须介于 0 和 65535 之间。'
+}
+
+if ($null -ne $PackageRevision) {
+    $resolvedPackageRevision = $PackageRevision.Value
+}
+else {
+    $packagePattern = '^LyricHover_' + [regex]::Escape($productVersion) + '\.(?<revision>\d+)_x64\.msix$'
+    $existingRevisions = @(Get-ChildItem -LiteralPath $outputRoot -File -Filter "LyricHover_$productVersion.*_x64.msix" |
+        ForEach-Object {
+            $match = [regex]::Match($_.Name, $packagePattern)
+            if ($match.Success) {
+                [int]$match.Groups['revision'].Value
+            }
+        })
+    $maxRevision = if ($existingRevisions.Count -gt 0) {
+        ($existingRevisions | Measure-Object -Maximum).Maximum
+    }
+    else {
+        -1
+    }
+    if ($maxRevision -ge 65535) {
+        throw "MSIX 版本 $productVersion 的末位版本号已达到 65535。"
+    }
+
+    $resolvedPackageRevision = $maxRevision + 1
+}
+
+$packageVersion = "$productVersion.$resolvedPackageRevision"
+
 Remove-VerifiedDirectory $storePublishPath
 Remove-VerifiedDirectory $stagingPath
 Remove-VerifiedDirectory $verifyPath
