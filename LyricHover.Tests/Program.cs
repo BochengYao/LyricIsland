@@ -171,6 +171,7 @@ namespace LyricHover.Tests
             suite.Run("lyric dock keeps its placement while the taskbar context menu is open", LyricDockKeepsPlacementWhileTaskbarContextMenuIsOpen);
             suite.Run("lyric dock text keeps contrast on transparent taskbars", LyricDockTextKeepsContrastOnTransparentTaskbars);
             suite.Run("secondary-monitor windows preserve physical desktop origins", SecondaryMonitorWindowsPreservePhysicalDesktopOrigins);
+            suite.Run("lyric dock follows island after a completed cross-screen drag", LyricDockFollowsIslandAfterCrossScreenDrag);
             suite.Run("builds island geometry for measured module size", BuildsIslandGeometryForMeasuredModuleSize);
             suite.Run("module host exposes all v2 module views", ModuleHostExposesAllV2ModuleViews);
             suite.Run("track info shows title and artist without album", TrackInfoShowsTitleAndArtistWithoutAlbum);
@@ -6106,6 +6107,22 @@ namespace LyricHover.Tests
             Assert.True(settingsWindow.Contains("NativeWindowPlacement.CenterOnScreen(source.Handle, targetScreenName)"));
             var mainWindow = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
             Assert.True(mainWindow.Contains("settingsWindow.MoveToScreen(placementSettings.ScreenName)"));
+        }
+
+        static void LyricDockFollowsIslandAfterCrossScreenDrag()
+        {
+            Assert.True(LyricDockScreenFollowPolicy.ShouldFollow(true, true, "main", "secondary"));
+            Assert.False(LyricDockScreenFollowPolicy.ShouldFollow(false, true, "main", "secondary"));
+            Assert.False(LyricDockScreenFollowPolicy.ShouldFollow(true, false, "main", "secondary"));
+            Assert.False(LyricDockScreenFollowPolicy.ShouldFollow(true, true, "SECONDARY", "secondary"));
+            Assert.False(LyricDockScreenFollowPolicy.ShouldFollow(true, true, "main", string.Empty));
+
+            var mainWindow = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "MainWindow.xaml.cs"));
+            var finishStart = mainWindow.IndexOf("private void FinishHorizontalDrag()", StringComparison.Ordinal);
+            var finishEnd = mainWindow.IndexOf("private bool ShouldForwardLeftClickThrough()", finishStart, StringComparison.Ordinal);
+            var finishBlock = mainWindow.Substring(finishStart, finishEnd - finishStart);
+            Assert.True(finishBlock.Contains("LyricDockScreenFollowPolicy.ShouldFollow"));
+            Assert.True(finishBlock.Contains("SynchronizeLyricDockRuntime(placementSettings)"));
         }
 
         static void LyricDockWindowMatchesIslandLyricsBehaviors()

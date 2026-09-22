@@ -41,3 +41,13 @@
 - Follow-up 验证：Release 构建退出码 0；桌面回归 269 PASS / 0 FAIL；`publish.ps1 -KeepVersion -NoLaunch` 在补充 win-x64 定向还原后成功，Release publish 0 warning / 0 error。
 - Follow-up `publish/current`：`3.2.48-Beta`，11 个文件、33,833,734 bytes；`LyricHover.App.dll` SHA-256 为 `9051D4B85F46EB820530F391A7AD078A1B88DBE57A11E6BA09FE08EB2CB8381B`，与同次 Release win-x64 输出一致。旧候选归档到 `publish/archive/v3.2.48-Beta-20260922-105742`，新候选已重新启动。
 - 仍需用户实机确认：在设置中切换到 `\\.\DISPLAY31` 后歌词坞可见且位于第二屏左下；切换到新歌曲后无需手动清空偏移即可同步。
+
+## 2026-09-22 island drag follow-up
+
+- 岛拖拽过程中继续只更新临时运行时位置；拖拽结束时若 `ScreenName` 确实发生变化且歌词坞已启用，歌词坞通过现有 `Configure` 路径执行一次目标屏重定位并随新屏设置持久化。
+- 同屏拖动、未达到拖拽阈值的普通点击、歌词坞关闭状态均不会触发额外任务栏/UIA 定位探测。
+- 自动化验证：Release 构建退出码 0；桌面回归新增跨屏跟随策略与生产调用路径覆盖后为 270 PASS / 0 FAIL。
+- `publish.ps1 -KeepVersion -NoLaunch` 成功，Release publish 0 warning / 0 error；`publish/current` 为 `3.2.48-Beta`，11 个文件、33,835,022 bytes。
+- 当前候选 `LyricHover.App.exe` SHA-256 为 `31DD553FFA252A5CAFF0D40AEA535C2D041FE5D599CCCBFC2D49C20F68834739`；`LyricHover.App.dll` SHA-256 为 `481EB995A6F77C0AA785A00F82F8A878CD0C42920C1C94A5D1F26542AB0E6CBB`，`LyricHover.Core.dll` SHA-256 为 `5F84A24DC97DC15326689BD103107BF13C226543EB2E40B2296E06A89A482CE6`，两个程序集均与同次 Release win-x64 输出一致。
+- 被替换的候选已归档到 `publish/archive/v3.2.48-Beta-20260922-174822`；发布脚本按 `-NoLaunch` 未自动启动，当前候选随后已从 `publish/current/LyricHover.App.exe` 重新启动。
+- 仍需用户实机确认：岛从第一屏直接拖至第二屏并释放后，歌词坞在第二屏任务栏区域自动出现且不需要重新打开设置。

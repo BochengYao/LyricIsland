@@ -157,4 +157,22 @@ namespace LyricHover.App.LyricDock
                 Math.Abs(currentTaskbarBounds.Bottom - nextTaskbarBounds.Bottom) < 0.5;
         }
     }
+
+    internal static class LyricDockScreenFollowPolicy
+    {
+        public static bool ShouldFollow(
+            bool completedDrag,
+            bool lyricDockEnabled,
+            string originalScreenName,
+            string currentScreenName)
+        {
+            return completedDrag &&
+                lyricDockEnabled &&
+                !string.IsNullOrWhiteSpace(currentScreenName) &&
+                !string.Equals(
+                    originalScreenName,
+                    currentScreenName,
+                    StringComparison.OrdinalIgnoreCase);
+        }
+    }
 }

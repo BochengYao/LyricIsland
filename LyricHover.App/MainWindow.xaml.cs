@@ -83,6 +83,7 @@ namespace LyricHover.App
         private bool horizontalDragActive;
         private bool horizontalDragPending;
         private Point horizontalDragStartScreenPoint;
+        private string horizontalDragStartScreenName = string.Empty;
         private RadialGradientBrush backgroundHoverOpacityMask;
         private RadialGradientBrush lyricsHoverOpacityMask;
         private HoverSpectrumStop[] activeHoverSpectrumStops;
@@ -1336,9 +1337,7 @@ namespace LyricHover.App
             cache.SetMaxBytes(GetCacheLimitBytes(runtimeSettings));
             selectedLyricsSource = runtimeSettings.LyricsSource;
             lyricsClient = CreateLyricsClient(runtimeSettings.LyricsSourcePriority, IsWordTrackingRequested(runtimeSettings));
-            var dockConfigured = LyricDockController.Configure(runtimeSettings.LyricDockEnabled, runtimeSettings.ScreenName, runtimeSettings.LyricDockAlignment);
-            lyricDockRuntimeFallbackToIsland = runtimeSettings.LyricDockEnabled && !dockConfigured && !runtimeSettings.IslandEnabled;
-            if (dockConfigured) settingsWindow?.ClearLyricDockRuntimeStatus();
+            SynchronizeLyricDockRuntime(runtimeSettings);
             UiLanguageService.SetPreference(runtimeSettings.Language);
             ApplyTrayMenuTheme(runtimeSettings.SettingsTheme);
             RegisterGlobalHotkeys();
@@ -1380,6 +1379,23 @@ namespace LyricHover.App
             }
         }
 
+        private bool SynchronizeLyricDockRuntime(OverlayPlacementSettings runtimeSettings)
+        {
+            var dockConfigured = LyricDockController.Configure(
+                runtimeSettings.LyricDockEnabled,
+                runtimeSettings.ScreenName,
+                runtimeSettings.LyricDockAlignment);
+            lyricDockRuntimeFallbackToIsland = runtimeSettings.LyricDockEnabled &&
+                !dockConfigured &&
+                !runtimeSettings.IslandEnabled;
+            if (dockConfigured)
+            {
+                settingsWindow?.ClearLyricDockRuntimeStatus();
+            }
+
+            return dockConfigured;
+        }
+
         private void SnapCurrentPositionToNearestEdge()
         {
             var screens = screenCatalog.GetScreens();
@@ -1402,6 +1418,7 @@ namespace LyricHover.App
             horizontalDragPending = true;
             horizontalDragActive = false;
             horizontalDragStartScreenPoint = GetPointerScreenPoint(e.GetPosition(this));
+            horizontalDragStartScreenName = placementSettings.ScreenName ?? string.Empty;
             CaptureMouse();
         }
 
@@ -1445,10 +1462,19 @@ namespace LyricHover.App
                 return;
             }
 
+            var shouldFollowIsland = LyricDockScreenFollowPolicy.ShouldFollow(
+                horizontalDragActive,
+                placementSettings.LyricDockEnabled,
+                horizontalDragStartScreenName,
+                placementSettings.ScreenName);
             horizontalDragActive = false;
             horizontalDragPending = false;
             ReleaseMouseCapture();
             settingsStateCoordinator.PersistCurrentRuntimeState();
+            if (shouldFollowIsland)
+            {
+                SynchronizeLyricDockRuntime(placementSettings);
+            }
             UpdateIslandShape();
             UpdateHoverProximity();
         }
