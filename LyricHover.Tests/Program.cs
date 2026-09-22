@@ -3348,6 +3348,16 @@ namespace LyricHover.Tests
             var settingsWindowSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml.cs"));
             var mainWindowSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
             var moduleHostSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Modules", "IslandModuleHost.xaml.cs"));
+            var legacyOffsetSettings = new OverlayPlacementSettings
+            {
+                DefaultLyricOffsetMilliseconds = 800
+            };
+            legacyOffsetSettings.Normalize();
+            var newTrackBlockStart = mainWindowSource.IndexOf("if (isNewTrack)", StringComparison.Ordinal);
+            var newTrackBlockEnd = mainWindowSource.IndexOf("currentTrack = track;", newTrackBlockStart, StringComparison.Ordinal);
+            var newTrackBlock = mainWindowSource.Substring(
+                newTrackBlockStart,
+                newTrackBlockEnd - newTrackBlockStart);
 
             Assert.True(source.Contains("Ctrl+Alt+Left"));
             Assert.True(source.Contains("Ctrl+Alt+Right"));
@@ -3362,6 +3372,9 @@ namespace LyricHover.Tests
             Assert.True(settingsXaml.Contains("LinearGradientBrush StartPoint=\"0,0\" EndPoint=\"1,1\""));
             Assert.True(settingsXaml.Contains("Text=\"单击后，按下新的快捷键组合\""));
             Assert.False(mainWindowSource.Contains("? placementSettings.DefaultLyricOffsetMilliseconds"));
+            Assert.True(mainWindowSource.Contains("private TimeSpan lyricOffset = TimeSpan.Zero;"));
+            Assert.True(newTrackBlock.Contains("lyricOffset = TimeSpan.Zero;"));
+            Assert.Equal(0, legacyOffsetSettings.DefaultLyricOffsetMilliseconds);
             Assert.True(mainWindowSource.Contains("TimeSpan.FromSeconds(2.4)"));
             Assert.True(moduleHostSource.Contains("transientMessageTimer"));
             Assert.True(moduleHostSource.Contains("CreateTransientRenderState(state)"));
@@ -6065,11 +6078,11 @@ namespace LyricHover.Tests
         static void SecondaryMonitorWindowsPreservePhysicalDesktopOrigins()
         {
             Assert.Equal(
-                2346.6666666666665,
-                NativeWindowPlacementMath.ToMonitorLogicalCoordinate(2560, 1920, 1.5));
+                1706.6666666666667,
+                NativeWindowPlacementMath.ToWindowLogicalCoordinate(2560, 1.5));
             Assert.Equal(
-                -1506.3333333333333,
-                NativeWindowPlacementMath.ToMonitorLogicalCoordinate(-1473, -1573, 1.5));
+                -1834.6666666666667,
+                NativeWindowPlacementMath.ToWindowLogicalCoordinate(-2752, 1.5));
 
             var settings = NativeWindowPlacementMath.CenterInWorkingArea(
                 -1920,
@@ -6083,7 +6096,9 @@ namespace LyricHover.Tests
 
             var root = GetSolutionRoot();
             var dockWindow = File.ReadAllText(Path.Combine(root, "LyricHover.App", "LyricDock", "LyricDockWindow.cs"));
-            Assert.True(dockWindow.Contains("NativeWindowPlacementMath.ToMonitorLogicalCoordinate"));
+            Assert.True(dockWindow.Contains("var windowDpiScale = GetWindowDpiScale()"));
+            Assert.True(dockWindow.Contains("NativeWindowPlacementMath.ToWindowLogicalCoordinate"));
+            Assert.True(dockWindow.Contains("Width = width / windowDpiScale"));
             Assert.False(dockWindow.Contains("Left = placement.Left / placement.DpiScale"));
             Assert.False(dockWindow.Contains("Top = placement.Top / placement.DpiScale"));
 

@@ -124,8 +124,6 @@ namespace LyricHover.App.LyricDock
                 Width = Math.Min(LyricDockController.MaximumWidth, gap.Width),
                 Height = taskbarRect.Height,
                 DpiScale = GetDpiScale(taskbar),
-                ScreenLeft = screen.Bounds.Left,
-                ScreenTop = screen.Bounds.Top,
                 IsLeftAligned = alignment == LyricDockAlignment.Left,
                 IsVisible = true,
                 IsFullscreenCovered = false,

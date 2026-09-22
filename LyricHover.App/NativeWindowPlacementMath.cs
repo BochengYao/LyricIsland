@@ -20,18 +20,16 @@ namespace LyricHover.App
 
     internal static class NativeWindowPlacementMath
     {
-        public static double ToMonitorLogicalCoordinate(
+        public static double ToWindowLogicalCoordinate(
             double physicalCoordinate,
-            double monitorPhysicalOrigin,
-            double dpiScale)
+            double windowDpiScale)
         {
-            if (dpiScale <= 0)
+            if (windowDpiScale <= 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(dpiScale));
+                throw new ArgumentOutOfRangeException(nameof(windowDpiScale));
             }
 
-            return monitorPhysicalOrigin +
-                ((physicalCoordinate - monitorPhysicalOrigin) / dpiScale);
+            return physicalCoordinate / windowDpiScale;
         }
 
         public static NativePixelBounds CenterInWorkingArea(

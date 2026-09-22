@@ -21,7 +21,7 @@
 ## Verification
 
 - `dotnet build LyricHover.sln -c Release`：在 v3.2.48 基线通过，0 error；测试工程报告 310 个既有源链接类型冲突/未使用测试事件警告。
-- `dotnet run --project LyricHover.Tests -c Release --no-build`：退出码 0，完整 271 项回归全部 PASS；新增用例覆盖右侧屏物理原点、左侧负坐标屏设置窗口居中及生产调用路径。
+- `dotnet run --project LyricHover.Tests -c Release --no-build`：退出码 0，当前测试入口实际执行 269 项回归全部 PASS；新增用例覆盖跨屏完整桌面坐标、左侧负坐标屏设置窗口居中及生产调用路径。
 - `publish.ps1 -KeepVersion -NoLaunch`：首次因 win-x64 运行时资产缺失报 `NETSDK1047`；执行 `dotnet restore LyricHover.App/LyricHover.App.csproj --runtime win-x64` 后重跑成功，Release 构建 0 warning / 0 error，并原子替换 `publish/current`。
 - `publish/current`：`3.2.48-Beta`，11 个文件、33,833,766 bytes；`LyricHover.App.dll` SHA-256 为 `47B3208CD01D381D76680B27BBE31E36EA44F9D8634C753B369ECFEE036E9A75`，`LyricHover.Core.dll` SHA-256 为 `5F84A24DC97DC15326689BD103107BF13C226543EB2E40B2296E06A89A482CE6`。
 - 原 `publish/current` 已归档到 `publish/archive/v3.2.48-Beta`；发布脚本停止了从旧 `publish/current` 运行的进程，且因 `-NoLaunch` 未重新启动应用。仓库内既有 `publish/staging-diagnose-v3.1.39-Beta` 为 2026-08-24 遗留诊断目录，不属于本轮发布，未改动。
@@ -32,3 +32,12 @@
 
 - 本交接随修复提交到 `codex/feature/desktop-multimonitor-placement-v3248`，最终提交 SHA 以 Git/GitHub 交付回执为准。
 - `publish/current` 是本机候选目录，不纳入 Git；本轮只推送修复分支，不创建 GitHub Release、不提交 Microsoft Store。
+
+## 2026-09-22 follow-up
+
+- 实机回报显示第一版修复切到第二屏后歌词坞完全不可见。诊断确认歌词坞 HWND 为 system-DPI-aware（144 DPI），第二屏任务栏为 168 DPI；第一版把目标屏物理原点直接写入 WPF DIP 坐标，导致左侧负坐标被再次放大并移出可见桌面。
+- 歌词坞现在用自身 HWND DPI 换算完整桌面坐标与尺寸，不再混用目标任务栏 DPI 或单独保留屏幕原点；同屏任务栏图标移动仍沿用现有动画，跨 DPI 切屏不动画。
+- 新歌曲歌词偏移改为每首歌独立：应用启动与检测到新曲目时均重置为 `0ms`，快捷键调整只影响当前歌曲；旧设置中的隐藏 `DefaultLyricOffsetMilliseconds=800` 兼容字段规范化为零。
+- Follow-up 验证：Release 构建退出码 0；桌面回归 269 PASS / 0 FAIL；`publish.ps1 -KeepVersion -NoLaunch` 在补充 win-x64 定向还原后成功，Release publish 0 warning / 0 error。
+- Follow-up `publish/current`：`3.2.48-Beta`，11 个文件、33,833,734 bytes；`LyricHover.App.dll` SHA-256 为 `9051D4B85F46EB820530F391A7AD078A1B88DBE57A11E6BA09FE08EB2CB8381B`，与同次 Release win-x64 输出一致。旧候选归档到 `publish/archive/v3.2.48-Beta-20260922-105742`，新候选已重新启动。
+- 仍需用户实机确认：在设置中切换到 `\\.\DISPLAY31` 后歌词坞可见且位于第二屏左下；切换到新歌曲后无需手动清空偏移即可同步。

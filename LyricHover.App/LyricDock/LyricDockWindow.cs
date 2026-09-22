@@ -254,10 +254,14 @@ namespace LyricHover.App.LyricDock
         public void Place(LyricDockPlacement placement, double width)
         {
             var hadPlacement = hasPlacement;
-            var nextLeft = NativeWindowPlacementMath.ToMonitorLogicalCoordinate(
+            // GetWindowRect/UIA return device coordinates in the calling process's DPI
+            // context. WPF Window coordinates must therefore be converted with this
+            // HWND's DPI, not the target taskbar's DPI. Those values differ when a
+            // system-DPI-aware window is moved to a secondary monitor with another scale.
+            var windowDpiScale = GetWindowDpiScale();
+            var nextLeft = NativeWindowPlacementMath.ToWindowLogicalCoordinate(
                 placement.Left,
-                placement.ScreenLeft,
-                placement.DpiScale);
+                windowDpiScale);
             var shouldAnimateLeft = LyricDockMotionPolicy.ShouldAnimateHorizontalMove(
                 IsVisible,
                 hasPlacement,
@@ -268,8 +272,8 @@ namespace LyricHover.App.LyricDock
                 placementDpiScale,
                 placement.DpiScale);
 
-            Width = width / placement.DpiScale;
-            Height = placement.Height / placement.DpiScale;
+            Width = width / windowDpiScale;
+            Height = placement.Height / windowDpiScale;
             // The alignment setting positions the TEXT inside this window (like the island's
             // lyrics module), not the window inside the taskbar gap: the window always starts
             // at the gap's left edge and spans up to MaximumWidth, and each lyric line is
@@ -284,10 +288,9 @@ namespace LyricHover.App.LyricDock
                 BeginAnimation(LeftProperty, null);
                 Left = nextLeft;
             }
-            Top = NativeWindowPlacementMath.ToMonitorLogicalCoordinate(
+            Top = NativeWindowPlacementMath.ToWindowLogicalCoordinate(
                 placement.Top,
-                placement.ScreenTop,
-                placement.DpiScale);
+                windowDpiScale);
             hasPlacement = true;
             placementTargetLeft = nextLeft;
             placementDpiScale = placement.DpiScale;
@@ -302,6 +305,12 @@ namespace LyricHover.App.LyricDock
                 ApplyForeground(incomingSecondary);
             }
             placementDarkTheme = placement.IsDarkTheme;
+        }
+
+        private double GetWindowDpiScale()
+        {
+            var dpi = handle != IntPtr.Zero ? GetDpiForWindow(handle) : GetDpiForSystem();
+            return dpi > 0 ? dpi / 96.0 : 1.0;
         }
 
         private void AnimateHorizontalPlacement(double targetLeft)
@@ -551,6 +560,8 @@ namespace LyricHover.App.LyricDock
 
         [DllImport("user32.dll", EntryPoint = "GetWindowLongPtr", SetLastError = true)] private static extern IntPtr GetWindowLong(IntPtr hwnd, int index);
         [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr", SetLastError = true)] private static extern IntPtr SetWindowLong(IntPtr hwnd, int index, IntPtr value);
+        [DllImport("user32.dll")] private static extern uint GetDpiForSystem();
+        [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr hwnd);
         [DllImport("user32.dll", SetLastError = true)] private static extern bool SetWindowPos(IntPtr hwnd, IntPtr insertAfter, int x, int y, int cx, int cy, uint flags);
     }
 }

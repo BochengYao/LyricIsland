@@ -95,7 +95,9 @@ namespace LyricHover.App
 
         public HotkeySettings LyricOffsetHotkeys { get; set; } = HotkeySettings.CreateDefault();
 
-        public int DefaultLyricOffsetMilliseconds { get; set; } = 800;
+        // Retained for settings-file compatibility. Runtime lyric offset is per-track and
+        // always starts at zero; older builds persisted an implicit +800ms compensation.
+        public int DefaultLyricOffsetMilliseconds { get; set; }
 
         public int NoPlaybackAutoRetractSeconds { get; set; } = 6;
 
@@ -139,9 +141,7 @@ namespace LyricHover.App
             LockedSourceAppUserModelId = LockedSourceAppUserModelId ?? string.Empty;
             LyricOffsetHotkeys = LyricOffsetHotkeys ?? HotkeySettings.CreateDefault();
             LyricOffsetHotkeys.Normalize();
-            DefaultLyricOffsetMilliseconds = Math.Max(
-                -10000,
-                Math.Min(10000, DefaultLyricOffsetMilliseconds));
+            DefaultLyricOffsetMilliseconds = 0;
             NoPlaybackAutoRetractSeconds = Math.Max(
                 MinNoPlaybackAutoRetractSeconds,
                 Math.Min(MaxAutoRetractSeconds, NoPlaybackAutoRetractSeconds));

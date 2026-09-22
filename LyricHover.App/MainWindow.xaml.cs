@@ -61,7 +61,7 @@ namespace LyricHover.App
         private bool islandVisible;
         private bool islandVisibilityRequested;
         private bool islandFullscreenSuppressed;
-        private TimeSpan lyricOffset = TimeSpan.FromMilliseconds(800);
+        private TimeSpan lyricOffset = TimeSpan.Zero;
         private TimeSpan currentEffectivePosition;
         private TimelineReliability currentTimelineReliability;
         private string currentPrimaryText = string.Empty;
@@ -215,7 +215,7 @@ namespace LyricHover.App
                 settingsStateCoordinator.CommitRuntimeMutation(settings => settings.HasSeenTutorial = true);
             }
             selectedLyricsSource = placementSettings.LyricsSource;
-            lyricOffset = TimeSpan.FromMilliseconds(placementSettings.DefaultLyricOffsetMilliseconds);
+            lyricOffset = TimeSpan.Zero;
             interactionController.ExpandedDuration = TimeSpan.FromSeconds(placementSettings.ExpandedAutoCollapseSeconds);
             cache = new LyricsCache(cacheRoot, GetCacheLimitBytes(placementSettings));
             UpdateIslandShape();
@@ -655,6 +655,10 @@ namespace LyricHover.App
                 if (isNewTrack)
                 {
                     lyricLineBoundaryTimer?.Stop();
+                    // Offset hotkeys adjust only the current song. Carrying that value into
+                    // the next song makes newly loaded synchronized lyrics appear late/early
+                    // until the user explicitly resets them.
+                    lyricOffset = TimeSpan.Zero;
                     currentTrack = track;
                     currentLyrics = new TimedLyrics(new LyricLine[0]);
                     lyricsSearchFinished = false;
