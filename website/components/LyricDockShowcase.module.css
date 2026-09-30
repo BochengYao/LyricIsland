@@ -88,7 +88,7 @@
     calc(100vw - clamp(64px, 8vw, 128px) + clamp(88px, 7vw, 144px)),
     1928px
   );
-  height: clamp(218px, 16vw, 240px);
+  height: clamp(190px, 13.8vw, 208px);
   margin-top: clamp(82px, 10svh, 110px);
   margin-left: calc(
     (100vw - var(--content)) / -2 + clamp(96px, 6.7vw, 128px)
@@ -148,7 +148,7 @@
 @media (min-width: 1024px) and (max-width: 1199px) {
   .productScene {
     width: calc(100% + 72px);
-    height: 244px;
+    height: 208px;
     margin-left: 48px;
   }
 }
@@ -189,7 +189,7 @@
 
   .productScene {
     width: min(calc(100% - 40px), 720px);
-    height: clamp(170px, 24vw, 196px);
+    height: clamp(150px, 20vw, 174px);
     margin-top: clamp(72px, 9svh, 92px);
     margin-left: clamp(24px, 4vw, 36px);
   }
@@ -229,7 +229,7 @@
 
   .productScene {
     width: 100%;
-    height: 174px;
+    height: 158px;
     margin-top: 46px;
     margin-left: 0;
     border-radius: 28px;
@@ -261,7 +261,7 @@
   }
 
   .productScene {
-    height: 154px;
+    height: 144px;
     margin-top: 32px;
   }
 }
