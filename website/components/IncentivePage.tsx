@@ -510,7 +510,7 @@ export function IncentivePage({ locale }: { locale: Locale }) {
               </div>
             </div>
             <div>
-              <p>{copy.intro}</p>
+              <p data-text-reveal="body">{copy.intro}</p>
               <small>{copy.privacyNote}</small>
             </div>
           </div>
@@ -530,7 +530,7 @@ export function IncentivePage({ locale }: { locale: Locale }) {
 
         <section className="acceptedSection">
           <div className="sectionContainer acceptedHeading">
-            <div><h2 data-text-reveal="title">{copy.feature.acceptedTitle}</h2><p>{copy.feature.acceptedSubtitle}</p></div>
+            <div><h2 data-text-reveal="title">{copy.feature.acceptedTitle}</h2><p data-text-reveal="body">{copy.feature.acceptedSubtitle}</p></div>
           </div>
           {publicDataState === "loading" ? (
             <div className="databaseLoading acceptedDatabaseLoading" aria-busy="true" role="status">
@@ -554,7 +554,7 @@ export function IncentivePage({ locale }: { locale: Locale }) {
           <div className="previewIntro">
             <Eyebrow reveal>{copy.preview.eyebrow}</Eyebrow>
             <h2 data-text-reveal="title">{copy.preview.title}</h2>
-            <p>{copy.preview.body}</p>
+            <p data-text-reveal="body">{copy.preview.body}</p>
           </div>
           <div className="previewList">
             {publicDataState === "loading" ? (

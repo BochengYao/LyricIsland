@@ -6590,6 +6590,12 @@ button.danger,
     --text-reveal-delay: 70ms;
   }
 
+  .textRevealReady [data-text-reveal="body"] {
+    --text-reveal-delay: 130ms;
+    --text-reveal-distance: 18px;
+    --text-reveal-blur: 2px;
+  }
+
   .textRevealReady [data-text-reveal].isTextRevealed {
     opacity: 1;
     transform: translate3d(0, 0, 0);

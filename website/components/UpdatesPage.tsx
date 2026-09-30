@@ -61,7 +61,7 @@ export function UpdatesPage({ locale }: Props) {
         <div className="updatesDownloads sectionContainer">
           <Eyebrow reveal>{copy.downloadsEyebrow}</Eyebrow>
           <h2 data-text-reveal="title">{copy.downloadsTitle}</h2>
-          <p>{copy.downloadsBody}</p>
+          <p data-text-reveal="body">{copy.downloadsBody}</p>
           <div className="buttonRow">
             <a
               className="button buttonPrimary"

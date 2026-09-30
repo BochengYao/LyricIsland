@@ -65,7 +65,7 @@ export function VersionPreviewSection({ locale }: { locale: Locale }) {
       <div className="previewIntro">
         <Eyebrow reveal>{copy.eyebrow}</Eyebrow>
         <h2 data-text-reveal="title">{copy.title}</h2>
-        <p>{copy.body}</p>
+        <p data-text-reveal="body">{copy.body}</p>
       </div>
       <div className={`previewList${loading ? "" : " databaseContentReveal"}`} aria-live="polite">
         {previews.length ? [...previews].sort(comparePreviewVersions).map((preview) => (
