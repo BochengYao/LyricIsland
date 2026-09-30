@@ -4,6 +4,7 @@ import { AnimatedFaqItem } from "@/components/AnimatedFaqItem";
 import { ExternalArrow } from "@/components/ExternalArrow";
 import { IslandDemo } from "@/components/IslandDemo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { LyricDockShowcase } from "@/components/LyricDockShowcase";
 import { ModuleComposer } from "@/components/ModuleComposer";
 import { PlayerOrbit } from "@/components/PlayerOrbit";
 import { SelectiveTextReveal } from "@/components/SelectiveTextReveal";
@@ -255,6 +256,8 @@ export function SitePage({ locale }: Props) {
             <IslandDemo copy={copy.demo} />
           </div>
         </section>
+
+        <LyricDockShowcase copy={copy.lyricDock} />
 
         <section
           className="modulesSection"

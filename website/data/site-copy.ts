@@ -80,6 +80,12 @@ export type SiteCopy = {
     statusA: string;
     statusC: string;
   };
+  lyricDock: {
+    eyebrow: string;
+    title: string;
+    body: string;
+    imageAlt: string;
+  };
   modules: {
     eyebrow: string;
     title: string;
@@ -215,6 +221,13 @@ const rawCopyByLocale: Record<"zh" | "en", SiteCopy> = {
       statusA: "当前为 A 横向积木布局",
       statusC: "当前为 C 自动折叠布局"
     },
+    lyricDock: {
+      eyebrow: "新增 · 歌词坞",
+      title: "少占一点，刚好看见。",
+      body:
+        "歌词安静停靠在任务栏，\n不遮挡窗口，不打乱桌面。\n每一句，都刚好在视线之内。",
+      imageAlt: "歌词坞宣传海报中的 Windows 桌面、任务栏与双语歌词场景"
+    },
     modules: {
       eyebrow: "由你组合",
       title: "想怎么展开，\n就怎么呈现。",
@@ -279,6 +292,7 @@ const rawCopyByLocale: Record<"zh" | "en", SiteCopy> = {
       product: "回看",
       productLinks: [
         { label: "核心体验", href: "#experience" },
+        { label: "歌词坞", href: "#lyric-dock" },
         { label: "模块化布局", href: "#modules" },
         { label: "播放器支持", href: "#players" }
       ],
@@ -372,6 +386,13 @@ const rawCopyByLocale: Record<"zh" | "en", SiteCopy> = {
       statusA: "Layout A horizontal blocks is active",
       statusC: "Layout C auto-collapse is active"
     },
+    lyricDock: {
+      eyebrow: "New · Lyric Dock",
+      title: "Take up less. Stay in sight.",
+      body:
+        "Lyrics rest quietly by the taskbar,\nwithout covering windows or disturbing your desktop.\nEvery line stays right within view.",
+      imageAlt: "The official Lyric Dock scene with the Windows desktop, taskbar, and bilingual lyrics"
+    },
     modules: {
       eyebrow: "Compose your own",
       title: "How it unfolds\nis yours to mold.",
@@ -437,6 +458,7 @@ const rawCopyByLocale: Record<"zh" | "en", SiteCopy> = {
       product: "Look back",
       productLinks: [
         { label: "Experience", href: "#experience" },
+        { label: "Lyric Dock", href: "#lyric-dock" },
         { label: "Modular layouts", href: "#modules" },
         { label: "Player support", href: "#players" }
       ],
@@ -469,6 +491,21 @@ function transformCopy<T>(value: T, transform: (text: string) => string): T {
 
 const traditionalSiteCopy = {
   ...transformCopy(rawCopyByLocale.zh, (text) => Array.from(text, (character) => traditionalCharacters[character] ?? character).join("")),
+  lyricDock: {
+    eyebrow: "新增 · 歌詞塢",
+    title: "少佔一點，剛好看見。",
+    body: "歌詞安靜停靠在工作列，\n不遮擋視窗，不打亂桌面。\n每一句，都剛好在視線之內。",
+    imageAlt: "歌詞塢宣傳海報中的 Windows 桌面、工作列與雙語歌詞場景"
+  },
+  footer: {
+    ...transformCopy(rawCopyByLocale.zh.footer, (text) => Array.from(text, (character) => traditionalCharacters[character] ?? character).join("")),
+    productLinks: [
+      { label: "核心體驗", href: "#experience" },
+      { label: "歌詞塢", href: "#lyric-dock" },
+      { label: "模組化版面", href: "#modules" },
+      { label: "播放器支援", href: "#players" }
+    ]
+  },
   nav: [
     { label: "首頁", href: "#main" },
     { label: "新功能", href: localePath("zhHant", "updates") },
@@ -497,6 +534,12 @@ const japaneseSiteCopy: SiteCopy = {
     ]
   },
   demo: { eyebrow: "試してみる", title: "マウスを動かして、\n島の応答を見る。", body: "状態とレイアウトを切り替え、LyricHover の表示、収納、マウス回避を体験できます。これはブラウザー上のデモで、プレーヤーには接続しません。", playbackLabel: "再生状態", layoutLabel: "レイアウト", playing: "再生中", idle: "待機", near: "ポインターが近い", layoutA: "横並び", layoutC: "自動収納", nowPlaying: "再生中", track: "Quiet Orbit", artist: "LyricHover", lyric: "街の灯りが画面の端にとどまる", translation: "City lights rest above the screen", statusPlaying: "LyricHover を表示中", statusIdle: "LyricHover を収納しました", statusNear: "マウス回避が有効です", statusA: "A 横並びレイアウトを表示中", statusC: "C 自動収納レイアウトを表示中" },
+  lyricDock: {
+    eyebrow: "新機能 · Lyric Dock",
+    title: "少しだけ。ちょうど見える。",
+    body: "歌詞はタスクバーに静かに寄り添い、\nウィンドウを隠さず、デスクトップを乱しません。\n一行一行が、ちょうど視界の中に。",
+    imageAlt: "Lyric Dock の公式ビジュアルにある Windows デスクトップ、タスクバー、二言語歌詞の場面"
+  },
   modules: { eyebrow: "自分で組み立てる", title: "どう広げるか、\nどう見せるか。", body: "横並びならのびやかに。自動収納なら省スペースに。LyricHover は選んだレイアウトに自然になじみます。", names: ["アルバムアート", "同期歌詞", "再生コントロール", "曲情報", "再生位置", "区切り線"], imageAlt: "3 つのデスクトップ場面での LyricHover レイアウト" },
   compatibility: { title: "プレーヤーが変わっても、\n歌詞はそのまま。", body: "LyricHover は使用中のプレーヤーを自動で認識し、再生状態に合わせます。設定でよく使うプレーヤーを固定すれば、いつでも一貫した体験です。", note: "*インターフェースの制限により、NetEase Cloud Music は現在、シーク後の進捗同期と歌詞の即時同期に対応していません。", players: sharedPlayers },
   sources: { eyebrow: "歌詞はどこから", title: "複数のソースを、\n一度にマッチ。", body: "オンライン歌詞は、第三者の提供元から必要に応じて取得します。", facts: [{ value: "3+", label: "歌詞ソース", detail: "複数の第三者提供元を自動で照合します。" }, { value: "6+", label: "主要プレーヤー", detail: "Windows SMTC に対応する複数のプレーヤーで動作します。" }, { value: "0", label: "広告の中断", detail: "広告なし。歌詞だけに集中できます。" }], note: "歌詞の提供状況は、曲と第三者提供元によって異なります。" },
@@ -507,7 +550,7 @@ const japaneseSiteCopy: SiteCopy = {
     { question: "歌詞が表示されない、または間違った歌詞が表示される場合は？", answer: "LyricHover は複数の歌詞ソースから自動で検索・照合し、未表示や誤一致を減らします。今後もソースを追加して、範囲と精度を高めます。" }
   ] },
   closing: { eyebrow: "LyricHover V2.0", title: "すべての一行を。\nちょうど、今に。", body: "GitHub で v1.0 とソースコードを確認できます。アプリは Microsoft Store から入手してください。", button: "GitHub", storeButton: "Microsoft Store" },
-  footer: { title: "音楽が鳴れば、\n歌詞が現れる。", product: "見どころ", productLinks: [{ label: "コア体験", href: "#experience" }, { label: "モジュールレイアウト", href: "#modules" }, { label: "プレーヤー対応", href: "#players" }], resources: "リソース", resourceLinks: [{ label: "Microsoft Store", href: microsoftStoreUrl }, { label: "GitHub: v1.0 とソース", href: "https://github.com/BochengYao/LyricHover" }, { label: "更新内容", href: "/ja/updates" }, { label: "コミュニティ特典", href: "/ja/incentives" }], note: "プレーヤー名と音楽サービス名、および商標は各権利者に帰属します。", copyright: "© 2026 LyricHover" }
+  footer: { title: "音楽が鳴れば、\n歌詞が現れる。", product: "見どころ", productLinks: [{ label: "コア体験", href: "#experience" }, { label: "Lyric Dock", href: "#lyric-dock" }, { label: "モジュールレイアウト", href: "#modules" }, { label: "プレーヤー対応", href: "#players" }], resources: "リソース", resourceLinks: [{ label: "Microsoft Store", href: microsoftStoreUrl }, { label: "GitHub: v1.0 とソース", href: "https://github.com/BochengYao/LyricHover" }, { label: "更新内容", href: "/ja/updates" }, { label: "コミュニティ特典", href: "/ja/incentives" }], note: "プレーヤー名と音楽サービス名、および商標は各権利者に帰属します。", copyright: "© 2026 LyricHover" }
 };
 
 export const copyByLocale: Record<Locale, SiteCopy> = {

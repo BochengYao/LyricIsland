@@ -1,0 +1,316 @@
+.section {
+  position: relative;
+  min-height: 100svh;
+  overflow: hidden;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.inner {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  align-content: start;
+  min-height: 100svh;
+  padding-top: clamp(132px, 16svh, 156px);
+  padding-bottom: clamp(44px, 6svh, 68px);
+}
+
+.intro {
+  position: relative;
+  z-index: 2;
+}
+
+.intro :global(.eyebrow) {
+  margin-bottom: 24px;
+  color: rgba(20, 20, 19, 0.7);
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.intro h2 {
+  max-width: 760px;
+  margin: 0;
+  font-size: clamp(3.5rem, 5.2vw, 4.65rem);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 0.96;
+}
+
+:global(html[data-lyric-dock-reveal-ready="true"]) .intro [data-lyric-dock-reveal] {
+  opacity: 0;
+  transform: translate3d(0, var(--lyric-dock-reveal-distance, 28px), 0);
+  filter: blur(var(--lyric-dock-reveal-blur, 4px));
+  transition:
+    opacity 760ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 980ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 760ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: var(--lyric-dock-reveal-delay, 0ms);
+  will-change: opacity, transform, filter;
+}
+
+:global(html[data-lyric-dock-reveal-ready="true"]) .intro [data-lyric-dock-reveal="eyebrow"] {
+  --lyric-dock-reveal-distance: 14px;
+  --lyric-dock-reveal-blur: 2px;
+}
+
+:global(html[data-lyric-dock-reveal-ready="true"]) .intro [data-lyric-dock-reveal="title"] {
+  --lyric-dock-reveal-delay: 70ms;
+}
+
+:global(html[data-lyric-dock-reveal-ready="true"]) .intro [data-lyric-dock-reveal="body"] {
+  --lyric-dock-reveal-delay: 130ms;
+  --lyric-dock-reveal-distance: 18px;
+  --lyric-dock-reveal-blur: 2px;
+}
+
+:global(html[data-lyric-dock-reveal-ready="true"]) .intro [data-lyric-dock-reveal][data-lyric-dock-revealed="true"] {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  filter: blur(0);
+  will-change: auto;
+}
+
+.body {
+  display: grid;
+  gap: 2px;
+  max-width: 430px;
+  margin: clamp(42px, 6svh, 56px) 0 0 clamp(44px, 3.5vw, 64px);
+  color: var(--charcoal);
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.productScene {
+  position: relative;
+  z-index: 2;
+  width: min(
+    calc(100vw - clamp(64px, 8vw, 128px) + clamp(88px, 7vw, 144px)),
+    1928px
+  );
+  height: clamp(218px, 16vw, 240px);
+  margin-top: clamp(82px, 10svh, 110px);
+  margin-left: calc(
+    (100vw - var(--content)) / -2 + clamp(96px, 6.7vw, 128px)
+  );
+  overflow: hidden;
+  border-radius: var(--radius-large);
+  background: #2356ae;
+  box-shadow: 0 22px 48px rgba(20, 20, 19, 0.08);
+  opacity: 0.86;
+  transform: translate3d(clamp(80px, 9vw, 144px), 0, 0);
+  transition:
+    transform 920ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 680ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform, opacity;
+}
+
+.productSceneEntered {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+.productSceneSettled {
+  opacity: 1;
+  transform: none;
+  will-change: auto;
+}
+
+.productSceneImage {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+  object-position: left center;
+}
+
+.orbitLine {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+@media (min-width: 1200px) {
+  .intro h2 {
+    white-space: nowrap;
+  }
+}
+@media (min-width: 1024px) {
+  .productSceneImage {
+    image-rendering: auto;
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .productScene {
+    width: calc(100% + 72px);
+    height: 244px;
+    margin-left: 48px;
+  }
+}
+
+.orbitLine path {
+  fill: none;
+  stroke: var(--orbit);
+  stroke-dasharray: 1800;
+  stroke-dashoffset: 1800;
+  stroke-linecap: round;
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+  animation: drawOrbit 1200ms 220ms ease-out forwards;
+}
+
+.orbitLine circle {
+  fill: var(--orbit);
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: revealNode 320ms 920ms ease-out forwards;
+}
+
+@media (max-width: 1023px) {
+  .inner {
+    padding-top: 132px;
+    padding-bottom: 56px;
+  }
+
+  .intro h2 {
+    max-width: 330px;
+    font-size: clamp(3.2rem, 7vw, 4.35rem);
+  }
+
+  .body {
+    margin-left: clamp(32px, 5vw, 64px);
+  }
+
+  .productScene {
+    width: min(calc(100% - 40px), 720px);
+    height: clamp(170px, 24vw, 196px);
+    margin-top: clamp(72px, 9svh, 92px);
+    margin-left: clamp(24px, 4vw, 36px);
+  }
+}
+
+@media (max-width: 767px) {
+  .section,
+  .inner {
+    min-height: 100svh;
+  }
+
+  .inner {
+    padding-top: 112px;
+    padding-bottom: 40px;
+  }
+
+  .intro {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .intro :global(.eyebrow) {
+    margin-bottom: 18px;
+  }
+
+  .intro h2 {
+    max-width: 280px;
+    font-size: clamp(2.7rem, 13vw, 3.35rem);
+    letter-spacing: -0.04em;
+  }
+
+  .body {
+    font-size: 16px;
+    margin-top: 24px;
+    margin-left: 0;
+  }
+
+  .productScene {
+    width: 100%;
+    height: 174px;
+    margin-top: 46px;
+    margin-left: 0;
+    border-radius: 28px;
+  }
+
+  .productSceneImage {
+    object-fit: cover;
+    object-position: left center;
+  }
+
+  .orbitLine {
+    top: 100px;
+    height: calc(100% - 100px);
+  }
+}
+
+@media (max-width: 420px) and (max-height: 760px) {
+  .inner {
+    padding-top: 96px;
+    padding-bottom: 28px;
+  }
+
+  .intro {
+    gap: 18px;
+  }
+
+  .intro h2 {
+    font-size: 2.55rem;
+  }
+
+  .productScene {
+    height: 154px;
+    margin-top: 32px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(html[data-lyric-dock-reveal-ready="true"]) .intro [data-lyric-dock-reveal] {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
+    will-change: auto;
+  }
+
+.productScene,
+.orbitLine path,
+.orbitLine circle {
+    animation: none;
+  }
+
+  .productScene {
+    opacity: 1;
+    transform: none;
+    transition: none;
+    will-change: auto;
+  }
+
+  .orbitLine path {
+    stroke-dashoffset: 0;
+  }
+
+  .orbitLine circle {
+    opacity: 1;
+  }
+}
+
+@keyframes drawOrbit {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes revealNode {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
