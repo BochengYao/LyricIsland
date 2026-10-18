@@ -1,0 +1,17 @@
+{
+  "name": "lyrichover-brand-20s",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes hyperframes@0.8.63 preview",
+    "audit:phase1": "node scripts/phase1-audit.mjs",
+    "check": "npx --yes hyperframes@0.8.63 check",
+    "render": "npx --yes hyperframes@0.8.63 render",
+    "render:preflight": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/render-final.ps1 -PreflightOnly",
+    "render:final": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/render-final.ps1",
+    "publish": "npx --yes hyperframes@0.8.63 publish"
+  },
+  "dependencies": {
+    "gsap": "3.14.2"
+  }
+}

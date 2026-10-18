@@ -1,0 +1,259 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: var(--canvas-width);
+  height: var(--canvas-height);
+  overflow: hidden;
+  background: var(--color-ivory);
+}
+
+#root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-ivory);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+#world {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--world-width);
+  height: var(--canvas-height);
+  z-index: 0;
+  will-change: transform;
+}
+
+#scene-environments,
+#global-coral-thread {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#global-coral-thread {
+  z-index: 1;
+}
+
+#scene-environments {
+  z-index: 2;
+}
+
+.scene-zone {
+  position: absolute;
+  top: 0;
+  width: var(--canvas-width);
+  height: var(--canvas-height);
+  overflow: hidden;
+}
+
+.scene-zone:nth-child(1) { left: 0; }
+.scene-zone:nth-child(2) { left: 1920px; }
+.scene-zone:nth-child(3) { left: 3840px; }
+.scene-zone:nth-child(4) { left: 5760px; }
+.scene-zone:nth-child(5) { left: 7680px; }
+.scene-zone:nth-child(6) { left: 9600px; }
+.scene-zone:nth-child(7) { left: 11520px; }
+
+.scene-01-environment {
+  position: absolute;
+  left: 450px;
+  top: 541px;
+  width: 2031px;
+  height: auto;
+  opacity: 1;
+  border-radius: 47px;
+  transform-origin: center top;
+  will-change: transform, opacity;
+}
+
+.scene-02-window {
+  position: absolute;
+  left: 560px;
+  top: 54px;
+  width: 1480px;
+  height: 1026px;
+  overflow: hidden;
+  border-radius: 58px;
+  transform-origin: center top;
+  will-change: transform, opacity;
+}
+
+.scene-02-environment {
+  position: absolute;
+  left: 0;
+  top: -178px;
+  width: 1480px;
+  height: auto;
+  display: block;
+}
+
+#global-coral-thread {
+  transform: translateY(-100px);
+  transform-origin: 0 0;
+}
+
+#coral-thread-line {
+  fill: none;
+  stroke: var(--color-coral);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#coral-thread-nodes {
+  fill: var(--color-coral);
+}
+
+#product-plane,
+#copy-plane {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+#product-plane {
+  z-index: 3;
+}
+
+#copy-plane {
+  z-index: 4;
+  right: auto;
+  bottom: auto;
+  width: var(--world-width);
+  height: var(--canvas-height);
+  will-change: transform;
+}
+
+#lyric-island {
+  position: absolute;
+  left: 560px;
+  top: 54px;
+  width: 1480px;
+  height: 206px;
+  overflow: visible;
+  background: transparent;
+  transform-origin: center top;
+  will-change: transform, opacity;
+}
+
+#lyric-island-surface {
+  --halo-x: 280px;
+  --halo-y: 86px;
+  --halo-radius: 155px;
+  --halo-core: 1;
+  --halo-mid: 1;
+  --halo-outer: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  -webkit-mask-image: radial-gradient(
+    circle var(--halo-radius) at var(--halo-x) var(--halo-y),
+    rgba(0, 0, 0, var(--halo-core)) 0%,
+    rgba(0, 0, 0, var(--halo-mid)) 35%,
+    rgba(0, 0, 0, var(--halo-outer)) 62%,
+    #000000 100%
+  );
+  mask-image: radial-gradient(
+    circle var(--halo-radius) at var(--halo-x) var(--halo-y),
+    rgba(0, 0, 0, var(--halo-core)) 0%,
+    rgba(0, 0, 0, var(--halo-mid)) 35%,
+    rgba(0, 0, 0, var(--halo-outer)) 62%,
+    #000000 100%
+  );
+  transform-origin: center center;
+  will-change: transform, opacity;
+}
+
+#lyric-island-content-slot {
+  position: absolute;
+  inset: 0;
+}
+
+.copy-block {
+  position: absolute;
+  left: 132px;
+  top: 78px;
+  width: 660px;
+}
+
+.brand-kicker {
+  margin: 0 0 54px;
+  max-width: 250px;
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+
+.copy-block h1 {
+  margin: 0;
+  width: 660px;
+  font-family: var(--font-display);
+  font-size: 112px;
+  font-weight: 900;
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+  will-change: transform, opacity, clip-path;
+}
+
+.copy-block h1 span {
+  display: block;
+  white-space: nowrap;
+}
+
+.scene-02-copy {
+  position: absolute;
+  left: 2052px;
+  top: 142px;
+  width: 430px;
+}
+
+.scene-02-copy h2 {
+  margin: 0;
+  padding-top: 28px;
+  border-top: 2px solid var(--color-coral);
+  font-family: var(--font-display);
+  font-size: 92px;
+  font-weight: 900;
+  line-height: 0.96;
+  letter-spacing: -0.055em;
+  will-change: transform, opacity, clip-path;
+}
+
+.scene-02-copy h2 span {
+  display: block;
+  white-space: nowrap;
+}
+
+.scene-02-support {
+  margin: 28px 0 0;
+  width: 390px;
+  font-family: var(--font-body);
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: -0.02em;
+  color: rgba(20, 20, 19, 0.72);
+  will-change: transform, opacity;
+}
+
+.scene-02-cursor {
+  position: absolute;
+  left: 2760px;
+  top: 130px;
+  width: 42px;
+  height: 53px;
+  overflow: visible;
+  filter: drop-shadow(0 4px 8px rgba(20, 20, 19, 0.18));
+  will-change: transform, opacity;
+}

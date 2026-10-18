@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="wall" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eef3fb"/>
+      <stop offset=".54" stop-color="#dfe9fb"/>
+      <stop offset="1" stop-color="#c9eeeb"/>
+    </linearGradient>
+    <linearGradient id="violet" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6953e8"/>
+      <stop offset="1" stop-color="#8f73ff"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="170%">
+      <feDropShadow dx="0" dy="22" stdDeviation="26" flood-color="#17171a" flood-opacity=".18"/>
+    </filter>
+    <clipPath id="deskclip"><rect x="90" y="590" width="1740" height="490" rx="44"/></clipPath>
+  </defs>
+  <rect width="1920" height="1080" fill="#f4f1ee"/>
+  <text x="108" y="92" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="27" font-weight="700" fill="#141413">Lyric Hover</text>
+  <text x="108" y="236" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="92" font-weight="800" letter-spacing="-3" fill="#141413">歌词，直接进入任务栏。</text>
+  <text x="112" y="334" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="31" font-weight="500" fill="#141413">窗口继续留给工作，歌词在屏幕最下方安静跟随。</text>
+  <g transform="translate(112 404)" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="24" font-weight="600" fill="#141413">
+    <g><rect width="194" height="58" rx="29" fill="none" stroke="#141413" stroke-width="2"/><text x="97" y="38" text-anchor="middle">任务栏内显示</text></g>
+    <g transform="translate(216 0)"><rect width="188" height="58" rx="29" fill="#fff"/><text x="94" y="38" text-anchor="middle">左对齐 / 居中</text></g>
+    <g transform="translate(426 0)"><rect width="198" height="58" rx="29" fill="none" stroke="#141413" stroke-opacity=".28" stroke-width="2"/><text x="99" y="38" text-anchor="middle">长句自动滚动</text></g>
+  </g>
+  <path d="M1130 186C1370 98 1518 170 1650 324C1710 394 1772 426 1900 430" fill="none" stroke="#ef8d72" stroke-width="2.4" stroke-opacity=".65"/>
+  <circle cx="1650" cy="324" r="7" fill="#ef8d72"/>
+  <g clip-path="url(#deskclip)">
+    <rect x="90" y="590" width="1740" height="490" fill="url(#wall)"/>
+    <circle cx="1578" cy="690" r="310" fill="#b7c5fb" fill-opacity=".54"/>
+    <circle cx="1765" cy="808" r="190" fill="#ffbaa9" fill-opacity=".48"/>
+    <path d="M90 918C328 754 502 855 700 680C846 550 1020 682 1168 610C1330 532 1476 604 1590 564C1690 529 1773 545 1830 580V958H90Z" fill="#ffffff" fill-opacity=".34"/>
+    <g filter="url(#shadow)">
+      <rect x="260" y="640" width="1038" height="296" rx="28" fill="#ffffff" fill-opacity=".94"/>
+      <rect x="260" y="640" width="1038" height="50" rx="28" fill="#ffffff"/>
+      <circle cx="294" cy="665" r="7" fill="#f17f69"/>
+      <circle cx="320" cy="665" r="7" fill="#f5c85d"/>
+      <circle cx="346" cy="665" r="7" fill="#85d49d"/>
+      <rect x="304" y="732" width="316" height="32" rx="16" fill="#141413"/>
+      <rect x="304" y="788" width="476" height="14" rx="7" fill="#aeb4bf" fill-opacity=".48"/>
+      <rect x="304" y="821" width="392" height="14" rx="7" fill="#aeb4bf" fill-opacity=".3"/>
+      <rect x="304" y="874" width="214" height="35" rx="17.5" fill="url(#violet)"/>
+      <rect x="542" y="874" width="214" height="35" rx="17.5" fill="#eceff4"/>
+      <rect x="780" y="874" width="214" height="35" rx="17.5" fill="#eceff4"/>
+      <rect x="1018" y="874" width="214" height="35" rx="17.5" fill="#eceff4"/>
+    </g>
+    <rect x="90" y="948" width="1740" height="132" fill="#151518" fill-opacity=".98"/>
+    <g transform="translate(136 987)">
+      <rect width="46" height="46" rx="10" fill="#292b31"/>
+      <path d="M12 12h9v9h-9zm12 0h9v9h-9zM12 24h9v9h-9zm12 0h9v9h-9z" fill="#f8f8f8"/>
+    </g>
+    <circle cx="224" cy="1010" r="23" fill="#292b31"/>
+    <path d="M214 1009a10 10 0 1 1 20 0a10 10 0 0 1-20 0m16 16l11 11" fill="none" stroke="#f8f8f8" stroke-width="4" stroke-linecap="round"/>
+    <rect x="276" y="987" width="46" height="46" rx="10" fill="#705be9"/>
+    <path d="M287 999h24v20h-24z" fill="#fff" fill-opacity=".95"/>
+    <g font-family="Noto Sans SC, Microsoft YaHei, sans-serif" text-anchor="middle">
+      <text x="1010" y="1000" font-size="29" font-weight="700" fill="#fff">城市睡去以前，让这一句留在这里</text>
+      <text x="1010" y="1037" font-size="19" font-weight="600" fill="#fff" fill-opacity=".58">实时歌词直接显示在任务栏 · 不遮挡窗口</text>
+    </g>
+    <g fill="#f8f8f8" transform="translate(1670 988)">
+      <path d="M0 38h6V25H0zm11 0h6V18h-6zm11 0h6V10h-6z"/>
+      <path d="M50 16c9 0 17 8 17 17h-6a11 11 0 0 0-22 0h-6c0-9 8-17 17-17z"/>
+      <rect x="84" y="13" width="38" height="25" rx="5" fill="none" stroke="#f8f8f8" stroke-width="3"/>
+      <rect x="90" y="18" width="23" height="15" rx="2"/>
+    </g>
+  </g>
+</svg>

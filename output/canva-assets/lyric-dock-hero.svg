@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="520" viewBox="0 0 1500 520">
+  <defs>
+    <linearGradient id="desk" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#edf2fb"/>
+      <stop offset=".56" stop-color="#dbe7fb"/>
+      <stop offset="1" stop-color="#bcebea"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#755cf5"/>
+      <stop offset="1" stop-color="#ee7b67"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-30%" width="140%" height="180%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#11131a" flood-opacity=".18"/>
+    </filter>
+    <clipPath id="frame"><rect x="8" y="8" width="1484" height="504" rx="42"/></clipPath>
+  </defs>
+  <rect x="4" y="4" width="1492" height="512" rx="46" fill="#090909"/>
+  <g clip-path="url(#frame)">
+    <rect x="8" y="8" width="1484" height="504" fill="url(#desk)"/>
+    <circle cx="1260" cy="92" r="250" fill="#aebef8" fill-opacity=".44"/>
+    <circle cx="1400" cy="218" r="160" fill="#ffb9aa" fill-opacity=".52"/>
+    <path d="M8 330C210 230 342 318 505 183C630 80 770 170 900 108C1030 46 1170 114 1290 68C1372 36 1440 52 1492 82V412H8Z" fill="#fff" fill-opacity=".32"/>
+    <g filter="url(#shadow)">
+      <rect x="180" y="62" width="930" height="306" rx="28" fill="#ffffff" fill-opacity=".92"/>
+      <rect x="180" y="62" width="930" height="46" rx="28" fill="#ffffff"/>
+      <circle cx="210" cy="85" r="6" fill="#ef7e69"/>
+      <circle cx="232" cy="85" r="6" fill="#f6c75e"/>
+      <circle cx="254" cy="85" r="6" fill="#86d49d"/>
+      <rect x="224" y="140" width="276" height="28" rx="14" fill="#161616"/>
+      <rect x="224" y="189" width="410" height="13" rx="6.5" fill="#a6adba" fill-opacity=".5"/>
+      <rect x="224" y="219" width="340" height="13" rx="6.5" fill="#a6adba" fill-opacity=".34"/>
+      <rect x="224" y="276" width="210" height="56" rx="18" fill="url(#accent)"/>
+      <rect x="462" y="276" width="186" height="56" rx="18" fill="#eef0f5"/>
+      <rect x="676" y="276" width="186" height="56" rx="18" fill="#eef0f5"/>
+      <rect x="890" y="276" width="174" height="56" rx="18" fill="#eef0f5"/>
+    </g>
+    <rect x="8" y="406" width="1484" height="106" fill="#141417" fill-opacity=".97"/>
+    <g transform="translate(50 438)">
+      <rect width="38" height="38" rx="9" fill="#292b31"/>
+      <path d="M10 10h8v8h-8zm10 0h8v8h-8zM10 20h8v8h-8zm10 0h8v8h-8z" fill="#f7f7f7"/>
+    </g>
+    <circle cx="126" cy="457" r="19" fill="#292b31"/>
+    <path d="M118 456a8 8 0 1 1 16 0a8 8 0 0 1-16 0m13 13l9 9" fill="none" stroke="#f7f7f7" stroke-width="3.2" stroke-linecap="round"/>
+    <rect x="170" y="438" width="38" height="38" rx="9" fill="#6b57e8"/>
+    <path d="M179 448h20v17h-20z" fill="#fff" fill-opacity=".94"/>
+    <g font-family="Segoe UI, Arial, sans-serif" text-anchor="middle">
+      <text x="815" y="452" font-size="25" font-weight="700" fill="#ffffff">No city sleeps when the chorus begins</text>
+      <text x="815" y="482" font-size="16" font-weight="600" fill="#ffffff" fill-opacity=".62">实时歌词直接进入任务栏 · 不遮挡任何窗口</text>
+    </g>
+    <g fill="#f7f7f7" transform="translate(1334 439)">
+      <path d="M0 30h5V20H0zm9 0h5V14H9zm9 0h5V8h-5z"/>
+      <path d="M40 13c8 0 14 6 14 14h-5a9 9 0 0 0-18 0h-5c0-8 6-14 14-14z"/>
+      <rect x="67" y="10" width="31" height="20" rx="4" fill="none" stroke="#f7f7f7" stroke-width="2.5"/>
+      <rect x="72" y="14" width="19" height="12" rx="2"/>
+    </g>
+  </g>
+</svg>

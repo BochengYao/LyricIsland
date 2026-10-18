@@ -1,0 +1,23 @@
+@font-face {
+  font-family: "LyricHover Zidianhei";
+  src: url("assets/fonts/ziyou-dian-zidianhei-subset.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "LyricHover Zidianhei";
+  src: url("assets/fonts/ziyou-dian-zidianhei-bold-subset.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 900;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "LyricHover Puhuiti";
+  src: url("assets/fonts/alibaba-puhuiti-bold-subset.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+}

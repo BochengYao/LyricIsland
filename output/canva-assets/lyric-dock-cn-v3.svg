@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <clipPath id="screenClip"><rect x="96" y="570" width="1728" height="462" rx="28"/></clipPath>
+    <linearGradient id="desktop" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eef2f5"/>
+      <stop offset="1" stop-color="#e4e8ec"/>
+    </linearGradient>
+    <filter id="screenShadow" x="-10%" y="-20%" width="120%" height="150%">
+      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#1a1a19" flood-opacity=".12"/>
+    </filter>
+  </defs>
+
+  <rect width="1920" height="1080" fill="#f5f2ee"/>
+
+  <text x="118" y="106" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="25" font-weight="700" fill="#151514" letter-spacing=".5">Lyric Hover</text>
+
+  <text x="118" y="258" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="112" font-weight="800" fill="#151514" letter-spacing="-5">
+    <tspan x="118" dy="0">窗口留给工作，</tspan>
+    <tspan x="118" dy="132">歌词留在底部。</tspan>
+  </text>
+
+  <text x="1240" y="300" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="29" font-weight="500" fill="#252523">
+    <tspan x="1240" dy="0">实时歌词安静留在任务栏，</tspan>
+    <tspan x="1240" dy="46">不遮挡当前窗口；</tspan>
+    <tspan x="1240" dy="46">长句也会自然滚动。</tspan>
+  </text>
+
+  <path d="M 118 505 C 410 426, 655 535, 904 500 S 1330 430, 1535 520 S 1730 620, 1686 780" fill="none" stroke="#ee765f" stroke-width="2.4" stroke-linecap="round"/>
+  <circle cx="1686" cy="780" r="7" fill="#ee765f"/>
+
+  <g filter="url(#screenShadow)">
+    <rect x="96" y="570" width="1728" height="462" rx="28" fill="url(#desktop)"/>
+  </g>
+  <g clip-path="url(#screenClip)">
+    <circle cx="1650" cy="700" r="275" fill="#d6e4f4"/>
+    <circle cx="1642" cy="702" r="164" fill="#bed3ee"/>
+    <circle cx="1642" cy="702" r="82" fill="#88aee0"/>
+    <rect x="162" y="632" width="1040" height="228" rx="20" fill="#ffffff" opacity=".72"/>
+    <circle cx="205" cy="672" r="7" fill="#c8c7c4"/>
+    <circle cx="232" cy="672" r="7" fill="#c8c7c4"/>
+    <circle cx="259" cy="672" r="7" fill="#c8c7c4"/>
+    <rect x="205" y="724" width="360" height="17" rx="8.5" fill="#d8d9da"/>
+    <rect x="205" y="762" width="700" height="13" rx="6.5" fill="#e1e2e3"/>
+    <rect x="205" y="793" width="596" height="13" rx="6.5" fill="#e1e2e3"/>
+    <rect x="205" y="824" width="652" height="13" rx="6.5" fill="#e1e2e3"/>
+
+    <rect x="96" y="902" width="1728" height="130" fill="#111211"/>
+    <g transform="translate(146 943)" stroke="#ffffff" stroke-width="4" fill="none" opacity=".94">
+      <rect x="0" y="0" width="18" height="18"/>
+      <rect x="25" y="0" width="18" height="18"/>
+      <rect x="0" y="25" width="18" height="18"/>
+      <rect x="25" y="25" width="18" height="18"/>
+    </g>
+    <circle cx="238" cy="965" r="22" fill="#ffffff" opacity=".12"/>
+    <circle cx="301" cy="965" r="22" fill="#ffffff" opacity=".12"/>
+
+    <text x="960" y="956" text-anchor="middle" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="31" font-weight="700" fill="#ffffff">有些旋律，不必抬头也能看见</text>
+    <text x="960" y="995" text-anchor="middle" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="500" fill="#ffffff" opacity=".48">Lyric Hover · 歌词坞</text>
+
+    <g transform="translate(1658 947)" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity=".86">
+      <path d="M0 17c9-10 19-10 28 0"/>
+      <path d="M6 24c5-5 11-5 16 0"/>
+      <circle cx="14" cy="31" r="2" fill="#ffffff" stroke="none"/>
+      <path d="M52 12v24m0-12h18m0-12v24"/>
+    </g>
+    <text x="1766" y="963" text-anchor="end" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#ffffff">22:18</text>
+    <text x="1766" y="990" text-anchor="end" font-family="Arial, sans-serif" font-size="15" fill="#ffffff" opacity=".62">2026/09/13</text>
+  </g>
+
+  <circle cx="1686" cy="780" r="16" fill="#f5f2ee" opacity=".72"/>
+  <circle cx="1686" cy="780" r="7" fill="#ee765f"/>
+</svg>

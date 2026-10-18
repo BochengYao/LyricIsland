@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-resolution="landscape">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080">
+    <title>Lyric Hover 歌词岛 20 秒品牌片</title>
+    <link rel="stylesheet" href="fonts.css">
+    <link rel="stylesheet" href="styles/tokens.css">
+    <link rel="stylesheet" href="styles/structure.css">
+    <script src="vendor/gsap.min.js"></script>
+  </head>
+  <body>
+    <div data-hf-id="hf-at0g" id="root" data-composition-id="main" data-start="0" data-duration="20" data-width="1920" data-height="1080">
+      <!-- One continuous world. Scene modules occupy zones in this plane. -->
+      <div data-hf-id="hf-a1f8" id="world" data-layout-ignore="">
+        <div data-hf-id="hf-fe2l" id="scene-environments" aria-hidden="true">
+          <section data-hf-id="hf-jtst" class="scene-zone scene-zone-01" data-scene="01">
+            <img data-hf-id="hf-2n6l" class="scene-01-environment" src="assets/production/scenes/scene01-hero-composite.png" alt="" crossorigin="anonymous">
+          </section>
+          <section data-hf-id="hf-1bpr" class="scene-zone scene-zone-02" data-scene="02">
+            <div data-hf-id="hf-s2wn" class="scene-02-window">
+              <img data-hf-id="hf-s2bg" class="scene-02-environment" src="assets/production/scenes/window-blue.png" alt="" crossorigin="anonymous">
+            </div>
+          </section>
+          <section data-hf-id="hf-xdlq" class="scene-zone" data-scene="03"></section>
+          <section data-hf-id="hf-893d" class="scene-zone" data-scene="04"></section>
+          <section data-hf-id="hf-59ts" class="scene-zone" data-scene="05"></section>
+          <section data-hf-id="hf-g5bf" class="scene-zone" data-scene="06"></section>
+          <section data-hf-id="hf-c77e" class="scene-zone" data-scene="07"></section>
+        </div>
+
+        <!-- The same coral thread crosses all seven zones. -->
+        <svg data-hf-id="hf-ng0b" id="global-coral-thread" viewBox="0 0 13440 1080" preserveAspectRatio="none" aria-hidden="true">
+          <path data-hf-id="hf-su1c" id="coral-thread-line" pathLength="1000" d="M -120 720 C 500 560 950 790 1580 690 C 2100 605 2300 260 2880 320 C 3500 400 3900 760 4700 670 C 5300 600 5750 230 6400 290 C 7120 360 7250 860 8100 760 C 8800 680 9100 290 9870 350 C 10550 430 10850 790 11600 650 C 12180 540 12500 230 13480 400" />
+          <g data-hf-id="hf-43oz" id="coral-thread-nodes">
+            <circle data-hf-id="hf-qv04" cx="1580" cy="690" r="7" />
+            <circle data-hf-id="hf-j3c8" cx="2880" cy="320" r="7" />
+            <circle data-hf-id="hf-qxdt" cx="4700" cy="670" r="7" />
+            <circle data-hf-id="hf-wf68" cx="6400" cy="290" r="7" />
+            <circle data-hf-id="hf-jp9l" cx="8100" cy="760" r="7" />
+            <circle data-hf-id="hf-64hd" cx="9870" cy="350" r="7" />
+            <circle data-hf-id="hf-gpe6" cx="11600" cy="650" r="7" />
+          </g>
+        </svg>
+      </div>
+
+      <!-- Persistent product plane: this node is never replaced between scenes. -->
+      <div data-hf-id="hf-a397" id="product-plane">
+        <div data-hf-id="hf-vk2g" id="lyric-island" data-persistent-object="lyric-island">
+          <img data-hf-id="hf-ehw2" id="lyric-island-surface" src="assets/production/ui/island-opacity-state.png" alt="歌词岛产品界面" crossorigin="anonymous">
+          <div data-hf-id="hf-s8ac" id="lyric-island-content-slot" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <!-- Scene 01 hero frame. The persistent product remains the same DOM node. -->
+      <div data-hf-id="hf-5j4b" id="copy-plane">
+        <div data-hf-id="hf-w3jp" id="scene-01-copy" class="copy-block">
+          <p data-hf-id="hf-jqpt" class="brand-kicker">Lyric Hover 歌词岛</p>
+          <h1 data-hf-id="hf-3r7u"><span data-hf-id="hf-00a9">这一句，</span><span data-hf-id="hf-fucd">值得被看见。</span></h1>
+        </div>
+        <div data-hf-id="hf-s2cp" id="scene-02-copy" class="scene-02-copy">
+          <h2 data-hf-id="hf-s2tx"><span data-hf-id="hf-s2l1">靠近时，</span><span data-hf-id="hf-s2l2">让开一点。</span></h2>
+          <p data-hf-id="hf-s2sp" class="scene-02-support">鼠标经过的地方，歌词自然变淡。</p>
+        </div>
+        <svg data-hf-id="hf-s2ms" id="scene-02-cursor" class="scene-02-cursor" viewBox="0 0 48 60" aria-hidden="true">
+          <path data-hf-id="hf-hdl2" d="M4 3 L4 48 L16 38 L25 57 L34 52 L25 34 L42 34 Z" fill="#141413" stroke="#FFFFFF" stroke-width="3.2" stroke-linejoin="round" />
+        </svg>
+      </div>
+    </div>
+
+    <script src="scripts/timeline-plan.js"></script>
+    <script src="scripts/morph-contracts.js"></script>
+    <script>
+      window.__timelines = window.__timelines || {};
+      var tl = gsap.timeline({ paused: true });
+
+      window.LyricHoverPlan.scenes.forEach(function (scene) {
+        tl.addLabel(scene.id, scene.start);
+      });
+      tl.addLabel("end", window.LyricHoverPlan.duration);
+
+      // Scene 01 — 0.0s–2.0s. Animate the first campaign poster into its hero frame.
+      tl.addLabel("scene-01-build", 0.06);
+      tl.fromTo(
+        "#coral-thread-line",
+        { strokeDasharray: 1000, strokeDashoffset: 1000 },
+        { strokeDasharray: 1000, strokeDashoffset: 842, duration: 1.28, ease: "sine.inOut" },
+        "scene-01-build"
+      );
+      tl.fromTo(
+        "#world",
+        { x: 30, y: 10 },
+        { x: 0, y: 0, duration: 1.44, ease: "sine.out" },
+        0.08
+      );
+      tl.fromTo(
+        "#scene-01-copy .brand-kicker",
+        { y: 8, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.3, ease: "power2.out" },
+        0.06
+      );
+      tl.fromTo(
+        "#scene-01-copy h1",
+        { x: -26, y: 18, opacity: 0, clipPath: "inset(0 100% 0 0)" },
+        { x: 0, y: 0, opacity: 1, clipPath: "inset(0 0% 0 0)", duration: 0.65, ease: "expo.out" },
+        0.2
+      );
+      tl.fromTo(
+        ".scene-01-environment",
+        { y: 132, scale: 0.97, opacity: 0 },
+        { y: 0, scale: 1, opacity: 1, duration: 0.9, ease: "power3.out" },
+        0.35
+      );
+      tl.set("#lyric-island", { opacity: 0 }, 0);
+      tl.fromTo(
+        "#coral-thread-nodes circle:first-child",
+        { x: -910, y: -40, opacity: 0, scale: 0.4, transformOrigin: "center center" },
+        { x: -910, y: -40, opacity: 1, scale: 1.08, duration: 0.24, ease: "power3.out" },
+        1.2
+      );
+      tl.to(
+        "#coral-thread-nodes circle:first-child",
+        { scale: 1, duration: 0.12, ease: "sine.out" },
+        1.44
+      );
+      tl.addLabel("scene-01-hold", 1.5);
+
+      // Scene 02 — 2.0s–5.0s. Continue through the same world into hover avoidance.
+      tl.addLabel("scene-02-transition", 2.0);
+      tl.to(
+        "#world",
+        { x: -1920, duration: 0.84, ease: "power3.inOut" },
+        "scene-02-transition"
+      );
+      tl.to(
+        "#copy-plane",
+        { x: -1920, duration: 0.84, ease: "power3.inOut" },
+        "scene-02-transition"
+      );
+      tl.to(
+        "#coral-thread-line",
+        { strokeDashoffset: 700, duration: 2.42, ease: "sine.inOut" },
+        2.04
+      );
+      tl.fromTo(
+        ".scene-02-window",
+        { y: 52, scale: 0.982, opacity: 0 },
+        { y: 0, scale: 1, opacity: 1, duration: 0.78, ease: "power4.out" },
+        2.08
+      );
+      tl.fromTo(
+        "#scene-02-copy h2",
+        { x: 34, opacity: 0, clipPath: "inset(0 0 0 100%)" },
+        { x: 0, opacity: 1, clipPath: "inset(0 0 0 0%)", duration: 0.58, ease: "expo.out" },
+        2.18
+      );
+      tl.fromTo(
+        "#scene-02-copy .scene-02-support",
+        { y: 16, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.46, ease: "sine.out" },
+        2.54
+      );
+      tl.set("#lyric-island", { opacity: 1 }, "scene-02-transition");
+      tl.fromTo(
+        "#lyric-island",
+        { x: 1920, y: -12, scaleX: 0.94 },
+        { x: 0, y: 0, scaleX: 1, duration: 0.84, ease: "power3.inOut", immediateRender: false },
+        "scene-02-transition"
+      );
+      tl.set(
+        "#lyric-island-surface",
+        { "--halo-x": "280px", "--halo-y": "86px", "--halo-radius": "155px", "--halo-core": 1, "--halo-mid": 1, "--halo-outer": 1 },
+        "scene-02-transition"
+      );
+      tl.fromTo(
+        "#scene-02-cursor",
+        { x: 250, y: 470, opacity: 0 },
+        { x: 0, y: 0, opacity: 1, duration: 0.6, ease: "circ.out" },
+        2.52
+      );
+      tl.to(
+        "#scene-02-cursor",
+        { x: 430, duration: 1.15, ease: "sine.inOut" },
+        3.12
+      );
+      tl.to(
+        "#lyric-island-surface",
+        { "--halo-core": 0.18, "--halo-mid": 0.52, "--halo-outer": 0.82, duration: 0.28, ease: "sine.out" },
+        3.12
+      );
+      tl.to(
+        "#lyric-island-surface",
+        { "--halo-x": "690px", duration: 1.09, ease: "power2.inOut" },
+        3.2
+      );
+      tl.to(
+        "#scene-02-cursor",
+        { x: 520, y: 430, duration: 0.58, ease: "power3.in" },
+        4.3
+      );
+      tl.to(
+        "#lyric-island-surface",
+        { "--halo-x": "740px", "--halo-y": "210px", duration: 0.38, ease: "sine.inOut" },
+        4.3
+      );
+      tl.to(
+        "#lyric-island-surface",
+        { "--halo-radius": "60px", "--halo-core": 1, "--halo-mid": 1, "--halo-outer": 1, duration: 0.38, ease: "power2.out" },
+        4.34
+      );
+      tl.addLabel("scene-02-hold", 4.74);
+
+      window.__timelines.main = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

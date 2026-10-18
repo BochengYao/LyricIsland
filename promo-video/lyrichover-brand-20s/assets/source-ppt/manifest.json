@@ -1,0 +1,66 @@
+{
+  "source": {
+    "path": "C:\\Users\\14731\\Downloads\\歌词岛宣传页CN.pptx.pptx",
+    "sha256": "2F927A6E57882B5FE082DBD6DE48BF5862390D86B3C2A3AA74C9205F92DD653A",
+    "slideCount": 7
+  },
+  "inventory": {
+    "svg": 15,
+    "png": 27,
+    "jpeg": 1
+  },
+  "slideMedia": {
+    "1": ["image1.png", "image2.png"],
+    "2": ["image1.png", "image3.png"],
+    "3": [
+      "image4.png",
+      "image5.png",
+      "image6.png",
+      "image7.svg",
+      "image8.png",
+      "image9.svg",
+      "image10.png",
+      "image11.svg",
+      "image12.png",
+      "image13.svg",
+      "image14.png",
+      "image15.svg",
+      "image16.png",
+      "image17.svg",
+      "image18.png",
+      "image19.svg",
+      "image20.png",
+      "image21.svg",
+      "image22.png",
+      "image23.svg",
+      "image24.png",
+      "image25.svg",
+      "image26.png",
+      "image27.svg",
+      "image28.png",
+      "image29.svg",
+      "image30.png",
+      "image31.svg"
+    ],
+    "4": ["image32.png", "image33.png", "image34.png"],
+    "5": ["image1.png", "image35.png", "image36.svg", "image37.jpeg", "image38.png", "image39.svg"],
+    "6": ["image1.png", "image40.png", "image41.png"],
+    "7": ["image42.png", "image43.png"]
+  },
+  "productionAliases": {
+    "image1.png": "vectors/coral-path-reference-light.png",
+    "image2.png": "scenes/desktop-blue.png",
+    "image3.png": "scenes/window-blue.png",
+    "image4.png": "vectors/coral-path-reference-alt.png",
+    "image5.png": "ui/island-layout-states.png",
+    "image32.png": "scenes/on-cue-dark.png",
+    "image33.png": "scenes/window-cyan.png",
+    "image34.png": "ui/island-opacity-state.png",
+    "image36.svg": "vectors/coral-oval.svg",
+    "image39.svg": "vectors/player-pill-outline.svg",
+    "image40.png": "scenes/word-tracking-teal.png",
+    "image41.png": "ui/island-word-tracking.png",
+    "image42.png": "scenes/dock-dark.png",
+    "image43.png": "scenes/windows-taskbar.png"
+  }
+}

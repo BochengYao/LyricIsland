@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <clipPath id="poster"><rect width="1920" height="1080"/></clipPath>
+    <filter id="softShadow" x="-15%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="26" stdDeviation="36" flood-color="#121210" flood-opacity=".12"/>
+    </filter>
+  </defs>
+
+  <g clip-path="url(#poster)">
+    <rect width="1920" height="1080" fill="#f4f0eb"/>
+
+    <text x="132" y="92" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="27" font-weight="700" fill="#151514">Lyric Hover 歌词岛</text>
+
+    <text x="128" y="246" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="118" font-weight="800" fill="#151514" letter-spacing="-5">
+      <tspan x="128" dy="0">唱到哪里，</tspan>
+      <tspan x="128" dy="130">亮到哪里。</tspan>
+    </text>
+
+    <text x="136" y="500" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="30" font-weight="500" fill="#292826">
+      <tspan x="136" dy="0">歌词随声音逐字推进，</tspan>
+      <tspan x="136" dy="48">让节奏真正被看见。</tspan>
+    </text>
+
+    <path d="M 112 795 C 390 702, 535 854, 720 770 C 870 701, 900 635, 1044 617" fill="none" stroke="#ef765c" stroke-width="2.2" stroke-linecap="round"/>
+
+    <g filter="url(#softShadow)">
+      <path d="M 650 386 H 1988 V 1120 H 650 C 616 1120 596 1097 596 1062 V 444 C 596 409 616 386 650 386 Z" fill="#eeece9"/>
+    </g>
+
+    <path d="M 596 386 H 2080 C 2006 386 1979 399 1963 426 C 1953 445 1953 476 1953 492 C 1953 516 1932 532 1897 532 H 779 C 744 532 723 516 723 492 C 723 476 723 445 713 426 C 697 399 670 386 596 386 Z" fill="#121211"/>
+
+    <text x="770" y="468" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="21" font-weight="600" fill="#ffffff" opacity=".54">正在播放</text>
+    <text x="770" y="532" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="48" font-weight="700" letter-spacing=".4">
+      <tspan fill="#ffffff">我把影子遗落在</tspan><tspan fill="#ef765c">街</tspan><tspan fill="#ffffff" opacity=".30">灯与雨水交汇的地方。</tspan>
+    </text>
+
+    <g transform="translate(1784 466)" stroke="#ffffff" fill="none" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" opacity=".82">
+      <path d="M0 18h22M11 7v22"/>
+      <path d="M58 7l18 11-18 11z" fill="#ffffff" stroke="none"/>
+      <path d="M112 8v20M122 8v20"/>
+    </g>
+
+    <rect x="790" y="704" width="758" height="18" rx="9" fill="#d7d4d0" opacity=".66"/>
+    <rect x="790" y="748" width="540" height="15" rx="7.5" fill="#ddd9d5" opacity=".58"/>
+    <rect x="790" y="789" width="646" height="15" rx="7.5" fill="#ddd9d5" opacity=".42"/>
+    <rect x="790" y="830" width="488" height="15" rx="7.5" fill="#ddd9d5" opacity=".36"/>
+
+    <circle cx="1044" cy="617" r="7" fill="#ef765c"/>
+  </g>
+</svg>

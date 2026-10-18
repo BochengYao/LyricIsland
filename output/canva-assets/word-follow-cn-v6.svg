@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <clipPath id="stageClip"><rect x="96" y="596" width="1728" height="420" rx="28"/></clipPath>
+    <filter id="stageShadow" x="-10%" y="-20%" width="120%" height="150%">
+      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#1a1a19" flood-opacity=".12"/>
+    </filter>
+  </defs>
+
+  <rect width="1920" height="1080" fill="#f5f2ee"/>
+
+  <text x="118" y="106" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="25" font-weight="700" fill="#151514" letter-spacing=".5">Lyric Hover</text>
+
+  <text x="118" y="258" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="112" font-weight="800" fill="#151514" letter-spacing="-5">
+    <tspan x="118" dy="0">唱到哪里，</tspan>
+    <tspan x="118" dy="132">歌词亮到哪里。</tspan>
+  </text>
+
+  <text x="1240" y="316" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="29" font-weight="500" fill="#252523">
+    <tspan x="1240" dy="0">未唱字词保持低亮，</tspan>
+    <tspan x="1240" dy="46">随声音逐字点亮；</tspan>
+    <tspan x="1240" dy="46">节奏、停顿与呼吸自然推进。</tspan>
+  </text>
+
+  <path d="M 118 506 C 430 432, 690 542, 966 500 S 1386 420, 1578 522 S 1764 650, 1692 782" fill="none" stroke="#ee765f" stroke-width="2.4" stroke-linecap="round"/>
+  <circle cx="1692" cy="782" r="7" fill="#ee765f"/>
+
+  <g filter="url(#stageShadow)">
+    <rect x="96" y="596" width="1728" height="420" rx="28" fill="#edf0f2"/>
+  </g>
+  <g clip-path="url(#stageClip)">
+    <circle cx="1542" cy="824" r="312" fill="#d9ecec"/>
+    <circle cx="1542" cy="824" r="196" fill="#b7dddd"/>
+    <circle cx="440" cy="968" r="232" fill="#e9dfef"/>
+    <rect x="180" y="836" width="920" height="110" rx="18" fill="#ffffff" opacity=".34"/>
+    <rect x="226" y="877" width="468" height="14" rx="7" fill="#d3d6d8" opacity=".72"/>
+    <rect x="226" y="908" width="708" height="12" rx="6" fill="#d3d6d8" opacity=".52"/>
+
+    <g transform="translate(232 596) scale(2.6)">
+      <path d="M 0,0 L 560,0 C 532,0 522,5 516,15 C 512,22 512,34 512,40 C 512,49 504,55 491,55 L 69,55 C 56,55 48,49 48,40 C 48,34 48,22 44,15 C 38,5 28,0 0,0 Z" fill="#111211"/>
+    </g>
+
+    <text x="960" y="678" text-anchor="middle" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="48" font-weight="700" letter-spacing="1">
+      <tspan fill="#ffffff">我把影子留在</tspan><tspan fill="#ffffff" opacity=".34">路灯与雨相遇的地方</tspan>
+    </text>
+    <text x="960" y="724" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="500" fill="#ffffff" opacity=".46">I left my shadow where the streetlight meets the rain.</text>
+  </g>
+
+  <circle cx="1692" cy="782" r="16" fill="#f5f2ee" opacity=".72"/>
+  <circle cx="1692" cy="782" r="7" fill="#ee765f"/>
+</svg>

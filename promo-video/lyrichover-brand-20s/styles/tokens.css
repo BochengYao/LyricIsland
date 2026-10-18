@@ -1,0 +1,14 @@
+:root {
+  --color-ivory: #fcfbfa;
+  --color-ink: #141413;
+  --color-coral: #f38f61;
+  --color-deep-purple: #1c172e;
+  --color-warm-muted: #e8e2da;
+  --color-white: #ffffff;
+  --font-display: "LyricHover Zidianhei", sans-serif;
+  --font-body: "LyricHover Zidianhei", sans-serif;
+  --font-latin: "LyricHover Puhuiti", sans-serif;
+  --canvas-width: 1920px;
+  --canvas-height: 1080px;
+  --world-width: 13440px;
+}

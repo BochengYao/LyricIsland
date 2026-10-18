@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <radialGradient id="topglow" cx="84%" cy="15%" r="70%"><stop offset="0" stop-color="#344d4d" stop-opacity=".5"/><stop offset="1" stop-color="#11100f" stop-opacity="0"/></radialGradient>
+    <linearGradient id="stage" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#edf2fb"/><stop offset=".58" stop-color="#f4f1ee"/><stop offset="1" stop-color="#d8ecea"/></linearGradient>
+    <linearGradient id="warm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4775c"/><stop offset="1" stop-color="#f8b76f"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-80%" width="140%" height="260%"><feDropShadow dx="0" dy="22" stdDeviation="25" flood-color="#000" flood-opacity=".34"/></filter>
+    <clipPath id="progress"><rect x="0" y="0" width="770" height="110"/></clipPath>
+    <clipPath id="stageclip"><rect x="90" y="510" width="1740" height="340" rx="44"/></clipPath>
+  </defs>
+  <rect width="1920" height="1080" fill="#11100f"/>
+  <rect width="1920" height="1080" fill="url(#topglow)"/>
+  <path d="M1210 0C1392 112 1410 244 1542 330C1654 404 1772 392 1920 310" fill="none" stroke="#ef8d72" stroke-opacity=".42" stroke-width="2.5"/>
+  <circle cx="1542" cy="330" r="7" fill="#ef8d72"/>
+  <text x="108" y="92" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="27" font-weight="700" fill="#fff">Lyric Hover</text>
+  <text x="108" y="226" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="92" font-weight="800" letter-spacing="-3" fill="#fff">每个字，都跟上声音。</text>
+  <text x="112" y="318" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="31" font-weight="500" fill="#fff" fill-opacity=".68">未唱部分保持低亮，唱到哪里，歌词就逐字亮到哪里。</text>
+  <g transform="translate(113 382)" font-family="Noto Sans SC, Microsoft YaHei, sans-serif">
+    <text x="0" y="28" font-size="18" font-weight="700" fill="#fff" fill-opacity=".42">00:24</text>
+    <rect x="86" y="15" width="440" height="2" rx="1" fill="#fff" fill-opacity=".16"/>
+    <rect x="86" y="15" width="255" height="2" rx="1" fill="url(#warm)"/>
+    <circle cx="341" cy="16" r="6" fill="#f48769"/>
+    <text x="548" y="28" font-size="18" font-weight="700" fill="#fff" fill-opacity=".42">58%</text>
+  </g>
+  <g clip-path="url(#stageclip)">
+    <rect x="90" y="510" width="1740" height="340" fill="url(#stage)"/>
+    <circle cx="1600" cy="590" r="260" fill="#b7c5fb" fill-opacity=".46"/>
+    <circle cx="1765" cy="755" r="180" fill="#ffbba9" fill-opacity=".5"/>
+    <path d="M90 810C330 690 505 792 690 660C842 552 990 682 1148 594C1310 504 1460 596 1600 534C1700 490 1786 516 1830 548V850H90Z" fill="#fff" fill-opacity=".28"/>
+    <path d="M176 548H1744C1665.6 548 1637.6 562 1620.8 590C1609.6 609.6 1609.6 643.2 1609.6 660C1609.6 685.2 1587.2 702 1550.8 702H369.2C332.8 702 310.4 685.2 310.4 660C310.4 643.2 310.4 609.6 299.2 590C282.4 562 254.4 548 176 548Z" fill="#050505" filter="url(#shadow)"/>
+    <g transform="translate(334 600)" font-family="Noto Sans SC, Microsoft YaHei, sans-serif">
+      <text x="0" y="58" font-size="45" font-weight="700" letter-spacing="1" fill="#fff" fill-opacity=".34">我把影子留在路灯与雨相遇的地方</text>
+      <g clip-path="url(#progress)"><text x="0" y="58" font-size="45" font-weight="700" letter-spacing="1" fill="#fff">我把影子留在路灯与雨相遇的地方</text></g>
+      <text x="0" y="100" font-size="20" font-weight="600" fill="#fff" fill-opacity=".4">逐字跟随 · Word-by-word follow</text>
+    </g>
+  </g>
+  <g transform="translate(112 918)" font-family="Noto Sans SC, Microsoft YaHei, sans-serif">
+    <g><circle cx="10" cy="10" r="10" fill="#fff" fill-opacity=".25"/><text x="34" y="18" font-size="22" font-weight="600" fill="#fff" fill-opacity=".62">未唱字词保持低亮</text></g>
+    <g transform="translate(350 0)"><circle cx="10" cy="10" r="10" fill="#fff"/><text x="34" y="18" font-size="22" font-weight="600" fill="#fff" fill-opacity=".85">已唱字词逐字点亮</text></g>
+    <g transform="translate(735 0)"><circle cx="10" cy="10" r="10" fill="#f48769"/><text x="34" y="18" font-size="22" font-weight="600" fill="#fff" fill-opacity=".62">节奏、停顿与呼吸同步</text></g>
+  </g>
+  <text x="112" y="1016" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="25" font-weight="600" fill="#fff" fill-opacity=".44">不是一条进度条，而是歌词本身在跟随声音。</text>
+</svg>
