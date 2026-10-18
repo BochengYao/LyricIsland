@@ -977,9 +977,13 @@ def test_incentive_page(page: Page, path: str, lang: str, mobile: bool = False) 
                 '"body":"为不同桌面保存独立的歌词岛布局。","created_at":"2026-07-11T00:00:00Z","like_count":3,"liked":false}'
                 '],"previews":['
                 '{"id":"preview-1","version":"v2.1 Preview","title_zh":"更安静的桌面交互",'
-                '"title_en":"Quieter desktop interactions","body_zh":"继续打磨避让。\\n- 收起体验更加顺滑。",'
-                '"body_en":"More polish for avoidance.\\n- Smoother retraction.","highlights_zh":[],'
-                '"highlights_en":[],"target_date":"2026-09-01",'
+                '"title_en":"Quieter desktop interactions","body_zh":"继续打磨避让。",'
+                '"body_en":"More polish for avoidance.","highlights_zh":["收起体验更加顺滑。"],'
+                '"highlights_en":["Smoother retraction."],"note_zh":"继续打磨避让。",'
+                '"note_en":"More polish for avoidance.","note_zh_tw":"","note_ja":"",'
+                '"features":[{"id":"preview-feature-1","sort_order":1,"progress":80,"stage":"development","display_group":"featured","target_version":"","title_zh":"省电模式","title_en":"Power saving","title_zh_tw":"","title_ja":"","description_zh":"进一步降低后台资源占用。","description_en":"Further reduces background resource usage.","description_zh_tw":"","description_ja":"","content_zh":"省电模式 — 进一步降低后台资源占用。","content_en":"Power saving — Further reduces background resource usage.","content_zh_tw":"","content_ja":""},'
+                '{"id":"preview-feature-2","sort_order":2,"progress":0,"stage":"development","display_group":"improvement","target_version":"","title_zh":"收起体验","title_en":"Retraction","title_zh_tw":"","title_ja":"","description_zh":"收起体验更加顺滑。","description_en":"Smoother retraction.","description_zh_tw":"","description_ja":"","content_zh":"收起体验 — 收起体验更加顺滑。","content_en":"Retraction — Smoother retraction.","content_zh_tw":"","content_ja":""},'
+                '{"id":"preview-feature-3","sort_order":3,"progress":0,"stage":"development","display_group":"future","target_version":"V3.3","title_zh":"更多歌词岛形状","title_en":"More island shapes","title_zh_tw":"","title_ja":"","description_zh":"支持更多歌词岛形状与自定义轮廓。","description_en":"More island shapes and custom outlines.","description_zh_tw":"","description_ja":"","content_zh":"更多歌词岛形状 — 支持更多歌词岛形状与自定义轮廓。","content_en":"More island shapes — More island shapes and custom outlines.","content_zh_tw":"","content_ja":""}],"target_date":"2026-09-01",'
                 '"status":"published","created_at":"2026-07-14T00:00:00Z",'
                 '"updated_at":"2026-07-14T00:00:00Z","published_at":"2026-07-14T00:00:00Z"}]}'
             ),
@@ -1002,10 +1006,43 @@ def test_incentive_page(page: Page, path: str, lang: str, mobile: bool = False) 
     assert 0 < page.locator(".acceptedAttachment").count() < page.locator(".acceptedCard").count()
     preview_card = page.locator(".previewCard")
     expect(preview_card.locator(".previewCardMeta")).to_contain_text("v2.1 Preview")
-    expect(preview_card.locator(".previewItemNumber")).to_have_text(["01", "02"])
-    expect(preview_card.locator(".previewItems p")).to_have_text(
-        ["More polish for avoidance.", "Smoother retraction."] if lang == "en" else ["继续打磨避让。", "收起体验更加顺滑。"]
+    expect(preview_card.locator(".previewCardMeta small")).to_have_text(
+        "Release timing TBD" if lang == "en" else "推出时间待定"
     )
+    expect(preview_card.locator(".previewNoteLabel")).to_have_count(0)
+    expect(preview_card.locator(".previewItemNumber")).to_have_count(0)
+    expect(preview_card.locator(".previewProgressRing")).to_have_count(2)
+    expect(preview_card.locator('[role="progressbar"]')).to_have_attribute("aria-valuenow", "80")
+    expect(preview_card.locator('[role="img"]')).to_have_attribute("aria-label", "Not started" if lang == "en" else "未开始")
+    expect(page.locator(".previewLegend")).to_have_count(0)
+    expect(preview_card.locator(".previewCurrentGroup")).to_have_count(1)
+    expect(preview_card.locator(".previewImprovementGroup")).to_have_count(0)
+    expect(preview_card.locator(".previewCurrentGroup > h3")).to_have_text(
+        "Features and improvements" if lang == "en" else "新功能与改进"
+    )
+    expect(preview_card.locator(".previewFutureGroup")).to_have_count(1)
+    expect(preview_card.locator(".previewFutureGroup > h3")).to_have_text(
+        "Coming next · V3.3" if lang == "en" else "接下来 · V3.3"
+    )
+    expect(preview_card.locator(".previewFutureGroup .previewProgressRing")).to_have_count(0)
+    expect(preview_card.locator(".previewNote")).to_have_text("More polish for avoidance." if lang == "en" else "继续打磨避让。")
+    expect(preview_card.locator(".previewFeatureHeading h4")).to_have_text(
+        ["Power saving", "Retraction"] if lang == "en" else ["省电模式", "收起体验"]
+    )
+    expect(preview_card.locator(".previewItems li > p")).to_have_text(
+        ["Further reduces background resource usage.", "Smoother retraction."] if lang == "en" else ["进一步降低后台资源占用。", "收起体验更加顺滑。"]
+    )
+    preview_layout = preview_card.evaluate(
+        """(card) => ({
+          metaDirection: getComputedStyle(card.querySelector('.previewCardMeta')).flexDirection,
+          listWidth: card.querySelector('.previewCurrentGroup').getBoundingClientRect().width,
+          cardWidth: card.getBoundingClientRect().width
+        })"""
+    )
+    assert preview_layout["metaDirection"] == "column"
+    assert preview_layout["listWidth"] <= 661
+    if not mobile:
+        assert preview_layout["listWidth"] < preview_layout["cardWidth"]
     expect(page.locator(".acceptedTime").first).to_be_visible()
     expect(page.locator(".acceptedWaterfallColumn")).to_have_count(4)
     visible_columns = page.locator(".acceptedWaterfallColumn").evaluate_all(
@@ -1261,7 +1298,9 @@ def test_admin_dashboard(page: Page) -> None:
                 '{"previews":[{"id":"p1","version":"v2.1 Preview",'
                 '"title_zh":"更安静的桌面交互","title_en":"Quieter desktop interactions",'
                 '"body_zh":"继续打磨避让和收起体验。","body_en":"More polish.",'
-                '"highlights_zh":[],"highlights_en":[],"target_date":"2026-09-01",'
+                '"highlights_zh":["新增省电模式。"],"highlights_en":["Add power-saving mode."],'
+                '"note_zh":"继续打磨避让和收起体验。","note_en":"More polish.","note_zh_tw":"","note_ja":"",'
+                '"features":[{"id":"feature-1","sort_order":1,"progress":65,"content_zh":"新增省电模式。","content_en":"Add power-saving mode.","content_zh_tw":"","content_ja":""}],"target_date":"2026-09-01",'
                 '"status":"published","created_at":"2026-07-14T00:00:00Z",'
                 '"updated_at":"2026-07-14T00:00:00Z","published_at":"2026-07-14T00:00:00Z"}]}'
             ),
@@ -1288,13 +1327,29 @@ def test_admin_dashboard(page: Page) -> None:
     page.get_by_role("button", name="版本预告").click()
     expect(page.get_by_role("heading", name="发布版本预告")).to_be_visible()
     expect(page.locator(".previewEditor")).to_be_visible()
-    expect(page.get_by_label("更新内容（中文）")).to_be_visible()
-    expect(page.get_by_label("Update content (English)")).to_be_visible()
-    tbd_button = page.get_by_role("button", name="上线时间待定")
-    expect(tbd_button).to_be_visible()
-    tbd_button.click()
-    expect(tbd_button).to_have_attribute("aria-pressed", "true")
-    expect(page.get_by_label("预计上线时间")).to_be_disabled()
+    expect(page.get_by_label("版本说明 Note（中文）")).to_be_visible()
+    page.get_by_role("tab", name="English").click()
+    expect(page.get_by_label("Version Note (English)")).to_be_visible()
+    expect(page.get_by_label("预计上线范围")).to_be_visible()
+    bulk_input = page.get_by_label("快速批量导入中文功能项")
+    page.get_by_role("tab", name="中文").click()
+    bulk_version = page.get_by_label("导入到版本")
+    expect(bulk_version).to_be_visible()
+    expect(bulk_version.locator("option")).to_have_text(["v2.1 Preview", "v2.2 Preview"])
+    bulk_input.fill("省电模式 | 进一步降低后台资源占用。\n逐字跟随｜歌词随着演唱进度逐字呈现。\n新增歌词坞。\n支持手动刷新。")
+    page.get_by_role("button", name="解析为功能项").click()
+    expect(page.locator(".previewFeatureEditor")).to_have_count(4)
+    expect(page.get_by_label("中文 功能标题").first).to_have_value("省电模式")
+    expect(page.get_by_label("中文 功能描述").first).to_have_value("进一步降低后台资源占用。")
+    expect(page.get_by_label("中文 功能标题").nth(2)).to_have_value("")
+    expect(page.get_by_label("中文 功能描述").nth(2)).to_have_value("新增歌词坞。")
+    expect(page.get_by_label("所属版本")).to_have_count(4)
+    expect(page.get_by_label("所属版本").first).to_have_value("v2.1 Preview")
+    progress_slider = page.get_by_label("v2.1 Preview 功能 1 开发进度与状态")
+    expect(progress_slider).to_have_attribute("max", "9")
+    expect(progress_slider).to_have_attribute("min", "0")
+    expect(page.locator(f'#{progress_slider.get_attribute("list")} option')).to_have_count(10)
+    expect(page.locator(".previewFeatureEditor .previewProgressRing")).to_have_count(0)
 
 
 def test_submission_validation(page: Page) -> None:

@@ -24,6 +24,9 @@ const REVIEW_META_PREFIX = "[[lyric-island-review:v1]]";
 const FEATURE_CONTENT_VERSION = "__FEATURE_CONTENT_V1__";
 const LEGACY_FEATURE_RELEASE_VERSION = "早期更新";
 const AUDIT_VERSION = "__AUDIT_LOG_V1__";
+const RELEASE_PREVIEW_SCHEMA_VERSION = 3;
+const RELEASE_PREVIEW_PROGRESS_ANCHORS = [0, 10, 30, 50, 65, 80, 90, 95];
+const KNOWN_V32_NOTE_ZH = "新版本的主要功能已基本完成，目前正在进一步优化性能、功耗与长期运行体验，发布时间调整至本月内。";
 const DEFAULT_FEATURE_CONTENT = JSON.parse("__ESA_FEATURE_CONTENT_JSON__");
 const DEFAULT_RELEASE_PREVIEW = JSON.parse("__ESA_RELEASE_PREVIEW_JSON__");
 const ALLOWED_MIME_TYPES = new Set([
@@ -240,15 +243,232 @@ function firstPreviewText(...values) {
   return "";
 }
 
+function previewLines(value) {
+  return Array.isArray(value)
+    ? value
+        .filter((item) => typeof item === "string")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : [];
+}
+
 function firstPreviewLines(...values) {
   for (const value of values) {
-    if (!Array.isArray(value)) continue;
-    const lines = value.filter((item) => typeof item === "string")
-      .map((item) => item.trim())
-      .filter(Boolean);
+    const lines = previewLines(value);
     if (lines.length) return lines;
   }
   return [];
+}
+
+function splitPreviewItems(value) {
+  if (typeof value !== "string") return [];
+  return value
+    .split(/\r?\n|[；;]/)
+    .map((item) => item.replace(/^\s*(?:[-–—*•·]|\d+[.)、])\s*/, "").trim())
+    .filter(Boolean);
+}
+
+function safePreviewProgress(value) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return 0;
+  const rounded = Math.min(100, Math.max(0, Math.round(value)));
+  if (rounded === 100) return 100;
+  return [...RELEASE_PREVIEW_PROGRESS_ANCHORS].reverse().find((anchor) => anchor <= rounded) ?? 0;
+}
+
+function safePreviewStage(value, progress) {
+  if (progress !== 100) return "development";
+  if (value === "ready") return "ready";
+  return "testing";
+}
+
+function stableLegacyPreviewFeatureId(previewId, content, position) {
+  let hash = 2166136261;
+  const source = `${previewId}\u0000${content}\u0000${position}`;
+  for (let index = 0; index < source.length; index += 1) {
+    hash ^= source.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `legacy-${(hash >>> 0).toString(36)}`;
+}
+
+const SAFE_LEGACY_PREVIEW_MIGRATIONS = {
+  "新增省电模式，进一步降低后台资源占用。": { title: "省电模式", description: "进一步降低后台资源占用。", display_group: "featured" },
+  "进一步降低后台资源占用。": { title: "省电模式", description: "进一步降低后台资源占用。", display_group: "featured" },
+  "新增逐字追踪，让歌词随演唱进度逐字呈现，带来更自然的跟唱体验。": { title: "逐字跟随", description: "歌词随着演唱进度逐字呈现，带来更自然的跟唱体验。", display_group: "featured" },
+  "新增逐字跟随，让歌词随演唱进度逐字呈现，带来更自然的跟唱体验。": { title: "逐字跟随", description: "歌词随着演唱进度逐字呈现，带来更自然的跟唱体验。", display_group: "featured" },
+  "歌词随着演唱进度逐字呈现，带来更自然的跟唱体验。": { title: "逐字跟随", description: "歌词随着演唱进度逐字呈现，带来更自然的跟唱体验。", display_group: "featured" },
+  "新增歌词坞，让当前歌词直接呈现在 Windows 任务栏。": { title: "歌词坞", description: "让当前歌词直接呈现在 Windows 任务栏。", display_group: "featured" },
+  "让当前歌词直接呈现在 Windows 任务栏。": { title: "歌词坞", description: "让当前歌词直接呈现在 Windows 任务栏。", display_group: "featured" },
+  "新增重新匹配歌词，支持手动刷新并重新匹配当前歌词。": { title: "重新匹配歌词", description: "支持手动刷新并重新匹配当前歌词。", display_group: "featured" },
+  "支持手动刷新并重新匹配当前歌词。": { title: "重新匹配歌词", description: "支持手动刷新并重新匹配当前歌词。", display_group: "featured" },
+  "支持手动刷新并重新匹配歌词。": { title: "重新匹配歌词", description: "支持手动刷新并重新匹配当前歌词。", display_group: "featured" },
+  "优化歌词匹配逻辑，减少歌词与当前歌曲不一致的情况。": { title: "歌词匹配", description: "优化歌词匹配逻辑，减少歌词与当前歌曲不一致的情况。", display_group: "improvement" },
+  "支持全屏应用运行时自动隐藏歌词岛。": { title: "全屏体验", description: "支持全屏应用运行时自动隐藏歌词岛。", display_group: "improvement" },
+  "接入更多歌词来源，进一步提升歌词与翻译的覆盖范围。": { title: "更多歌词来源", description: "接入更多歌词来源，进一步提升歌词与翻译的覆盖范围。", display_group: "improvement" },
+  "持续优化性能、功耗与长期运行稳定性。": { title: "性能与稳定性", description: "持续优化性能、功耗与长期运行稳定性。", display_group: "improvement" },
+  "支持更多歌词岛形状与自定义轮廓。": { title: "更多歌词岛形状", description: "支持更多歌词岛形状与自定义轮廓。", display_group: "future", target_version: "V3.3" },
+  "更多歌词岛形状与自定义轮廓计划于 V3.3 带来。": { title: "更多歌词岛形状", description: "支持更多歌词岛形状与自定义轮廓。", display_group: "future", target_version: "V3.3" },
+  "支持模块字体与主题色独立设置。": { title: "模块个性化", description: "支持模块字体与主题色独立设置。", display_group: "future", target_version: "V3.3" },
+  "模块字体与主题色的独立设置计划于 V3.3 带来。": { title: "模块个性化", description: "支持模块字体与主题色独立设置。", display_group: "future", target_version: "V3.3" }
+};
+
+function safeLegacyPreviewMigration(version, contentZh) {
+  return /^v?3\.[23](?:\D|$)/i.test(String(version || "").trim())
+    ? SAFE_LEGACY_PREVIEW_MIGRATIONS[contentZh] || null
+    : null;
+}
+
+function legacyPreviewContent(title, description) {
+  return title ? `${title} — ${description}` : description;
+}
+
+function sanitizeReleasePreviewFeature(value, fallbackOrder, previewVersion = "") {
+  if (!value || typeof value !== "object") return null;
+  const id = firstPreviewText(value.id).slice(0, 120);
+  const legacyZh = firstPreviewText(value.content_zh).slice(0, 2400);
+  const legacyEn = firstPreviewText(value.content_en).slice(0, 2400);
+  const legacyZhTw = firstPreviewText(value.content_zh_tw).slice(0, 2400);
+  const legacyJa = firstPreviewText(value.content_ja).slice(0, 2400);
+  const migration = safeLegacyPreviewMigration(previewVersion, legacyZh);
+  const titleZh = firstPreviewText(value.title_zh).slice(0, 180) || migration?.title || "";
+  const titleEn = firstPreviewText(value.title_en).slice(0, 180);
+  const titleZhTw = firstPreviewText(value.title_zh_tw).slice(0, 180);
+  const titleJa = firstPreviewText(value.title_ja).slice(0, 180);
+  const descriptionZh = firstPreviewText(value.description_zh).slice(0, 2400) || migration?.description || legacyZh;
+  const descriptionEn = firstPreviewText(value.description_en).slice(0, 2400) || legacyEn;
+  const descriptionZhTw = firstPreviewText(value.description_zh_tw).slice(0, 2400) || legacyZhTw;
+  const descriptionJa = firstPreviewText(value.description_ja).slice(0, 2400) || legacyJa;
+  if (!id || (!descriptionZh && !descriptionEn && !descriptionZhTw && !descriptionJa)) return null;
+  const rawOrder = typeof value.sort_order === "number" && Number.isFinite(value.sort_order)
+    ? Math.round(value.sort_order)
+    : fallbackOrder;
+  const progress = safePreviewProgress(value.progress);
+  const displayGroup = value.display_group === "improvement" || value.display_group === "future"
+    ? value.display_group
+    : migration?.display_group || "featured";
+  const targetVersion = displayGroup === "future"
+    ? firstPreviewText(value.target_version).slice(0, 40) || migration?.target_version || previewVersion
+    : "";
+  return {
+    id,
+    sort_order: Math.max(0, rawOrder),
+    progress,
+    stage: safePreviewStage(value.stage, progress),
+    display_group: displayGroup,
+    target_version: targetVersion,
+    title_zh: titleZh,
+    title_en: titleEn,
+    title_zh_tw: titleZhTw,
+    title_ja: titleJa,
+    description_zh: descriptionZh,
+    description_en: descriptionEn,
+    description_zh_tw: descriptionZhTw,
+    description_ja: descriptionJa,
+    content_zh: legacyZh || legacyPreviewContent(titleZh, descriptionZh),
+    content_en: legacyEn || legacyPreviewContent(titleEn, descriptionEn),
+    content_zh_tw: legacyZhTw || legacyPreviewContent(titleZhTw, descriptionZhTw),
+    content_ja: legacyJa || legacyPreviewContent(titleJa, descriptionJa)
+  };
+}
+
+function structuredReleasePreviewFeatures(value, previewVersion = "") {
+  if (!value || typeof value !== "object") return null;
+  const candidate = Array.isArray(value)
+    ? value.find((item) => item && typeof item === "object" && !Array.isArray(item))
+    : value;
+  if (!candidate || ![2, RELEASE_PREVIEW_SCHEMA_VERSION].includes(candidate.schema_version) || !Array.isArray(candidate.features)) return null;
+  const usedIds = new Set();
+  return candidate.features
+    .map((feature, index) => sanitizeReleasePreviewFeature(feature, index + 1, previewVersion))
+    .filter((feature) => feature && !usedIds.has(feature.id) && (usedIds.add(feature.id), true))
+    .sort((left, right) => left.sort_order - right.sort_order)
+    .map((feature, index) => ({ ...feature, sort_order: index + 1 }));
+}
+
+function releasePreviewFeatureFromLegacy(previewId, previewVersion, index, zh, en, zhTw, ja) {
+  const primary = zh[index] || en[index] || zhTw[index] || ja[index] || `feature-${index + 1}`;
+  const migration = safeLegacyPreviewMigration(previewVersion, zh[index] || "");
+  const descriptionZh = migration?.description || zh[index] || "";
+  const displayGroup = migration?.display_group || "featured";
+  return {
+    id: stableLegacyPreviewFeatureId(previewId, primary, index),
+    sort_order: index + 1,
+    progress: 0,
+    stage: "development",
+    display_group: displayGroup,
+    target_version: displayGroup === "future" ? migration?.target_version || previewVersion : "",
+    title_zh: migration?.title || "",
+    title_en: "",
+    title_zh_tw: "",
+    title_ja: "",
+    description_zh: descriptionZh,
+    description_en: en[index] || "",
+    description_zh_tw: zhTw[index] || "",
+    description_ja: ja[index] || "",
+    content_zh: zh[index] || "",
+    content_en: en[index] || "",
+    content_zh_tw: zhTw[index] || "",
+    content_ja: ja[index] || ""
+  };
+}
+
+function normalizeReleasePreviewContent(preview) {
+  const previewVersion = firstPreviewText(preview.version).slice(0, 40);
+  const storedFeatures = structuredReleasePreviewFeatures(preview.highlights_zh, previewVersion);
+  if (storedFeatures) {
+    return {
+      note_zh: firstPreviewText(preview.body_zh),
+      note_en: firstPreviewText(preview.body_en),
+      note_zh_tw: firstPreviewText(preview.body_zh_tw),
+      note_ja: firstPreviewText(preview.body_ja),
+      features: storedFeatures
+    };
+  }
+
+  const previewId = firstPreviewText(preview.id).slice(0, 160) || "release-preview";
+  const highlightZh = previewLines(preview.highlights_zh);
+  const highlightEn = previewLines(preview.highlights_en);
+  const highlightZhTw = previewLines(preview.highlights_zh_tw);
+  const highlightJa = previewLines(preview.highlights_ja);
+  if (highlightZh.length || highlightEn.length || highlightZhTw.length || highlightJa.length) {
+    const length = Math.max(highlightZh.length, highlightEn.length, highlightZhTw.length, highlightJa.length);
+    return {
+      note_zh: firstPreviewText(preview.body_zh),
+      note_en: firstPreviewText(preview.body_en),
+      note_zh_tw: firstPreviewText(preview.body_zh_tw),
+      note_ja: firstPreviewText(preview.body_ja),
+      features: Array.from({ length }, (_, index) =>
+        releasePreviewFeatureFromLegacy(previewId, previewVersion, index, highlightZh, highlightEn, highlightZhTw, highlightJa)
+      )
+    };
+  }
+
+  const bodyZh = splitPreviewItems(preview.body_zh);
+  const bodyEn = splitPreviewItems(preview.body_en);
+  const bodyZhTw = splitPreviewItems(preview.body_zh_tw);
+  const bodyJa = splitPreviewItems(preview.body_ja);
+  const knownNote = bodyZh[0] === KNOWN_V32_NOTE_ZH;
+  const zh = knownNote ? bodyZh.slice(1) : bodyZh;
+  const en = knownNote ? bodyEn.slice(1) : bodyEn;
+  const zhTw = knownNote ? bodyZhTw.slice(1) : bodyZhTw;
+  const ja = knownNote ? bodyJa.slice(1) : bodyJa;
+  const length = Math.max(zh.length, en.length, zhTw.length, ja.length);
+  return {
+    note_zh: knownNote ? bodyZh[0] : "",
+    note_en: knownNote ? (bodyEn[0] || "") : "",
+    note_zh_tw: knownNote ? (bodyZhTw[0] || "") : "",
+    note_ja: knownNote ? (bodyJa[0] || "") : "",
+    features: Array.from({ length }, (_, index) =>
+      releasePreviewFeatureFromLegacy(previewId, previewVersion, index, zh, en, zhTw, ja)
+    )
+  };
+}
+
+function localizedReleasePreviewFeature(feature, locale) {
+  if (locale === "zh") return feature.content_zh;
+  if (locale === "zhHant") return feature.content_zh_tw || feature.content_zh;
+  if (locale === "ja") return feature.content_ja || feature.content_en || feature.content_zh;
+  return feature.content_en || feature.content_zh;
 }
 
 function normalizeReleasePreview(preview) {
@@ -256,8 +476,12 @@ function normalizeReleasePreview(preview) {
   const titleEn = firstPreviewText(preview.title_en, titleZh);
   const bodyZh = firstPreviewText(preview.body_zh);
   const bodyEn = firstPreviewText(preview.body_en, bodyZh);
-  const highlightsZh = firstPreviewLines(preview.highlights_zh);
-  const highlightsEn = firstPreviewLines(preview.highlights_en, highlightsZh);
+  const content = normalizeReleasePreviewContent(preview);
+  const structured = structuredReleasePreviewFeatures(preview.highlights_zh, preview.version) !== null;
+  const highlightsZh = content.features.map((feature) => localizedReleasePreviewFeature(feature, "zh")).filter(Boolean);
+  const highlightsEn = content.features.map((feature) => localizedReleasePreviewFeature(feature, "en")).filter(Boolean);
+  const highlightsZhTw = content.features.map((feature) => localizedReleasePreviewFeature(feature, "zhHant")).filter(Boolean);
+  const highlightsJa = content.features.map((feature) => localizedReleasePreviewFeature(feature, "ja")).filter(Boolean);
   return {
     ...preview,
     title_zh: titleZh,
@@ -268,10 +492,11 @@ function normalizeReleasePreview(preview) {
     body_en: bodyEn,
     body_zh_tw: firstPreviewText(preview.body_zh_tw, bodyZh),
     body_ja: firstPreviewText(preview.body_ja, bodyEn, bodyZh),
-    highlights_zh: highlightsZh,
-    highlights_en: highlightsEn,
-    highlights_zh_tw: firstPreviewLines(preview.highlights_zh_tw, highlightsZh),
-    highlights_ja: firstPreviewLines(preview.highlights_ja, highlightsEn, highlightsZh),
+    highlights_zh: structured ? highlightsZh : previewLines(preview.highlights_zh),
+    highlights_en: structured ? highlightsEn : firstPreviewLines(preview.highlights_en, preview.highlights_zh),
+    highlights_zh_tw: structured ? highlightsZhTw : firstPreviewLines(preview.highlights_zh_tw, preview.highlights_zh),
+    highlights_ja: structured ? highlightsJa : firstPreviewLines(preview.highlights_ja, preview.highlights_en, preview.highlights_zh),
+    ...content,
     major_version: majorVersionOf(preview.version)
   };
 }
@@ -1127,39 +1352,128 @@ function validEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && value.length <= 180;
 }
 
-function lines(value) {
-  return Array.isArray(value)
-    ? value
-        .filter((item) => typeof item === "string")
-        .map((item) => item.trim())
-        .filter(Boolean)
-        .slice(0, 12)
-    : [];
+class PreviewValidationError extends Error {}
+
+function previewFeatures(value) {
+  if (!Array.isArray(value) || !value.length) {
+    throw new PreviewValidationError("请至少添加一条功能项");
+  }
+  if (value.length > 80) throw new PreviewValidationError("功能项不能超过 80 条");
+  const usedIds = new Set();
+  return value.map((item, index) => {
+    if (!item || typeof item !== "object") throw new PreviewValidationError("功能项格式无效");
+    const id = typeof item.id === "string" ? item.id.trim().slice(0, 120) : "";
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,119}$/.test(id) || id.startsWith("legacy-") || usedIds.has(id)) {
+      throw new PreviewValidationError("功能项 ID 缺失或重复");
+    }
+    usedIds.add(id);
+    const progress = item.progress === null || item.progress === undefined || item.progress === ""
+      ? 0
+      : item.progress;
+    if (typeof progress !== "number" || !Number.isInteger(progress)) {
+      throw new PreviewValidationError("功能进度必须使用指定锚点");
+    }
+    const rawStage = item.stage === undefined || item.stage === null || item.stage === "" ? "development" : item.stage;
+    if (rawStage !== "development" && rawStage !== "testing" && rawStage !== "ready") {
+      throw new PreviewValidationError("功能状态无效");
+    }
+    const stage = rawStage;
+    if (stage === "development" && !RELEASE_PREVIEW_PROGRESS_ANCHORS.includes(progress)) {
+      throw new PreviewValidationError("开发进度必须使用 0、10、30、50、65、80、90 或 95");
+    }
+    if (stage !== "development" && progress !== 100) {
+      throw new PreviewValidationError("测试中或待上线状态必须使用完成进度");
+    }
+    const localizedText = (field, maxLength = 2400) => typeof item[field] === "string"
+      ? item[field].trim().slice(0, maxLength)
+      : "";
+    const titleZh = localizedText("title_zh", 180);
+    const titleEn = localizedText("title_en", 180);
+    const titleZhTw = localizedText("title_zh_tw", 180);
+    const titleJa = localizedText("title_ja", 180);
+    const descriptionZh = localizedText("description_zh") || localizedText("content_zh");
+    const descriptionEn = localizedText("description_en") || localizedText("content_en");
+    const descriptionZhTw = localizedText("description_zh_tw") || localizedText("content_zh_tw");
+    const descriptionJa = localizedText("description_ja") || localizedText("content_ja");
+    if (!descriptionZh || !descriptionEn) throw new PreviewValidationError("每条功能项均需填写中英文描述");
+    if (item.display_group !== undefined && item.display_group !== "featured" && item.display_group !== "improvement" && item.display_group !== "future") {
+      throw new PreviewValidationError("展示分组无效");
+    }
+    const displayGroup = item.display_group === "improvement" || item.display_group === "future"
+      ? item.display_group
+      : "featured";
+    const targetVersion = displayGroup === "future" ? localizedText("target_version", 40) : "";
+    if (displayGroup === "future" && !targetVersion) throw new PreviewValidationError("稍后推出的功能必须填写目标版本");
+    return {
+      id,
+      sort_order: index + 1,
+      progress,
+      stage,
+      display_group: displayGroup,
+      target_version: targetVersion,
+      title_zh: titleZh,
+      title_en: titleEn,
+      title_zh_tw: titleZhTw,
+      title_ja: titleJa,
+      description_zh: descriptionZh,
+      description_en: descriptionEn,
+      description_zh_tw: descriptionZhTw,
+      description_ja: descriptionJa,
+      content_zh: legacyPreviewContent(titleZh, descriptionZh),
+      content_en: legacyPreviewContent(titleEn, descriptionEn),
+      content_zh_tw: legacyPreviewContent(titleZhTw, descriptionZhTw),
+      content_ja: legacyPreviewContent(titleJa, descriptionJa)
+    };
+  });
 }
 
 function previewPayload(body) {
+  const hasOwn = (field) => Object.prototype.hasOwnProperty.call(body, field);
+  const status = body.status === "published" ? "published" : "draft";
   const version = typeof body.version === "string" ? body.version.trim().slice(0, 40) : "";
-  const optionalLocalizedBody = (field) => Object.prototype.hasOwnProperty.call(body, field)
-    ? { [field]: typeof body[field] === "string" ? body[field].trim().slice(0, 2400) : "" }
+  const structured = Array.isArray(body.features) || ["note_zh", "note_en", "note_zh_tw", "note_ja"].some(hasOwn);
+  const sourceField = (noteField, legacyField) => structured && hasOwn(noteField) ? noteField : legacyField;
+  const bodyZhField = sourceField("note_zh", "body_zh");
+  const bodyEnField = sourceField("note_en", "body_en");
+  const bodyZh = typeof body[bodyZhField] === "string" ? body[bodyZhField].trim().slice(0, 2400) : "";
+  const bodyEn = typeof body[bodyEnField] === "string" ? body[bodyEnField].trim().slice(0, 2400) : "";
+  const optionalLocalizedBody = (noteField, legacyField) => hasOwn(sourceField(noteField, legacyField))
+    ? {
+        [legacyField]: typeof body[sourceField(noteField, legacyField)] === "string"
+          ? body[sourceField(noteField, legacyField)].trim().slice(0, 2400)
+          : ""
+      }
     : {};
+  const features = structured ? previewFeatures(body.features) : null;
   return {
     version,
     title_zh: version,
     title_en: version,
     title_zh_tw: version,
     title_ja: version,
-    body_zh: typeof body.body_zh === "string" ? body.body_zh.trim().slice(0, 2400) : "",
-    body_en: typeof body.body_en === "string" ? body.body_en.trim().slice(0, 2400) : "",
-    highlights_zh: lines(body.highlights_zh),
-    highlights_en: lines(body.highlights_en),
-    ...optionalLocalizedBody("body_zh_tw"),
-    ...optionalLocalizedBody("body_ja"),
+    body_zh: bodyZh,
+    body_en: bodyEn,
+    highlights_zh: features
+      ? [{ schema_version: RELEASE_PREVIEW_SCHEMA_VERSION, features }, ...features.map((feature) => feature.content_zh)]
+      : [],
+    highlights_en: features ? features.map((feature) => feature.content_en) : [],
+    ...(features ? {
+      highlights_zh_tw: features.map((feature) => feature.content_zh_tw),
+      highlights_ja: features.map((feature) => feature.content_ja)
+    } : {}),
+    ...optionalLocalizedBody("note_zh_tw", "body_zh_tw"),
+    ...optionalLocalizedBody("note_ja", "body_ja"),
     target_date:
       typeof body.target_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.target_date)
         ? body.target_date
         : null,
-    status: body.status === "published" ? "published" : "draft"
+    status
   };
+}
+
+function hasStructuredPreviewInput(body) {
+  const hasOwn = (field) => Object.prototype.hasOwnProperty.call(body, field);
+  return Array.isArray(body.features) || ["note_zh", "note_en", "note_zh_tw", "note_ja"].some(hasOwn);
 }
 
 async function handlePublic(request) {
@@ -1536,15 +1850,20 @@ async function handleAdminAccessLogs(request) {
 
 function cleanTranslationEntries(value) {
   if (!Array.isArray(value)) return [];
-  const usedKeys = new Set();
-  return value
+  const entries = value
     .filter((item) => item && typeof item === "object")
     .map((item) => ({
       key: typeof item.key === "string" ? item.key.trim().slice(0, 120) : "",
       text: typeof item.text === "string" ? item.text.trim().slice(0, 2400) : ""
     }))
-    .filter((item) => item.key && item.text && !usedKeys.has(item.key) && (usedKeys.add(item.key), true))
-    .slice(0, 80);
+    .filter((item) => item.key && item.text);
+  if (entries.length > 80) throw new Error("翻译内容不能超过 80 项");
+  const usedKeys = new Set();
+  for (const entry of entries) {
+    if (usedKeys.has(entry.key)) throw new Error(`翻译键重复：${entry.key}`);
+    usedKeys.add(entry.key);
+  }
+  return entries;
 }
 
 function cleanTranslationTargets(value) {
@@ -1562,10 +1881,15 @@ function parseTranslations(value, targets, entries) {
   const translations = source.translations && typeof source.translations === "object"
     ? source.translations
     : source;
+  const extraLocales = Object.keys(translations).filter((locale) => !targets.includes(locale));
+  if (extraLocales.length) throw new Error(`Translation response contains unexpected locale ${extraLocales[0]}`);
   const result = {};
+  const expectedKeys = new Set(entries.map((entry) => entry.key));
   for (const locale of targets) {
     const language = translations[locale];
     if (!language || typeof language !== "object") throw new Error(`Translation response is missing ${locale}`);
+    const extraKeys = Object.keys(language).filter((key) => !expectedKeys.has(key));
+    if (extraKeys.length) throw new Error(`Translation response contains unexpected key ${locale}.${extraKeys[0]}`);
     result[locale] = {};
     for (const entry of entries) {
       const translated = language[entry.key];
@@ -1656,7 +1980,8 @@ async function handleAdminPreviews(request) {
         return jsonError("版本号、中英文更新内容均为必填项");
       }
       return json({ preview: await createReleasePreview(payload) }, 201);
-    } catch {
+    } catch (error) {
+      if (error instanceof PreviewValidationError) return jsonError(error.message);
       return jsonError("发布失败", 500);
     }
   }
@@ -1667,8 +1992,17 @@ async function handleAdminPreviews(request) {
       if (!id || (body.status !== "draft" && body.status !== "published")) {
         return jsonError("Invalid update");
       }
-      const hasContent = ["version", "body_zh", "body_en", "body_zh_tw", "body_ja", "target_date"]
+      const hasContent = [
+        "version", "body_zh", "body_en", "body_zh_tw", "body_ja",
+        "note_zh", "note_en", "note_zh_tw", "note_ja", "features", "target_date"
+      ]
         .some((field) => Object.prototype.hasOwnProperty.call(body, field));
+      if (hasContent && !hasStructuredPreviewInput(body)) {
+        const existing = (await listReleasePreviews()).find((preview) => preview.id === id);
+        if (existing?.features.some((feature) => !feature.id.startsWith("legacy-"))) {
+          return jsonError("该预告已使用结构化功能项，请刷新维护者后台后再编辑", 409);
+        }
+      }
       const payload = hasContent ? previewPayload(body) : { status: body.status };
       if (hasContent && (!payload.version || !payload.body_zh || !payload.body_en)) {
         return jsonError("版本号、中英文更新内容均为必填项");
@@ -1676,7 +2010,8 @@ async function handleAdminPreviews(request) {
       return json({
         preview: await updateReleasePreview(id, payload)
       });
-    } catch {
+    } catch (error) {
+      if (error instanceof PreviewValidationError) return jsonError(error.message);
       return jsonError("更新失败", 500);
     }
   }

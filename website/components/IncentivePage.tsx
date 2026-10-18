@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { DatabasePreload } from "@/components/DatabasePreload";
 import { Eyebrow, LogoLockup, PrimaryNavigation } from "@/components/SitePage";
+import { ReleasePreviewArticle } from "@/components/ReleasePreviewArticle";
 import { SelectiveTextReveal } from "@/components/SelectiveTextReveal";
 import {
   SubmissionTicket,
@@ -17,19 +18,11 @@ import type {
 import { incentivesByLocale } from "@/data/incentives-copy";
 import { displayBrand, localePath, type Locale } from "@/data/site-copy";
 import { preloadClientJson } from "@/lib/client-data";
-import { formatReleaseTiming } from "@/lib/release-timing";
 
 const IDENTITY_COOKIE = "lyric_island_contributor";
 const LOCAL_LIKES_KEY = "lyric_island_preview_likes";
 
 type Identity = { nickname: string; email: string };
-
-function splitPreviewItems(value: string): string[] {
-  return value
-    .split(/\r?\n/)
-    .map((line) => line.trim().replace(/^(?:[-–—•·*]+|\d+[.)、])\s*/, "").trim())
-    .filter(Boolean);
-}
 
 function readIdentity(): Identity {
   if (typeof document === "undefined") return { nickname: "", email: "" };
@@ -517,7 +510,7 @@ export function IncentivePage({ locale }: { locale: Locale }) {
               </div>
             </div>
             <div>
-              <p>{copy.intro}</p>
+              <p data-text-reveal="body">{copy.intro}</p>
               <small>{copy.privacyNote}</small>
             </div>
           </div>
@@ -537,7 +530,7 @@ export function IncentivePage({ locale }: { locale: Locale }) {
 
         <section className="acceptedSection">
           <div className="sectionContainer acceptedHeading">
-            <div><h2 data-text-reveal="title">{copy.feature.acceptedTitle}</h2><p>{copy.feature.acceptedSubtitle}</p></div>
+            <div><h2 data-text-reveal="title">{copy.feature.acceptedTitle}</h2><p data-text-reveal="body">{copy.feature.acceptedSubtitle}</p></div>
           </div>
           {publicDataState === "loading" ? (
             <div className="databaseLoading acceptedDatabaseLoading" aria-busy="true" role="status">
@@ -561,7 +554,7 @@ export function IncentivePage({ locale }: { locale: Locale }) {
           <div className="previewIntro">
             <Eyebrow reveal>{copy.preview.eyebrow}</Eyebrow>
             <h2 data-text-reveal="title">{copy.preview.title}</h2>
-            <p>{copy.preview.body}</p>
+            <p data-text-reveal="body">{copy.preview.body}</p>
           </div>
           <div className="previewList">
             {publicDataState === "loading" ? (
@@ -569,30 +562,9 @@ export function IncentivePage({ locale }: { locale: Locale }) {
                 <span className="databaseLoadingLabel">{locale === "zh" ? "正在载入版本预告" : "Loading release previews"}</span>
                 <span className="databaseLoadingPulse" aria-hidden="true" />
               </div>
-            ) : previews.length ? previews.map((preview) => {
-              const title = locale === "zh" ? preview.title_zh : preview.title_en || preview.title_zh;
-              const body = locale === "zh" ? preview.body_zh : preview.body_en || preview.body_zh;
-              const highlights = locale === "zh" ? preview.highlights_zh : preview.highlights_en.length ? preview.highlights_en : preview.highlights_zh;
-              const items = [...splitPreviewItems(body), ...highlights.map((item) => item.trim()).filter(Boolean)];
-              return (
-                <article className="previewCard" key={preview.id}>
-                  <div className="previewCardMeta">
-                    <small>{preview.version} · {copy.preview.target} {formatReleaseTiming(preview.target_date, locale)}</small>
-                  </div>
-                  <div className="previewCardContent">
-                    {title !== preview.version && <h3>{title}</h3>}
-                    <ol className="previewItems">
-                      {items.map((item, itemIndex) => (
-                        <li key={`${itemIndex}-${item}`}>
-                          <span className="previewItemNumber" aria-hidden="true">{String(itemIndex + 1).padStart(2, "0")}</span>
-                          <p>{item}</p>
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
-                </article>
-              );
-            }) : <p className="previewEmpty">{publicDataState === "error" ? (locale === "zh" ? "暂时无法载入版本预告，请稍后刷新。" : "Release previews could not be loaded. Please refresh later.") : copy.preview.empty}</p>}
+            ) : previews.length ? previews.map((preview) => (
+              <ReleasePreviewArticle preview={preview} locale={locale} key={preview.id} />
+            )) : <p className="previewEmpty">{publicDataState === "error" ? (locale === "zh" ? "暂时无法载入版本预告，请稍后刷新。" : "Release previews could not be loaded. Please refresh later.") : copy.preview.empty}</p>}
           </div>
         </section>
       </main>

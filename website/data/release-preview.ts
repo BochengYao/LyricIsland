@@ -1,31 +1,25 @@
 import defaultPreviewJson from "@/data/release-preview-default.json";
-import type { ReleasePreview } from "@/data/incentives-types";
-
-export type ReleasePreviewInput = Omit<
-  ReleasePreview,
-  | "id"
-  | "created_at"
-  | "updated_at"
-  | "published_at"
-  | "title_zh_tw"
-  | "title_ja"
-  | "body_zh_tw"
-  | "body_ja"
-  | "highlights_zh_tw"
-  | "highlights_ja"
-> & Partial<Pick<
-  ReleasePreview,
-  | "title_zh_tw"
-  | "title_ja"
-  | "body_zh_tw"
-  | "body_ja"
-  | "highlights_zh_tw"
-  | "highlights_ja"
->>;
+export type ReleasePreviewInput = {
+  version: string;
+  title_zh: string;
+  title_en: string;
+  title_zh_tw?: string;
+  title_ja?: string;
+  body_zh: string;
+  body_en: string;
+  body_zh_tw?: string;
+  body_ja?: string;
+  highlights_zh: unknown;
+  highlights_en: string[];
+  highlights_zh_tw?: string[];
+  highlights_ja?: string[];
+  target_date: string | null;
+  status: "draft" | "published";
+};
 
 export const defaultReleasePreview = defaultPreviewJson as ReleasePreviewInput;
 
-export function releasePreviewFallback(): ReleasePreview {
+export function releasePreviewFallback() {
   const timestamp = "2026-07-29T00:00:00.000Z";
   return {
     id: "default-release-preview-v2-1",

@@ -4,6 +4,7 @@ import { AnimatedFaqItem } from "@/components/AnimatedFaqItem";
 import { ExternalArrow } from "@/components/ExternalArrow";
 import { IslandDemo } from "@/components/IslandDemo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { LyricDockShowcase } from "@/components/LyricDockShowcase";
 import { ModuleComposer } from "@/components/ModuleComposer";
 import { PlayerOrbit } from "@/components/PlayerOrbit";
 import { SelectiveTextReveal } from "@/components/SelectiveTextReveal";
@@ -166,7 +167,7 @@ export function SitePage({ locale }: Props) {
               <h1 data-text-reveal="title">{copy.heroTitle}</h1>
             </div>
             <div className="heroSupport">
-              <p>{copy.heroBody}</p>
+              <p data-text-reveal="body">{copy.heroBody}</p>
               <div className="buttonRow">
                 <a
                   className="button buttonPrimary"
@@ -202,7 +203,7 @@ export function SitePage({ locale }: Props) {
             )}
             <div className="sectionTitleGrid">
               <h2 data-text-reveal="title">{copy.experience.title}</h2>
-              <p>{copy.experience.body}</p>
+              <p data-text-reveal="body">{copy.experience.body}</p>
             </div>
           </div>
 
@@ -249,12 +250,14 @@ export function SitePage({ locale }: Props) {
               <Eyebrow reveal>{copy.demo.eyebrow}</Eyebrow>
               <h2 data-text-reveal="title">{copy.demo.title}</h2>
             </div>
-            <p>{copy.demo.body}</p>
+            <p data-text-reveal="body">{copy.demo.body}</p>
           </div>
           <div className="sectionContainer">
             <IslandDemo copy={copy.demo} />
           </div>
         </section>
+
+        <LyricDockShowcase copy={copy.lyricDock} />
 
         <section
           className="modulesSection"
@@ -279,7 +282,7 @@ export function SitePage({ locale }: Props) {
                   </span>
                 ))}
               </h2>
-              <p>{copy.modules.body}</p>
+              <p data-text-reveal="body">{copy.modules.body}</p>
             </div>
             <ModuleComposer
               label={copy.modules.title}
@@ -299,7 +302,7 @@ export function SitePage({ locale }: Props) {
             <div className="sectionTitleGrid">
               <h2 data-text-reveal="title">{copy.compatibility.title}</h2>
               <div>
-                <p>{copy.compatibility.body}</p>
+                <p data-text-reveal="body">{copy.compatibility.body}</p>
                 <p className="finePrint">{copy.compatibility.note}</p>
               </div>
             </div>
@@ -312,7 +315,7 @@ export function SitePage({ locale }: Props) {
             <div className="sourcesIntro">
               <Eyebrow reveal>{copy.sources.eyebrow}</Eyebrow>
               <h2 data-text-reveal="title">{copy.sources.title}</h2>
-              <p>{copy.sources.body}</p>
+              <p data-text-reveal="body">{copy.sources.body}</p>
             </div>
             <div className="factList">
                 {copy.sources.facts.map((fact) => (
@@ -349,7 +352,7 @@ export function SitePage({ locale }: Props) {
           <div className="sectionContainer closingPanel">
             <Eyebrow reveal>{copy.closing.eyebrow}</Eyebrow>
             <h2 data-text-reveal="title">{copy.closing.title}</h2>
-            <p>{copy.closing.body}</p>
+            <p data-text-reveal="body">{copy.closing.body}</p>
             <div className="buttonRow">
               <a
                 className="button buttonPrimary"

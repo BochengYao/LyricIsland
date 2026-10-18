@@ -55,12 +55,42 @@ export type ReleasePreview = {
   highlights_en: string[];
   highlights_zh_tw: string[];
   highlights_ja: string[];
+  note_zh: string;
+  note_en: string;
+  note_zh_tw: string;
+  note_ja: string;
+  features: ReleasePreviewFeature[];
   target_date: string | null;
   status: "draft" | "published";
   created_at: string;
   updated_at: string;
   published_at: string | null;
 };
+
+export type ReleasePreviewFeature = {
+  id: string;
+  sort_order: number;
+  progress: number;
+  stage: ReleasePreviewFeatureStage;
+  display_group: ReleasePreviewFeatureGroup;
+  target_version: string;
+  title_zh: string;
+  title_en: string;
+  title_zh_tw: string;
+  title_ja: string;
+  description_zh: string;
+  description_en: string;
+  description_zh_tw: string;
+  description_ja: string;
+  /** Legacy one-line projection retained for older API consumers. */
+  content_zh: string;
+  content_en: string;
+  content_zh_tw: string;
+  content_ja: string;
+};
+
+export type ReleasePreviewFeatureStage = "development" | "testing" | "ready";
+export type ReleasePreviewFeatureGroup = "featured" | "improvement" | "future";
 
 export type PublicReleasePreview = ReleasePreview & {
   major_version: string;
