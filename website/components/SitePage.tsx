@@ -7,6 +7,7 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { LyricDockShowcase } from "@/components/LyricDockShowcase";
 import { ModuleComposer } from "@/components/ModuleComposer";
 import { PlayerOrbit } from "@/components/PlayerOrbit";
+import { RecognitionBubble } from "@/components/RecognitionBubble";
 import { SelectiveTextReveal } from "@/components/SelectiveTextReveal";
 import { SmoothSectionScroll } from "@/components/SmoothSectionScroll";
 import {
@@ -19,6 +20,8 @@ import {
 } from "@/data/site-copy";
 
 const githubUrl = "https://github.com/BochengYao/LyricHover";
+const secondaryMonitorFixUrl =
+  "https://github.com/BochengYao/LyricIsland/commit/807b7e71caa2150175ccb5b6b9dd3e4ae6b49fcf";
 
 type Props = {
   locale: Locale;
@@ -195,6 +198,14 @@ export function SitePage({ locale }: Props) {
             />
           </div>
         </section>
+
+        <RecognitionBubble
+          label={copy.recognition.label}
+          summary={copy.recognition.summary}
+          linkLabel={copy.recognition.link}
+          dismissLabel={copy.recognition.dismissLabel}
+          href={secondaryMonitorFixUrl}
+        />
 
         <section className="experienceSection" id="experience" data-snap-section>
           <div className="sectionContainer experienceIntro">

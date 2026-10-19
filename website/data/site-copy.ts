@@ -42,6 +42,12 @@ export type SiteCopy = {
   heroTitle: string;
   heroBody: string;
   storeLabel: string;
+  recognition: {
+    label: string;
+    summary: string;
+    link: string;
+    dismissLabel: string;
+  };
   exploreLabel: string;
   heroImageAlt: string;
   experience: {
@@ -163,6 +169,12 @@ const rawCopyByLocale: Record<"zh" | "en", SiteCopy> = {
     heroBody:
       "音乐响起，歌词从屏幕顶端自然浮现；播放结束，便完整收起。始终停在视线边缘，不打断眼前的工作。",
     storeLabel: "去 Microsoft Store 下载",
+    recognition: {
+      label: "工程实践入选 · XERJ Corpus Hub",
+      summary: "LyricHover 的副屏窗口定位修复获选，XERJ 邀请将这项 C# 实现纳入公共索引。",
+      link: "查看 GitHub 实现",
+      dismissLabel: "关闭 XERJ 入选提示"
+    },
     exploreLabel: "看看它如何工作",
     heroImageAlt: "LyricHover显示在 Windows 桌面顶部",
     experience: {
@@ -328,6 +340,12 @@ const rawCopyByLocale: Record<"zh" | "en", SiteCopy> = {
     heroBody:
       "When music starts, lyrics naturally surface from the top of your screen. When playback ends, they fully retreat—always at the edge of your vision, never in the way of your work.",
     storeLabel: "Get it from Microsoft Store",
+    recognition: {
+      label: "Engineering work selected · XERJ Corpus Hub",
+      summary: "LyricHover’s secondary monitor placement fix was selected, with an invitation to include the C# implementation in XERJ’s public index.",
+      link: "View the GitHub implementation",
+      dismissLabel: "Dismiss the XERJ selection notice"
+    },
     exploreLabel: "See how it works",
     heroImageAlt: "LyricHover shown at the top of a Windows desktop",
     experience: {
@@ -524,7 +542,14 @@ const japaneseSiteCopy: SiteCopy = {
   ],
   heroTitle: "この一行を、\n見える場所へ。",
   heroBody: "音楽が始まると、歌詞は画面上部に自然に現れます。再生が終われば、すっと引き上げる。いつも視界の端にいて、仕事の邪魔はしません。",
-  storeLabel: "Microsoft Store から入手", exploreLabel: "仕組みを見る", heroImageAlt: "Windows デスクトップ上部に表示された LyricHover",
+  storeLabel: "Microsoft Store から入手",
+  recognition: {
+    label: "エンジニアリング実績が選出 · XERJ Corpus Hub",
+    summary: "LyricHover のサブディスプレイ配置修正が選出され、C# 実装は XERJ の公開インデックスへの掲載に招待されています。",
+    link: "GitHub の実装を見る",
+    dismissLabel: "XERJ の選出案内を閉じる"
+  },
+  exploreLabel: "仕組みを見る", heroImageAlt: "Windows デスクトップ上部に表示された LyricHover",
   experience: {
     eyebrow: "", title: "音とともに現れ、\n静けさとともに消える。", body: "タスクバーも、余計なウィンドウも不要です。音楽が鳴れば現れ、止まれば静かに退く。ポインターが近づけば淡くなり、画面をあなたの作業へ返します。", watermark: "LYRIC HOVER",
     items: [
