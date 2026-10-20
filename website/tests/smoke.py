@@ -816,7 +816,7 @@ def test_navigation_and_orbit(page: Page) -> None:
         ["lyric sources", "popular players", "ad interruptions"]
     )
     expect(page.locator(".sourcesNote")).to_have_text(
-        "*To use all LyricHover features normally with NetEase Cloud Music, "
+        "*To use all Lyric Hover features normally with NetEase Cloud Music, "
         "manually enable SMTC in “Settings - System”."
     )
     assert page.locator(".desktopNavLinks a").all_text_contents() == [
