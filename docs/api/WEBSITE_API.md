@@ -31,9 +31,9 @@
 
 版本预告的 `target_date` 继续以 `YYYY-MM-DD` 或 `null` 作为兼容的数据/API 格式，但管理端只提供“今天”“明天”“本周内”“两周内”“本月内”“自定义 N 天内”“待定”等粗略范围。范围在保存时换算成目标日期；公开页面根据访问当天重新计算本地化文案，因此不需要定时写数据库，例如保存“两周内”后会依次显示“两周内”“13天内”等。过期、空值或非法日期统一按“待定”展示，公开页面不得直接显示精确日期。
 
-新功能条目（`content.sections[]`）必须以 `release_version` 保存完整发布版本（规范为 `vX.Y.Z`，例如 `v2.1.8`），这是该条目的唯一可编辑版本来源；公开 `/api/features` 会同时返回由它派生的 `major_version`（如 `V2`），前台只能使用该派生字段分组，不得另存或编辑大版本号。`PUT /api/incentives/admin/features` 对每条条目要求填写 `release_version`；历史记录缺失版本时读取会回退为 `早期更新`、大版本为 `OTHER`，以保证旧数据可读，管理员保存这些兼容记录不会破坏数据。
+新功能条目（`content.sections[]`）必须以 `release_version` 保存完整发布版本（规范为 `vX.Y.Z`，例如 `v3.3.8`），这是该条目的唯一可编辑版本来源；公开 `/api/features` 会同时返回由它派生的 `major_version`（如 `V3`），前台只能使用该派生字段分组，不得另存或编辑大版本号。`content.versions` 是新功能内容独立维护的版本元数据，允许存在尚无条目的空版本；历史记录缺少该字段时，服务端从已有 sections 恢复规范版本，未标版本只回退为 `早期更新` / `OTHER`。`PUT /api/incentives/admin/features` 对每条非兼容条目要求填写并归属 `content.versions` 中的完整版本。
 
-管理端“新功能内容”按版本编辑：版本下拉候选来自已有条目的 `release_version`、已发布或可编辑的版本预告及兼容入口 `早期更新`；选定版本后，条目新增自动继承该版本，排序、显示/隐藏和删除均限制在该版本组内。若需创建全新版本，应先在“版本预告”入口建立版本，再回到新功能内容编辑；不会新增第二个版本来源。该分组仅改变后台操作方式，不改变公开 `/api/features` 响应结构。
+管理端“新功能内容”按版本编辑：版本下拉候选仅来自 `content.versions` 与仍有条目的 `早期更新` 兼容组，完全独立于“版本预告”。管理员可在同一页创建、重命名和删除版本；重命名由服务端原子级联该版本下全部 sections，非空版本删除必须显式确认级联。后台会明确显示当前版本的隐藏条目数量，并提供“全部设为前台显示”；隐藏条目即使保存成功也不会进入公开页版本选择器。版本操作通过同一 `PUT /api/incentives/admin/features` 的 `operation` 字段提交：`{type:"create",release_version}`、`{type:"rename",from,to}`、`{type:"delete",release_version,delete_sections?}`、`{type:"migrate-legacy",to}`。版本预告继续独立管理未来预告，不再作为新功能版本来源。
 
 为兼容既有数据库记录，繁中缺失时服务端回退简中；日文缺失时依次回退英文、简中。管理端 `POST`/`PATCH /api/incentives/admin/previews` 可选接收 `body_zh_tw`、`body_ja`；未传字段不会在更新时被清空。`POST /api/incentives/admin/translate` 支持同一次请求指定 `en`、`zh-tw`、`ja` 目标语言，并按目标语言键分别返回翻译结果。公开预告接口支持游标分页：`preview_limit` 可选（默认 20，最大 50），`preview_cursor` 使用上一页返回的 `next_preview_cursor`；响应始终返回 `next_preview_cursor`（无下一页时为 `null`）。分页只作用于预告，建议数据保持原有返回方式。公开页面必须继续经上述接口读取，且由官网前台线程负责将 `zh-TW`、`ja` 路由映射到对应字段并在分页结果中按 `major_version` 分组。
 

@@ -155,6 +155,10 @@ function sanitizeFeatureContent(value) {
       };
     })
     .filter((item) => item.title_zh || item.title_en);
+  const sourceVersions = Array.isArray(source.versions) ? source.versions : [];
+  const versions = [...sourceVersions, ...sections.map((section) => section.release_version)]
+    .map((value) => cleanFeatureText(value, 40))
+    .filter((value) => value && value !== LEGACY_FEATURE_RELEASE_VERSION && /^v\d+\.\d+\.\d+$/i.test(value));
   const summaryLabelZh = cleanFeatureText(summary.label_zh, 80) || DEFAULT_FEATURE_CONTENT.summary.label_zh;
   const summaryLabelEn = cleanFeatureText(summary.label_en, 80) || DEFAULT_FEATURE_CONTENT.summary.label_en;
   const summaryItemsZh = cleanFeatureLines(summary.items_zh, 12, 200);
@@ -162,6 +166,7 @@ function sanitizeFeatureContent(value) {
   const summaryItemsZhTw = cleanFeatureLines(summary.items_zh_tw, 12, 200);
   const summaryItemsJa = cleanFeatureLines(summary.items_ja, 12, 200);
   return {
+    versions: [...new Set(versions)],
     summary: {
       label_zh: summaryLabelZh,
       label_en: summaryLabelEn,
@@ -1320,6 +1325,15 @@ async function saveFeatureContent(value) {
   if (content.sections.some((section) => !isFeatureReleaseVersion(section.release_version))) {
     throw new Error("Every feature section requires a complete release version");
   }
+  if (content.versions.some((version) => !isFeatureReleaseVersion(version) || version === LEGACY_FEATURE_RELEASE_VERSION)) {
+    throw new Error("Feature versions must use complete release versions");
+  }
+  if (content.sections.some((section) =>
+    section.release_version !== LEGACY_FEATURE_RELEASE_VERSION &&
+    !content.versions.some((version) => version.toLowerCase() === section.release_version.toLowerCase())
+  )) {
+    throw new Error("Every feature section must belong to a managed feature version");
+  }
   const existing = await getFeatureContentRow();
   if (!existing) {
     const rows = await supabase("/rest/v1/release_previews", {
@@ -1341,6 +1355,70 @@ async function saveFeatureContent(value) {
     }
   );
   return sanitizeFeatureContent((rows[0] && rows[0].highlights_zh) || content);
+}
+
+function managedFeatureVersion(content, value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return content.versions.find((version) => version.toLowerCase() === normalized);
+}
+
+async function applyFeatureContentVersionOperation(operation) {
+  const content = sanitizeFeatureContent(await getFeatureContent());
+  if (operation && operation.type === "migrate-legacy") {
+    const target = String(operation.to || "").trim();
+    if (target === LEGACY_FEATURE_RELEASE_VERSION || !/^v\d+\.\d+\.\d+$/i.test(target)) {
+      throw new Error("Feature versions must use complete release versions");
+    }
+    const legacyCount = content.sections.filter((section) => section.release_version === LEGACY_FEATURE_RELEASE_VERSION).length;
+    if (!legacyCount) throw new Error("No legacy feature sections to migrate");
+    const existingTarget = managedFeatureVersion(content, target);
+    return saveFeatureContent({
+      ...content,
+      versions: existingTarget ? content.versions : [...content.versions, target],
+      sections: content.sections.map((section) => section.release_version === LEGACY_FEATURE_RELEASE_VERSION
+        ? { ...section, release_version: existingTarget || target }
+        : section)
+    });
+  }
+  if (operation && operation.type === "create") {
+    const releaseVersion = String(operation.release_version || "").trim();
+    if (!/^v\d+\.\d+\.\d+$/i.test(releaseVersion) || releaseVersion === LEGACY_FEATURE_RELEASE_VERSION) {
+      throw new Error("Feature versions must use complete release versions");
+    }
+    if (managedFeatureVersion(content, releaseVersion)) throw new Error("Feature version already exists");
+    return saveFeatureContent({ ...content, versions: [...content.versions, releaseVersion] });
+  }
+  if (operation && operation.type === "rename") {
+    const from = managedFeatureVersion(content, operation.from);
+    const to = String(operation.to || "").trim();
+    if (!from) throw new Error("Feature version not found");
+    if (!/^v\d+\.\d+\.\d+$/i.test(to) || to === LEGACY_FEATURE_RELEASE_VERSION) {
+      throw new Error("Feature versions must use complete release versions");
+    }
+    const existingTarget = managedFeatureVersion(content, to);
+    if (existingTarget && existingTarget !== from) throw new Error("Feature version already exists");
+    return saveFeatureContent({
+      ...content,
+      versions: content.versions.map((version) => version === from ? to : version),
+      sections: content.sections.map((section) => section.release_version.toLowerCase() === from.toLowerCase()
+        ? { ...section, release_version: to }
+        : section)
+    });
+  }
+  if (!operation || operation.type !== "delete") throw new Error("Feature version operation is invalid");
+  const releaseVersion = managedFeatureVersion(content, operation.release_version);
+  if (!releaseVersion) throw new Error("Feature version not found");
+  const sectionCount = content.sections.filter((section) => section.release_version.toLowerCase() === releaseVersion.toLowerCase()).length;
+  if (sectionCount > 0 && operation.delete_sections !== true) {
+    throw new Error(`Feature version contains ${sectionCount} sections`);
+  }
+  return saveFeatureContent({
+    ...content,
+    versions: content.versions.filter((version) => version !== releaseVersion),
+    sections: operation.delete_sections === true
+      ? content.sections.filter((section) => section.release_version.toLowerCase() !== releaseVersion.toLowerCase())
+      : content.sections
+  });
 }
 
 function text(form, key, max) {
@@ -2030,13 +2108,25 @@ async function handleAdminFeatures(request) {
   if (request.method === "PUT" && isSameOrigin(request)) {
     try {
       const body = await request.json();
-      return json({ content: await saveFeatureContent(body.content) });
+      return json({ content: body.operation
+        ? await applyFeatureContentVersionOperation(body.operation)
+        : await saveFeatureContent(body.content) });
     } catch (error) {
       const message = error instanceof Error && error.message.includes("At least one")
         ? "至少保留一条新功能内容"
         : error instanceof Error && error.message.includes("bilingual")
           ? "前台显示的条目必须补全中英文标题和描述"
-          : "保存失败";
+          : error instanceof Error && error.message.includes("contains")
+            ? `该版本仍有功能条目，请确认是否连同 ${(error.message.match(/\d+/) || [])[0] || "全部"} 条功能一起删除`
+            : error instanceof Error && error.message.includes("already exists")
+              ? "该版本号已存在"
+              : error instanceof Error && error.message.includes("not found")
+                ? "找不到要操作的版本"
+                : error instanceof Error && error.message.includes("No legacy")
+                  ? "当前没有可迁移的早期更新条目"
+                  : error instanceof Error && error.message.includes("release version")
+                    ? "每条新功能必须填写完整版本号（例如 v2.1.8）"
+                    : "保存失败";
       return jsonError(message, 400);
     }
   }

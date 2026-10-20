@@ -562,6 +562,7 @@ try {
   const publicFeaturesData = await publicFeaturesResponse.json();
   assert.equal(publicFeaturesData.content.summary.label_zh, "本次重点");
   assert.equal(publicFeaturesData.content.sections.length, 6);
+  assert.deepEqual(publicFeaturesData.content.versions, [], "legacy data exposes recoverable version metadata");
   assert.equal(publicFeaturesData.content.sections[0].release_version, "早期更新");
   assert.equal(publicFeaturesData.content.sections[0].major_version, "OTHER");
   assert.equal(calls.length, 2, "first feature read must import the bundled content in two requests");
@@ -646,9 +647,34 @@ try {
   );
   assert.equal(invalidFeatureSaveResponse.status, 400, "new feature entries require a release version");
 
+  const featureOperation = (operation, authenticated = true) => api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/features", {
+      method: "PUT",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        ...(authenticated ? { cookie: adminCookie.split(";")[0] } : {})
+      },
+      body: JSON.stringify({ operation })
+    })
+  );
+  const unauthenticatedCreateResponse = await featureOperation({ type: "create", release_version: "V3.3.0" }, false);
+  assert.equal(unauthenticatedCreateResponse.status, 401, "feature version operations require an authenticated admin session");
+  for (const release_version of ["v2.1.8", "V3.3.0"]) {
+    const response = await featureOperation({ type: "create", release_version });
+    assert.equal(response.status, 200, `create independent feature version ${release_version}`);
+  }
+  const duplicateCaseResponse = await featureOperation({ type: "create", release_version: "v3.3.0" });
+  assert.equal(duplicateCaseResponse.status, 400, "feature version uniqueness is case-insensitive");
+  const emptyVersionCreate = await featureOperation({ type: "create", release_version: "V4.0.0" });
+  assert.equal(emptyVersionCreate.status, 200, "empty feature versions can be created independently from previews");
+  const emptyVersionDelete = await featureOperation({ type: "delete", release_version: "v4.0.0" });
+  assert.equal(emptyVersionDelete.status, 200, "empty feature versions can be deleted case-insensitively");
+
   const managedFeatures = structuredClone(publicFeaturesData.content);
+  managedFeatures.versions = ["v2.1.8", "V3.3.0"];
   managedFeatures.sections[0].release_version = "v2.1.8";
-  managedFeatures.sections[1].release_version = "v3.0.0";
+  managedFeatures.sections[1].release_version = "V3.3.0";
   managedFeatures.sections[0].title_zh = "后台修改后的标题";
   managedFeatures.sections[0].title_zh_tw = "後台修改後的標題";
   managedFeatures.sections[0].title_ja = "管理画面で変更した見出し";
@@ -707,11 +733,20 @@ try {
   assert.equal(featureSaveData.content.sections[5].title_ja, "管理画面で変更した見出し");
   assert.equal(featureSaveData.content.sections[5].release_version, "v2.1.8");
   assert.equal(featureSaveData.content.sections[5].major_version, "V2");
-  assert.equal(featureSaveData.content.sections[4].release_version, "v3.0.0");
+  assert.equal(featureSaveData.content.sections[4].release_version, "V3.3.0");
   assert.equal(featureSaveData.content.sections[4].major_version, "V3");
   assert.equal(featureSaveData.content.sections[0].id, "feature-06");
   assert.match(featureSaveData.content.summary.items_zh.join(" "), /LRCLIB/, "admin summary saves must preserve source data");
   assert.match(featureSaveData.content.sections[0].items_zh.join(" "), /LRCLIB/, "admin saves must preserve source data");
+
+  const renameVersionResponse = await featureOperation({ type: "rename", from: "v3.3.0", to: "V3.3.8" });
+  assert.equal(renameVersionResponse.status, 200, "feature versions can be renamed independently from previews");
+  const renamedVersionData = await renameVersionResponse.json();
+  assert.ok(renamedVersionData.content.versions.includes("V3.3.8"));
+  assert.ok(!renamedVersionData.content.versions.some((version) => version.toLowerCase() === "v3.3.0"));
+  assert.equal(renamedVersionData.content.sections[4].release_version, "V3.3.8", "rename cascades atomically to child sections");
+  const protectedDeleteResponse = await featureOperation({ type: "delete", release_version: "V3.3.8" });
+  assert.equal(protectedDeleteResponse.status, 400, "non-empty version deletion requires explicit cascade confirmation");
 
   const redactedFeaturesResponse = await api.fetch(
     new Request("https://lyric-island.top/api/features")
