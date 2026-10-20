@@ -809,6 +809,10 @@ def test_navigation_and_orbit(page: Page) -> None:
     expect(page.locator(".sourcesNote")).to_have_text(
         "*网易云音乐需最新版本手动到“设置-系统”中开启SMTC以正常使用全部功能。"
     )
+    expect(page.locator(".faqItem").nth(2).locator(".faqAnswer")).to_contain_text(
+        "如果使用网易云音乐，请先更新至最新版本，并手动前往“设置-系统”开启 SMTC，"
+        "才能正常使用全部功能。"
+    )
     expect(page.locator(".heroSupport .buttonRow .button")).to_have_count(1)
     expect(page.locator(".heroSupport a[href*='apps.microsoft.com']")).to_have_count(1)
     expect(page.locator(".heroSupport a[href*='github.com']")).to_have_count(0)
@@ -839,6 +843,10 @@ def test_navigation_and_orbit(page: Page) -> None:
         "*NetEase Cloud Music must be updated to the latest version, and SMTC "
         "must be manually enabled in “Settings - System” to use all features normally."
     )
+    expect(page.locator(".faqItem").nth(2).locator(".faqAnswer")).to_contain_text(
+        "If you use NetEase Cloud Music, update it to the latest version and manually "
+        "enable SMTC in “Settings - System” to use all features normally."
+    )
     assert page.locator(".desktopNavLinks a").all_text_contents() == [
         "Home",
         "What's new",
@@ -859,11 +867,19 @@ def test_navigation_and_orbit(page: Page) -> None:
         "*網易雲音樂需使用最新版本，並手動前往「設定－系統」開啟 SMTC，才能正常使用"
         "全部功能。"
     )
+    expect(page.locator(".faqItem").nth(2).locator(".faqAnswer")).to_contain_text(
+        "如果使用網易雲音樂，請先更新至最新版本，並手動前往「設定－系統」開啟 SMTC，"
+        "才能正常使用全部功能。"
+    )
 
     page.goto(BASE_URL + "/ja", wait_until="networkidle")
     expect(page.locator(".sourcesNote")).to_have_text(
         "*NetEase Cloud Music を最新バージョンに更新し、「設定 - システム」で SMTC を"
         "手動で有効にすると、すべての機能を正常に使用できます。"
+    )
+    expect(page.locator(".faqItem").nth(2).locator(".faqAnswer")).to_contain_text(
+        "NetEase Cloud Music を使用する場合は、最新バージョンに更新し、"
+        "「設定 - システム」で SMTC を手動で有効にすると、すべての機能を正常に使用できます。"
     )
 
     page.goto(BASE_URL + "/", wait_until="networkidle")

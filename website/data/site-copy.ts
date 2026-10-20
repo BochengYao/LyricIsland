@@ -283,7 +283,7 @@ const rawCopyByLocale: Record<"zh" | "en", SiteCopy> = {
         {
           question: "安装后如何开始使用？需要手动连接播放器吗？",
           answer:
-            "不需要手动连接。\n首次打开LyricHover时，教学模式会引导你完成基本设置。之后只需打开LyricHover并播放音乐，它便会自动识别当前播放器并开始匹配歌词。"
+            "不需要手动连接。\n首次打开LyricHover时，教学模式会引导你完成基本设置。之后只需打开LyricHover并播放音乐，它便会自动识别当前播放器并开始匹配歌词。\n如果使用网易云音乐，请先更新至最新版本，并手动前往“设置-系统”开启 SMTC，才能正常使用全部功能。"
         },
         {
           question: "播放音乐后没有显示歌词，或歌词匹配错误怎么办？",
@@ -455,7 +455,7 @@ const rawCopyByLocale: Record<"zh" | "en", SiteCopy> = {
         {
           question: "How do I get started after installing? Do I need to connect a player?",
           answer:
-            "No manual connection is needed.\nThe first time you open LyricHover, a guided tutorial walks you through the essentials. After that, simply keep LyricHover open and play some music—it will recognize the current player and start matching lyrics automatically."
+            "No manual connection is needed.\nThe first time you open LyricHover, a guided tutorial walks you through the essentials. After that, simply keep LyricHover open and play some music—it will recognize the current player and start matching lyrics automatically.\nIf you use NetEase Cloud Music, update it to the latest version and manually enable SMTC in “Settings - System” to use all features normally."
         },
         {
           question: "What if lyrics do not appear, or the wrong lyrics are matched?",
@@ -512,6 +512,15 @@ const traditionalSiteCopy = {
   compatibility: {
     ...transformCopy(rawCopyByLocale.zh.compatibility, (text) => Array.from(text, (character) => traditionalCharacters[character] ?? character).join("")),
     note: "*網易雲音樂需使用最新版本，並手動前往「設定－系統」開啟 SMTC，才能正常使用全部功能。"
+  },
+  faq: {
+    ...transformCopy(rawCopyByLocale.zh.faq, (text) => Array.from(text, (character) => traditionalCharacters[character] ?? character).join("")),
+    items: rawCopyByLocale.zh.faq.items.map((item, index) => index === 2
+      ? {
+          question: "安裝後如何開始使用？需要手動連接播放器嗎？",
+          answer: "不需要手動連接。\n首次打開 LyricHover 時，教學模式會引導你完成基本設定。之後只需打開 LyricHover 並播放音樂，它便會自動識別當前播放器並開始匹配歌詞。\n如果使用網易雲音樂，請先更新至最新版本，並手動前往「設定－系統」開啟 SMTC，才能正常使用全部功能。"
+        }
+      : transformCopy(item, (text) => Array.from(text, (character) => traditionalCharacters[character] ?? character).join("")))
   },
   lyricDock: {
     eyebrow: "新增 · 歌詞塢",
@@ -575,7 +584,7 @@ const japaneseSiteCopy: SiteCopy = {
   faq: { eyebrow: "よくある質問", title: "始める前に、\n知っておきたいこと。", items: [
     { question: "LyricHover はどの音楽プレーヤーに対応していますか？", answer: "LyricHover は Apple Music、NetEase Cloud Music、QQ Music、Kugou Music、Kuwo Music などに対応します。Windows SMTC メディア制御プロトコルに接続するプレーヤーなら、再生中の曲を通常は自動で認識します。\nNetEase Cloud Music の Windows SMTC 対応は完全ではありません。プレーヤー内で手動シークすると、歌詞の位置がすぐに更新されない場合があります。" },
     { question: "LyricHover は無料ですか？ アカウントやサブスクリプションは必要ですか？", answer: "LyricHover の基本機能はずっと無料です。LyricHover のアカウントもサブスクリプションも必要ありません。\nPro サポートプランに参加すると、開発を支援し、一部の新機能を先行体験できます。コミュニティ特典で有効な提案や不具合を送ると、Pro サポートプランのギフトコードを受け取れる場合があります。\nPro 特典は、LyricHover をダウンロードした Microsoft Store アカウントに紐づきます。" },
-    { question: "インストール後はどう始めますか？ プレーヤーを手動接続する必要がありますか？", answer: "手動接続は不要です。\n初回起動時はガイドが基本設定を案内します。その後は LyricHover を開いて音楽を再生するだけで、現在のプレーヤーを認識し、歌詞の照合を始めます。" },
+    { question: "インストール後はどう始めますか？ プレーヤーを手動接続する必要がありますか？", answer: "手動接続は不要です。\n初回起動時はガイドが基本設定を案内します。その後は LyricHover を開いて音楽を再生するだけで、現在のプレーヤーを認識し、歌詞の照合を始めます。\nNetEase Cloud Music を使用する場合は、最新バージョンに更新し、「設定 - システム」で SMTC を手動で有効にすると、すべての機能を正常に使用できます。" },
     { question: "歌詞が表示されない、または間違った歌詞が表示される場合は？", answer: "LyricHover は複数の歌詞ソースから自動で検索・照合し、未表示や誤一致を減らします。今後もソースを追加して、範囲と精度を高めます。" }
   ] },
   closing: { eyebrow: "LyricHover V2.0", title: "すべての一行を。\nちょうど、今に。", body: "GitHub で v1.0 とソースコードを確認できます。アプリは Microsoft Store から入手してください。", button: "GitHub", storeButton: "Microsoft Store" },
