@@ -787,7 +787,7 @@ def test_navigation_and_orbit(page: Page) -> None:
         ["歌词来源", "主流播放器", "广告打扰"]
     )
     expect(page.locator(".sourcesNote")).to_have_text(
-        "*受接口限制，网易云音乐暂不支持进度条同步与拖动进度条后的实时歌词同步。"
+        "*网易云音乐需手动到“设置-系统”中开启SMTC以正常使用全部功能。"
     )
     expect(page.locator(".heroSupport .buttonRow .button")).to_have_count(1)
     expect(page.locator(".heroSupport a[href*='apps.microsoft.com']")).to_have_count(1)
@@ -816,9 +816,8 @@ def test_navigation_and_orbit(page: Page) -> None:
         ["lyric sources", "popular players", "ad interruptions"]
     )
     expect(page.locator(".sourcesNote")).to_have_text(
-        "*Due to API limitations, NetEase Cloud Music currently does not support "
-        "progress-bar synchronization or real-time lyric synchronization after you "
-        "drag the progress bar."
+        "*To use all LyricHover features normally with NetEase Cloud Music, "
+        "manually enable SMTC in “Settings - System”."
     )
     assert page.locator(".desktopNavLinks a").all_text_contents() == [
         "Home",
@@ -834,6 +833,18 @@ def test_navigation_and_orbit(page: Page) -> None:
     ]
     expect(page.locator(".desktopNavLinks .navFeatureLink svg")).to_have_count(0)
     expect(page.locator(".desktopNavLinks .navStoreLink svg")).to_have_count(1)
+
+    page.goto(BASE_URL + "/zh-hant", wait_until="networkidle")
+    expect(page.locator(".sourcesNote")).to_have_text(
+        "*使用網易雲音樂時，需手動前往「設定－系統」開啟 SMTC，才能正常使用 "
+        "LyricHover 的全部功能。"
+    )
+
+    page.goto(BASE_URL + "/ja", wait_until="networkidle")
+    expect(page.locator(".sourcesNote")).to_have_text(
+        "*NetEase Cloud Music で LyricHover のすべての機能を正常に使用するには、"
+        "「設定 - システム」で SMTC を手動で有効にしてください。"
+    )
 
     page.goto(BASE_URL + "/", wait_until="networkidle")
     player_orbit = page.locator(".playerOrbit")
