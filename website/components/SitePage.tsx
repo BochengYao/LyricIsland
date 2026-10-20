@@ -274,7 +274,6 @@ export function SitePage({ locale }: Props) {
           className="modulesSection"
           id="modules"
           data-snap-section
-          data-staged-scroll="true"
         >
           <div className="sectionContainer modulesGrid">
             <div className="modulesCopy">
@@ -307,7 +306,6 @@ export function SitePage({ locale }: Props) {
           className="compatibilitySection"
           id="players"
           data-snap-section
-          data-wheel-snap="direct"
         >
           <div className="sectionContainer compatibilityInner">
             <div className="sectionTitleGrid">

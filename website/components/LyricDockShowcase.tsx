@@ -13,7 +13,6 @@ export function LyricDockShowcase({ copy }: Props) {
       className={styles.section}
       id="lyric-dock"
       data-snap-section
-      data-wheel-snap="direct"
     >
       <LyricDockIntroMotion />
       <div className={`sectionContainer ${styles.inner}`}>

@@ -343,7 +343,7 @@ def test_interactions(page: Page, locale: str) -> None:
     assert focus_data["outline"] != "none", "Keyboard focus must be visible"
 
 
-def test_smooth_section_snap(page: Page) -> None:
+def test_continuous_section_scroll(page: Page) -> None:
     page.goto(BASE_URL + "/", wait_until="networkidle")
     expect(page.locator("html")).to_have_attribute("data-snap-scroll", "enabled")
 
@@ -410,14 +410,11 @@ def test_smooth_section_snap(page: Page) -> None:
     modules.evaluate("(section) => window.scrollTo(0, section.offsetTop)")
     page.wait_for_timeout(120)
     page.mouse.wheel(0, 18)
-    page.wait_for_timeout(1800)
-    expected_module_stage = (
-        module_metrics["top"]
-        + module_metrics["height"]
-        - module_metrics["viewportHeight"]
-    )
-    assert abs(page.evaluate("window.scrollY") - expected_module_stage) <= 3, (
-        "One wheel step should advance the staged module image completely"
+    page.wait_for_timeout(120)
+    module_scroll_y = page.evaluate("window.scrollY")
+    expected_module_end = module_metrics["top"] + module_metrics["height"]
+    assert module_metrics["top"] < module_scroll_y < expected_module_end, (
+        "A small wheel step should move continuously within the modules section"
     )
     assert modules.locator(".moduleComposerContent").evaluate(
         "(node) => Number(getComputedStyle(node).opacity)"
@@ -426,7 +423,8 @@ def test_smooth_section_snap(page: Page) -> None:
     page.locator("#players").evaluate(
         "(section) => window.scrollTo(0, section.offsetTop)"
     )
-    expect(page.locator("#players")).to_have_attribute("data-wheel-snap", "direct")
+    players_top = page.locator("#players").evaluate("(section) => section.offsetTop")
+    expect(page.locator("#players")).not_to_have_attribute("data-wheel-snap", "direct")
     page.locator("#players").evaluate(
         """(section) => {
           section.style.blockSize = "calc(100vh + 24px)";
@@ -439,10 +437,10 @@ def test_smooth_section_snap(page: Page) -> None:
     sources = page.locator(".sourcesSection")
     sources_top = sources.evaluate("(section) => section.offsetTop")
     page.mouse.wheel(0, 18)
-    page.wait_for_timeout(1800)
-    assert abs(page.evaluate("window.scrollY") - sources_top) <= 3, (
-        "One ordinary mouse-wheel step should advance to the next anchor "
-        "even when viewport rounding makes the player section slightly taller"
+    page.wait_for_timeout(120)
+    player_scroll_y = page.evaluate("window.scrollY")
+    assert players_top < player_scroll_y < sources_top, (
+        "A small wheel step should not jump to the next section anchor"
     )
     sources_center = page.locator(".sourcesPanel").evaluate(
         "(panel) => (panel.getBoundingClientRect().top + panel.getBoundingClientRect().bottom) / 2"
@@ -1393,7 +1391,7 @@ def main() -> None:
             if name in {"desktop", "mobile"}:
                 test_interactions(page, "zh")
             if name == "desktop":
-                test_smooth_section_snap(page)
+                test_continuous_section_scroll(page)
                 test_navigation_and_orbit(page)
                 test_selective_text_reveal(page)
             if name == "mobile":
