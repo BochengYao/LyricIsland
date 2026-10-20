@@ -207,7 +207,12 @@ export function SitePage({ locale }: Props) {
           href={secondaryMonitorFixUrl}
         />
 
-        <section className="experienceSection" id="experience" data-snap-section>
+        <section
+          className="experienceSection"
+          id="experience"
+          data-snap-section
+          data-wheel-scroll="native"
+        >
           <div className="sectionContainer experienceIntro">
             {copy.experience.eyebrow && (
               <Eyebrow reveal>{copy.experience.eyebrow}</Eyebrow>
@@ -274,6 +279,7 @@ export function SitePage({ locale }: Props) {
           className="modulesSection"
           id="modules"
           data-snap-section
+          data-staged-scroll="true"
         >
           <div className="sectionContainer modulesGrid">
             <div className="modulesCopy">
@@ -306,6 +312,7 @@ export function SitePage({ locale }: Props) {
           className="compatibilitySection"
           id="players"
           data-snap-section
+          data-wheel-snap="direct"
         >
           <div className="sectionContainer compatibilityInner">
             <div className="sectionTitleGrid">

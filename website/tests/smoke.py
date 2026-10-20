@@ -343,7 +343,7 @@ def test_interactions(page: Page, locale: str) -> None:
     assert focus_data["outline"] != "none", "Keyboard focus must be visible"
 
 
-def test_continuous_section_scroll(page: Page) -> None:
+def test_smooth_section_snap(page: Page) -> None:
     page.goto(BASE_URL + "/", wait_until="networkidle")
     expect(page.locator("html")).to_have_attribute("data-snap-scroll", "enabled")
 
@@ -399,6 +399,26 @@ def test_continuous_section_scroll(page: Page) -> None:
     page.set_viewport_size({"width": 1440, "height": 900})
     page.reload(wait_until="networkidle")
 
+    experience = page.locator("#experience")
+    experience_metrics = experience.evaluate(
+        """(section) => ({
+          top: section.offsetTop,
+          bottom: section.offsetTop + section.offsetHeight,
+          viewportHeight: window.innerHeight
+        })"""
+    )
+    expect(experience).to_have_attribute("data-wheel-scroll", "native")
+    experience.evaluate("(section) => window.scrollTo(0, section.offsetTop)")
+    page.wait_for_timeout(120)
+    page.mouse.wheel(0, 18)
+    page.wait_for_timeout(120)
+    experience_scroll_y = page.evaluate("window.scrollY")
+    assert (
+        experience_metrics["top"]
+        < experience_scroll_y
+        < experience_metrics["bottom"] - experience_metrics["viewportHeight"]
+    ), "The second anchor should scroll continuously within its own long content"
+
     modules = page.locator("#modules")
     module_metrics = modules.evaluate(
         """(section) => ({
@@ -410,11 +430,14 @@ def test_continuous_section_scroll(page: Page) -> None:
     modules.evaluate("(section) => window.scrollTo(0, section.offsetTop)")
     page.wait_for_timeout(120)
     page.mouse.wheel(0, 18)
-    page.wait_for_timeout(120)
-    module_scroll_y = page.evaluate("window.scrollY")
-    expected_module_end = module_metrics["top"] + module_metrics["height"]
-    assert module_metrics["top"] < module_scroll_y < expected_module_end, (
-        "A small wheel step should move continuously within the modules section"
+    page.wait_for_timeout(1800)
+    expected_module_stage = (
+        module_metrics["top"]
+        + module_metrics["height"]
+        - module_metrics["viewportHeight"]
+    )
+    assert abs(page.evaluate("window.scrollY") - expected_module_stage) <= 3, (
+        "One wheel step should advance the staged module image completely"
     )
     assert modules.locator(".moduleComposerContent").evaluate(
         "(node) => Number(getComputedStyle(node).opacity)"
@@ -423,8 +446,7 @@ def test_continuous_section_scroll(page: Page) -> None:
     page.locator("#players").evaluate(
         "(section) => window.scrollTo(0, section.offsetTop)"
     )
-    players_top = page.locator("#players").evaluate("(section) => section.offsetTop")
-    expect(page.locator("#players")).not_to_have_attribute("data-wheel-snap", "direct")
+    expect(page.locator("#players")).to_have_attribute("data-wheel-snap", "direct")
     page.locator("#players").evaluate(
         """(section) => {
           section.style.blockSize = "calc(100vh + 24px)";
@@ -437,10 +459,10 @@ def test_continuous_section_scroll(page: Page) -> None:
     sources = page.locator(".sourcesSection")
     sources_top = sources.evaluate("(section) => section.offsetTop")
     page.mouse.wheel(0, 18)
-    page.wait_for_timeout(120)
-    player_scroll_y = page.evaluate("window.scrollY")
-    assert players_top < player_scroll_y < sources_top, (
-        "A small wheel step should not jump to the next section anchor"
+    page.wait_for_timeout(1800)
+    assert abs(page.evaluate("window.scrollY") - sources_top) <= 3, (
+        "One ordinary mouse-wheel step should advance to the next anchor "
+        "even when viewport rounding makes the player section slightly taller"
     )
     sources_center = page.locator(".sourcesPanel").evaluate(
         "(panel) => (panel.getBoundingClientRect().top + panel.getBoundingClientRect().bottom) / 2"
@@ -1391,7 +1413,7 @@ def main() -> None:
             if name in {"desktop", "mobile"}:
                 test_interactions(page, "zh")
             if name == "desktop":
-                test_continuous_section_scroll(page)
+                test_smooth_section_snap(page)
                 test_navigation_and_orbit(page)
                 test_selective_text_reveal(page)
             if name == "mobile":
