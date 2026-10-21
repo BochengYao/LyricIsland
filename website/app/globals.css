@@ -169,17 +169,6 @@ html[data-snap-scroll="enabled"] body {
   scroll-margin-top: 0;
 }
 
-@media (max-width: 1023px), (pointer: coarse) {
-  html {
-    scroll-snap-type: y mandatory;
-  }
-
-  [data-snap-section] {
-    scroll-snap-align: start;
-    scroll-snap-stop: always;
-  }
-}
-
 @media (min-width: 1024px) {
   [data-snap-section] {
     min-block-size: 100svh;
