@@ -698,6 +698,33 @@ html[lang="en"] :where(
   line-height: 1.5;
 }
 
+.responsivePicture {
+  display: block;
+  background-image: var(--responsive-image-placeholder);
+  background-position: var(--responsive-image-position, center);
+  background-size: cover;
+}
+
+.responsivePictureFill {
+  position: absolute;
+  inset: 0;
+}
+
+.responsivePicture img {
+  opacity: 0;
+  transition: opacity 160ms ease-out;
+}
+
+.responsivePicture[data-loaded="true"] img {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .responsivePicture img {
+    transition: none;
+  }
+}
+
 .recognitionBubble {
   position: fixed;
   z-index: 80;
@@ -1133,6 +1160,10 @@ html[lang="en"] :where(
 }
 
 .portraitImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   --portrait-scale: 1;
   --portrait-hover-scale: 1.06;
   border-radius: inherit;
@@ -1550,6 +1581,8 @@ html[lang="en"] :where(
 }
 
 .moduleComposerImage img {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   transform: scale(var(--module-image-scale));
   transition: transform 80ms linear;

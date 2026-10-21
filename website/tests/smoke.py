@@ -238,6 +238,7 @@ def test_interactions(page: Page, locale: str) -> None:
             imageFile: new URL(image.currentSrc).pathname.split("/").pop(),
             naturalWidth: image.naturalWidth,
             naturalHeight: image.naturalHeight,
+            renderedWidth: image.getBoundingClientRect().width,
             imageOpacity: Number(
               getComputedStyle(section.querySelector(".moduleComposerImage")).opacity
             ),
@@ -250,9 +251,17 @@ def test_interactions(page: Page, locale: str) -> None:
     assert module_intro_metrics["sectionHeight"] > (
         module_intro_metrics["viewportHeight"] * 1.35
     ), "The modules anchor should provide in-section scroll distance"
-    assert module_intro_metrics["imageFile"] == "module-layout-intro.png"
-    assert module_intro_metrics["naturalWidth"] == 2560
-    assert module_intro_metrics["naturalHeight"] == 1442
+    assert module_intro_metrics["imageFile"] in {
+        "module-layout-intro-720.39773615.webp",
+        "module-layout-intro-1200.c8c850a2.webp",
+        "module-layout-intro-2000.4de3e65f.webp",
+        "module-layout-intro.png",
+    }
+    assert module_intro_metrics["naturalWidth"] >= module_intro_metrics["renderedWidth"]
+    assert abs(
+        module_intro_metrics["naturalWidth"] / module_intro_metrics["naturalHeight"]
+        - 2560 / 1442
+    ) < 0.01
     assert module_intro_metrics["imageOpacity"] > 0.95
     assert module_intro_metrics["contentOpacity"] < 0.05
     module_frame_metrics = modules_section.locator(".moduleComposer").evaluate(

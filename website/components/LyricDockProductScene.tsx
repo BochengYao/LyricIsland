@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import { ResponsiveImage } from "./ResponsiveImage";
 import styles from "./LyricDockShowcase.module.css";
 
 type Props = {
@@ -50,14 +50,14 @@ export function LyricDockProductScene({ alt }: Props) {
       ref={productSceneRef}
       className={`${styles.productScene} ${hasEntered && !hasSettled ? styles.productSceneEntered : ""} ${hasSettled ? styles.productSceneSettled : ""}`}
     >
-      <Image
-        src="/images/lyric-dock-product-scene.png"
+      <ResponsiveImage
+        fallbackSrc="/images/lyric-dock-product-scene.png"
+        srcSet="/images/responsive/lyric-dock-product-scene-720.f900eac5.webp 720w, /images/responsive/lyric-dock-product-scene-1180.e8c7553d.webp 1180w, /images/responsive/lyric-dock-product-scene-2360.acd72915.webp 2360w, /images/responsive/lyric-dock-product-scene-3000.55f1618d.webp 3000w"
+        placeholderSrc="/images/responsive/lyric-dock-product-scene-placeholder.8d85b206.webp"
         alt={alt}
         width={3000}
         height={383}
-        sizes="(max-width: 767px) 390px, (max-width: 1023px) 720px, 1180px"
-        loading="eager"
-        unoptimized
+        sizes="(max-width: 767px) 100vw, (max-width: 1023px) 720px, (min-width: 1920px) 1928px, 100vw"
         className={styles.productSceneImage}
       />
     </figure>

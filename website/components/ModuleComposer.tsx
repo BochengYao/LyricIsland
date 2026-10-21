@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import { ResponsiveImage } from "@/components/ResponsiveImage";
 
 const moduleIconPaths = [
   "M2,2 L16,2 L16,16 L2,16 Z M4,13 L8,8 L11,11 L13,9 L15,13 Z M12,5 A2,2 0 1 1 11.99,5 Z",
@@ -80,9 +80,13 @@ export function ModuleComposer({ label, names, imageAlt }: Props) {
         className="moduleComposerImage"
         aria-hidden={contentVisible ? "true" : undefined}
       >
-        <Image
-          src="/images/module-layout-intro.png"
+        <ResponsiveImage
+          fallbackSrc="/images/module-layout-intro.png"
+          srcSet="/images/responsive/module-layout-intro-720.39773615.webp 720w, /images/responsive/module-layout-intro-1200.c8c850a2.webp 1200w, /images/responsive/module-layout-intro-2000.4de3e65f.webp 2000w"
+          placeholderSrc="/images/responsive/module-layout-intro-placeholder.308695f1.webp"
           alt={imageAlt}
+          width={2560}
+          height={1442}
           fill
           sizes="(max-width: 1023px) calc(100vw - 64px), 58vw"
         />
