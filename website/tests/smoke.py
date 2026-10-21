@@ -1434,8 +1434,14 @@ def main() -> None:
                 test_selective_text_reveal(page)
             if name == "mobile":
                 assert page.locator("html").get_attribute("data-snap-scroll") is None, (
-                    "Reduced-motion mobile contexts must keep native scrolling"
+                    "Reduced-motion mobile contexts must not use the desktop wheel handler"
                 )
+                assert page.locator("html").evaluate(
+                    "(node) => getComputedStyle(node).scrollSnapType"
+                ) == "y mandatory", "Mobile scrolling should retain native section anchors"
+                assert page.locator("#experience").evaluate(
+                    "(node) => getComputedStyle(node).scrollSnapAlign"
+                ) == "start", "The second mobile section should remain a snap anchor"
                 mobile_experience_image = page.locator(
                     "#experience .portraitImage"
                 ).first
