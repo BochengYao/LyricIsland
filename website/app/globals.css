@@ -393,6 +393,14 @@ html[lang="en"] :where(
   object-fit: cover;
 }
 
+.logoLockup > .responsivePicture {
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  overflow: hidden;
+  border-radius: 50%;
+}
+
 .logoLockup > span:last-child {
   display: grid;
   gap: 1px;
@@ -2562,6 +2570,10 @@ html[lang="en"] :where(
 }
 
 @media (max-width: 1023px) {
+  [data-snap-section] {
+    scroll-margin-top: 88px;
+  }
+
   .updatesDetailsSnap .releaseSections.sectionContainer {
     width: min(calc(100% - 48px), var(--content));
   }
@@ -2706,6 +2718,12 @@ html[lang="en"] :where(
   }
 
   .logoImage {
+    width: 38px;
+    height: 38px;
+  }
+
+  .logoLockup > .responsivePicture {
+    flex-basis: 38px;
     width: 38px;
     height: 38px;
   }

@@ -57,6 +57,17 @@ export function SmoothSectionScroll() {
     const isMobileEnabled = () => mobilePointer.matches;
     const isSnapEnabled = () => isEnabled() || isMobileEnabled();
 
+    const snapTopInset = () => {
+      if (!isMobileEnabled()) {
+        return 0;
+      }
+
+      const navigation = document.querySelector<HTMLElement>(".floatingNav");
+      return navigation
+        ? Math.ceil(navigation.getBoundingClientRect().bottom + 12)
+        : 88;
+    };
+
     const cancelAnimation = () => {
       if (animationFrame) {
         window.cancelAnimationFrame(animationFrame);
@@ -81,8 +92,9 @@ export function SmoothSectionScroll() {
     };
 
     const sectionMetrics = () =>
-      Array.from(document.querySelectorAll<HTMLElement>(SECTION_SELECTOR)).map(
-        (section, index) => ({
+      Array.from(document.querySelectorAll<HTMLElement>(SECTION_SELECTOR))
+        .filter((section) => section.offsetHeight > EDGE_TOLERANCE)
+        .map((section, index) => ({
           section,
           index,
           top: section.getBoundingClientRect().top + window.scrollY,
@@ -91,8 +103,7 @@ export function SmoothSectionScroll() {
             section.getBoundingClientRect().top +
             window.scrollY +
             section.offsetHeight
-        })
-      );
+        }));
 
     const geometryTopFor = (target: HTMLElement) => {
       const snapSection = target.matches(SECTION_SELECTOR)
@@ -101,13 +112,17 @@ export function SmoothSectionScroll() {
           target.querySelector<HTMLElement>(SECTION_SELECTOR);
 
       const geometryTarget = snapSection ?? target;
-      return geometryTarget.getBoundingClientRect().top + window.scrollY;
+      return (
+        geometryTarget.getBoundingClientRect().top +
+        window.scrollY -
+        snapTopInset()
+      );
     };
 
     const currentSection = (
       sections: ReturnType<typeof sectionMetrics>
     ) => {
-      const marker = window.scrollY + EDGE_TOLERANCE;
+      const marker = window.scrollY + snapTopInset() + EDGE_TOLERANCE;
       let current = sections[0];
 
       for (const section of sections) {
@@ -293,7 +308,7 @@ export function SmoothSectionScroll() {
       const targetTop =
         direction < 0 && target.height > window.innerHeight + EDGE_TOLERANCE
           ? target.bottom - window.innerHeight
-          : target.top;
+          : target.top - snapTopInset();
 
       animateTo(targetTop);
     };

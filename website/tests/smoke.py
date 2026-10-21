@@ -1422,6 +1422,125 @@ def test_submission_validation(page: Page) -> None:
     assert response.status == 400, "Public submissions must validate identity before storage"
 
 
+def test_mobile_section_navigation(page: Page) -> None:
+    page.goto(BASE_URL + "/", wait_until="networkidle")
+
+    logo_metrics = page.locator(".logoLockup").first.evaluate(
+        """(lockup) => {
+          const picture = lockup.querySelector('picture');
+          const image = lockup.querySelector('img');
+          return {
+            pictureRadius: getComputedStyle(picture).borderRadius,
+            pictureWidth: picture.getBoundingClientRect().width,
+            pictureHeight: picture.getBoundingClientRect().height,
+            imageRadius: getComputedStyle(image).borderRadius
+          };
+        }"""
+    )
+    assert logo_metrics["pictureRadius"] == "50%"
+    assert logo_metrics["imageRadius"] == "50%"
+    assert abs(logo_metrics["pictureWidth"] - logo_metrics["pictureHeight"]) < 1
+
+    for hash_value in ["#experience", "#modules", "#players", "#lyric-dock"]:
+        page.locator(f'a[href="{hash_value}"]').last.evaluate(
+            "(anchor) => anchor.click()"
+        )
+        page.wait_for_timeout(1900)
+        anchor_metrics = page.locator(hash_value).evaluate(
+            """(section) => ({
+              sectionTop: section.getBoundingClientRect().top,
+              navigationBottom: document.querySelector('.floatingNav').getBoundingClientRect().bottom
+            })"""
+        )
+        assert anchor_metrics["sectionTop"] >= anchor_metrics["navigationBottom"] + 8
+
+    product_scene = page.locator("#lyric-dock figure")
+    scene_metrics = product_scene.evaluate(
+        """(scene) => ({
+          width: scene.getBoundingClientRect().width,
+          right: scene.getBoundingClientRect().right,
+          viewportWidth: window.innerWidth
+        })"""
+    )
+    assert scene_metrics["width"] > scene_metrics["viewportWidth"]
+    assert scene_metrics["right"] > scene_metrics["viewportWidth"] + 120
+
+    page.goto(BASE_URL + "/?mobile-animation=1", wait_until="networkidle")
+    page.locator("#lyric-dock").evaluate(
+        """(section) => {
+          const navigation = document.querySelector('.floatingNav');
+          const inset = Math.ceil(navigation.getBoundingClientRect().bottom + 12);
+          window.scrollTo(0, section.offsetTop - inset);
+        }"""
+    )
+    page.wait_for_timeout(120)
+    entering_translation = product_scene.evaluate(
+        """(scene) => {
+          const transform = getComputedStyle(scene).transform;
+          return transform === 'none' ? 0 : Math.abs(new DOMMatrixReadOnly(transform).m41);
+        }"""
+    )
+    assert entering_translation > 20, "Mobile Lyric Dock art should enter from the right"
+    page.wait_for_timeout(1250)
+    settled_translation = product_scene.evaluate(
+        """(scene) => {
+          const transform = getComputedStyle(scene).transform;
+          return transform === 'none' ? 0 : Math.abs(new DOMMatrixReadOnly(transform).m41);
+        }"""
+    )
+    assert settled_translation < 1
+
+    page.screenshot(path=str(SCREENSHOTS / "zh-mobile-lyric-dock.png"))
+
+    product_scene.evaluate(
+        """(scene) => {
+          const startTarget = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+          const makeTouch = (clientY) => new Touch({
+            identifier: 1,
+            target: startTarget,
+            clientX: innerWidth / 2,
+            clientY,
+            radiusX: 2,
+            radiusY: 2,
+            force: 0.5
+          });
+          const start = makeTouch(innerHeight * 0.42);
+          startTarget.dispatchEvent(new TouchEvent('touchstart', {
+            bubbles: true,
+            cancelable: true,
+            touches: [start],
+            targetTouches: [start],
+            changedTouches: [start]
+          }));
+          const end = makeTouch(innerHeight * 0.76);
+          startTarget.dispatchEvent(new TouchEvent('touchmove', {
+            bubbles: true,
+            cancelable: true,
+            touches: [end],
+            targetTouches: [end],
+            changedTouches: [end]
+          }));
+          startTarget.dispatchEvent(new TouchEvent('touchend', {
+            bubbles: true,
+            cancelable: true,
+            touches: [],
+            targetTouches: [],
+            changedTouches: [end]
+          }));
+        }"""
+    )
+    page.wait_for_timeout(1900)
+    return_metrics = page.locator("#experience").evaluate(
+        """(section) => ({
+          bottom: section.getBoundingClientRect().bottom,
+          viewportHeight: innerHeight,
+          lyricDockTop: document.querySelector('#lyric-dock').getBoundingClientRect().top
+        })"""
+    )
+    assert abs(return_metrics["bottom"] - return_metrics["viewportHeight"]) < 8
+    assert return_metrics["lyricDockTop"] > return_metrics["viewportHeight"]
+
+
 def main() -> None:
     SCREENSHOTS.mkdir(parents=True, exist_ok=True)
 
@@ -1471,6 +1590,16 @@ def main() -> None:
                 full_page=True,
             )
             context.close()
+
+        context = browser.new_context(
+            viewport={"width": 390, "height": 844},
+            is_mobile=True,
+            has_touch=True,
+            reduced_motion="no-preference",
+        )
+        page = context.new_page()
+        test_mobile_section_navigation(page)
+        context.close()
 
         for name, width, height in [("desktop", 1440, 900), ("mobile", 390, 844)]:
             context = browser.new_context(viewport={"width": width, "height": height})

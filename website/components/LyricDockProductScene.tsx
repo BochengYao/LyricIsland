@@ -41,7 +41,7 @@ export function LyricDockProductScene({ alt }: Props) {
   useEffect(() => {
     if (!hasEntered) return;
 
-    const timeout = window.setTimeout(() => setHasSettled(true), 960);
+    const timeout = window.setTimeout(() => setHasSettled(true), 1180);
     return () => window.clearTimeout(timeout);
   }, [hasEntered]);
 
