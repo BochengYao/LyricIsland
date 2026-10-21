@@ -1370,15 +1370,16 @@ export function AdminIncentives() {
     markFeatureDirty();
   }
 
-  function showAllActiveFeatureSections() {
+  async function showAllActiveFeatureSections() {
     if (!activeFeatureSections.length || !hiddenActiveFeatureCount) return;
-    setFeatureContent((content) => ({
-      ...content,
-      sections: content.sections.map((section) => section.release_version === activeFeatureVersion
+    const contentToSave = {
+      ...featureContent,
+      sections: featureContent.sections.map((section) => section.release_version === activeFeatureVersion
         ? { ...section, visible: true }
         : section)
-    }));
-    setFeatureMessage(`有未保存的更改：${activeFeatureVersion} 的 ${hiddenActiveFeatureCount} 条内容将显示在前台`);
+    };
+    setFeatureContent(contentToSave);
+    await saveManagedFeatures(contentToSave);
   }
 
   function moveFeatureSection(id: string, direction: -1 | 1) {
@@ -1438,15 +1439,15 @@ export function AdminIncentives() {
     markFeatureDirty();
   }
 
-  async function saveManagedFeatures() {
-    const incompleteVersionSection = featureContent.sections.find((section) =>
+  async function saveManagedFeatures(contentToSave = featureContent) {
+    const incompleteVersionSection = contentToSave.sections.find((section) =>
       !isFeatureReleaseVersion(section.release_version)
     );
     if (incompleteVersionSection) {
       setFeatureMessage(`未保存：“${incompleteVersionSection.title_zh || incompleteVersionSection.title_en || "未命名条目"}”必须填写完整版本号（例如 v2.1.8）`);
       return;
     }
-    const incompleteVisibleSection = featureContent.sections.find((section) =>
+    const incompleteVisibleSection = contentToSave.sections.find((section) =>
       section.visible &&
       (!section.title_zh.trim() || !section.title_en.trim() || !section.body_zh.trim() || !section.body_en.trim())
     );
@@ -1461,7 +1462,7 @@ export function AdminIncentives() {
       const response = await fetch("/api/incentives/admin/features", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: featureContent })
+        body: JSON.stringify({ content: contentToSave })
       });
       const result = await response.json().catch(() => ({})) as { error?: string; content?: unknown };
       if (response.status === 401) {
@@ -1655,7 +1656,7 @@ export function AdminIncentives() {
                 {activeFeatureVersion !== LEGACY_FEATURE_RELEASE_VERSION && (
                   <>
                     <button className="button buttonSecondary" type="button" disabled={featureVersionSaving || !featureVersionDraft.trim()} onClick={() => void renameFeatureVersion()}>重命名当前版本</button>
-                    <button className="button buttonSecondary" type="button" disabled={featureVersionSaving || !hiddenActiveFeatureCount} onClick={showAllActiveFeatureSections}>全部设为前台显示</button>
+                    <button className="button buttonSecondary" type="button" disabled={featureSaving || featureVersionSaving || !hiddenActiveFeatureCount} onClick={() => void showAllActiveFeatureSections()}>全部显示并同步前台</button>
                     <button className="button buttonSecondary danger" type="button" disabled={featureVersionSaving} onClick={() => void deleteFeatureVersion()}>删除版本</button>
                   </>
                 )}
