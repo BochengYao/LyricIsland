@@ -816,7 +816,11 @@ def test_navigation_and_orbit(page: Page) -> None:
         ["歌词来源", "主流播放器", "广告打扰"]
     )
     expect(page.locator(".sourcesNote")).to_have_text(
-        "*网易云音乐需手动到“设置-系统”中开启SMTC以正常使用全部功能。"
+        "*网易云音乐需最新版本手动到“设置-系统”中开启SMTC以正常使用全部功能。"
+    )
+    expect(page.locator(".faqItem").nth(2).locator(".faqAnswer")).to_contain_text(
+        "如果使用网易云音乐，请先更新至最新版本，并手动前往“设置-系统”开启 SMTC，"
+        "才能正常使用全部功能。"
     )
     expect(page.locator(".heroSupport .buttonRow .button")).to_have_count(1)
     expect(page.locator(".heroSupport a[href*='apps.microsoft.com']")).to_have_count(1)
@@ -845,8 +849,12 @@ def test_navigation_and_orbit(page: Page) -> None:
         ["lyric sources", "popular players", "ad interruptions"]
     )
     expect(page.locator(".sourcesNote")).to_have_text(
-        "*To use all Lyric Hover features normally with NetEase Cloud Music, "
-        "manually enable SMTC in “Settings - System”."
+        "*NetEase Cloud Music must be updated to the latest version, and SMTC "
+        "must be manually enabled in “Settings - System” to use all features normally."
+    )
+    expect(page.locator(".faqItem").nth(2).locator(".faqAnswer")).to_contain_text(
+        "If you use NetEase Cloud Music, update it to the latest version and manually "
+        "enable SMTC in “Settings - System” to use all features normally."
     )
     assert page.locator(".desktopNavLinks a").all_text_contents() == [
         "Home",
@@ -865,14 +873,22 @@ def test_navigation_and_orbit(page: Page) -> None:
 
     page.goto(BASE_URL + "/zh-hant", wait_until="networkidle")
     expect(page.locator(".sourcesNote")).to_have_text(
-        "*使用網易雲音樂時，需手動前往「設定－系統」開啟 SMTC，才能正常使用 "
-        "LyricHover 的全部功能。"
+        "*網易雲音樂需使用最新版本，並手動前往「設定－系統」開啟 SMTC，才能正常使用"
+        "全部功能。"
+    )
+    expect(page.locator(".faqItem").nth(2).locator(".faqAnswer")).to_contain_text(
+        "如果使用網易雲音樂，請先更新至最新版本，並手動前往「設定－系統」開啟 SMTC，"
+        "才能正常使用全部功能。"
     )
 
     page.goto(BASE_URL + "/ja", wait_until="networkidle")
     expect(page.locator(".sourcesNote")).to_have_text(
-        "*NetEase Cloud Music で LyricHover のすべての機能を正常に使用するには、"
-        "「設定 - システム」で SMTC を手動で有効にしてください。"
+        "*NetEase Cloud Music を最新バージョンに更新し、「設定 - システム」で SMTC を"
+        "手動で有効にすると、すべての機能を正常に使用できます。"
+    )
+    expect(page.locator(".faqItem").nth(2).locator(".faqAnswer")).to_contain_text(
+        "NetEase Cloud Music を使用する場合は、最新バージョンに更新し、"
+        "「設定 - システム」で SMTC を手動で有効にすると、すべての機能を正常に使用できます。"
     )
 
     page.goto(BASE_URL + "/", wait_until="networkidle")
@@ -1406,6 +1422,232 @@ def test_submission_validation(page: Page) -> None:
     assert response.status == 400, "Public submissions must validate identity before storage"
 
 
+def test_mobile_section_navigation(page: Page) -> None:
+    page.goto(BASE_URL + "/", wait_until="networkidle")
+
+    def swipe(start_ratio: float, end_ratio: float) -> None:
+        page.evaluate(
+            """({ startRatio, endRatio }) => {
+              const target = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+              const makeTouch = (clientY) => new Touch({
+                identifier: 1,
+                target,
+                clientX: innerWidth / 2,
+                clientY,
+                radiusX: 2,
+                radiusY: 2,
+                force: 0.5
+              });
+              const start = makeTouch(innerHeight * startRatio);
+              target.dispatchEvent(new TouchEvent('touchstart', {
+                bubbles: true,
+                cancelable: true,
+                touches: [start],
+                targetTouches: [start],
+                changedTouches: [start]
+              }));
+              const end = makeTouch(innerHeight * endRatio);
+              target.dispatchEvent(new TouchEvent('touchmove', {
+                bubbles: true,
+                cancelable: true,
+                touches: [end],
+                targetTouches: [end],
+                changedTouches: [end]
+              }));
+              target.dispatchEvent(new TouchEvent('touchend', {
+                bubbles: true,
+                cancelable: true,
+                touches: [],
+                targetTouches: [],
+                changedTouches: [end]
+              }));
+            }""",
+            {"startRatio": start_ratio, "endRatio": end_ratio},
+        )
+
+    logo_metrics = page.locator(".logoLockup").first.evaluate(
+        """(lockup) => {
+          const picture = lockup.querySelector('picture');
+          const image = lockup.querySelector('img');
+          return {
+            pictureRadius: getComputedStyle(picture).borderRadius,
+            pictureWidth: picture.getBoundingClientRect().width,
+            pictureHeight: picture.getBoundingClientRect().height,
+            imageRadius: getComputedStyle(image).borderRadius
+          };
+        }"""
+    )
+    assert logo_metrics["pictureRadius"] == "50%"
+    assert logo_metrics["imageRadius"] == "50%"
+    assert abs(logo_metrics["pictureWidth"] - logo_metrics["pictureHeight"]) < 1
+
+    for hash_value in ["#experience", "#modules", "#players", "#lyric-dock"]:
+        page.locator(f'a[href="{hash_value}"]').last.evaluate(
+            "(anchor) => anchor.click()"
+        )
+        page.wait_for_timeout(1900)
+        anchor_metrics = page.locator(hash_value).evaluate(
+            """(section) => ({
+              sectionTop: section.getBoundingClientRect().top
+            })"""
+        )
+        assert abs(anchor_metrics["sectionTop"]) < 8
+
+    page.locator("#experience").evaluate(
+        "(section) => window.scrollTo(0, section.offsetTop)"
+    )
+    page.wait_for_timeout(120)
+    experience_alignment = page.locator("#experience").evaluate(
+        """(section) => ({
+          sectionTop: section.getBoundingClientRect().top,
+          titleTop: section.querySelector('h2').getBoundingClientRect().top,
+          navigationBottom: document.querySelector('.floatingNav').getBoundingClientRect().bottom
+        })"""
+    )
+    assert abs(experience_alignment["sectionTop"]) < 8
+    assert experience_alignment["titleTop"] > experience_alignment["navigationBottom"] + 12
+
+    for selector in [".sourcesSection", ".siteFooter"]:
+        long_section = page.locator(selector)
+        expect(long_section).to_have_attribute("data-wheel-scroll", "native")
+        section_metrics = long_section.evaluate(
+            """(section) => ({
+              top: section.offsetTop,
+              height: section.offsetHeight,
+              viewportHeight: innerHeight
+            })"""
+        )
+        assert section_metrics["height"] > section_metrics["viewportHeight"] + 96
+        internal_top = section_metrics["top"] + (
+            section_metrics["height"] - section_metrics["viewportHeight"]
+        ) / 2
+        page.evaluate("(top) => window.scrollTo(0, top)", internal_top)
+        page.wait_for_timeout(500)
+        assert abs(page.evaluate("window.scrollY") - internal_top) < 8, (
+            f"{selector} should preserve ordinary scrolling inside its anchor"
+        )
+
+    page.locator(".closingSection").evaluate(
+        "(section) => window.scrollTo(0, section.offsetTop)"
+    )
+    page.wait_for_timeout(120)
+    closing_boundary = page.locator(".siteFooter").evaluate(
+        """(footer) => ({
+          backgroundTop: footer.getBoundingClientRect().top,
+          contentTop: footer.querySelector('.footerTop').getBoundingClientRect().top,
+          viewportHeight: innerHeight
+        })"""
+    )
+    assert closing_boundary["backgroundTop"] < closing_boundary["viewportHeight"]
+    assert closing_boundary["contentTop"] >= closing_boundary["viewportHeight"]
+
+    product_scene = page.locator("#lyric-dock figure")
+    scene_metrics = product_scene.evaluate(
+        """(scene) => ({
+          width: scene.getBoundingClientRect().width,
+          right: scene.getBoundingClientRect().right,
+          viewportWidth: window.innerWidth
+        })"""
+    )
+    assert scene_metrics["width"] > scene_metrics["viewportWidth"]
+    assert scene_metrics["right"] > scene_metrics["viewportWidth"] + 120
+    assert product_scene.evaluate("(scene) => scene.getBoundingClientRect().height") >= 120
+    assert product_scene.evaluate("(scene) => getComputedStyle(scene).opacity") == "1"
+
+    dock_title_metrics = page.locator("#lyric-dock h2").evaluate(
+        """(title) => ({
+          text: title.textContent,
+          whiteSpace: getComputedStyle(title).whiteSpace,
+          height: title.getBoundingClientRect().height,
+          lineHeight: parseFloat(getComputedStyle(title).lineHeight)
+        })"""
+    )
+    assert "，\n" in dock_title_metrics["text"]
+    assert dock_title_metrics["whiteSpace"] == "pre-line"
+    assert dock_title_metrics["height"] >= dock_title_metrics["lineHeight"] * 1.8
+
+    page.goto(BASE_URL + "/?mobile-animation=1", wait_until="networkidle")
+    page.locator("#lyric-dock").evaluate(
+        """(section) => {
+          const navigation = document.querySelector('.floatingNav');
+          const inset = Math.ceil(navigation.getBoundingClientRect().bottom + 32);
+          window.scrollTo(0, section.offsetTop - inset);
+        }"""
+    )
+    page.wait_for_timeout(120)
+    entering_translation = product_scene.evaluate(
+        """(scene) => {
+          const transform = getComputedStyle(scene).transform;
+          return transform === 'none' ? 0 : Math.abs(new DOMMatrixReadOnly(transform).m41);
+        }"""
+    )
+    assert entering_translation > 20, "Mobile Lyric Dock art should enter from the right"
+    page.wait_for_timeout(1250)
+    settled_translation = product_scene.evaluate(
+        """(scene) => {
+          const transform = getComputedStyle(scene).transform;
+          return transform === 'none' ? 0 : Math.abs(new DOMMatrixReadOnly(transform).m41);
+        }"""
+    )
+    assert settled_translation < 1
+
+    page.screenshot(path=str(SCREENSHOTS / "zh-mobile-lyric-dock.png"))
+
+    swipe(0.42, 0.76)
+    page.wait_for_timeout(1900)
+    return_metrics = page.locator("#experience").evaluate(
+        """(section) => ({
+          bottom: section.getBoundingClientRect().bottom,
+          viewportHeight: innerHeight,
+          lyricDockTop: document.querySelector('#lyric-dock').getBoundingClientRect().top
+        })"""
+    )
+    assert abs(return_metrics["bottom"] - return_metrics["viewportHeight"]) < 8
+    assert return_metrics["lyricDockTop"] > return_metrics["viewportHeight"]
+
+    modules = page.locator("#modules")
+    modules.evaluate(
+        """(section) => {
+          const navigation = document.querySelector('.floatingNav');
+          const inset = Math.ceil(navigation.getBoundingClientRect().bottom + 32);
+          window.scrollTo(0, section.offsetTop - inset);
+        }"""
+    )
+    page.wait_for_timeout(120)
+    module_metrics = modules.evaluate(
+        """(section) => ({
+          bottom: section.offsetTop + section.offsetHeight,
+          viewportHeight: innerHeight
+        })"""
+    )
+    swipe(0.76, 0.32)
+    page.wait_for_timeout(1900)
+    assert abs(
+        page.evaluate("window.scrollY")
+        - (module_metrics["bottom"] - module_metrics["viewportHeight"])
+    ) < 8, "The first mobile swipe in Modules should reveal its second image stage"
+
+    swipe(0.76, 0.32)
+    page.wait_for_timeout(1900)
+    player_alignment = page.locator("#players").evaluate(
+        """(section) => ({ sectionTop: section.getBoundingClientRect().top })"""
+    )
+    assert abs(player_alignment["sectionTop"]) < 8
+
+    experience_end = page.locator("#experience").evaluate(
+        """(section) => section.offsetTop + section.offsetHeight - innerHeight"""
+    )
+    page.evaluate("(top) => window.scrollTo(0, top - 100)", experience_end)
+    page.wait_for_timeout(120)
+    swipe(0.76, 0.32)
+    page.evaluate("(top) => window.scrollTo(0, top + 120)", experience_end)
+    page.wait_for_timeout(1900)
+    lyric_dock_alignment = page.locator("#lyric-dock").evaluate(
+        """(section) => ({ sectionTop: section.getBoundingClientRect().top })"""
+    )
+    assert abs(lyric_dock_alignment["sectionTop"]) < 8
+
+
 def main() -> None:
     SCREENSHOTS.mkdir(parents=True, exist_ok=True)
 
@@ -1455,6 +1697,16 @@ def main() -> None:
                 full_page=True,
             )
             context.close()
+
+        context = browser.new_context(
+            viewport={"width": 390, "height": 844},
+            is_mobile=True,
+            has_touch=True,
+            reduced_motion="no-preference",
+        )
+        page = context.new_page()
+        test_mobile_section_navigation(page)
+        context.close()
 
         for name, width, height in [("desktop", 1440, 900), ("mobile", 390, 844)]:
             context = browser.new_context(viewport={"width": width, "height": height})

@@ -393,6 +393,14 @@ html[lang="en"] :where(
   object-fit: cover;
 }
 
+.logoLockup > .responsivePicture {
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  overflow: hidden;
+  border-radius: 50%;
+}
+
 .logoLockup > span:last-child {
   display: grid;
   gap: 1px;
@@ -2710,6 +2718,12 @@ html[lang="en"] :where(
     height: 38px;
   }
 
+  .logoLockup > .responsivePicture {
+    flex-basis: 38px;
+    width: 38px;
+    height: 38px;
+  }
+
   .logoLockup {
     gap: 9px;
   }
@@ -2826,7 +2840,7 @@ html[lang="en"] :where(
   }
 
   .experienceSection {
-    padding-top: 56px;
+    padding-top: 132px;
   }
 
   .orbitCanvas {
@@ -3081,7 +3095,7 @@ html[lang="en"] :where(
   }
 
   .siteFooter {
-    padding: 64px 0 48px;
+    padding: 144px 0 48px;
   }
 
   .footerTop {

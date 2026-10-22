@@ -9,6 +9,7 @@ const SETTLE_LOCK_MS = 280;
 const NATIVE_SCROLL_SETTLE_MS = 180;
 const EDGE_TOLERANCE = 2;
 const TOUCH_INTENT_THRESHOLD = 36;
+const MOBILE_EDGE_SNAP_TOLERANCE = 48;
 
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(maximum, Math.max(minimum, value));
@@ -52,6 +53,7 @@ export function SmoothSectionScroll() {
     let touchStartY = 0;
     let touchCurrentY = 0;
     let touchMode: "idle" | "native" | "snap" = "idle";
+    let lastTouchDirection: 1 | -1 | 0 = 0;
 
     const isEnabled = () => desktopPointer.matches && !reducedMotion.matches;
     const isMobileEnabled = () => mobilePointer.matches;
@@ -81,8 +83,9 @@ export function SmoothSectionScroll() {
     };
 
     const sectionMetrics = () =>
-      Array.from(document.querySelectorAll<HTMLElement>(SECTION_SELECTOR)).map(
-        (section, index) => ({
+      Array.from(document.querySelectorAll<HTMLElement>(SECTION_SELECTOR))
+        .filter((section) => section.offsetHeight > EDGE_TOLERANCE)
+        .map((section, index) => ({
           section,
           index,
           top: section.getBoundingClientRect().top + window.scrollY,
@@ -91,8 +94,7 @@ export function SmoothSectionScroll() {
             section.getBoundingClientRect().top +
             window.scrollY +
             section.offsetHeight
-        })
-      );
+        }));
 
     const geometryTopFor = (target: HTMLElement) => {
       const snapSection = target.matches(SECTION_SELECTOR)
@@ -164,7 +166,7 @@ export function SmoothSectionScroll() {
     };
 
     const settleNativeScroll = () => {
-      if (!isEnabled() || animating || pointerActive) {
+      if (!isSnapEnabled() || animating || pointerActive) {
         return;
       }
 
@@ -174,16 +176,66 @@ export function SmoothSectionScroll() {
 
       scrollSettleTimer = window.setTimeout(() => {
         scrollSettleTimer = 0;
-        if (!isEnabled() || animating || pointerActive) {
+        if (!isSnapEnabled() || animating || pointerActive) {
           return;
         }
 
         const sections = sectionMetrics();
         const current = currentSection(sections);
         const directSnap = current?.section.dataset.wheelSnap === "direct";
+        const isLongSection = current
+          ? current.height > window.innerHeight + EDGE_TOLERANCE && !directSnap
+          : false;
+
+        if (isMobileEnabled() && current) {
+          const nativeScroll = current.section.dataset.wheelScroll === "native";
+          const startTop = current.top;
+          const endTop = current.bottom - window.innerHeight;
+
+          if (
+            isLongSection &&
+            nativeScroll &&
+            window.scrollY > startTop + MOBILE_EDGE_SNAP_TOLERANCE &&
+            window.scrollY < endTop - MOBILE_EDGE_SNAP_TOLERANCE
+          ) {
+            return;
+          }
+
+          if (isLongSection && nativeScroll) {
+            const next = sections[current.index + 1];
+            const targetTop =
+              lastTouchDirection > 0 &&
+              next &&
+              window.scrollY >= endTop - MOBILE_EDGE_SNAP_TOLERANCE
+                ? next.top
+                : window.scrollY > (startTop + endTop) / 2
+                  ? endTop
+                  : startTop;
+
+            if (Math.abs(window.scrollY - targetTop) > EDGE_TOLERANCE) {
+              animateTo(targetTop);
+            }
+            return;
+          }
+
+          const next = sections[current.index + 1];
+          const offsetWithinSection = window.scrollY - current.top;
+          const target =
+            next &&
+            (lastTouchDirection > 0 ||
+              (lastTouchDirection === 0 && offsetWithinSection > current.height / 2))
+              ? next
+              : current;
+
+          if (Math.abs(window.scrollY - target.top) > EDGE_TOLERANCE) {
+            animateTo(target.top);
+          }
+          return;
+        }
+
         if (
           !current ||
-          (current.height > window.innerHeight + EDGE_TOLERANCE && !directSnap)
+          isLongSection
         ) {
           return;
         }
@@ -356,15 +408,22 @@ export function SmoothSectionScroll() {
     };
 
     const onTouchStart = (event: TouchEvent) => {
-      if (!isMobileEnabled() || event.touches.length !== 1) return;
+      if (!isMobileEnabled() || event.touches.length !== 1) {
+        return;
+      }
+
       cancelAnimation();
       touchStartY = event.touches[0].clientY;
       touchCurrentY = touchStartY;
       touchMode = "idle";
+      lastTouchDirection = 0;
     };
 
     const onTouchMove = (event: TouchEvent) => {
-      if (!isMobileEnabled() || event.touches.length !== 1) return;
+      if (!isMobileEnabled() || event.touches.length !== 1) {
+        return;
+      }
+
       if (
         event.target instanceof Element &&
         event.target.closest("[data-native-scroll], dialog, [role='dialog']")
@@ -375,12 +434,16 @@ export function SmoothSectionScroll() {
 
       touchCurrentY = event.touches[0].clientY;
       const delta = touchStartY - touchCurrentY;
-      if (Math.abs(delta) < EDGE_TOLERANCE) return;
+      if (Math.abs(delta) < EDGE_TOLERANCE) {
+        return;
+      }
 
       const direction: 1 | -1 = delta > 0 ? 1 : -1;
       const sections = sectionMetrics();
       const current = currentSection(sections);
-      if (!current) return;
+      if (!current) {
+        return;
+      }
 
       const directSnap = current.section.dataset.wheelSnap === "direct";
       const nativeTouchScroll =
@@ -406,20 +469,59 @@ export function SmoothSectionScroll() {
     };
 
     const finishTouch = () => {
-      if (!isMobileEnabled() || touchMode !== "snap") {
+      const completedMode = touchMode;
+      if (!isMobileEnabled() || completedMode === "idle") {
         touchMode = "idle";
         return;
       }
 
       const delta = touchStartY - touchCurrentY;
       touchMode = "idle";
-      if (Math.abs(delta) < TOUCH_INTENT_THRESHOLD) return;
+      if (Math.abs(delta) < TOUCH_INTENT_THRESHOLD) {
+        return;
+      }
 
       const direction: 1 | -1 = delta > 0 ? 1 : -1;
+      lastTouchDirection = direction;
       const sections = sectionMetrics();
       const current = currentSection(sections);
-      const target = current && sections[current.index + direction];
-      if (!target) return;
+      if (!current) {
+        return;
+      }
+
+      const directSnap = current.section.dataset.wheelSnap === "direct";
+      const isLongSection =
+        current.height > window.innerHeight + EDGE_TOLERANCE && !directSnap;
+      const distanceToEdge =
+        direction > 0
+          ? current.bottom - (window.scrollY + window.innerHeight)
+          : window.scrollY - current.top;
+
+      if (
+        completedMode === "snap" &&
+        isLongSection &&
+        current.section.dataset.stagedScroll === "true" &&
+        distanceToEdge > MOBILE_EDGE_SNAP_TOLERANCE
+      ) {
+        animateTo(
+          direction > 0
+            ? current.bottom - window.innerHeight
+            : current.top
+        );
+        return;
+      }
+
+      if (
+        completedMode === "native" &&
+        (!isLongSection || distanceToEdge > MOBILE_EDGE_SNAP_TOLERANCE)
+      ) {
+        return;
+      }
+
+      const target = sections[current.index + direction];
+      if (!target) {
+        return;
+      }
 
       const targetTop =
         direction < 0 && target.height > window.innerHeight + EDGE_TOLERANCE

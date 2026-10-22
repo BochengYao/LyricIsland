@@ -1,5 +1,6 @@
 import type {
   FeatureContent,
+  FeatureContentVersionOperation,
   IncentiveSubmission,
   PublicReleasePreview,
   PublicSuggestion,
@@ -673,6 +674,15 @@ export async function saveFeatureContent(value: unknown) {
   if (content.sections.some((section) => !isFeatureReleaseVersion(section.release_version))) {
     throw new Error("Every feature section requires a complete release version");
   }
+  if (content.versions.some((version) => !isFeatureReleaseVersion(version) || version === "早期更新")) {
+    throw new Error("Feature versions must use complete release versions");
+  }
+  if (content.sections.some((section) =>
+    section.release_version !== "早期更新" &&
+    !content.versions.some((version) => version.toLowerCase() === section.release_version.toLowerCase())
+  )) {
+    throw new Error("Every feature section must belong to a managed feature version");
+  }
   const existing = await getFeatureContentRow();
   if (!existing) {
     const rows = await supabase<StoredFeatureRow[]>("/rest/v1/release_previews", {
@@ -695,4 +705,68 @@ export async function saveFeatureContent(value: unknown) {
     }
   );
   return sanitizeFeatureContent(rows[0]?.highlights_zh ?? content);
+}
+
+function managedFeatureVersion(content: FeatureContent, value: string) {
+  const normalized = value.trim().toLowerCase();
+  return content.versions.find((version) => version.toLowerCase() === normalized);
+}
+
+export async function applyFeatureContentVersionOperation(operation: FeatureContentVersionOperation) {
+  const content = sanitizeFeatureContent(await getFeatureContent());
+  if (operation.type === "migrate-legacy") {
+    const target = operation.to.trim();
+    if (target === "早期更新" || !/^v\d+\.\d+\.\d+$/i.test(target)) {
+      throw new Error("Feature versions must use complete release versions");
+    }
+    const legacyCount = content.sections.filter((section) => section.release_version === "早期更新").length;
+    if (!legacyCount) throw new Error("No legacy feature sections to migrate");
+    const existingTarget = managedFeatureVersion(content, target);
+    return saveFeatureContent({
+      ...content,
+      versions: existingTarget ? content.versions : [...content.versions, target],
+      sections: content.sections.map((section) => section.release_version === "早期更新"
+        ? { ...section, release_version: existingTarget ?? target }
+        : section)
+    });
+  }
+  if (operation.type === "create") {
+    const releaseVersion = operation.release_version.trim();
+    if (!/^v\d+\.\d+\.\d+$/i.test(releaseVersion) || releaseVersion === "早期更新") {
+      throw new Error("Feature versions must use complete release versions");
+    }
+    if (managedFeatureVersion(content, releaseVersion)) throw new Error("Feature version already exists");
+    return saveFeatureContent({ ...content, versions: [...content.versions, releaseVersion] });
+  }
+  if (operation.type === "rename") {
+    const from = managedFeatureVersion(content, operation.from);
+    const to = operation.to.trim();
+    if (!from) throw new Error("Feature version not found");
+    if (!/^v\d+\.\d+\.\d+$/i.test(to) || to === "早期更新") {
+      throw new Error("Feature versions must use complete release versions");
+    }
+    const existingTarget = managedFeatureVersion(content, to);
+    if (existingTarget && existingTarget !== from) throw new Error("Feature version already exists");
+    return saveFeatureContent({
+      ...content,
+      versions: content.versions.map((version) => version === from ? to : version),
+      sections: content.sections.map((section) => section.release_version.toLowerCase() === from.toLowerCase()
+        ? { ...section, release_version: to }
+      : section)
+    });
+  }
+  if (operation.type !== "delete") throw new Error("Feature version operation is invalid");
+  const releaseVersion = managedFeatureVersion(content, operation.release_version);
+  if (!releaseVersion) throw new Error("Feature version not found");
+  const sectionCount = content.sections.filter((section) => section.release_version.toLowerCase() === releaseVersion.toLowerCase()).length;
+  if (sectionCount > 0 && operation.delete_sections !== true) {
+    throw new Error(`Feature version contains ${sectionCount} sections`);
+  }
+  return saveFeatureContent({
+    ...content,
+    versions: content.versions.filter((version) => version !== releaseVersion),
+    sections: operation.delete_sections === true
+      ? content.sections.filter((section) => section.release_version.toLowerCase() !== releaseVersion.toLowerCase())
+      : content.sections
+  });
 }

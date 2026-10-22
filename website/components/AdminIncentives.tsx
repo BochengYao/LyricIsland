@@ -17,6 +17,7 @@ import type {
   AccessSeverity,
   FeatureContent,
   FeatureContentSection,
+  FeatureContentVersionOperation,
   IncentiveSubmission,
   ReleasePreview,
   ReleasePreviewFeature,
@@ -204,6 +205,17 @@ function previewBulkLine(feature: ReleasePreviewFeature) {
 
 function samePreviewVersion(left: string, right: string) {
   return left.trim().toLocaleLowerCase() === right.trim().toLocaleLowerCase();
+}
+
+function compareFullReleaseVersionsNewestFirst(left: string, right: string) {
+  const parse = (value: string) => value.trim().match(/^v(\d+)\.(\d+)\.(\d+)$/i)?.slice(1).map(Number) ?? [];
+  const leftParts = parse(left);
+  const rightParts = parse(right);
+  for (let index = 0; index < 3; index += 1) {
+    const difference = (rightParts[index] ?? -1) - (leftParts[index] ?? -1);
+    if (difference) return difference;
+  }
+  return left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" });
 }
 
 function featuresForPreviewVersion(features: ReleasePreviewFeature[], previewVersion: string, version: string) {
@@ -445,10 +457,13 @@ export function AdminIncentives() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submissions, setSubmissions] = useState<IncentiveSubmission[]>([]);
-  const [featureContent, setFeatureContent] = useState<FeatureContent>(defaultFeatureContent);
+  const [featureContent, setFeatureContent] = useState<FeatureContent>(() => sanitizeFeatureContent(defaultFeatureContent));
   const [featureSaving, setFeatureSaving] = useState(false);
   const [featureMessage, setFeatureMessage] = useState("");
   const [selectedFeatureVersion, setSelectedFeatureVersion] = useState("");
+  const [featureVersionDraft, setFeatureVersionDraft] = useState("");
+  const [legacyMigrationDraft, setLegacyMigrationDraft] = useState("V2.0.36");
+  const [featureVersionSaving, setFeatureVersionSaving] = useState(false);
   const [previews, setPreviews] = useState<ReleasePreview[]>([]);
   const [draftPreviews, setDraftPreviews] = useState<ReleasePreview[]>([]);
   const [accessLogs, setAccessLogs] = useState<AccessLogEntry[]>([]);
@@ -491,19 +506,22 @@ export function AdminIncentives() {
   }, [previewDraft]);
 
   const featureVersionOptions = useMemo(() => {
-    const versions = [
-      ...featureContent.sections.map((section) => section.release_version),
-      ...previews.map((preview) => preview.version),
-      ...draftPreviews.map((preview) => preview.version)
-    ].filter((version): version is string => typeof version === "string" && Boolean(version.trim()));
-    if (!versions.includes(LEGACY_FEATURE_RELEASE_VERSION)) versions.push(LEGACY_FEATURE_RELEASE_VERSION);
-    return [...new Set(versions)];
-  }, [draftPreviews, featureContent.sections, previews]);
+    const options = [...featureContent.versions]
+      .sort(compareFullReleaseVersionsNewestFirst)
+      .map((version) => ({ value: version, label: version }));
+    if (featureContent.sections.some((section) => section.release_version === LEGACY_FEATURE_RELEASE_VERSION)) {
+      options.push({ value: LEGACY_FEATURE_RELEASE_VERSION, label: "早期更新（历史未标版本）" });
+    }
+    return options;
+  }, [featureContent.sections, featureContent.versions]);
 
-  const activeFeatureVersion = featureVersionOptions.includes(selectedFeatureVersion)
+  const activeFeatureVersion = featureVersionOptions.some((option) => option.value === selectedFeatureVersion)
     ? selectedFeatureVersion
-    : (featureVersionOptions[0] ?? LEGACY_FEATURE_RELEASE_VERSION);
+    : (featureVersionOptions.find((option) => option.value !== LEGACY_FEATURE_RELEASE_VERSION)?.value ?? LEGACY_FEATURE_RELEASE_VERSION);
+  const activeFeatureVersionLabel = featureVersionOptions.find((option) => option.value === activeFeatureVersion)?.label ?? activeFeatureVersion;
+  const hasUsableFeatureVersion = featureVersionOptions.some((option) => option.value !== LEGACY_FEATURE_RELEASE_VERSION);
   const activeFeatureSections = featureContent.sections.filter((section) => section.release_version === activeFeatureVersion);
+  const hiddenActiveFeatureCount = activeFeatureSections.filter((section) => !section.visible).length;
 
   const previewVersionOptions = useMemo(() => {
     const currentVersion = previewDraft.version.trim();
@@ -1251,6 +1269,91 @@ export function AdminIncentives() {
     setFeatureMessage("有未保存的更改");
   }
 
+  async function runFeatureVersionOperation(operation: FeatureContentVersionOperation) {
+    setFeatureVersionSaving(true);
+    setFeatureMessage("正在保存版本更改…");
+    setError("");
+    try {
+      const response = await fetch("/api/incentives/admin/features", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ operation })
+      });
+      const result = await response.json().catch(() => ({})) as { error?: string; content?: unknown };
+      if (response.status === 401) {
+        setAuth("login");
+        throw new Error("登录已过期");
+      }
+      if (!response.ok || !result.content) throw new Error(result.error ?? "版本操作失败");
+      setFeatureContent(sanitizeFeatureContent(result.content));
+      setSelectedFeatureVersion(operation.type === "create"
+        ? operation.release_version
+        : operation.type === "rename" || operation.type === "migrate-legacy"
+          ? operation.to
+          : "");
+      setFeatureMessage("版本已保存，前台将在有可见条目时显示该版本");
+      return true;
+    } catch (operationError) {
+      const message = operationError instanceof Error ? operationError.message : "网络异常";
+      setFeatureMessage(`版本操作未完成：${message}`);
+      setError(message);
+      return false;
+    } finally {
+      setFeatureVersionSaving(false);
+    }
+  }
+
+  async function createFeatureVersion() {
+    const releaseVersion = featureVersionDraft.trim();
+    if (!/^v\d+\.\d+\.\d+$/i.test(releaseVersion)) {
+      setFeatureMessage("请输入完整发布版本号（例如 V3.3.8）");
+      return;
+    }
+    if (await runFeatureVersionOperation({ type: "create", release_version: releaseVersion })) {
+      setFeatureVersionDraft("");
+    }
+  }
+
+  async function renameFeatureVersion() {
+    if (activeFeatureVersion === LEGACY_FEATURE_RELEASE_VERSION) {
+      setFeatureMessage("历史兼容组不能重命名");
+      return;
+    }
+    const nextVersion = featureVersionDraft.trim();
+    if (!/^v\d+\.\d+\.\d+$/i.test(nextVersion)) {
+      setFeatureMessage("请输入完整发布版本号（例如 V3.3.8）");
+      return;
+    }
+    if (nextVersion.toLowerCase() === activeFeatureVersion.toLowerCase()) return;
+    if (await runFeatureVersionOperation({ type: "rename", from: activeFeatureVersion, to: nextVersion })) {
+      setFeatureVersionDraft("");
+    }
+  }
+
+  async function deleteFeatureVersion() {
+    if (activeFeatureVersion === LEGACY_FEATURE_RELEASE_VERSION) {
+      setFeatureMessage("历史兼容组不能删除");
+      return;
+    }
+    const sectionCount = activeFeatureSections.length;
+    const message = sectionCount > 0
+      ? `版本 ${activeFeatureVersion} 包含 ${sectionCount} 条功能。确定删除该版本及其全部功能条目吗？此操作保存后不可恢复。`
+      : `版本 ${activeFeatureVersion} 当前为空。确定删除此版本吗？`;
+    if (!window.confirm(message)) return;
+    await runFeatureVersionOperation({ type: "delete", release_version: activeFeatureVersion, delete_sections: sectionCount > 0 });
+  }
+
+  async function migrateLegacyFeatures() {
+    const target = legacyMigrationDraft.trim();
+    if (!/^v\d+\.\d+\.\d+$/i.test(target) || target === LEGACY_FEATURE_RELEASE_VERSION) {
+      setFeatureMessage("请输入完整目标版本号（例如 V2.0.36）");
+      return;
+    }
+    const sectionCount = activeFeatureSections.length;
+    if (!window.confirm(`确定将 ${sectionCount} 条早期更新历史内容一次性迁移为 ${target} 吗？`)) return;
+    await runFeatureVersionOperation({ type: "migrate-legacy", to: target });
+  }
+
   function updateFeatureSummary(patch: Partial<FeatureContent["summary"]>) {
     setFeatureContent((content) => ({
       ...content,
@@ -1265,6 +1368,18 @@ export function AdminIncentives() {
       sections: content.sections.map((section) => section.id === id ? { ...section, ...patch } : section)
     }));
     markFeatureDirty();
+  }
+
+  async function showAllActiveFeatureSections() {
+    if (!activeFeatureSections.length || !hiddenActiveFeatureCount) return;
+    const contentToSave = {
+      ...featureContent,
+      sections: featureContent.sections.map((section) => section.release_version === activeFeatureVersion
+        ? { ...section, visible: true }
+        : section)
+    };
+    setFeatureContent(contentToSave);
+    await saveManagedFeatures(contentToSave);
   }
 
   function moveFeatureSection(id: string, direction: -1 | 1) {
@@ -1285,7 +1400,7 @@ export function AdminIncentives() {
 
   function addFeatureSection() {
     if (activeFeatureVersion === LEGACY_FEATURE_RELEASE_VERSION || !isFeatureReleaseVersion(activeFeatureVersion)) {
-      setFeatureMessage("请先在版本预告中创建规范的完整版本号（例如 v2.1.8），再回来新增功能条目");
+      setFeatureMessage("请先在此页新建规范的完整版本号（例如 V3.3.8），再新增功能条目");
       return;
     }
     const id = typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -1324,15 +1439,15 @@ export function AdminIncentives() {
     markFeatureDirty();
   }
 
-  async function saveManagedFeatures() {
-    const incompleteVersionSection = featureContent.sections.find((section) =>
+  async function saveManagedFeatures(contentToSave = featureContent) {
+    const incompleteVersionSection = contentToSave.sections.find((section) =>
       !isFeatureReleaseVersion(section.release_version)
     );
     if (incompleteVersionSection) {
       setFeatureMessage(`未保存：“${incompleteVersionSection.title_zh || incompleteVersionSection.title_en || "未命名条目"}”必须填写完整版本号（例如 v2.1.8）`);
       return;
     }
-    const incompleteVisibleSection = featureContent.sections.find((section) =>
+    const incompleteVisibleSection = contentToSave.sections.find((section) =>
       section.visible &&
       (!section.title_zh.trim() || !section.title_en.trim() || !section.body_zh.trim() || !section.body_en.trim())
     );
@@ -1347,7 +1462,7 @@ export function AdminIncentives() {
       const response = await fetch("/api/incentives/admin/features", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: featureContent })
+        body: JSON.stringify({ content: contentToSave })
       });
       const result = await response.json().catch(() => ({})) as { error?: string; content?: unknown };
       if (response.status === 401) {
@@ -1355,8 +1470,14 @@ export function AdminIncentives() {
         throw new Error("登录已过期");
       }
       if (!response.ok || !result.content) throw new Error(result.error ?? "保存失败");
-      setFeatureContent(sanitizeFeatureContent(result.content));
-      setFeatureMessage("已保存，官网新功能页已同步");
+      const savedContent = sanitizeFeatureContent(result.content);
+      setFeatureContent(savedContent);
+      const hiddenCount = savedContent.sections.filter((section) =>
+        section.release_version === activeFeatureVersion && !section.visible
+      ).length;
+      setFeatureMessage(hiddenCount
+        ? `已保存；${activeFeatureVersion} 仍有 ${hiddenCount} 条隐藏内容，前台不会显示这些条目`
+        : "已保存，官网新功能页已同步");
     } catch (saveError) {
       const message = saveError instanceof Error ? saveError.message : "网络异常";
       setFeatureMessage(`未保存：${message}`);
@@ -1484,10 +1605,9 @@ export function AdminIncentives() {
               <div><p>FEATURE PAGE CONTENT</p><h2>新功能页内容</h2></div>
               <div className="featureAdminActions">
                 <span role="status">{featureMessage || "现有四种语言内容已导入，可直接修改"}</span>
-                <button className="button buttonSecondary" type="button" disabled={featureSaving || translationLocked} onClick={() => void translateManagedFeatures()}>{translationSaving === "features" ? "正在翻译…" : "从中文自动翻译其他语言"}</button>
-                <label><span>版本号</span><select value={activeFeatureVersion} onChange={(event) => setSelectedFeatureVersion(event.target.value)}>{featureVersionOptions.map((version) => <option value={version} key={version}>{version}</option>)}</select></label>
-                <button className="button buttonSecondary" type="button" onClick={addFeatureSection}>新增功能条目</button>
-                <button className="button buttonPrimary" type="button" disabled={featureSaving || translationLocked} onClick={() => void saveManagedFeatures()}>{featureSaving ? "保存中…" : "保存并同步前台"}</button>
+                <button className="button buttonSecondary" type="button" disabled={featureSaving || featureVersionSaving || translationLocked} onClick={() => void translateManagedFeatures()}>{translationSaving === "features" ? "正在翻译…" : "从中文自动翻译其他语言"}</button>
+                <button className="button buttonSecondary" type="button" disabled={featureVersionSaving} onClick={addFeatureSection}>新增功能条目</button>
+                <button className="button buttonPrimary" type="button" disabled={featureSaving || featureVersionSaving || translationLocked} onClick={() => void saveManagedFeatures()}>{featureSaving ? "保存中…" : "保存并同步前台"}</button>
               </div>
             </header>
 
@@ -1514,6 +1634,34 @@ export function AdminIncentives() {
                   <label><span>日本語の箇条書き（1行ずつ）</span><textarea rows={6} value={featureContent.summary.items_ja.join("\n")} onChange={(event) => updateFeatureSummary({ items_ja: event.target.value.split("\n") })} /></label>
                 </div>
               </div>
+            </section>
+
+            <section className="featureVersionPanel" aria-labelledby="feature-version-heading">
+              <header>
+                <div><p>FEATURE VERSION</p><h3 id="feature-version-heading">版本号</h3><small>当前版本组：{activeFeatureVersionLabel}</small></div>
+                <label><span>选择版本</span><select value={activeFeatureVersion} disabled={featureVersionSaving} onChange={(event) => setSelectedFeatureVersion(event.target.value)}>{featureVersionOptions.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>
+              </header>
+              {activeFeatureVersion === LEGACY_FEATURE_RELEASE_VERSION
+                ? <>
+                    <p role="status">当前为历史兼容组：共 {activeFeatureSections.length} 条未标记版本的历史内容，可以浏览、编辑和保存。</p>
+                    <div className="featureVersionActions">
+                      <label><span>迁移历史条目到版本号</span><input value={legacyMigrationDraft} placeholder="V2.0.36" onChange={(event) => setLegacyMigrationDraft(event.target.value)} /></label>
+                      <button className="button buttonSecondary" type="button" disabled={featureVersionSaving || !activeFeatureSections.length} onClick={() => void migrateLegacyFeatures()}>迁移历史条目（{activeFeatureSections.length}）</button>
+                    </div>
+                  </>
+                : <p role="status">当前版本共 {activeFeatureSections.length} 条；{hiddenActiveFeatureCount ? `${hiddenActiveFeatureCount} 条已隐藏，保存后也不会出现在前台。` : "全部会在保存后显示到前台。"}</p>}
+              <div className="featureVersionActions">
+                <label><span>新建或重命名为</span><input value={featureVersionDraft} disabled={featureVersionSaving} placeholder="例如 V3.3.8" onChange={(event) => setFeatureVersionDraft(event.target.value)} /></label>
+                <button className="button buttonSecondary" type="button" disabled={featureVersionSaving} onClick={() => void createFeatureVersion()}>新建版本</button>
+                {activeFeatureVersion !== LEGACY_FEATURE_RELEASE_VERSION && (
+                  <>
+                    <button className="button buttonSecondary" type="button" disabled={featureVersionSaving || !featureVersionDraft.trim()} onClick={() => void renameFeatureVersion()}>重命名当前版本</button>
+                    <button className="button buttonSecondary" type="button" disabled={featureSaving || featureVersionSaving || !hiddenActiveFeatureCount} onClick={() => void showAllActiveFeatureSections()}>全部显示并同步前台</button>
+                    <button className="button buttonSecondary danger" type="button" disabled={featureVersionSaving} onClick={() => void deleteFeatureVersion()}>删除版本</button>
+                  </>
+                )}
+              </div>
+              {!hasUsableFeatureVersion && activeFeatureVersion === LEGACY_FEATURE_RELEASE_VERSION && <p role="status">尚无可用的新功能版本。请在此处新建完整版本号后，再新增功能条目。</p>}
             </section>
 
             <div className="featureAdminList">
