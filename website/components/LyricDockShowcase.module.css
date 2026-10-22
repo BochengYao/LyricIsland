@@ -224,6 +224,7 @@
     max-width: 280px;
     font-size: clamp(2.7rem, 13vw, 3.35rem);
     letter-spacing: -0.04em;
+    white-space: pre-line;
   }
 
   .body {
@@ -240,7 +241,7 @@
     margin-top: 32px;
     margin-left: 20px;
     border-radius: 28px;
-    opacity: 0.58;
+    opacity: 1;
     transition-duration: 1050ms, 760ms;
     transition-delay: 90ms;
   }

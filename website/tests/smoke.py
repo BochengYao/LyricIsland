@@ -1488,11 +1488,20 @@ def test_mobile_section_navigation(page: Page) -> None:
         page.wait_for_timeout(1900)
         anchor_metrics = page.locator(hash_value).evaluate(
             """(section) => ({
-              sectionTop: section.getBoundingClientRect().top,
-              navigationBottom: document.querySelector('.floatingNav').getBoundingClientRect().bottom
+              sectionTop: section.getBoundingClientRect().top
             })"""
         )
-        assert anchor_metrics["sectionTop"] >= anchor_metrics["navigationBottom"] + 28
+        assert abs(anchor_metrics["sectionTop"]) < 8
+
+    experience_alignment = page.locator("#experience").evaluate(
+        """(section) => ({
+          sectionTop: section.getBoundingClientRect().top,
+          titleTop: section.querySelector('h2').getBoundingClientRect().top,
+          navigationBottom: document.querySelector('.floatingNav').getBoundingClientRect().bottom
+        })"""
+    )
+    assert abs(experience_alignment["sectionTop"]) < 8
+    assert experience_alignment["titleTop"] > experience_alignment["navigationBottom"] + 12
 
     product_scene = page.locator("#lyric-dock figure")
     scene_metrics = product_scene.evaluate(
@@ -1505,6 +1514,19 @@ def test_mobile_section_navigation(page: Page) -> None:
     assert scene_metrics["width"] > scene_metrics["viewportWidth"]
     assert scene_metrics["right"] > scene_metrics["viewportWidth"] + 120
     assert product_scene.evaluate("(scene) => scene.getBoundingClientRect().height") >= 120
+    assert product_scene.evaluate("(scene) => getComputedStyle(scene).opacity") == "1"
+
+    dock_title_metrics = page.locator("#lyric-dock h2").evaluate(
+        """(title) => ({
+          text: title.textContent,
+          whiteSpace: getComputedStyle(title).whiteSpace,
+          height: title.getBoundingClientRect().height,
+          lineHeight: parseFloat(getComputedStyle(title).lineHeight)
+        })"""
+    )
+    assert "，\n" in dock_title_metrics["text"]
+    assert dock_title_metrics["whiteSpace"] == "pre-line"
+    assert dock_title_metrics["height"] >= dock_title_metrics["lineHeight"] * 1.8
 
     page.goto(BASE_URL + "/?mobile-animation=1", wait_until="networkidle")
     page.locator("#lyric-dock").evaluate(
@@ -1570,31 +1592,22 @@ def test_mobile_section_navigation(page: Page) -> None:
     swipe(0.76, 0.32)
     page.wait_for_timeout(1900)
     player_alignment = page.locator("#players").evaluate(
-        """(section) => ({
-          sectionTop: section.getBoundingClientRect().top,
-          navigationBottom: document.querySelector('.floatingNav').getBoundingClientRect().bottom
-        })"""
+        """(section) => ({ sectionTop: section.getBoundingClientRect().top })"""
     )
-    assert player_alignment["sectionTop"] >= player_alignment["navigationBottom"] + 28
-    assert player_alignment["sectionTop"] <= player_alignment["navigationBottom"] + 36
+    assert abs(player_alignment["sectionTop"]) < 8
 
-    page.locator("#experience").evaluate(
-        """(section) => window.scrollTo(
-          0,
-          section.offsetTop + section.offsetHeight - innerHeight
-        )"""
+    experience_end = page.locator("#experience").evaluate(
+        """(section) => section.offsetTop + section.offsetHeight - innerHeight"""
     )
+    page.evaluate("(top) => window.scrollTo(0, top - 100)", experience_end)
     page.wait_for_timeout(120)
     swipe(0.76, 0.32)
+    page.evaluate("(top) => window.scrollTo(0, top + 120)", experience_end)
     page.wait_for_timeout(1900)
     lyric_dock_alignment = page.locator("#lyric-dock").evaluate(
-        """(section) => ({
-          sectionTop: section.getBoundingClientRect().top,
-          navigationBottom: document.querySelector('.floatingNav').getBoundingClientRect().bottom
-        })"""
+        """(section) => ({ sectionTop: section.getBoundingClientRect().top })"""
     )
-    assert lyric_dock_alignment["sectionTop"] >= lyric_dock_alignment["navigationBottom"] + 28
-    assert lyric_dock_alignment["sectionTop"] <= lyric_dock_alignment["navigationBottom"] + 36
+    assert abs(lyric_dock_alignment["sectionTop"]) < 8
 
 
 def main() -> None:

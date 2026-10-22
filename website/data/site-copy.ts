@@ -235,7 +235,7 @@ const rawCopyByLocale: Record<"zh" | "en", SiteCopy> = {
     },
     lyricDock: {
       eyebrow: "新增 · 歌词坞",
-      title: "少占一点，刚好看见。",
+      title: "少占一点，\n刚好看见。",
       body:
         "歌词安静停靠在任务栏，\n不遮挡窗口，不打乱桌面。\n每一句，都刚好在视线之内。",
       imageAlt: "歌词坞宣传海报中的 Windows 桌面、任务栏与双语歌词场景"
@@ -524,7 +524,7 @@ const traditionalSiteCopy = {
   },
   lyricDock: {
     eyebrow: "新增 · 歌詞塢",
-    title: "少佔一點，剛好看見。",
+    title: "少佔一點，\n剛好看見。",
     body: "歌詞安靜停靠在工作列，\n不遮擋視窗，不打亂桌面。\n每一句，都剛好在視線之內。",
     imageAlt: "歌詞塢宣傳海報中的 Windows 桌面、工作列與雙語歌詞場景"
   },

@@ -10,8 +10,6 @@ const NATIVE_SCROLL_SETTLE_MS = 180;
 const EDGE_TOLERANCE = 2;
 const TOUCH_INTENT_THRESHOLD = 36;
 const MOBILE_EDGE_SNAP_TOLERANCE = 48;
-const MOBILE_NAV_CLEARANCE = 32;
-const MOBILE_NAV_FALLBACK_INSET = 108;
 
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(maximum, Math.max(minimum, value));
@@ -55,23 +53,11 @@ export function SmoothSectionScroll() {
     let touchStartY = 0;
     let touchCurrentY = 0;
     let touchMode: "idle" | "native" | "snap" = "idle";
+    let lastTouchDirection: 1 | -1 | 0 = 0;
 
     const isEnabled = () => desktopPointer.matches && !reducedMotion.matches;
     const isMobileEnabled = () => mobilePointer.matches;
     const isSnapEnabled = () => isEnabled() || isMobileEnabled();
-
-    const snapTopInset = () => {
-      if (!isMobileEnabled()) {
-        return 0;
-      }
-
-      const navigation = document.querySelector<HTMLElement>(".floatingNav");
-      return navigation
-        ? Math.ceil(
-            navigation.getBoundingClientRect().bottom + MOBILE_NAV_CLEARANCE
-          )
-        : MOBILE_NAV_FALLBACK_INSET;
-    };
 
     const cancelAnimation = () => {
       if (animationFrame) {
@@ -117,17 +103,13 @@ export function SmoothSectionScroll() {
           target.querySelector<HTMLElement>(SECTION_SELECTOR);
 
       const geometryTarget = snapSection ?? target;
-      return (
-        geometryTarget.getBoundingClientRect().top +
-        window.scrollY -
-        snapTopInset()
-      );
+      return geometryTarget.getBoundingClientRect().top + window.scrollY;
     };
 
     const currentSection = (
       sections: ReturnType<typeof sectionMetrics>
     ) => {
-      const marker = window.scrollY + snapTopInset() + EDGE_TOLERANCE;
+      const marker = window.scrollY + EDGE_TOLERANCE;
       let current = sections[0];
 
       for (const section of sections) {
@@ -184,7 +166,7 @@ export function SmoothSectionScroll() {
     };
 
     const settleNativeScroll = () => {
-      if (!isEnabled() || animating || pointerActive) {
+      if (!isSnapEnabled() || animating || pointerActive) {
         return;
       }
 
@@ -194,16 +176,66 @@ export function SmoothSectionScroll() {
 
       scrollSettleTimer = window.setTimeout(() => {
         scrollSettleTimer = 0;
-        if (!isEnabled() || animating || pointerActive) {
+        if (!isSnapEnabled() || animating || pointerActive) {
           return;
         }
 
         const sections = sectionMetrics();
         const current = currentSection(sections);
         const directSnap = current?.section.dataset.wheelSnap === "direct";
+        const isLongSection = current
+          ? current.height > window.innerHeight + EDGE_TOLERANCE && !directSnap
+          : false;
+
+        if (isMobileEnabled() && current) {
+          const nativeScroll = current.section.dataset.wheelScroll === "native";
+          const startTop = current.top;
+          const endTop = current.bottom - window.innerHeight;
+
+          if (
+            isLongSection &&
+            nativeScroll &&
+            window.scrollY > startTop + MOBILE_EDGE_SNAP_TOLERANCE &&
+            window.scrollY < endTop - MOBILE_EDGE_SNAP_TOLERANCE
+          ) {
+            return;
+          }
+
+          if (isLongSection && nativeScroll) {
+            const next = sections[current.index + 1];
+            const targetTop =
+              lastTouchDirection > 0 &&
+              next &&
+              window.scrollY >= endTop - MOBILE_EDGE_SNAP_TOLERANCE
+                ? next.top
+                : window.scrollY > (startTop + endTop) / 2
+                  ? endTop
+                  : startTop;
+
+            if (Math.abs(window.scrollY - targetTop) > EDGE_TOLERANCE) {
+              animateTo(targetTop);
+            }
+            return;
+          }
+
+          const next = sections[current.index + 1];
+          const offsetWithinSection = window.scrollY - current.top;
+          const target =
+            next &&
+            (lastTouchDirection > 0 ||
+              (lastTouchDirection === 0 && offsetWithinSection > current.height / 2))
+              ? next
+              : current;
+
+          if (Math.abs(window.scrollY - target.top) > EDGE_TOLERANCE) {
+            animateTo(target.top);
+          }
+          return;
+        }
+
         if (
           !current ||
-          (current.height > window.innerHeight + EDGE_TOLERANCE && !directSnap)
+          isLongSection
         ) {
           return;
         }
@@ -313,7 +345,7 @@ export function SmoothSectionScroll() {
       const targetTop =
         direction < 0 && target.height > window.innerHeight + EDGE_TOLERANCE
           ? target.bottom - window.innerHeight
-          : target.top - snapTopInset();
+          : target.top;
 
       animateTo(targetTop);
     };
@@ -384,6 +416,7 @@ export function SmoothSectionScroll() {
       touchStartY = event.touches[0].clientY;
       touchCurrentY = touchStartY;
       touchMode = "idle";
+      lastTouchDirection = 0;
     };
 
     const onTouchMove = (event: TouchEvent) => {
@@ -449,6 +482,7 @@ export function SmoothSectionScroll() {
       }
 
       const direction: 1 | -1 = delta > 0 ? 1 : -1;
+      lastTouchDirection = direction;
       const sections = sectionMetrics();
       const current = currentSection(sections);
       if (!current) {
@@ -472,7 +506,7 @@ export function SmoothSectionScroll() {
         animateTo(
           direction > 0
             ? current.bottom - window.innerHeight
-            : current.top - snapTopInset()
+            : current.top
         );
         return;
       }
@@ -492,7 +526,7 @@ export function SmoothSectionScroll() {
       const targetTop =
         direction < 0 && target.height > window.innerHeight + EDGE_TOLERANCE
           ? target.bottom - window.innerHeight
-          : target.top - snapTopInset();
+          : target.top;
       animateTo(targetTop);
     };
 

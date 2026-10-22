@@ -2570,10 +2570,6 @@ html[lang="en"] :where(
 }
 
 @media (max-width: 1023px) {
-  [data-snap-section] {
-    scroll-margin-top: 108px;
-  }
-
   .updatesDetailsSnap .releaseSections.sectionContainer {
     width: min(calc(100% - 48px), var(--content));
   }
@@ -2844,7 +2840,7 @@ html[lang="en"] :where(
   }
 
   .experienceSection {
-    padding-top: 56px;
+    padding-top: 132px;
   }
 
   .orbitCanvas {
