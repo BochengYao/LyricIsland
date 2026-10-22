@@ -375,7 +375,11 @@ export function SitePage({ locale }: Props) {
           </div>
         </section>
 
-        <section className="sourcesSection" data-snap-section>
+        <section
+          className="sourcesSection"
+          data-snap-section
+          data-wheel-scroll="native"
+        >
           <div className="sectionContainer sourcesPanel">
             <div className="sourcesIntro">
               <Eyebrow reveal>{copy.sources.eyebrow}</Eyebrow>
@@ -442,7 +446,11 @@ export function SitePage({ locale }: Props) {
         </section>
       </main>
 
-      <footer className="siteFooter" data-snap-section>
+      <footer
+        className="siteFooter"
+        data-snap-section
+        data-wheel-scroll="native"
+      >
         <div className="sectionContainer">
           <div className="footerTop">
             <div>

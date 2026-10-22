@@ -1493,6 +1493,10 @@ def test_mobile_section_navigation(page: Page) -> None:
         )
         assert abs(anchor_metrics["sectionTop"]) < 8
 
+    page.locator("#experience").evaluate(
+        "(section) => window.scrollTo(0, section.offsetTop)"
+    )
+    page.wait_for_timeout(120)
     experience_alignment = page.locator("#experience").evaluate(
         """(section) => ({
           sectionTop: section.getBoundingClientRect().top,
@@ -1502,6 +1506,40 @@ def test_mobile_section_navigation(page: Page) -> None:
     )
     assert abs(experience_alignment["sectionTop"]) < 8
     assert experience_alignment["titleTop"] > experience_alignment["navigationBottom"] + 12
+
+    for selector in [".sourcesSection", ".siteFooter"]:
+        long_section = page.locator(selector)
+        expect(long_section).to_have_attribute("data-wheel-scroll", "native")
+        section_metrics = long_section.evaluate(
+            """(section) => ({
+              top: section.offsetTop,
+              height: section.offsetHeight,
+              viewportHeight: innerHeight
+            })"""
+        )
+        assert section_metrics["height"] > section_metrics["viewportHeight"] + 96
+        internal_top = section_metrics["top"] + (
+            section_metrics["height"] - section_metrics["viewportHeight"]
+        ) / 2
+        page.evaluate("(top) => window.scrollTo(0, top)", internal_top)
+        page.wait_for_timeout(500)
+        assert abs(page.evaluate("window.scrollY") - internal_top) < 8, (
+            f"{selector} should preserve ordinary scrolling inside its anchor"
+        )
+
+    page.locator(".closingSection").evaluate(
+        "(section) => window.scrollTo(0, section.offsetTop)"
+    )
+    page.wait_for_timeout(120)
+    closing_boundary = page.locator(".siteFooter").evaluate(
+        """(footer) => ({
+          backgroundTop: footer.getBoundingClientRect().top,
+          contentTop: footer.querySelector('.footerTop').getBoundingClientRect().top,
+          viewportHeight: innerHeight
+        })"""
+    )
+    assert closing_boundary["backgroundTop"] < closing_boundary["viewportHeight"]
+    assert closing_boundary["contentTop"] >= closing_boundary["viewportHeight"]
 
     product_scene = page.locator("#lyric-dock figure")
     scene_metrics = product_scene.evaluate(
