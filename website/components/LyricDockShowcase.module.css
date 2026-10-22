@@ -206,6 +206,7 @@
   }
 
   .inner {
+    grid-template-rows: auto minmax(0, 1fr);
     padding-top: 112px;
     padding-bottom: 40px;
   }
@@ -233,9 +234,10 @@
 
   .productScene {
     --product-scene-entry-x: clamp(140px, 52vw, 220px);
-    width: calc(100vw + 230px);
-    height: clamp(104px, 28vw, 122px);
-    margin-top: 46px;
+    align-self: center;
+    width: calc(100vw + 380px);
+    height: clamp(150px, 42vw, 176px);
+    margin-top: 32px;
     margin-left: 20px;
     border-radius: 28px;
     opacity: 0.58;
@@ -269,8 +271,8 @@
   }
 
   .productScene {
-    height: 104px;
-    margin-top: 32px;
+    height: 140px;
+    margin-top: 24px;
   }
 }
 

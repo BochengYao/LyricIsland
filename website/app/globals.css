@@ -2571,7 +2571,7 @@ html[lang="en"] :where(
 
 @media (max-width: 1023px) {
   [data-snap-section] {
-    scroll-margin-top: 88px;
+    scroll-margin-top: 108px;
   }
 
   .updatesDetailsSnap .releaseSections.sectionContainer {

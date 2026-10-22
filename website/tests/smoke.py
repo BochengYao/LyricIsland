@@ -1425,6 +1425,46 @@ def test_submission_validation(page: Page) -> None:
 def test_mobile_section_navigation(page: Page) -> None:
     page.goto(BASE_URL + "/", wait_until="networkidle")
 
+    def swipe(start_ratio: float, end_ratio: float) -> None:
+        page.evaluate(
+            """({ startRatio, endRatio }) => {
+              const target = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+              const makeTouch = (clientY) => new Touch({
+                identifier: 1,
+                target,
+                clientX: innerWidth / 2,
+                clientY,
+                radiusX: 2,
+                radiusY: 2,
+                force: 0.5
+              });
+              const start = makeTouch(innerHeight * startRatio);
+              target.dispatchEvent(new TouchEvent('touchstart', {
+                bubbles: true,
+                cancelable: true,
+                touches: [start],
+                targetTouches: [start],
+                changedTouches: [start]
+              }));
+              const end = makeTouch(innerHeight * endRatio);
+              target.dispatchEvent(new TouchEvent('touchmove', {
+                bubbles: true,
+                cancelable: true,
+                touches: [end],
+                targetTouches: [end],
+                changedTouches: [end]
+              }));
+              target.dispatchEvent(new TouchEvent('touchend', {
+                bubbles: true,
+                cancelable: true,
+                touches: [],
+                targetTouches: [],
+                changedTouches: [end]
+              }));
+            }""",
+            {"startRatio": start_ratio, "endRatio": end_ratio},
+        )
+
     logo_metrics = page.locator(".logoLockup").first.evaluate(
         """(lockup) => {
           const picture = lockup.querySelector('picture');
@@ -1452,7 +1492,7 @@ def test_mobile_section_navigation(page: Page) -> None:
               navigationBottom: document.querySelector('.floatingNav').getBoundingClientRect().bottom
             })"""
         )
-        assert anchor_metrics["sectionTop"] >= anchor_metrics["navigationBottom"] + 8
+        assert anchor_metrics["sectionTop"] >= anchor_metrics["navigationBottom"] + 28
 
     product_scene = page.locator("#lyric-dock figure")
     scene_metrics = product_scene.evaluate(
@@ -1464,12 +1504,13 @@ def test_mobile_section_navigation(page: Page) -> None:
     )
     assert scene_metrics["width"] > scene_metrics["viewportWidth"]
     assert scene_metrics["right"] > scene_metrics["viewportWidth"] + 120
+    assert product_scene.evaluate("(scene) => scene.getBoundingClientRect().height") >= 120
 
     page.goto(BASE_URL + "/?mobile-animation=1", wait_until="networkidle")
     page.locator("#lyric-dock").evaluate(
         """(section) => {
           const navigation = document.querySelector('.floatingNav');
-          const inset = Math.ceil(navigation.getBoundingClientRect().bottom + 12);
+          const inset = Math.ceil(navigation.getBoundingClientRect().bottom + 32);
           window.scrollTo(0, section.offsetTop - inset);
         }"""
     )
@@ -1492,43 +1533,7 @@ def test_mobile_section_navigation(page: Page) -> None:
 
     page.screenshot(path=str(SCREENSHOTS / "zh-mobile-lyric-dock.png"))
 
-    product_scene.evaluate(
-        """(scene) => {
-          const startTarget = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
-          const makeTouch = (clientY) => new Touch({
-            identifier: 1,
-            target: startTarget,
-            clientX: innerWidth / 2,
-            clientY,
-            radiusX: 2,
-            radiusY: 2,
-            force: 0.5
-          });
-          const start = makeTouch(innerHeight * 0.42);
-          startTarget.dispatchEvent(new TouchEvent('touchstart', {
-            bubbles: true,
-            cancelable: true,
-            touches: [start],
-            targetTouches: [start],
-            changedTouches: [start]
-          }));
-          const end = makeTouch(innerHeight * 0.76);
-          startTarget.dispatchEvent(new TouchEvent('touchmove', {
-            bubbles: true,
-            cancelable: true,
-            touches: [end],
-            targetTouches: [end],
-            changedTouches: [end]
-          }));
-          startTarget.dispatchEvent(new TouchEvent('touchend', {
-            bubbles: true,
-            cancelable: true,
-            touches: [],
-            targetTouches: [],
-            changedTouches: [end]
-          }));
-        }"""
-    )
+    swipe(0.42, 0.76)
     page.wait_for_timeout(1900)
     return_metrics = page.locator("#experience").evaluate(
         """(section) => ({
@@ -1539,6 +1544,57 @@ def test_mobile_section_navigation(page: Page) -> None:
     )
     assert abs(return_metrics["bottom"] - return_metrics["viewportHeight"]) < 8
     assert return_metrics["lyricDockTop"] > return_metrics["viewportHeight"]
+
+    modules = page.locator("#modules")
+    modules.evaluate(
+        """(section) => {
+          const navigation = document.querySelector('.floatingNav');
+          const inset = Math.ceil(navigation.getBoundingClientRect().bottom + 32);
+          window.scrollTo(0, section.offsetTop - inset);
+        }"""
+    )
+    page.wait_for_timeout(120)
+    module_metrics = modules.evaluate(
+        """(section) => ({
+          bottom: section.offsetTop + section.offsetHeight,
+          viewportHeight: innerHeight
+        })"""
+    )
+    swipe(0.76, 0.32)
+    page.wait_for_timeout(1900)
+    assert abs(
+        page.evaluate("window.scrollY")
+        - (module_metrics["bottom"] - module_metrics["viewportHeight"])
+    ) < 8, "The first mobile swipe in Modules should reveal its second image stage"
+
+    swipe(0.76, 0.32)
+    page.wait_for_timeout(1900)
+    player_alignment = page.locator("#players").evaluate(
+        """(section) => ({
+          sectionTop: section.getBoundingClientRect().top,
+          navigationBottom: document.querySelector('.floatingNav').getBoundingClientRect().bottom
+        })"""
+    )
+    assert player_alignment["sectionTop"] >= player_alignment["navigationBottom"] + 28
+    assert player_alignment["sectionTop"] <= player_alignment["navigationBottom"] + 36
+
+    page.locator("#experience").evaluate(
+        """(section) => window.scrollTo(
+          0,
+          section.offsetTop + section.offsetHeight - innerHeight
+        )"""
+    )
+    page.wait_for_timeout(120)
+    swipe(0.76, 0.32)
+    page.wait_for_timeout(1900)
+    lyric_dock_alignment = page.locator("#lyric-dock").evaluate(
+        """(section) => ({
+          sectionTop: section.getBoundingClientRect().top,
+          navigationBottom: document.querySelector('.floatingNav').getBoundingClientRect().bottom
+        })"""
+    )
+    assert lyric_dock_alignment["sectionTop"] >= lyric_dock_alignment["navigationBottom"] + 28
+    assert lyric_dock_alignment["sectionTop"] <= lyric_dock_alignment["navigationBottom"] + 36
 
 
 def main() -> None:

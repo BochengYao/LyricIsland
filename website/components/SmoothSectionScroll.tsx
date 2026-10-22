@@ -9,6 +9,9 @@ const SETTLE_LOCK_MS = 280;
 const NATIVE_SCROLL_SETTLE_MS = 180;
 const EDGE_TOLERANCE = 2;
 const TOUCH_INTENT_THRESHOLD = 36;
+const MOBILE_EDGE_SNAP_TOLERANCE = 48;
+const MOBILE_NAV_CLEARANCE = 32;
+const MOBILE_NAV_FALLBACK_INSET = 108;
 
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(maximum, Math.max(minimum, value));
@@ -64,8 +67,10 @@ export function SmoothSectionScroll() {
 
       const navigation = document.querySelector<HTMLElement>(".floatingNav");
       return navigation
-        ? Math.ceil(navigation.getBoundingClientRect().bottom + 12)
-        : 88;
+        ? Math.ceil(
+            navigation.getBoundingClientRect().bottom + MOBILE_NAV_CLEARANCE
+          )
+        : MOBILE_NAV_FALLBACK_INSET;
     };
 
     const cancelAnimation = () => {
@@ -431,7 +436,8 @@ export function SmoothSectionScroll() {
     };
 
     const finishTouch = () => {
-      if (!isMobileEnabled() || touchMode !== "snap") {
+      const completedMode = touchMode;
+      if (!isMobileEnabled() || completedMode === "idle") {
         touchMode = "idle";
         return;
       }
@@ -445,7 +451,40 @@ export function SmoothSectionScroll() {
       const direction: 1 | -1 = delta > 0 ? 1 : -1;
       const sections = sectionMetrics();
       const current = currentSection(sections);
-      const target = current && sections[current.index + direction];
+      if (!current) {
+        return;
+      }
+
+      const directSnap = current.section.dataset.wheelSnap === "direct";
+      const isLongSection =
+        current.height > window.innerHeight + EDGE_TOLERANCE && !directSnap;
+      const distanceToEdge =
+        direction > 0
+          ? current.bottom - (window.scrollY + window.innerHeight)
+          : window.scrollY - current.top;
+
+      if (
+        completedMode === "snap" &&
+        isLongSection &&
+        current.section.dataset.stagedScroll === "true" &&
+        distanceToEdge > MOBILE_EDGE_SNAP_TOLERANCE
+      ) {
+        animateTo(
+          direction > 0
+            ? current.bottom - window.innerHeight
+            : current.top - snapTopInset()
+        );
+        return;
+      }
+
+      if (
+        completedMode === "native" &&
+        (!isLongSection || distanceToEdge > MOBILE_EDGE_SNAP_TOLERANCE)
+      ) {
+        return;
+      }
+
+      const target = sections[current.index + direction];
       if (!target) {
         return;
       }
@@ -453,7 +492,7 @@ export function SmoothSectionScroll() {
       const targetTop =
         direction < 0 && target.height > window.innerHeight + EDGE_TOLERANCE
           ? target.bottom - window.innerHeight
-          : target.top;
+          : target.top - snapTopInset();
       animateTo(targetTop);
     };
 
