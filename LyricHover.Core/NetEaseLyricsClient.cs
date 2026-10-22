@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -7,22 +9,44 @@ namespace LyricHover.Core
 {
     public sealed class NetEaseLyricsClient : ILyricsClient
     {
+        private const int MaximumWordTimedCandidates = 3;
         private static readonly HttpClient SharedHttpClient = CreateHttpClient();
         private readonly Func<Uri, Task<string>> fetchJsonAsync;
+        private readonly bool probeAlternateCandidatesForWordTiming;
 
         public NetEaseLyricsClient()
-            : this(uri => SharedHttpClient.GetStringAsync(uri))
+            : this(uri => SharedHttpClient.GetStringAsync(uri), false)
+        {
+        }
+
+        public NetEaseLyricsClient(bool probeAlternateCandidatesForWordTiming)
+            : this(uri => SharedHttpClient.GetStringAsync(uri), probeAlternateCandidatesForWordTiming)
         {
         }
 
         public NetEaseLyricsClient(Func<Uri, string> fetchJson)
-            : this(uri => Task.FromResult(fetchJson(uri)))
+            : this(uri => Task.FromResult(fetchJson(uri)), false)
+        {
+        }
+
+        public NetEaseLyricsClient(
+            Func<Uri, string> fetchJson,
+            bool probeAlternateCandidatesForWordTiming)
+            : this(uri => Task.FromResult(fetchJson(uri)), probeAlternateCandidatesForWordTiming)
         {
         }
 
         public NetEaseLyricsClient(Func<Uri, Task<string>> fetchJsonAsync)
+            : this(fetchJsonAsync, false)
+        {
+        }
+
+        public NetEaseLyricsClient(
+            Func<Uri, Task<string>> fetchJsonAsync,
+            bool probeAlternateCandidatesForWordTiming)
         {
             this.fetchJsonAsync = fetchJsonAsync ?? throw new ArgumentNullException(nameof(fetchJsonAsync));
+            this.probeAlternateCandidatesForWordTiming = probeAlternateCandidatesForWordTiming;
         }
 
         public async Task<string> GetSyncedLyricsAsync(TrackIdentity track)
@@ -36,6 +60,40 @@ namespace LyricHover.Core
             try
             {
                 var searchJson = await fetchJsonAsync(BuildSearchRequestUri(cleanedTrack)).ConfigureAwait(false);
+                if (probeAlternateCandidatesForWordTiming)
+                {
+                    var candidates = ExtractRankedSongIds(searchJson, cleanedTrack);
+                    if (candidates.Count == 0 && CanUseArtistAliasFallback(cleanedTrack))
+                    {
+                        var aliasSearchJson = await fetchJsonAsync(BuildSearchRequestUri(cleanedTrack, true)).ConfigureAwait(false);
+                        var aliasId = ExtractBestSongId(aliasSearchJson, cleanedTrack, true);
+                        if (aliasId > 0)
+                        {
+                            candidates.Add(aliasId);
+                        }
+                    }
+
+                    foreach (var candidateId in candidates)
+                    {
+                        try
+                        {
+                            var candidateJson = await fetchJsonAsync(BuildLyricRequestUri(candidateId)).ConfigureAwait(false);
+                            var candidatePackage = ExtractLyricsPackage(candidateJson);
+                            if (LyricsPackageParser.HasWordTiming(candidatePackage) &&
+                                LyricsPackageValidator.TryAccept(cleanedTrack, candidatePackage, out _))
+                            {
+                                return candidatePackage;
+                            }
+                        }
+                        catch (HttpRequestException) { }
+                        catch (TaskCanceledException) { }
+                        catch (JsonException) { }
+                        catch (FormatException) { }
+                    }
+
+                    return string.Empty;
+                }
+
                 var songId = ExtractBestSongId(searchJson, cleanedTrack);
                 if (songId <= 0 && CanUseArtistAliasFallback(cleanedTrack))
                 {
@@ -66,6 +124,47 @@ namespace LyricHover.Core
             {
                 return string.Empty;
             }
+        }
+
+        private static List<long> ExtractRankedSongIds(string json, TrackIdentity track)
+        {
+            var scored = new List<Tuple<int, long>>();
+            using (var document = JsonDocument.Parse(json))
+            {
+                if (!document.RootElement.TryGetProperty("result", out var result) ||
+                    !result.TryGetProperty("songs", out var songs) ||
+                    songs.ValueKind != JsonValueKind.Array)
+                {
+                    return new List<long>();
+                }
+
+                foreach (var song in songs.EnumerateArray())
+                {
+                    if (!song.TryGetProperty("id", out var id) ||
+                        id.ValueKind != JsonValueKind.Number ||
+                        !id.TryGetInt64(out var songId))
+                    {
+                        continue;
+                    }
+
+                    var title = ReadString(song, "name");
+                    var artist = ReadArtists(song);
+                    var album = ReadAlbum(song);
+                    var duration = TimeSpan.FromMilliseconds(ReadInt(song, "duration"));
+                    var score = LyricsCandidateMatcher.Score(track, title, artist, album, duration);
+                    if (score >= 45)
+                    {
+                        scored.Add(Tuple.Create(score, songId));
+                    }
+                }
+            }
+
+            return scored
+                .OrderByDescending(candidate => candidate.Item1)
+                .Select(candidate => candidate.Item2)
+                .Distinct()
+                .Take(MaximumWordTimedCandidates)
+                .ToList();
         }
 
         private static long ExtractBestSongId(string json, TrackIdentity track, bool allowLocalizedTitleAlias = false)

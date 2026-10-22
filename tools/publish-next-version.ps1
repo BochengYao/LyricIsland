@@ -1,6 +1,7 @@
 param(
     [switch]$KeepVersion,
-    [switch]$NoLaunch
+    [switch]$NoLaunch,
+    [switch]$SkipTests
 )
 
 $ErrorActionPreference = 'Stop'
@@ -62,10 +63,10 @@ try {
     } else {
         $currentVersion.Substring(0, $currentVersion.LastIndexOf('.') + 1) + $nextPatch
     }
-    $labelMatch = [regex]::Match($originalProps, '<VersionSuffix>(?<label>[^<]+)</VersionSuffix>')
-    $label = if ($labelMatch.Success) { $labelMatch.Groups['label'].Value.Trim() } else { 'Beta' }
-    $releaseName = "v$targetVersion $label"
-    $directoryName = "v$targetVersion-$label"
+    $labelMatch = [regex]::Match($originalProps, '<VersionSuffix>(?<label>[^<]*)</VersionSuffix>')
+    $label = if ($labelMatch.Success) { $labelMatch.Groups['label'].Value.Trim() } else { '' }
+    $releaseName = if ([string]::IsNullOrWhiteSpace($label)) { "v$targetVersion" } else { "v$targetVersion $label" }
+    $directoryName = if ([string]::IsNullOrWhiteSpace($label)) { "v$targetVersion" } else { "v$targetVersion-$label" }
     $stagingPath = Join-Path $publishRoot "staging-$directoryName"
 
     Assert-ChildPath $stagingPath $publishRoot
@@ -103,9 +104,11 @@ try {
         # This script owns the candidate-generation mutex. The transaction fixture
         # intentionally starts another candidate generator, so it is run separately
         # rather than recursively under this lock.
-        $env:LYRICHOVER_SKIP_RELEASE_VERSION_FIXTURE = '1'
-        dotnet run --no-restore --configuration Release --project LyricHover.Tests
-        if ($LASTEXITCODE -ne 0) { throw '自动测试失败。' }
+        if (-not $SkipTests) {
+            $env:LYRICHOVER_SKIP_RELEASE_VERSION_FIXTURE = '1'
+            dotnet run --no-restore --configuration Release --project LyricHover.Tests
+            if ($LASTEXITCODE -ne 0) { throw '自动测试失败。' }
+        }
 
         dotnet build --no-restore --configuration Release --runtime win-x64 LyricHover.App\LyricHover.App.csproj
         if ($LASTEXITCODE -ne 0) { throw 'Release 构建失败。' }
@@ -133,7 +136,7 @@ try {
     }
 
     if (Test-Path -LiteralPath $currentPath) {
-        $archiveName = "v$currentVersion-$label"
+        $archiveName = if ([string]::IsNullOrWhiteSpace($label)) { "v$currentVersion" } else { "v$currentVersion-$label" }
         $archivePath = Join-Path $archiveRoot $archiveName
         Assert-ChildPath $archivePath $archiveRoot
         if (Test-Path -LiteralPath $archivePath) {
@@ -148,7 +151,19 @@ try {
     if (Test-Path -LiteralPath $readmePath) {
         $readme = [System.IO.File]::ReadAllText($readmePath)
         $readme = [regex]::Replace($readme, '当前版本：`[^`]+`', "当前版本：``$releaseName``")
-        [System.IO.File]::WriteAllText($readmePath, $readme, [System.Text.UTF8Encoding]::new($false))
+        $readmeTempPath = Join-Path $publishRoot ('.README-' + [Guid]::NewGuid().ToString('N') + '.tmp')
+        try {
+            [System.IO.File]::WriteAllText($readmeTempPath, $readme, [System.Text.UTF8Encoding]::new($false))
+            [System.IO.File]::Move($readmeTempPath, $readmePath, $true)
+        }
+        catch {
+            Write-Warning "发布产物已更新，但 README 版本行未能自动替换：$($_.Exception.Message)"
+        }
+        finally {
+            if (Test-Path -LiteralPath $readmeTempPath) {
+                Remove-Item -LiteralPath $readmeTempPath -Force
+            }
+        }
     }
 
     if (-not $NoLaunch) {

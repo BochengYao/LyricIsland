@@ -55,12 +55,14 @@ namespace LyricHover.App
         private SettingsDirtyStateTracker<OverlayPlacementSettings> dirtyStateTracker;
         private SettingsThemePreference selectedThemePreference = SettingsThemePreference.System;
         private bool initializingSettings = true;
+        private bool updatingIslandAppearancePreview;
         private bool settingsDirty;
         private bool dirtyStateUpdateQueued;
         private bool applyingAutoSave;
         private bool powerSavingModePending;
         private readonly Dictionary<UIElement, Effect> suppressedVisualEffects = new Dictionary<UIElement, Effect>();
         private readonly Dictionary<CheckBox, FrameworkElement> initializedSwitchKnobs = new Dictionary<CheckBox, FrameworkElement>();
+        private readonly Dictionary<ComboBox, FontDropdownWheelBinding> fontDropdownWheelBindings = new Dictionary<ComboBox, FontDropdownWheelBinding>();
         private bool layoutEditingActive;
         private bool suppressLayoutSelectionChanged;
         private IslandLayoutMode selectedLayoutMode = IslandLayoutMode.HorizontalBlocks;
@@ -77,7 +79,11 @@ namespace LyricHover.App
         private AdornerLayer priorityAdornerLayer;
         private bool suppressAutoSelectPlayerToggle;
         private bool autoSelectPlayer;
+        private double islandConcaveRadiusDraft = OverlayPlacementSettings.DefaultIslandConcaveRadius;
+        private double islandConvexScreenEdgeDistanceDraft;
+        private bool islandTopCornersConvexMode;
         private DispatcherTimer translationModeToastTimer;
+        private DispatcherTimer settingsAutoApplyTimer;
         private Border activeTranslationModeToast;
         private Storyboard layoutModePreviewStoryboard;
         private int themeTransitionVersion;
@@ -186,6 +192,17 @@ namespace LyricHover.App
             Action refreshCurrentLyrics = null)
         {
             InitializeComponent();
+            settingsAutoApplyTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(220) };
+            settingsAutoApplyTimer.Tick += (sender, args) =>
+            {
+                settingsAutoApplyTimer.Stop();
+                if (dirtyStateTracker != null && dirtyStateTracker.IsDirty(CaptureSettings()))
+                {
+                    applyingAutoSave = true;
+                    try { ApplyCurrentSettings(includePendingPowerSavingMode: false); }
+                    finally { applyingAutoSave = false; }
+                }
+            };
             var localApplicationDataRoot = Environment.GetFolderPath(
                 Environment.SpecialFolder.LocalApplicationData);
             var productDataRoot = ProductDataDirectory.Prepare(localApplicationDataRoot);
@@ -225,6 +242,7 @@ namespace LyricHover.App
             InitializeScreenSelection(settings.ScreenName);
             InitializeLyricsSourcePriority(settings);
             acceptedCacheLimitMegabytes = settings.CacheLimitMegabytes;
+            InitializeIslandAppearanceControls(settings);
             selectedThemePreference = settings.SettingsTheme;
             SetThemeRadioButton(selectedThemePreference);
             ApplySettingsTheme();
@@ -295,6 +313,15 @@ namespace LyricHover.App
             };
             Closing += (sender, args) =>
             {
+                settingsAutoApplyTimer.Stop();
+                if (dirtyStateTracker != null && dirtyStateTracker.IsDirty(CaptureSettings()))
+                {
+                    if (!ApplyCurrentSettings())
+                    {
+                        args.Cancel = true;
+                        return;
+                    }
+                }
                 translationModeToastTimer?.Stop();
                 supporterBadgePreviewWindow?.Close();
                 supporterBadgePreviewWindow = null;
@@ -648,7 +675,11 @@ namespace LyricHover.App
         {
             foreach (var selector in new Selector[]
             {
-                ScreenComboBox
+                ScreenComboBox,
+                IslandChineseFontComboBox,
+                IslandEnglishFontComboBox,
+                DockChineseFontComboBox,
+                DockEnglishFontComboBox
             })
             {
                 selector.SelectionChanged += SettingsSelector_SelectionChanged;
@@ -668,7 +699,11 @@ namespace LyricHover.App
                 SpectrumEdgeTransparencySlider,
                 LyricsWidthSlider,
                 DividerOpacitySlider,
-                DividerSpacingSlider
+                DividerSpacingSlider,
+                IslandFontScaleSlider,
+                IslandConcaveRadiusSlider,
+                IslandConvexRadiusSlider,
+                DockFontSizeSlider
             })
             {
                 range.ValueChanged += SettingsRange_ValueChanged;
@@ -680,11 +715,19 @@ namespace LyricHover.App
                 EarlierHotkeyTextBox,
                 LaterHotkeyTextBox,
                 ResetHotkeyTextBox,
-                TemporaryInteractionHotkeyTextBox
+                TemporaryInteractionHotkeyTextBox,
+                IslandFontScaleTextBox,
+                IslandConcaveRadiusTextBox,
+                IslandConvexRadiusTextBox,
+                DockFontSizeTextBox
             })
             {
                 textBox.TextChanged += SettingsTextBox_TextChanged;
             }
+            IslandFontScaleTextBox.LostKeyboardFocus += NormalizeAppearanceNumberOnBlur;
+            IslandConcaveRadiusTextBox.LostKeyboardFocus += NormalizeAppearanceNumberOnBlur;
+            IslandConvexRadiusTextBox.LostKeyboardFocus += NormalizeAppearanceNumberOnBlur;
+            DockFontSizeTextBox.LostKeyboardFocus += NormalizeAppearanceNumberOnBlur;
 
             foreach (var toggle in new ToggleButton[]
             {
@@ -713,7 +756,109 @@ namespace LyricHover.App
 
         private void SettingsSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            UpdateIslandAppearancePreview();
+            if (!initializingSettings &&
+                (ReferenceEquals(sender, IslandChineseFontComboBox) ||
+                 ReferenceEquals(sender, IslandEnglishFontComboBox) ||
+                 ReferenceEquals(sender, DockChineseFontComboBox) ||
+                 ReferenceEquals(sender, DockEnglishFontComboBox)))
+            {
+                settingsAutoApplyTimer.Stop();
+                ApplyCurrentSettings();
+                return;
+            }
             QueueDirtyStateUpdate();
+        }
+
+        private void TopCornerModeRadioButton_Checked(object sender, RoutedEventArgs e)
+        {
+            if (initializingSettings || ConvexTopCornersRadioButton == null || !IsLoaded) return;
+            islandConcaveRadiusDraft = islandTopCornersConvexMode
+                ? islandConcaveRadiusDraft
+                : IslandConcaveRadiusSlider.Value;
+            islandConvexScreenEdgeDistanceDraft = islandTopCornersConvexMode
+                ? IslandConcaveRadiusSlider.Value
+                : islandConvexScreenEdgeDistanceDraft;
+            islandTopCornersConvexMode = ConvexTopCornersRadioButton.IsChecked == true;
+            workingSettings.IslandTopCornersConvex = islandTopCornersConvexMode;
+            IslandConcaveRadiusSlider.Value = islandTopCornersConvexMode
+                ? islandConvexScreenEdgeDistanceDraft
+                : islandConcaveRadiusDraft;
+            IslandConcaveRadiusLabel.Text = UiLanguageService.Translate(
+                islandTopCornersConvexMode ? "屏幕边缘距离" : "凹角半径");
+            TopCornerModeSelectionTransform.X = islandTopCornersConvexMode ? 92 : 0;
+            UpdateIslandAppearancePreview();
+            settingsAutoApplyTimer.Stop();
+            ApplyCurrentSettings();
+        }
+
+        private void FontSelector_DropDownOpened(object sender, EventArgs e)
+        {
+            var selector = sender as ComboBox;
+            if (selector == null) return;
+            Dispatcher.BeginInvoke(new Action(() => AttachFontDropdownWheelHandler(selector)), DispatcherPriority.Loaded);
+        }
+
+        private void FontSelector_DropDownClosed(object sender, EventArgs e)
+        {
+            var selector = sender as ComboBox;
+            FontDropdownWheelBinding binding;
+            if (selector == null || !fontDropdownWheelBindings.TryGetValue(selector, out binding)) return;
+            binding.Root.RemoveHandler(Mouse.PreviewMouseWheelEvent, binding.Handler);
+            fontDropdownWheelBindings.Remove(selector);
+        }
+
+        private void AttachFontDropdownWheelHandler(ComboBox selector)
+        {
+            if (selector == null || !selector.IsDropDownOpen) return;
+            FontDropdownWheelBinding previous;
+            if (fontDropdownWheelBindings.TryGetValue(selector, out previous))
+            {
+                previous.Root.RemoveHandler(Mouse.PreviewMouseWheelEvent, previous.Handler);
+                fontDropdownWheelBindings.Remove(selector);
+            }
+
+            var popup = selector.Template.FindName("PART_Popup", selector) as Popup;
+            var root = popup?.Child as UIElement;
+            var scrollViewer = FindDescendantScrollViewer(root);
+            if (root == null || scrollViewer == null) return;
+
+            MouseWheelEventHandler handler = (wheelSender, wheelArgs) =>
+            {
+                scrollViewer.UpdateLayout();
+                var notches = Math.Abs(wheelArgs.Delta) / 120.0;
+                var amountPerNotch = scrollViewer.CanContentScroll ? 3.0 : 42.0;
+                var offset = scrollViewer.VerticalOffset - Math.Sign(wheelArgs.Delta) * amountPerNotch * notches;
+                scrollViewer.ScrollToVerticalOffset(Math.Max(0, Math.Min(scrollViewer.ScrollableHeight, offset)));
+                wheelArgs.Handled = true;
+            };
+            root.AddHandler(Mouse.PreviewMouseWheelEvent, handler, true);
+            fontDropdownWheelBindings[selector] = new FontDropdownWheelBinding(root, handler);
+        }
+
+        private static ScrollViewer FindDescendantScrollViewer(DependencyObject root)
+        {
+            if (root is ScrollViewer scrollViewer) return scrollViewer;
+            var visual = root as Visual;
+            if (visual == null) return null;
+            for (var index = 0; index < VisualTreeHelper.GetChildrenCount(visual); index++)
+            {
+                var result = FindDescendantScrollViewer(VisualTreeHelper.GetChild(visual, index));
+                if (result != null) return result;
+            }
+            return null;
+        }
+
+        private sealed class FontDropdownWheelBinding
+        {
+            public FontDropdownWheelBinding(UIElement root, MouseWheelEventHandler handler)
+            {
+                Root = root;
+                Handler = handler;
+            }
+
+            public UIElement Root { get; }
+            public MouseWheelEventHandler Handler { get; }
         }
 
         private void InitializeLanguageSelector(AppLanguagePreference preference)
@@ -775,15 +920,185 @@ namespace LyricHover.App
 
         private void SettingsRange_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
+            if (updatingIslandAppearancePreview) return;
+            if (ReferenceEquals(sender, IslandConcaveRadiusSlider))
+            {
+                if (islandTopCornersConvexMode) islandConvexScreenEdgeDistanceDraft = IslandConcaveRadiusSlider.Value;
+                else islandConcaveRadiusDraft = IslandConcaveRadiusSlider.Value;
+            }
+            SyncIslandAppearanceNumericText(sender as RangeBase);
+            UpdateIslandAppearancePreview();
             QueueDirtyStateUpdate();
         }
 
         private void SettingsTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
+            if (ReferenceEquals(sender, IslandFontScaleTextBox) && !SyncAppearanceSlider(IslandFontScaleTextBox, IslandFontScaleSlider)) return;
+            if (ReferenceEquals(sender, IslandConcaveRadiusTextBox) && !SyncAppearanceSlider(IslandConcaveRadiusTextBox, IslandConcaveRadiusSlider)) return;
+            if (ReferenceEquals(sender, IslandConvexRadiusTextBox) && !SyncAppearanceSlider(IslandConvexRadiusTextBox, IslandConvexRadiusSlider)) return;
+            if (ReferenceEquals(sender, DockFontSizeTextBox) && !SyncAppearanceSlider(DockFontSizeTextBox, DockFontSizeSlider)) return;
             if (ReferenceEquals(sender, TemporaryInteractionHotkeyTextBox))
             {
                 UpdateExpandableInteractionHint();
             }
+            UpdateIslandAppearancePreview();
+            QueueDirtyStateUpdate();
+        }
+
+        private void InitializeIslandAppearanceControls(OverlayPlacementSettings settings)
+        {
+            var families = ChineseFontFamilyCatalog.GetInstalledFamilies(false, false).ToList();
+            var chineseFamilies = ChineseFontFamilyCatalog.GetInstalledFamilies(true, true).ToList();
+            AddSelectedFontIfMissing(chineseFamilies, settings.IslandChineseFontFamily);
+            AddSelectedFontIfMissing(chineseFamilies, settings.LyricDockChineseFontFamily);
+            AddSelectedFontIfMissing(families, settings.IslandEnglishFontFamily);
+            AddSelectedFontIfMissing(families, settings.LyricDockEnglishFontFamily);
+            IslandChineseFontComboBox.ItemsSource = chineseFamilies;
+            IslandEnglishFontComboBox.ItemsSource = families;
+            DockChineseFontComboBox.ItemsSource = chineseFamilies;
+            DockEnglishFontComboBox.ItemsSource = families;
+            IslandChineseFontComboBox.SelectedValue = settings.IslandChineseFontFamily;
+            IslandEnglishFontComboBox.SelectedValue = settings.IslandEnglishFontFamily;
+            DockChineseFontComboBox.SelectedValue = settings.LyricDockChineseFontFamily;
+            DockEnglishFontComboBox.SelectedValue = settings.LyricDockEnglishFontFamily;
+            DockFontSizeSlider.Value = settings.LyricDockLyricsFontSize;
+            DockFontSizeTextBox.Text = settings.LyricDockLyricsFontSize.ToString("0.#", CultureInfo.InvariantCulture);
+            islandConcaveRadiusDraft = settings.IslandConcaveRadius;
+            islandConvexScreenEdgeDistanceDraft = settings.IslandConvexScreenEdgeDistance;
+            islandTopCornersConvexMode = settings.IslandTopCornersConvex;
+            IslandFontScaleSlider.Value = settings.IslandFontScale;
+            IslandFontScaleTextBox.Text = settings.IslandFontScale.ToString("0.##", CultureInfo.InvariantCulture);
+            IslandConcaveRadiusSlider.Value = islandTopCornersConvexMode
+                ? islandConvexScreenEdgeDistanceDraft
+                : islandConcaveRadiusDraft;
+            IslandConcaveRadiusTextBox.Text = IslandConcaveRadiusSlider.Value.ToString("0.#", CultureInfo.InvariantCulture);
+            IslandConvexRadiusSlider.Value = settings.IslandConvexRadius;
+            IslandConvexRadiusTextBox.Text = settings.IslandConvexRadius.ToString("0.#", CultureInfo.InvariantCulture);
+            ConcaveTopCornersRadioButton.IsChecked = !settings.IslandTopCornersConvex;
+            ConvexTopCornersRadioButton.IsChecked = settings.IslandTopCornersConvex;
+            TopCornerModeSelectionTransform.X = settings.IslandTopCornersConvex ? 92 : 0;
+            IslandConcaveRadiusLabel.Text = UiLanguageService.Translate(
+                islandTopCornersConvexMode ? "屏幕边缘距离" : "凹角半径");
+            UpdateIslandAppearancePreview();
+        }
+
+        private static void AddSelectedFontIfMissing(List<FontFamilyOption> families, string selectedFamily)
+        {
+            if (!string.IsNullOrWhiteSpace(selectedFamily) &&
+                !families.Any(option => string.Equals(
+                    option.SourceName,
+                    selectedFamily,
+                    StringComparison.OrdinalIgnoreCase)))
+            {
+                families.Add(new FontFamilyOption(selectedFamily, selectedFamily));
+                families.Sort((left, right) => StringComparer.CurrentCultureIgnoreCase.Compare(
+                    left.DisplayName,
+                    right.DisplayName));
+            }
+        }
+
+        private void SyncIslandAppearanceNumericText(RangeBase range)
+        {
+            if (ReferenceEquals(range, IslandFontScaleSlider)) IslandFontScaleTextBox.Text = range.Value.ToString("0.##", CultureInfo.InvariantCulture);
+            else if (ReferenceEquals(range, IslandConcaveRadiusSlider)) IslandConcaveRadiusTextBox.Text = range.Value.ToString("0.#", CultureInfo.InvariantCulture);
+            else if (ReferenceEquals(range, IslandConvexRadiusSlider)) IslandConvexRadiusTextBox.Text = range.Value.ToString("0.#", CultureInfo.InvariantCulture);
+            else if (ReferenceEquals(range, DockFontSizeSlider)) DockFontSizeTextBox.Text = range.Value.ToString("0.#", CultureInfo.InvariantCulture);
+        }
+
+        private static bool SyncAppearanceSlider(TextBox input, Slider slider)
+        {
+            double value;
+            if (!double.TryParse(input.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out value) || double.IsNaN(value) || double.IsInfinity(value) || value < slider.Minimum || value > slider.Maximum)
+                return false;
+            slider.Value = value;
+            return true;
+        }
+
+        private void NormalizeAppearanceNumberOnBlur(object sender, KeyboardFocusChangedEventArgs e)
+        {
+            var input = sender as TextBox;
+            var slider = ReferenceEquals(input, IslandFontScaleTextBox) ? IslandFontScaleSlider :
+                ReferenceEquals(input, IslandConcaveRadiusTextBox) ? IslandConcaveRadiusSlider :
+                ReferenceEquals(input, IslandConvexRadiusTextBox) ? IslandConvexRadiusSlider : DockFontSizeSlider;
+            double value;
+            if (!double.TryParse(input?.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out value) || double.IsNaN(value) || double.IsInfinity(value))
+                value = slider.Value;
+            slider.Value = Math.Max(slider.Minimum, Math.Min(slider.Maximum, value));
+            SyncIslandAppearanceNumericText(slider);
+            QueueDirtyStateUpdate();
+        }
+
+        private void IslandAppearancePreview_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (e.WidthChanged && !updatingIslandAppearancePreview)
+                UpdateIslandAppearancePreview();
+        }
+
+        private void UpdateIslandAppearancePreview()
+        {
+            if (IslandAppearancePreviewShape == null || IslandFontScaleSlider == null) return;
+            updatingIslandAppearancePreview = true;
+            try
+            {
+                var isConvex = islandTopCornersConvexMode;
+                var scale = IslandFontScaleSlider.Value;
+                var size = OverlayPlacementSettings.DefaultIslandLyricsFontSize * scale;
+                var previewGrid = IslandAppearancePreviewShape.Parent as FrameworkElement;
+                var previewWidth = previewGrid != null && previewGrid.ActualWidth > 0 ? previewGrid.ActualWidth : 380;
+                var previewHeight = Math.Max(68, Math.Ceiling(size * 2.06 + 20));
+                var convexMaximum = IslandAppearanceRendering.GetMaximumConvexRadius(previewWidth, previewHeight, isConvex);
+                IslandConvexRadiusSlider.Maximum = convexMaximum;
+                if (IslandConvexRadiusSlider.Value > convexMaximum)
+                    IslandConvexRadiusTextBox.Text = IslandConvexRadiusSlider.Value.ToString("0.#", CultureInfo.InvariantCulture);
+
+                var concaveMaximum = isConvex
+                    ? 120
+                    : IslandAppearanceRendering.GetMaximumConcaveRadius(previewWidth, previewHeight, IslandConvexRadiusSlider.Maximum);
+                IslandConcaveRadiusSlider.Maximum = concaveMaximum;
+                IslandConcaveRadiusSlider.Value = Math.Min(
+                    isConvex ? islandConvexScreenEdgeDistanceDraft : islandConcaveRadiusDraft,
+                    concaveMaximum);
+                if (isConvex) islandConvexScreenEdgeDistanceDraft = IslandConcaveRadiusSlider.Value;
+                else islandConcaveRadiusDraft = IslandConcaveRadiusSlider.Value;
+                SyncIslandAppearanceNumericText(IslandConcaveRadiusSlider);
+
+                var preview = new OverlayPlacementSettings
+                {
+                    IslandConcaveRadius = islandConcaveRadiusDraft,
+                    IslandConvexRadius = IslandConvexRadiusSlider.Value,
+                    IslandConvexScreenEdgeDistance = islandConvexScreenEdgeDistanceDraft,
+                    IslandTopCornersConvex = isConvex
+                };
+                var chinese = IslandAppearanceRendering.ResolveFont(IslandChineseFontComboBox.SelectedValue as string, "Microsoft YaHei UI");
+                var english = IslandAppearanceRendering.ResolveFont(IslandEnglishFontComboBox.SelectedValue as string, "Segoe UI");
+                var gap = isConvex ? islandConvexScreenEdgeDistanceDraft : 0;
+                if (previewGrid != null) previewGrid.Height = previewHeight + gap;
+                IslandAppearancePreviewContent.Height = previewHeight;
+                IslandAppearancePreviewShape.RenderTransform = new TranslateTransform(0, gap);
+                IslandAppearancePreviewContent.RenderTransform = new TranslateTransform(0, gap);
+                IslandAppearancePreviewShape.Data = IslandAppearanceRendering.CreateGeometry(previewWidth, previewHeight, preview);
+                IslandAppearancePreviewPrimary.FontSize = size;
+                IslandAppearancePreviewPrimary.FontFamily = english;
+                IslandAppearanceRendering.SetMixedText(IslandAppearancePreviewPrimary, "Dreaming of home, dear old home", chinese, english);
+                IslandAppearancePreviewSecondary.FontSize = OverlayPlacementSettings.DefaultIslandLyricsFontSize * 0.75 * scale;
+                IslandAppearancePreviewSecondary.FontFamily = english;
+                IslandAppearanceRendering.SetMixedText(IslandAppearancePreviewSecondary, "梦回故乡，亲爱的故乡", chinese, english);
+            }
+            finally
+            {
+                updatingIslandAppearancePreview = false;
+            }
+        }
+
+        private void ResetIslandRadiiButton_Click(object sender, RoutedEventArgs e)
+        {
+            islandConcaveRadiusDraft = OverlayPlacementSettings.DefaultIslandConcaveRadius;
+            islandConvexScreenEdgeDistanceDraft = 0;
+            IslandConcaveRadiusSlider.Value = islandTopCornersConvexMode
+                ? 0
+                : OverlayPlacementSettings.DefaultIslandConcaveRadius;
+            IslandConvexRadiusSlider.Value = OverlayPlacementSettings.DefaultIslandConvexRadius;
+            UpdateIslandAppearancePreview();
             QueueDirtyStateUpdate();
         }
 
@@ -887,21 +1202,22 @@ namespace LyricHover.App
                     RefreshActionButtonVisuals(true);
                 }
 
-                // Settings are applied as soon as a control changes.  This includes layout
-                // editing: the runtime preview and persisted settings must never wait for
-                // the window's "完成" button.
-                if (dirty)
+                if (!dirty)
                 {
-                    applyingAutoSave = true;
-                    try
-                    {
-                        ApplyCurrentSettings(includePendingPowerSavingMode: false);
-                    }
-                    finally
-                    {
-                        applyingAutoSave = false;
-                    }
+                    settingsAutoApplyTimer.Stop();
+                    return;
                 }
+
+                if (!applyImmediately)
+                {
+                    settingsAutoApplyTimer.Stop();
+                    return;
+                }
+
+                // Coalesce rapid changes, then apply the complete draft to the runtime
+                // coordinator. Closing the window flushes this pending snapshot first.
+                settingsAutoApplyTimer.Stop();
+                settingsAutoApplyTimer.Start();
             }));
         }
 
@@ -1023,9 +1339,9 @@ namespace LyricHover.App
 
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
-            if (settingsDirty)
+            if (settingsDirty && !ApplyCurrentSettings())
             {
-                ApplyCurrentSettings();
+                return;
             }
 
             Close();
@@ -1076,10 +1392,27 @@ namespace LyricHover.App
             PowerSavingDetailsCollapseButton.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
         }
 
-        private void ApplyCurrentSettings(bool includePendingPowerSavingMode = true)
+        private bool ApplyCurrentSettings(bool includePendingPowerSavingMode = true)
         {
+            settingsAutoApplyTimer.Stop();
             var settings = CaptureSettings(includePendingPowerSavingMode);
-            var committedSettings = applySettings(settings) ?? settings;
+            OverlayPlacementSettings committedSettings;
+            try
+            {
+                committedSettings = applySettings(settings) ?? settings;
+            }
+            catch (System.IO.IOException)
+            {
+                ShowSettingsSaveError();
+                return false;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                ShowSettingsSaveError();
+                return false;
+            }
+
+            SettingsSaveErrorText.Visibility = Visibility.Collapsed;
             SaveLayoutEditingIfActive();
             IslandEnabledSwitch.IsChecked = committedSettings.IslandEnabled;
             HideIslandInFullscreenCheckBox.IsChecked = committedSettings.HideIslandInFullscreen;
@@ -1103,6 +1436,14 @@ namespace LyricHover.App
                 layoutEditingActive = true;
                 beginLayoutEditing(ReadEditedLayoutMode(), false);
             }
+
+            return true;
+        }
+
+        private void ShowSettingsSaveError()
+        {
+            SettingsSaveErrorText.Text = UiLanguageService.Translate("设置暂时无法保存，请检查设置文件是否被占用后重试。");
+            SettingsSaveErrorText.Visibility = Visibility.Visible;
         }
 
         private OverlayPlacementSettings CaptureSettings(bool includePendingPowerSavingMode = true)
@@ -1135,6 +1476,18 @@ namespace LyricHover.App
                 ? string.Empty
                 : settings.PlayerPriority[0];
             settings.UseMultiLineDisplay = ReadUseMultiLineDisplay();
+            settings.IslandChineseFontFamily = IslandChineseFontComboBox.SelectedValue as string ?? "Microsoft YaHei UI";
+            settings.IslandEnglishFontFamily = IslandEnglishFontComboBox.SelectedValue as string ?? "Segoe UI";
+            settings.IslandFontScale = IslandFontScaleSlider.Value;
+            settings.IslandLyricsFontSize = Math.Max(
+                10,
+                Math.Min(
+                    48,
+                    OverlayPlacementSettings.DefaultIslandLyricsFontSize * settings.IslandFontScale));
+            settings.IslandConcaveRadius = islandConcaveRadiusDraft;
+            settings.IslandConvexRadius = IslandConvexRadiusSlider.Value;
+            settings.IslandConvexScreenEdgeDistance = islandConvexScreenEdgeDistanceDraft;
+            settings.IslandTopCornersConvex = islandTopCornersConvexMode;
             settings.ShowTranslation = ShowTranslationCheckBox.IsChecked == true;
             settings.IslandWordTrackingEnabled = IslandWordTrackingCheckBox.IsChecked == true;
             settings.IslandEnabled = IslandEnabledSwitch.IsChecked == true;
@@ -1144,6 +1497,9 @@ namespace LyricHover.App
             settings.LyricDockUseMultiLineDisplay = ReadDockUseMultiLineDisplay();
             settings.LyricDockShowTranslation = DockShowTranslationCheckBox.IsChecked == true;
             settings.LyricDockWordTrackingEnabled = DockWordTrackingCheckBox.IsChecked == true;
+            settings.LyricDockChineseFontFamily = DockChineseFontComboBox.SelectedValue as string ?? "Microsoft YaHei UI";
+            settings.LyricDockEnglishFontFamily = DockEnglishFontComboBox.SelectedValue as string ?? "Segoe UI";
+            settings.LyricDockLyricsFontSize = DockFontSizeSlider.Value;
             settings.EnablePowerSavingMode = includePendingPowerSavingMode || !powerSavingModePending
                 ? PowerSavingModeCheckBox.IsChecked == true
                 : acceptedSettings?.EnablePowerSavingMode ?? false;

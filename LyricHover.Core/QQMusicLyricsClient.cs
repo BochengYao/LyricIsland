@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -9,22 +11,44 @@ namespace LyricHover.Core
 {
     public sealed class QQMusicLyricsClient : ILyricsClient
     {
+        private const int MaximumWordTimedCandidates = 3;
         private static readonly HttpClient SharedHttpClient = CreateHttpClient();
         private readonly Func<Uri, Task<string>> fetchJsonAsync;
+        private readonly bool probeAlternateCandidatesForWordTiming;
 
         public QQMusicLyricsClient()
-            : this(uri => SharedHttpClient.GetStringAsync(uri))
+            : this(uri => SharedHttpClient.GetStringAsync(uri), false)
+        {
+        }
+
+        public QQMusicLyricsClient(bool probeAlternateCandidatesForWordTiming)
+            : this(uri => SharedHttpClient.GetStringAsync(uri), probeAlternateCandidatesForWordTiming)
         {
         }
 
         public QQMusicLyricsClient(Func<Uri, string> fetchJson)
-            : this(uri => Task.FromResult(fetchJson(uri)))
+            : this(uri => Task.FromResult(fetchJson(uri)), false)
+        {
+        }
+
+        public QQMusicLyricsClient(
+            Func<Uri, string> fetchJson,
+            bool probeAlternateCandidatesForWordTiming)
+            : this(uri => Task.FromResult(fetchJson(uri)), probeAlternateCandidatesForWordTiming)
         {
         }
 
         public QQMusicLyricsClient(Func<Uri, Task<string>> fetchJsonAsync)
+            : this(fetchJsonAsync, false)
+        {
+        }
+
+        public QQMusicLyricsClient(
+            Func<Uri, Task<string>> fetchJsonAsync,
+            bool probeAlternateCandidatesForWordTiming)
         {
             this.fetchJsonAsync = fetchJsonAsync ?? throw new ArgumentNullException(nameof(fetchJsonAsync));
+            this.probeAlternateCandidatesForWordTiming = probeAlternateCandidatesForWordTiming;
         }
 
         public async Task<string> GetSyncedLyricsAsync(TrackIdentity track)
@@ -38,6 +62,22 @@ namespace LyricHover.Core
             try
             {
                 var searchJson = await fetchJsonAsync(BuildSearchRequestUri(cleanedTrack)).ConfigureAwait(false);
+                if (probeAlternateCandidatesForWordTiming)
+                {
+                    var candidates = ExtractRankedSongs(searchJson, cleanedTrack);
+                    if (candidates.Count == 0 && CanUseArtistAliasFallback(cleanedTrack))
+                    {
+                        var aliasSearchJson = await fetchJsonAsync(BuildSearchRequestUri(cleanedTrack, true)).ConfigureAwait(false);
+                        var alias = ExtractBestSong(aliasSearchJson, cleanedTrack, true);
+                        if (alias != null)
+                        {
+                            candidates.Add(alias);
+                        }
+                    }
+
+                    return await GetFirstWordTimedLyricsAsync(cleanedTrack, candidates).ConfigureAwait(false);
+                }
+
                 var song = ExtractBestSong(searchJson, cleanedTrack);
                 if (song == null && CanUseArtistAliasFallback(cleanedTrack))
                 {
@@ -101,6 +141,111 @@ namespace LyricHover.Core
             {
                 return string.Empty;
             }
+        }
+
+        private async Task<string> GetFirstWordTimedLyricsAsync(
+            TrackIdentity track,
+            IReadOnlyList<SongCandidate> candidates)
+        {
+            foreach (var song in candidates)
+            {
+                string package;
+                try
+                {
+                    var playLyricJson = await fetchJsonAsync(BuildPlayLyricRequestUri(song)).ConfigureAwait(false);
+                    package = ExtractPlayLyricsPackage(playLyricJson);
+                }
+                catch (HttpRequestException) { continue; }
+                catch (TaskCanceledException) { continue; }
+                catch (JsonException) { continue; }
+
+                if (!LyricsPackageParser.HasWordTiming(package) ||
+                    !LyricsPackageValidator.TryAccept(track, package, out _))
+                {
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(song.Mid))
+                {
+                    return package;
+                }
+
+                try
+                {
+                    var lyricJson = await fetchJsonAsync(BuildLyricRequestUri(song.Mid)).ConfigureAwait(false);
+                    var legacyPackage = ExtractLegacyLyricsPackage(lyricJson);
+                    return LyricsPackageParser.HasTranslation(package) ||
+                        !LyricsPackageParser.HasTranslation(legacyPackage)
+                        ? package
+                        : LyricsTranslationMerger.MergeMatchingLines(package, legacyPackage);
+                }
+                catch (HttpRequestException) { return package; }
+                catch (TaskCanceledException) { return package; }
+                catch (JsonException) { return package; }
+            }
+
+            return string.Empty;
+        }
+
+        private static List<SongCandidate> ExtractRankedSongs(string json, TrackIdentity track)
+        {
+            var scored = new List<Tuple<int, SongCandidate>>();
+            using (var document = JsonDocument.Parse(json))
+            {
+                if (!document.RootElement.TryGetProperty("data", out var data) ||
+                    !data.TryGetProperty("song", out var song) ||
+                    !song.TryGetProperty("list", out var list) ||
+                    list.ValueKind != JsonValueKind.Array)
+                {
+                    return new List<SongCandidate>();
+                }
+
+                foreach (var item in list.EnumerateArray())
+                {
+                    var id = ReadInt(item, "id");
+                    var mid = ReadString(item, "mid");
+                    if (string.IsNullOrWhiteSpace(mid))
+                    {
+                        mid = ReadString(item, "songmid");
+                    }
+                    if (id <= 0 && string.IsNullOrWhiteSpace(mid))
+                    {
+                        continue;
+                    }
+
+                    var title = ReadString(item, "title");
+                    if (string.IsNullOrWhiteSpace(title))
+                    {
+                        title = ReadString(item, "name");
+                    }
+                    var artist = ReadSingers(item);
+                    var album = ReadAlbum(item);
+                    var itemSeconds = ReadInt(item, "interval");
+                    var duration = itemSeconds > 0 ? TimeSpan.FromSeconds(itemSeconds) : TimeSpan.Zero;
+                    var score = LyricsCandidateMatcher.Score(track, title, artist, album, duration);
+                    if (score >= 45)
+                    {
+                        scored.Add(Tuple.Create(score, new SongCandidate(id, mid)));
+                    }
+                }
+            }
+
+            var result = new List<SongCandidate>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var item in scored.OrderByDescending(candidate => candidate.Item1))
+            {
+                var key = item.Item2.Id + "|" + item.Item2.Mid;
+                if (seen.Add(key))
+                {
+                    result.Add(item.Item2);
+                    if (result.Count >= MaximumWordTimedCandidates)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            return result;
         }
 
         private static SongCandidate ExtractBestSong(string json, TrackIdentity track, bool allowLocalizedTitleAlias = false)

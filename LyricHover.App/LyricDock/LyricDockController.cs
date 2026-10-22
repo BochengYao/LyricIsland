@@ -13,6 +13,7 @@ namespace LyricHover.App.LyricDock
         void Hide();
         void Present(LyricsPresentationSnapshot snapshot);
         void Place(LyricDockPlacement placement, double width);
+        void ApplyTypography(string chineseFontFamily, string englishFontFamily, double fontSize);
     }
 
     public sealed class LyricDockController : IDisposable
@@ -179,6 +180,11 @@ namespace LyricHover.App.LyricDock
             // independent fullscreen/taskbar timer, so lyric updates must not start another
             // Shell scan every 250 ms.
             surface.Present(snapshot);
+        }
+
+        public void ApplyTypography(string chineseFontFamily, string englishFontFamily, double fontSize)
+        {
+            surface.ApplyTypography(chineseFontFamily, englishFontFamily, fontSize);
         }
 
         public void RefreshPlacement()

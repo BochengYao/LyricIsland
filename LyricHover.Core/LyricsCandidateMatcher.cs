@@ -39,7 +39,9 @@ namespace LyricHover.Core
                 score -= 35;
             }
 
-            if (string.IsNullOrWhiteSpace(expectedArtist) || candidateArtist.Contains(expectedArtist) || expectedArtist.Contains(candidateArtist))
+            var artistMatches = string.IsNullOrWhiteSpace(expectedArtist) ||
+                candidateArtist.Contains(expectedArtist) || expectedArtist.Contains(candidateArtist);
+            if (artistMatches)
             {
                 score += 25;
             }
@@ -65,7 +67,12 @@ namespace LyricHover.Core
                 }
                 else
                 {
-                    score -= 30;
+                    // Apple Music's playback timeline can report a different duration
+                    // from a lyrics catalog entry. Keep a strong exact title + artist
+                    // match eligible, while retaining the larger penalty for weaker
+                    // metadata matches and relying on arrangement qualifiers below to
+                    // reject obvious live/remix alternatives.
+                    score -= expectedTitle == candidateTitle && artistMatches ? 10 : 30;
                 }
             }
 

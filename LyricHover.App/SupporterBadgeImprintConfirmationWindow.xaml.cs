@@ -22,7 +22,18 @@ namespace LyricHover.App
             Owner = owner;
             InitializeComponent();
             InheritThemeResources(owner);
+            ApplyOpaqueWindowBackground();
             UiLanguageService.ApplyTo(this);
+        }
+
+        private void ApplyOpaqueWindowBackground()
+        {
+            if (Resources["SettingsControlBackgroundBrush"] is SolidColorBrush surface)
+            {
+                var color = surface.Color;
+                Resources["SupporterConfirmationBackgroundBrush"] = new SolidColorBrush(
+                    Color.FromArgb(byte.MaxValue, color.R, color.G, color.B));
+            }
         }
 
         private void InheritThemeResources(FrameworkElement owner)

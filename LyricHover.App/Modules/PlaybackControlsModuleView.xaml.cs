@@ -11,6 +11,7 @@ namespace LyricHover.App.Modules
     {
         private bool renderStateInitialized;
         private bool lastHasSession;
+        private bool lastIsTutorialControlPractice;
         private MediaPlaybackStatus? lastPlaybackStatus;
         private bool animationsEnabled = true;
 
@@ -41,9 +42,11 @@ namespace LyricHover.App.Modules
         {
             var session = state?.Session;
             var hasSession = session != null;
+            var isTutorialControlPractice = state?.IsTutorialControlPractice == true;
             var playbackStatus = state?.PendingPlaybackStatus ?? session?.PlaybackStatus;
             if (renderStateInitialized &&
                 lastHasSession == hasSession &&
+                lastIsTutorialControlPractice == isTutorialControlPractice &&
                 lastPlaybackStatus == playbackStatus)
             {
                 return;
@@ -51,10 +54,11 @@ namespace LyricHover.App.Modules
 
             renderStateInitialized = true;
             lastHasSession = hasSession;
+            lastIsTutorialControlPractice = isTutorialControlPractice;
             lastPlaybackStatus = playbackStatus;
-            PreviousButton.IsEnabled = session != null;
-            PlayPauseButton.IsEnabled = session != null;
-            NextButton.IsEnabled = session != null;
+            PreviousButton.IsEnabled = hasSession;
+            PlayPauseButton.IsEnabled = hasSession || isTutorialControlPractice;
+            NextButton.IsEnabled = hasSession;
             var isPlaying = playbackStatus == MediaPlaybackStatus.Playing;
             PlayGlyph.Visibility = isPlaying ? System.Windows.Visibility.Collapsed : System.Windows.Visibility.Visible;
             PauseGlyph.Visibility = isPlaying ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;

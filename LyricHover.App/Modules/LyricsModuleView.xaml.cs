@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Documents;
 using LyricHover.Core;
 using LyricHover.Core.Layout;
 
@@ -10,6 +11,7 @@ namespace LyricHover.App.Modules
 {
     public partial class LyricsModuleView : UserControl, IIslandModuleView
     {
+        private const double OverflowFadeWidth = 10;
         private readonly LyricTextTransitionTracker lyricTextTransitionTracker = new LyricTextTransitionTracker();
         private string displayedPrimary;
         private string displayedAccent;
@@ -21,6 +23,42 @@ namespace LyricHover.App.Modules
         private TimeSpan displayedWordTrackingPosition;
         private bool displayedWordTrackingPlaying;
         private double displayedWordTrackingProgress = -1;
+        private FontFamily chineseFontFamily = new FontFamily("Microsoft YaHei UI");
+        private FontFamily englishFontFamily = new FontFamily("Segoe UI");
+        private double lyricFontSize = OverlayPlacementSettings.DefaultIslandLyricsFontSize;
+
+        public void ApplyAppearance(OverlayPlacementSettings settings)
+        {
+            settings = settings ?? new OverlayPlacementSettings();
+            chineseFontFamily = IslandAppearanceRendering.ResolveFont(settings.IslandChineseFontFamily, "Microsoft YaHei UI");
+            englishFontFamily = IslandAppearanceRendering.ResolveFont(settings.IslandEnglishFontFamily, "Segoe UI");
+            lyricFontSize = settings.IslandLyricsFontSize;
+            foreach (var text in new[] { PrimaryLyricText, IncomingPrimaryLyricText })
+            {
+                text.EnglishFontFamily = englishFontFamily;
+                text.ChineseFontFamily = chineseFontFamily;
+                text.FontSize = lyricFontSize;
+                text.LineHeight = Math.Ceiling(lyricFontSize * 1.2);
+            }
+            foreach (var text in new[] { SecondaryLyricText, IncomingSecondaryLyricText })
+            {
+                var value = text.Text;
+                text.FontSize = lyricFontSize * 0.75;
+                text.LineHeight = Math.Ceiling(lyricFontSize * 0.86);
+                IslandAppearanceRendering.SetMixedText(text, value, chineseFontFamily, englishFontFamily);
+            }
+            // Keep the typographic line height unchanged, but give italic and script fonts
+            // extra clip space for descenders. The secondary row starts after that allowance
+            // instead of visually covering the bottom of the primary line.
+            var primaryClipHeight = Math.Ceiling(lyricFontSize * 1.34);
+            var secondaryClipHeight = Math.Ceiling(lyricFontSize * 0.95);
+            Height = Math.Max(48, primaryClipHeight + secondaryClipHeight + 17);
+            PrimaryLyricClip.Height = IncomingPrimaryLyricClip.Height = primaryClipHeight;
+            PrimaryLyricCanvas.Height = IncomingPrimaryLyricCanvas.Height = primaryClipHeight;
+            SecondaryLyricClip.Height = IncomingSecondaryLyricClip.Height = secondaryClipHeight;
+            SecondaryLyricCanvas.Height = IncomingSecondaryLyricCanvas.Height = secondaryClipHeight;
+            ApplyCurrentLyricsText(displayedPrimary ?? string.Empty, displayedSecondary ?? string.Empty, displayedAccent ?? string.Empty);
+        }
 
         public bool AnimationsEnabled
         {
@@ -221,11 +259,12 @@ namespace LyricHover.App.Modules
             }
 
             var duration = TimeSpan.FromMilliseconds(Math.Max(1800, lineDuration.TotalMilliseconds - 450));
+            var dpiScale = VisualTreeHelper.GetDpi(this).DpiScaleX;
 
             var animation = new DoubleAnimation
             {
                 From = 0,
-                To = -placement.Overflow,
+                To = IslandAppearanceRendering.SnapToDevicePixel(-placement.Overflow, dpiScale),
                 BeginTime = TimeSpan.FromMilliseconds(260),
                 Duration = duration,
                 EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
@@ -243,13 +282,17 @@ namespace LyricHover.App.Modules
         {
             transform.BeginAnimation(TranslateTransform.XProperty, null);
             transform.X = 0;
-            textBlock.Text = text ?? string.Empty;
+            IslandAppearanceRendering.SetMixedText(textBlock, text, chineseFontFamily, englishFontFamily);
             textBlock.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
             textBlock.Width = double.NaN;
             Canvas.SetLeft(textBlock, 0);
             if (visible)
             {
                 MeasureAndPositionElement(textBlock, transform, clip);
+            }
+            else
+            {
+                clip.OpacityMask = null;
             }
         }
 
@@ -298,7 +341,11 @@ namespace LyricHover.App.Modules
             }
 
             var placement = LyricTextPlacement.Calculate(availableWidth, textWidth);
-            Canvas.SetLeft(element, placement.Left);
+            var dpiScale = VisualTreeHelper.GetDpi(this).DpiScaleX;
+            Canvas.SetLeft(element, IslandAppearanceRendering.SnapToDevicePixel(placement.Left, dpiScale));
+            clip.OpacityMask = placement.RequiresMarquee
+                ? IslandAppearanceRendering.CreateHorizontalOverflowFadeMask(availableWidth, OverflowFadeWidth)
+                : null;
             return placement;
         }
 

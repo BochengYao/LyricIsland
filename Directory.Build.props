@@ -1,8 +1,8 @@
 <Project>
   <PropertyGroup>
     <!-- Single source of truth. tools/publish-next-version.ps1 increments the patch number. -->
-    <VersionPrefix>3.2.49</VersionPrefix>
-    <VersionSuffix>Beta</VersionSuffix>
+    <VersionPrefix>3.3.22</VersionPrefix>
+    <VersionSuffix>beta</VersionSuffix>
     <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
     <PackageVersion>$(Version)</PackageVersion>
     <AssemblyVersion>$(VersionPrefix).0</AssemblyVersion>

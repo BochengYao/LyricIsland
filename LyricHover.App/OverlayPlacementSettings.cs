@@ -33,7 +33,17 @@ namespace LyricHover.App
         public const int MinNoPlaybackAutoRetractSeconds = 0;
         public const int MaxAutoRetractSeconds = 300;
 
-        public int SchemaVersion { get; set; } = 6;
+        public const double DefaultIslandLyricsFontSize = 17.1;
+        public const double LegacyIslandLyricsFontSize = 15;
+        public const double DefaultIslandFontScale = 1;
+        public const double DefaultIslandConcaveRadius = 30;
+        public const double DefaultIslandConvexRadius = 13.2;
+
+        public const double DefaultLyricDockLyricsFontSize = 13;
+        public const double MinLyricDockLyricsFontSize = 8;
+        public const double MaxLyricDockLyricsFontSize = 18;
+
+        public int SchemaVersion { get; set; } = 9;
 
         public IslandLayoutSettings IslandLayouts { get; set; } = IslandLayoutDefaults.Create();
 
@@ -77,6 +87,22 @@ namespace LyricHover.App
 
         public bool IslandWordTrackingEnabled { get; set; } = true;
 
+        public string IslandChineseFontFamily { get; set; } = "Microsoft YaHei UI";
+
+        public string IslandEnglishFontFamily { get; set; } = "Segoe UI";
+
+        public double IslandLyricsFontSize { get; set; } = DefaultIslandLyricsFontSize;
+
+        public double IslandFontScale { get; set; } = DefaultIslandFontScale;
+
+        public double IslandConcaveRadius { get; set; } = DefaultIslandConcaveRadius;
+
+        public double IslandConvexRadius { get; set; } = DefaultIslandConvexRadius;
+
+        public double IslandConvexScreenEdgeDistance { get; set; }
+
+        public bool IslandTopCornersConvex { get; set; }
+
         public bool IslandEnabled { get; set; } = true;
 
         public bool HideIslandInFullscreen { get; set; }
@@ -88,6 +114,12 @@ namespace LyricHover.App
         public bool LyricDockShowTranslation { get; set; } = true;
 
         public bool LyricDockWordTrackingEnabled { get; set; } = true;
+
+        public string LyricDockChineseFontFamily { get; set; } = "Microsoft YaHei UI";
+
+        public string LyricDockEnglishFontFamily { get; set; } = "Segoe UI";
+
+        public double LyricDockLyricsFontSize { get; set; } = DefaultLyricDockLyricsFontSize;
 
         public bool EnablePowerSavingMode { get; set; }
 
@@ -136,7 +168,42 @@ namespace LyricHover.App
                 IslandLayouts = IslandLayoutDefaults.Create();
             }
 
+            if (originalSchemaVersion < 7)
+            {
+                IslandFontScale = NormalizeRange(
+                    IslandLyricsFontSize / DefaultIslandLyricsFontSize,
+                    0.5,
+                    3.0,
+                    DefaultIslandFontScale);
+            }
+            else if (originalSchemaVersion < 8)
+            {
+                IslandFontScale = NormalizeRange(
+                    IslandFontScale * LegacyIslandLyricsFontSize / DefaultIslandLyricsFontSize,
+                    0.5,
+                    3.0,
+                    DefaultIslandFontScale);
+            }
+
             IslandLayouts.Normalize();
+            IslandChineseFontFamily = string.IsNullOrWhiteSpace(IslandChineseFontFamily) ? "Microsoft YaHei UI" : IslandChineseFontFamily.Trim();
+            IslandEnglishFontFamily = string.IsNullOrWhiteSpace(IslandEnglishFontFamily) ? "Segoe UI" : IslandEnglishFontFamily.Trim();
+            IslandFontScale = NormalizeRange(IslandFontScale, 0.5, 3.0, DefaultIslandFontScale);
+            IslandLyricsFontSize = NormalizeRange(
+                DefaultIslandLyricsFontSize * IslandFontScale,
+                10,
+                48,
+                DefaultIslandLyricsFontSize);
+            IslandConcaveRadius = NormalizeRange(IslandConcaveRadius, 0, 120, DefaultIslandConcaveRadius);
+            IslandConvexRadius = NormalizeRange(IslandConvexRadius, 0, 120, DefaultIslandConvexRadius);
+            IslandConvexScreenEdgeDistance = NormalizeRange(IslandConvexScreenEdgeDistance, 0, 120, 0);
+            LyricDockChineseFontFamily = string.IsNullOrWhiteSpace(LyricDockChineseFontFamily) ? "Microsoft YaHei UI" : LyricDockChineseFontFamily.Trim();
+            LyricDockEnglishFontFamily = string.IsNullOrWhiteSpace(LyricDockEnglishFontFamily) ? "Segoe UI" : LyricDockEnglishFontFamily.Trim();
+            LyricDockLyricsFontSize = NormalizeRange(
+                LyricDockLyricsFontSize,
+                MinLyricDockLyricsFontSize,
+                MaxLyricDockLyricsFontSize,
+                DefaultLyricDockLyricsFontSize);
             Edge = NormalizeEdge(Edge);
             LockedSourceAppUserModelId = LockedSourceAppUserModelId ?? string.Empty;
             LyricOffsetHotkeys = LyricOffsetHotkeys ?? HotkeySettings.CreateDefault();
@@ -148,7 +215,7 @@ namespace LyricHover.App
             ExpandedAutoCollapseSeconds = Math.Max(
                 MinAutoRetractSeconds,
                 Math.Min(MaxAutoRetractSeconds, ExpandedAutoCollapseSeconds));
-            SchemaVersion = 6;
+            SchemaVersion = 9;
             OffsetRatio = Math.Max(0, Math.Min(1, OffsetRatio));
             CacheLimitMegabytes = Math.Max(MinCacheLimitMegabytes, Math.Min(MaxCacheLimitMegabytes, CacheLimitMegabytes));
             HoverAuraSize = Math.Max(MinHoverAuraSize, Math.Min(MaxHoverAuraSize, HoverAuraSize));
@@ -194,6 +261,13 @@ namespace LyricHover.App
             {
                 IslandEnabled = true;
             }
+        }
+
+        private static double NormalizeRange(double value, double minimum, double maximum, double fallback)
+        {
+            return double.IsNaN(value) || double.IsInfinity(value)
+                ? fallback
+                : Math.Max(minimum, Math.Min(maximum, value));
         }
 
         private static OverlayDockEdge NormalizeEdge(OverlayDockEdge edge)
@@ -324,6 +398,9 @@ namespace LyricHover.App
                 var originalLyricDockUseMultiLineDisplay = settings.LyricDockUseMultiLineDisplay;
                 var originalLyricDockShowTranslation = settings.LyricDockShowTranslation;
                 var originalLyricDockWordTracking = settings.LyricDockWordTrackingEnabled;
+                var originalLyricDockChineseFontFamily = settings.LyricDockChineseFontFamily;
+                var originalLyricDockEnglishFontFamily = settings.LyricDockEnglishFontFamily;
+                var originalLyricDockLyricsFontSize = settings.LyricDockLyricsFontSize;
                 var originalEnablePowerSavingMode = settings.EnablePowerSavingMode;
                 settings.Normalize();
                 if (settings.SchemaVersion != originalSchemaVersion ||
@@ -348,6 +425,9 @@ namespace LyricHover.App
                     settings.LyricDockUseMultiLineDisplay != originalLyricDockUseMultiLineDisplay ||
                     settings.LyricDockShowTranslation != originalLyricDockShowTranslation ||
                     settings.LyricDockWordTrackingEnabled != originalLyricDockWordTracking ||
+                    settings.LyricDockChineseFontFamily != originalLyricDockChineseFontFamily ||
+                    settings.LyricDockEnglishFontFamily != originalLyricDockEnglishFontFamily ||
+                    Math.Abs(settings.LyricDockLyricsFontSize - originalLyricDockLyricsFontSize) > 0.0001 ||
                     settings.EnablePowerSavingMode != originalEnablePowerSavingMode)
                 {
                     try { Save(settings); }

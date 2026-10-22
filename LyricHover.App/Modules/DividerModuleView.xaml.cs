@@ -9,6 +9,11 @@ namespace LyricHover.App.Modules
         public DividerModuleView(IslandModuleInstance module)
         {
             InitializeComponent();
+            ApplySettings(module);
+        }
+
+        public void ApplySettings(IslandModuleInstance module)
+        {
             module = module ?? new IslandModuleInstance(IslandModuleType.Divider);
             DividerLine.Opacity = module.DividerOpacity;
             Margin = new Thickness(module.MarginBefore, 0, module.MarginAfter, 0);

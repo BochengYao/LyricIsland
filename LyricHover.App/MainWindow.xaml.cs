@@ -9,6 +9,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Media3D;
 using System.Windows.Interop;
 using System.Windows.Threading;
 using LyricHover.App.LayoutEditing;
@@ -208,6 +209,10 @@ namespace LyricHover.App
                 Dispatcher.BeginInvoke(new Action(() => LyricDockController.RefreshPlacement()));
             LyricDockController.WidgetsHidingNeedsSettingsConfirmation += (sender, args) =>
                 Dispatcher.BeginInvoke(new Action(ShowWidgetsSettingsConfirmation));
+            LyricDockController.ApplyTypography(
+                placementSettings.LyricDockChineseFontFamily,
+                placementSettings.LyricDockEnglishFontFamily,
+                placementSettings.LyricDockLyricsFontSize);
             LyricDockController.Start(placementSettings.LyricDockEnabled, placementSettings.ScreenName, placementSettings.LyricDockAlignment);
             shouldStartFirstRunTutorial = !settingsFileExisted;
             if (settingsFileExisted && !placementSettings.HasSeenTutorial)
@@ -219,6 +224,7 @@ namespace LyricHover.App
             lyricOffset = TimeSpan.Zero;
             interactionController.ExpandedDuration = TimeSpan.FromSeconds(placementSettings.ExpandedAutoCollapseSeconds);
             cache = new LyricsCache(cacheRoot, GetCacheLimitBytes(placementSettings));
+            ModuleHost.ApplyAppearance(placementSettings);
             UpdateIslandShape();
             lyricsClient = CreateLyricsClient(placementSettings.LyricsSourcePriority, IsWordTrackingRequested(placementSettings));
             InitializeTrayIcon();
@@ -250,6 +256,7 @@ namespace LyricHover.App
 
             Loaded += async (sender, args) =>
             {
+                UpdateIslandTextPixelAlignment();
                 HideIsland(false);
                 Focus();
                 ShowWaitingForPlaybackHint();
@@ -277,6 +284,9 @@ namespace LyricHover.App
                 RegisterGlobalHotkeys();
                 UpdateFullscreenSuppression();
             };
+            DpiChanged += (sender, args) => Dispatcher.BeginInvoke(
+                new Action(UpdateIslandTextPixelAlignment),
+                DispatcherPriority.Loaded);
             Closing += MainWindow_Closing;
             Closed += (sender, args) =>
             {
@@ -287,6 +297,15 @@ namespace LyricHover.App
                 mediaSessions.Dispose();
                 DisposeTrayIcon();
             };
+        }
+
+        private void UpdateIslandTextPixelAlignment()
+        {
+            var dpi = VisualTreeHelper.GetDpi(this);
+            if (ModuleHost.RenderTransform is TranslateTransform transform)
+            {
+                transform.Y = IslandAppearanceRendering.SnapToDevicePixel(-2.5, dpi.DpiScaleY);
+            }
         }
 
         private void InitializeTrayIcon()
@@ -1277,7 +1296,13 @@ namespace LyricHover.App
         private OverlayPoint GetVisiblePosition()
         {
             var screen = ResolveScreen();
-            return OverlayPositioner.GetVisiblePosition(placementSettings.ToPlacement(), screen, GetOverlaySize());
+            return GetVisiblePosition(placementSettings.ToPlacement(), screen, GetOverlaySize());
+        }
+
+        private OverlayPoint GetVisiblePosition(OverlayPlacement placement, OverlayScreenArea screen, OverlaySize size)
+        {
+            var point = OverlayPositioner.GetVisiblePosition(placement, screen, size);
+            return new OverlayPoint(point.Left, point.Top + IslandAppearanceRendering.GetScreenEdgeOffset(placementSettings));
         }
 
         private OverlayPoint GetHiddenPosition()
@@ -1340,8 +1365,17 @@ namespace LyricHover.App
             SynchronizeLyricDockRuntime(runtimeSettings);
             UiLanguageService.SetPreference(runtimeSettings.Language);
             ApplyTrayMenuTheme(runtimeSettings.SettingsTheme);
+            ModuleHost.ApplyAppearance(runtimeSettings);
             RegisterGlobalHotkeys();
             UpdateIslandShape();
+            if (!previousSettings.IslandTopCornersConvex.Equals(runtimeSettings.IslandTopCornersConvex) ||
+                !previousSettings.IslandConvexScreenEdgeDistance.Equals(runtimeSettings.IslandConvexScreenEdgeDistance))
+            {
+                ClearPositionAnimation();
+                var adjustedPosition = islandVisible ? GetVisiblePosition() : GetHiddenPosition();
+                Left = adjustedPosition.Left;
+                Top = adjustedPosition.Top;
+            }
             ApplyPowerSavingState();
             ConfigureFullscreenMonitor();
             if (!runtimeSettings.IslandEnabled && !lyricDockRuntimeFallbackToIsland)
@@ -1381,6 +1415,10 @@ namespace LyricHover.App
 
         private bool SynchronizeLyricDockRuntime(OverlayPlacementSettings runtimeSettings)
         {
+            LyricDockController.ApplyTypography(
+                runtimeSettings.LyricDockChineseFontFamily,
+                runtimeSettings.LyricDockEnglishFontFamily,
+                runtimeSettings.LyricDockLyricsFontSize);
             var dockConfigured = LyricDockController.Configure(
                 runtimeSettings.LyricDockEnabled,
                 runtimeSettings.ScreenName,
@@ -1430,7 +1468,7 @@ namespace LyricHover.App
             settingsStateCoordinator.SetTransientRuntimeSnapshot(CreateSettingsFromPlacement(placement));
 
             var screen = screenCatalog.FindScreen(placement.ScreenName) ?? ResolveScreen();
-            var position = OverlayPositioner.GetVisiblePosition(placement, screen, GetOverlaySize());
+            var position = GetVisiblePosition(placement, screen, GetOverlaySize());
             ClearPositionAnimation();
             Left = position.Left;
             Top = position.Top;
@@ -1522,6 +1560,10 @@ namespace LyricHover.App
 
         private void ApplyInteractionState(IslandInteractionState state, bool forceSizeAnimation = false)
         {
+            if (settingsWindow != null && placementSettings.IslandEnabled)
+            {
+                state = IslandInteractionState.Expanded;
+            }
             var layouts = placementSettings?.IslandLayouts ?? IslandLayoutDefaults.Create();
             layouts.Normalize();
             var animateSize = forceSizeAnimation ||
@@ -1581,7 +1623,9 @@ namespace LyricHover.App
                 Math.Abs(targetHeight - currentHeight) >= 0.5;
             if (IsLoaded && sizeChanged)
             {
-                AnimateIslandSize(targetWidth, targetHeight, animated ? 360 : 320);
+                var shrinking = targetWidth < currentWidth - 0.5 || targetHeight < currentHeight - 0.5;
+                var durationMilliseconds = shrinking ? 140 : animated ? 360 : 320;
+                AnimateIslandSize(targetWidth, targetHeight, durationMilliseconds);
                 return true;
             }
 
@@ -1658,7 +1702,7 @@ namespace LyricHover.App
                 Width = targetWidth;
                 Height = targetHeight;
                 IslandShellTranslate.X = 0;
-                var directPosition = OverlayPositioner.GetVisiblePosition(
+                var directPosition = GetVisiblePosition(
                     placementSettings.ToPlacement(), ResolveScreen(), new OverlaySize(targetWidth, targetHeight));
                 Left = directPosition.Left;
                 Top = directPosition.Top;
@@ -1684,7 +1728,7 @@ namespace LyricHover.App
             var outerHeight = Math.Max(startHeight, targetHeight);
             var screen = ResolveScreen();
             var placement = placementSettings.ToPlacement();
-            var outerPosition = OverlayPositioner.GetVisiblePosition(
+            var outerPosition = GetVisiblePosition(
                 placement, screen, new OverlaySize(outerWidth, outerHeight));
 
             StopIslandSizeAnimationFrames();
@@ -1697,7 +1741,7 @@ namespace LyricHover.App
             Height = Math.Max(startHeight, targetHeight);
             Left = outerPosition.Left;
             Top = outerPosition.Top;
-            var startPosition = OverlayPositioner.GetVisiblePosition(
+            var startPosition = GetVisiblePosition(
                 placement, screen, new OverlaySize(startWidth, startHeight));
             IslandShellTranslate.X = startPosition.Left - outerPosition.Left;
             UpdateIslandSizeVisuals(startWidth, startHeight);
@@ -1718,7 +1762,7 @@ namespace LyricHover.App
                         : 1 - Math.Pow(-2 * progress + 2, 4) / 2;
                 var width = startWidth + (targetWidth - startWidth) * eased;
                 var height = startHeight + (targetHeight - startHeight) * eased;
-                var visualPosition = OverlayPositioner.GetVisiblePosition(
+                var visualPosition = GetVisiblePosition(
                     placement, screen, new OverlaySize(width, height));
                 IslandShellTranslate.X = visualPosition.Left - outerPosition.Left;
                 UpdateIslandSizeVisuals(width, height);
@@ -1733,7 +1777,7 @@ namespace LyricHover.App
                 Height = targetHeight;
                 IslandShellTranslate.X = 0;
                 UpdateIslandSizeVisuals(targetWidth, targetHeight);
-                var targetPosition = OverlayPositioner.GetVisiblePosition(
+                var targetPosition = GetVisiblePosition(
                     placement, screen, new OverlaySize(targetWidth, targetHeight));
                 Left = targetPosition.Left;
                 Top = targetPosition.Top;
@@ -1779,30 +1823,9 @@ namespace LyricHover.App
             IslandShell.Height = height;
             islandVisualWidth = width;
             islandVisualHeight = height;
-            IslandShape.Data = CreateIslandGeometry(width, height);
-        }
-
-        private static Geometry CreateIslandGeometry(double width, double height)
-        {
-            var w = Math.Max(240, width);
-            var h = Math.Max(60, height);
-            var bottom = h - 5;
-            var geometry = new StreamGeometry();
-            using (var context = geometry.Open())
-            {
-                context.BeginFigure(new Point(0, 0), true, true);
-                context.LineTo(new Point(w, 0), true, false);
-                context.BezierTo(new Point(w - 28, 0), new Point(w - 38, 5), new Point(w - 44, 16), true, false);
-                context.BezierTo(new Point(w - 48, 24), new Point(w - 48, h - 36), new Point(w - 48, h - 24), true, false);
-                context.BezierTo(new Point(w - 48, h - 11), new Point(w - 56, bottom), new Point(w - 69, bottom), true, false);
-                context.LineTo(new Point(69, bottom), true, false);
-                context.BezierTo(new Point(56, bottom), new Point(48, h - 11), new Point(48, h - 24), true, false);
-                context.BezierTo(new Point(48, h - 36), new Point(48, 24), new Point(44, 16), true, false);
-                context.BezierTo(new Point(38, 5), new Point(28, 0), new Point(0, 0), true, false);
-            }
-
-            geometry.Freeze();
-            return geometry;
+            var geometry = IslandAppearanceRendering.CreateGeometry(width, height, placementSettings);
+            IslandShape.Data = geometry;
+            IslandShell.Clip = geometry;
         }
 
         private void SetIslandText(string primary, string secondary)
@@ -1865,6 +1888,7 @@ namespace LyricHover.App
             islandState.WordTrackingPosition = currentWordTrackingPosition;
             if (tutorialActive)
             {
+                islandState.IsTutorialControlPractice = tutorialFlow.Step == TutorialStep.AwaitingControlClick;
                 islandState.PrimaryLyric = tutorialPrimaryText;
                 islandState.SecondaryLyric = tutorialSecondaryText;
                 islandState.PrimaryAccent = tutorialAccentText;
@@ -2508,17 +2532,14 @@ namespace LyricHover.App
             var index = validTarget
                 ? ModuleHost.GetCommittedInsertionIndex(payload, destinationIndex)
                 : -1;
-            ModuleHost.ClearInsertionPreview();
             var hadSizePreview = moduleDragPreviewWidth > 0;
-            moduleDragPreviewWidth = 0;
+            var layoutChanged = false;
+            var forceSizeAnimation = false;
             if (!layoutEditing || layoutEditSession == null)
             {
-                if (hadSizePreview)
-                {
-                    ApplyMeasuredIslandSize(true);
-                }
                 e.Effects = DragDropEffects.None;
                 e.Handled = true;
+                QueueModuleDropCompletion(false, false, hadSizePreview);
                 return;
             }
 
@@ -2526,11 +2547,8 @@ namespace LyricHover.App
             {
                 if (!committedModuleDrops.TryCommit(payload.OperationId))
                 {
-                    if (hadSizePreview)
-                    {
-                        ApplyMeasuredIslandSize(true);
-                    }
                     e.Handled = true;
+                    QueueModuleDropCompletion(false, false, hadSizePreview);
                     return;
                 }
 
@@ -2543,13 +2561,12 @@ namespace LyricHover.App
                     layoutEditSession.Move(payload.ExistingInstanceId, index);
                 }
 
-                ApplyInteractionState(IslandInteractionState.Editing, payload.NewType.HasValue);
-                settingsWindow?.NotifyExternalSettingsChanged();
+                layoutChanged = true;
+                forceSizeAnimation = payload.NewType.HasValue;
                 e.Effects = payload.NewType.HasValue ? DragDropEffects.Copy : DragDropEffects.Move;
             }
             else if (hadSizePreview)
             {
-                ApplyMeasuredIslandSize(true);
                 e.Effects = DragDropEffects.None;
             }
             else if (!validTarget)
@@ -2558,6 +2575,30 @@ namespace LyricHover.App
             }
 
             e.Handled = true;
+            QueueModuleDropCompletion(layoutChanged, forceSizeAnimation, hadSizePreview);
+        }
+
+        private void QueueModuleDropCompletion(bool layoutChanged, bool forceSizeAnimation, bool hadSizePreview)
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(() =>
+            {
+                if (runtimeStopped)
+                {
+                    return;
+                }
+
+                ModuleHost.ClearInsertionPreview();
+                moduleDragPreviewWidth = 0;
+                if (layoutChanged && layoutEditing && layoutEditSession != null)
+                {
+                    ApplyInteractionState(IslandInteractionState.Editing, forceSizeAnimation);
+                    settingsWindow?.NotifyExternalSettingsChanged();
+                }
+                else if (hadSizePreview)
+                {
+                    ApplyMeasuredIslandSize(true);
+                }
+            }));
         }
 
         private void ModuleHost_DragLeave(object sender, DragEventArgs e)
@@ -2624,7 +2665,9 @@ namespace LyricHover.App
         {
             var fallback = new CompositeLyricsClient(CreateLyricsSourceChain(sourcePriority).Select(CreateSingleLyricsClient).ToArray());
             return preferWordTiming
-                ? (ILyricsClient)new WordTimedPreferredLyricsClient(new ILyricsClient[] { new QQMusicLyricsClient(), new NetEaseLyricsClient() }, fallback)
+                ? (ILyricsClient)new WordTimedPreferredLyricsClient(
+                    new ILyricsClient[] { new QQMusicLyricsClient(true), new NetEaseLyricsClient(true) },
+                    fallback)
                 : fallback;
         }
 
@@ -2776,8 +2819,8 @@ namespace LyricHover.App
                 SetTutorialText("新版本增加了音乐控制功能", string.Empty);
                 await DelayTutorialAsync(2200, cancellationToken);
 
-                SetTutorialText("按下" + GetTemporaryInteractionGesture() + "可暂时关闭鼠标避让来点击控制按钮", "来试试看！");
                 tutorialFlow.BeginControlClickPractice();
+                SetTutorialText("按下" + GetTemporaryInteractionGesture() + "可暂时关闭鼠标避让来点击控制按钮", "来试试看！");
             }
             catch (OperationCanceledException)
             {
@@ -3191,7 +3234,7 @@ namespace LyricHover.App
                     return true;
                 }
 
-                source = VisualTreeHelper.GetParent(source);
+                source = GetMouseSourceParent(source);
             }
 
             return false;
@@ -3206,10 +3249,33 @@ namespace LyricHover.App
                     return true;
                 }
 
-                source = VisualTreeHelper.GetParent(source);
+                source = GetMouseSourceParent(source);
             }
 
             return false;
+        }
+
+        private static DependencyObject GetMouseSourceParent(DependencyObject source)
+        {
+            if (source is ContentElement contentElement)
+            {
+                var contentParent = ContentOperations.GetParent(contentElement);
+                if (contentParent != null)
+                {
+                    return contentParent;
+                }
+            }
+
+            if (source is Visual || source is Visual3D)
+            {
+                var visualParent = VisualTreeHelper.GetParent(source);
+                if (visualParent != null)
+                {
+                    return visualParent;
+                }
+            }
+
+            return LogicalTreeHelper.GetParent(source);
         }
 
         private void Window_MouseRightButtonDown(object sender, MouseButtonEventArgs e)

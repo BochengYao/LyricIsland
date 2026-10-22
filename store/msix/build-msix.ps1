@@ -1,5 +1,6 @@
 param(
     [switch]$SkipTests,
+    [switch]$SkipRestore,
     [switch]$KeepStaging
 )
 
@@ -49,14 +50,19 @@ Remove-VerifiedDirectory $verifyPath
 
 Push-Location $root
 try {
-    dotnet restore LyricHover.sln
-    if ($LASTEXITCODE -ne 0) {
-        throw '应用依赖还原失败。'
-    }
+    if (-not $SkipRestore) {
+        dotnet restore LyricHover.sln
+        if ($LASTEXITCODE -ne 0) {
+            throw '应用依赖还原失败。'
+        }
 
-    dotnet restore --runtime win-x64 LyricHover.App\LyricHover.App.csproj
-    if ($LASTEXITCODE -ne 0) {
-        throw 'MSIX win-x64 运行时依赖还原失败。'
+        dotnet restore --runtime win-x64 LyricHover.App\LyricHover.App.csproj
+        if ($LASTEXITCODE -ne 0) {
+            throw 'MSIX win-x64 运行时依赖还原失败。'
+        }
+    }
+    elseif (-not (Test-Path -LiteralPath (Join-Path $root 'LyricHover.App\obj\project.assets.json'))) {
+        throw '跳过依赖还原前必须已有 win-x64 项目资产文件。'
     }
 
     if (-not $SkipTests) {
@@ -86,9 +92,11 @@ if (-not $fileVersion.StartsWith("$productVersion.", [StringComparison]::Ordinal
     throw "MSIX 自包含产物版本 $fileVersion 与源码版本 $productVersion 不一致。"
 }
 
-dotnet restore $buildToolsProject --packages $packagesRoot
-if ($LASTEXITCODE -ne 0) {
-    throw 'Microsoft.Windows.SDK.BuildTools 还原失败。'
+if (-not $SkipRestore) {
+    dotnet restore $buildToolsProject --packages $packagesRoot
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Microsoft.Windows.SDK.BuildTools 还原失败。'
+    }
 }
 
 $makeAppxCandidates = @(Get-ChildItem -LiteralPath $packagesRoot -Recurse -File -Filter 'MakeAppx.exe')

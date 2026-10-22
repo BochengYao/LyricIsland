@@ -72,6 +72,8 @@ namespace LyricHover.App.LyricDock
         private double placementDpiScale = 1;
         private TaskbarBounds placementTaskbarBounds;
         private bool placementDarkTheme;
+        private FontFamily chineseFontFamily = new FontFamily("Microsoft YaHei UI");
+        private FontFamily englishFontFamily = new FontFamily("Segoe UI");
 
         public LyricDockWindow(Func<bool> refreshModifierPressed = null)
         {
@@ -116,6 +118,31 @@ namespace LyricHover.App.LyricDock
 
         public event EventHandler SettingsRequested;
         public event EventHandler RefreshRequested;
+
+        public void ApplyTypography(string chineseFamily, string englishFamily, double fontSize)
+        {
+            chineseFontFamily = IslandAppearanceRendering.ResolveFont(chineseFamily, "Microsoft YaHei UI");
+            englishFontFamily = IslandAppearanceRendering.ResolveFont(englishFamily, "Segoe UI");
+            var primarySize = Math.Max(
+                OverlayPlacementSettings.MinLyricDockLyricsFontSize,
+                Math.Min(OverlayPlacementSettings.MaxLyricDockLyricsFontSize, fontSize));
+            var secondarySize = primarySize * 12d / 13d;
+
+            foreach (var primary in new[] { currentPrimary, incomingPrimary })
+            {
+                primary.ChineseFontFamily = chineseFontFamily;
+                primary.EnglishFontFamily = englishFontFamily;
+                primary.FontSize = primarySize;
+            }
+            foreach (var secondary in new[] { currentSecondary, incomingSecondary })
+            {
+                secondary.FontFamily = englishFontFamily;
+                secondary.FontSize = secondarySize;
+            }
+            foreach (var clip in new[] { currentPrimaryClip, incomingPrimaryClip }) clip.Height = primarySize + 5;
+            foreach (var clip in new[] { currentSecondaryClip, incomingSecondaryClip }) clip.Height = secondarySize + 4;
+            ReapplyCurrentText();
+        }
 
         private IntPtr WindowMessageHook(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
@@ -425,7 +452,11 @@ namespace LyricHover.App.LyricDock
 
         private void PrepareSecondaryLine(TextBlock textBlock, Grid clip, string text, bool visible)
         {
-            textBlock.Text = text ?? string.Empty;
+            IslandAppearanceRendering.SetMixedText(
+                textBlock,
+                text ?? string.Empty,
+                chineseFontFamily,
+                englishFontFamily);
             textBlock.Foreground = foreground;
             textBlock.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
             clip.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;

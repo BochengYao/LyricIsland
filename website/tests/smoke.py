@@ -238,6 +238,7 @@ def test_interactions(page: Page, locale: str) -> None:
             imageFile: new URL(image.currentSrc).pathname.split("/").pop(),
             naturalWidth: image.naturalWidth,
             naturalHeight: image.naturalHeight,
+            renderedWidth: image.getBoundingClientRect().width,
             imageOpacity: Number(
               getComputedStyle(section.querySelector(".moduleComposerImage")).opacity
             ),
@@ -250,9 +251,17 @@ def test_interactions(page: Page, locale: str) -> None:
     assert module_intro_metrics["sectionHeight"] > (
         module_intro_metrics["viewportHeight"] * 1.35
     ), "The modules anchor should provide in-section scroll distance"
-    assert module_intro_metrics["imageFile"] == "module-layout-intro.png"
-    assert module_intro_metrics["naturalWidth"] == 2560
-    assert module_intro_metrics["naturalHeight"] == 1442
+    assert module_intro_metrics["imageFile"] in {
+        "module-layout-intro-720.39773615.webp",
+        "module-layout-intro-1200.c8c850a2.webp",
+        "module-layout-intro-2000.4de3e65f.webp",
+        "module-layout-intro.png",
+    }
+    assert module_intro_metrics["naturalWidth"] >= module_intro_metrics["renderedWidth"]
+    assert abs(
+        module_intro_metrics["naturalWidth"] / module_intro_metrics["naturalHeight"]
+        - 2560 / 1442
+    ) < 0.01
     assert module_intro_metrics["imageOpacity"] > 0.95
     assert module_intro_metrics["contentOpacity"] < 0.05
     module_frame_metrics = modules_section.locator(".moduleComposer").evaluate(
@@ -398,6 +407,26 @@ def test_smooth_section_snap(page: Page) -> None:
 
     page.set_viewport_size({"width": 1440, "height": 900})
     page.reload(wait_until="networkidle")
+
+    experience = page.locator("#experience")
+    experience_metrics = experience.evaluate(
+        """(section) => ({
+          top: section.offsetTop,
+          bottom: section.offsetTop + section.offsetHeight,
+          viewportHeight: window.innerHeight
+        })"""
+    )
+    expect(experience).to_have_attribute("data-wheel-scroll", "native")
+    experience.evaluate("(section) => window.scrollTo(0, section.offsetTop)")
+    page.wait_for_timeout(120)
+    page.mouse.wheel(0, 18)
+    page.wait_for_timeout(120)
+    experience_scroll_y = page.evaluate("window.scrollY")
+    assert (
+        experience_metrics["top"]
+        < experience_scroll_y
+        < experience_metrics["bottom"] - experience_metrics["viewportHeight"]
+    ), "The second anchor should scroll continuously within its own long content"
 
     modules = page.locator("#modules")
     module_metrics = modules.evaluate(
@@ -787,7 +816,7 @@ def test_navigation_and_orbit(page: Page) -> None:
         ["歌词来源", "主流播放器", "广告打扰"]
     )
     expect(page.locator(".sourcesNote")).to_have_text(
-        "*受接口限制，网易云音乐暂不支持进度条同步与拖动进度条后的实时歌词同步。"
+        "*网易云音乐需手动到“设置-系统”中开启SMTC以正常使用全部功能。"
     )
     expect(page.locator(".heroSupport .buttonRow .button")).to_have_count(1)
     expect(page.locator(".heroSupport a[href*='apps.microsoft.com']")).to_have_count(1)
@@ -816,9 +845,8 @@ def test_navigation_and_orbit(page: Page) -> None:
         ["lyric sources", "popular players", "ad interruptions"]
     )
     expect(page.locator(".sourcesNote")).to_have_text(
-        "*Due to API limitations, NetEase Cloud Music currently does not support "
-        "progress-bar synchronization or real-time lyric synchronization after you "
-        "drag the progress bar."
+        "*To use all Lyric Hover features normally with NetEase Cloud Music, "
+        "manually enable SMTC in “Settings - System”."
     )
     assert page.locator(".desktopNavLinks a").all_text_contents() == [
         "Home",
@@ -834,6 +862,18 @@ def test_navigation_and_orbit(page: Page) -> None:
     ]
     expect(page.locator(".desktopNavLinks .navFeatureLink svg")).to_have_count(0)
     expect(page.locator(".desktopNavLinks .navStoreLink svg")).to_have_count(1)
+
+    page.goto(BASE_URL + "/zh-hant", wait_until="networkidle")
+    expect(page.locator(".sourcesNote")).to_have_text(
+        "*使用網易雲音樂時，需手動前往「設定－系統」開啟 SMTC，才能正常使用 "
+        "LyricHover 的全部功能。"
+    )
+
+    page.goto(BASE_URL + "/ja", wait_until="networkidle")
+    expect(page.locator(".sourcesNote")).to_have_text(
+        "*NetEase Cloud Music で LyricHover のすべての機能を正常に使用するには、"
+        "「設定 - システム」で SMTC を手動で有効にしてください。"
+    )
 
     page.goto(BASE_URL + "/", wait_until="networkidle")
     player_orbit = page.locator(".playerOrbit")
@@ -1386,9 +1426,12 @@ def main() -> None:
                 test_navigation_and_orbit(page)
                 test_selective_text_reveal(page)
             if name == "mobile":
-                assert page.locator("html").get_attribute("data-snap-scroll") is None, (
-                    "Reduced-motion mobile contexts must keep native scrolling"
+                expect(page.locator("html")).to_have_attribute(
+                    "data-snap-scroll", "enabled"
                 )
+                assert page.locator("html").evaluate(
+                    "(node) => getComputedStyle(node).scrollSnapType"
+                ) == "none", "Mobile anchor timing should be controlled by the shared animator"
                 mobile_experience_image = page.locator(
                     "#experience .portraitImage"
                 ).first

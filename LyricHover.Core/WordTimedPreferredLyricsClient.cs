@@ -23,7 +23,8 @@ namespace LyricHover.Core
                 try
                 {
                     var lyrics = await client.GetSyncedLyricsAsync(track).ConfigureAwait(false);
-                    if (LyricsPackageParser.HasWordTiming(lyrics))
+                    if (LyricsPackageParser.HasWordTiming(lyrics) &&
+                        LyricsPackageValidator.TryAccept(track, lyrics, out _))
                     {
                         wordTimedLyrics = lyrics;
                         break;

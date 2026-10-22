@@ -13,6 +13,10 @@
         ResizeMode="NoResize"
         Topmost="True"
         Icon="Assets/app-logo.png"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
         PreviewMouseLeftButtonDown="Window_MouseLeftButtonDown">
     <Window.Resources>
         <ResourceDictionary>
@@ -299,13 +303,13 @@
             </Setter>
         </Style>
         <Style x:Key="SidebarButtonStyle" TargetType="RadioButton">
-            <Setter Property="Height" Value="38" />
-            <Setter Property="Margin" Value="0,0,0,5" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Margin" Value="0,0,0,3" />
             <Setter Property="Padding" Value="14,0" />
             <Setter Property="FontFamily" Value="Segoe UI Variable Text, Microsoft YaHei UI" />
-            <Setter Property="FontSize" Value="15" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Opacity" Value="0.72" />
+            <Setter Property="FontSize" Value="14.5" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Opacity" Value="0.78" />
             <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="Transparent" />
@@ -406,7 +410,7 @@
         </Style>
         <Style TargetType="Button">
             <Setter Property="MinWidth" Value="86" />
-            <Setter Property="Height" Value="34" />
+            <Setter Property="Height" Value="36" />
             <Setter Property="Padding" Value="16,0" />
             <Setter Property="FontFamily" Value="Segoe UI Variable Text, Microsoft YaHei UI" />
             <Setter Property="FontSize" Value="14" />
@@ -562,7 +566,7 @@
             </Setter>
         </Style>
         <Style TargetType="TextBox">
-            <Setter Property="Height" Value="34" />
+            <Setter Property="Height" Value="36" />
             <Setter Property="Padding" Value="11,0" />
             <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
             <Setter Property="Background" Value="{DynamicResource SettingsControlBackgroundBrush}" />
@@ -601,13 +605,14 @@
             </Setter>
         </Style>
         <Style TargetType="ComboBox">
-            <Setter Property="Height" Value="34" />
+            <Setter Property="Height" Value="36" />
             <Setter Property="Padding" Value="8,3" />
             <Setter Property="Foreground" Value="{DynamicResource SettingsControlForegroundBrush}" />
             <Setter Property="Background" Value="{DynamicResource SettingsControlBackgroundBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource SettingsControlBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="FontSize" Value="14" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBox">
@@ -654,6 +659,17 @@
                                               ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
                                               IsHitTestVisible="False"
                                               SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                            <TextBlock x:Name="FontSelectionContent"
+                                       Margin="11,0,34,0"
+                                       HorizontalAlignment="Left"
+                                       VerticalAlignment="Center"
+                                       Visibility="Collapsed"
+                                       Text="{Binding SelectedItem.DisplayName, RelativeSource={RelativeSource TemplatedParent}}"
+                                       FontFamily="{Binding SelectedItem.SourceName, RelativeSource={RelativeSource TemplatedParent}}"
+                                       Foreground="{TemplateBinding Foreground}"
+                                       TextTrimming="CharacterEllipsis"
+                                       IsHitTestVisible="False"
+                                       SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
                             <Popup x:Name="PART_Popup"
                                    IsOpen="{TemplateBinding IsDropDownOpen}"
                                    AllowsTransparency="True"
@@ -678,6 +694,19 @@
                                 </Border>
                             </Popup>
                         </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="ToggleButton" Property="BorderBrush" Value="#7AAFFF" />
+                                <Setter TargetName="ToggleButton" Property="BorderThickness" Value="1.5" />
+                            </Trigger>
+                            <Trigger Property="IsDropDownOpen" Value="True">
+                                <Setter TargetName="ToggleButton" Property="BorderBrush" Value="#7AAFFF" />
+                            </Trigger>
+                            <Trigger Property="Tag" Value="FontFamilySelector">
+                                <Setter TargetName="SelectionContent" Property="Visibility" Value="Collapsed" />
+                                <Setter TargetName="FontSelectionContent" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -1038,6 +1067,7 @@
                         </RadioButton>
                     </StackPanel>
                         <StackPanel Grid.Row="1">
+                            <Border Height="1" Margin="8,0,8,14" Background="{DynamicResource SettingsControlBorderBrush}" Opacity="0.75" />
                             <TextBlock Margin="8,0,0,8"
                                        Foreground="{DynamicResource SettingsControlMutedForegroundBrush}"
                                        FontSize="12.5"
@@ -1045,7 +1075,7 @@
                             <ComboBox x:Name="LanguageComboBox"
                                       Width="194"
                                       Height="36"
-                                      Margin="0,0,0,16"
+                                      Margin="0,0,0,12"
                                       HorizontalAlignment="Left"
                                       Tag="NativeLanguageOptions"
                                       DisplayMemberPath="DisplayName"
@@ -1103,7 +1133,7 @@
                                 </Grid>
                             </Border>
                             <RadioButton x:Name="SupportSectionButton"
-                                         Margin="0,16,0,0"
+                                         Margin="0,12,0,0"
                                          GroupName="SettingsSection"
                                          Tag="Support"
                                          Checked="SectionButton_Checked"
@@ -1146,127 +1176,135 @@
                                        FontWeight="SemiBold"
                                        Text="歌词外观" />
 
-                            <Border Grid.Row="1"
-                                    Style="{StaticResource SettingsGlassCardStyle}">
-                            <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="56" />
-                                <RowDefinition Height="56" />
-                                <RowDefinition Height="56" />
-                                <RowDefinition Height="56" />
-                                <RowDefinition Height="56" />
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="160" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
+                            <Border Grid.Row="1" Style="{StaticResource SettingsGlassCardStyle}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="48" />
+                                        <RowDefinition Height="48" />
+                                        <RowDefinition Height="48" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="48" />
+                                        <RowDefinition Height="48" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="52" />
+                                        <RowDefinition Height="52" />
+                                        <RowDefinition Height="52" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="52" />
+                                        <RowDefinition Height="52" />
+                                        <RowDefinition Height="52" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="160" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
 
-                            <TextBlock Grid.Row="0"
-                                       Grid.ColumnSpan="2"
-                                       Margin="0,0,0,14"
-                                       Style="{StaticResource SettingsModuleHeadingStyle}"
-                                       Text="歌词岛" />
+                                    <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,14" Style="{StaticResource SettingsModuleHeadingStyle}" Text="歌词岛" />
 
-                            <TextBlock Grid.Row="1"
-                                       Grid.Column="0"
-                                       Margin="0,0,16,0"
-                                       Style="{StaticResource SettingLabel}"
-                                       Text="开启歌词岛" />
-                            <CheckBox x:Name="IslandEnabledSwitch"
-                                      Grid.Row="1"
-                                      Grid.Column="1"
-                                      HorizontalAlignment="Right"
-                                      Style="{StaticResource SettingsSwitchStyle}" />
-
-                            <TextBlock Grid.Row="2"
-                                       Grid.Column="0"
-                                       Margin="0,0,16,0"
-                                       Style="{StaticResource SettingLabel}"
-                                       Text="全屏时自动隐藏" />
-                            <CheckBox x:Name="HideIslandInFullscreenCheckBox"
-                                      Grid.Row="2"
-                                      Grid.Column="1"
-                                      HorizontalAlignment="Right"
-                                      ToolTip="当前台应用覆盖歌词岛所在显示器时收起，退出全屏后恢复。"
-                                      AutomationProperties.Name="全屏时自动隐藏"
-                                      AutomationProperties.HelpText="当前台应用覆盖歌词岛所在显示器时收起，退出全屏后恢复。"
-                                      Style="{StaticResource SettingsSwitchStyle}" />
-
-                            <TextBlock Grid.Row="3"
-                                       Grid.Column="0"
-                                       Margin="0,0,16,0"
-                                       Style="{StaticResource SettingLabel}"
-                                       Text="行数" />
-                            <StackPanel Grid.Row="3"
-                                        Grid.Column="1"
-                                        Orientation="Horizontal">
-                                <Border x:Name="LineModeSegmentRoot"
-                                        Padding="3"
-                                        VerticalAlignment="Center"
-                                        Background="{DynamicResource SettingsControlPressedBackgroundBrush}"
-                                        ClipToBounds="True"
-                                        CornerRadius="{StaticResource RadiusMedium}">
-                                    <Grid>
-                                        <Border x:Name="LineModeSelectionThumb"
-                                                Width="92"
-                                                Height="30"
-                                                HorizontalAlignment="Left"
-                                                IsHitTestVisible="False"
-                                                Background="{DynamicResource SettingsSelectedBackgroundBrush}"
-                                                BorderBrush="{DynamicResource SettingsControlBorderBrush}"
-                                                BorderThickness="1"
-                                                CornerRadius="{StaticResource RadiusSmall}">
-                                            <Border.RenderTransform>
-                                                <TranslateTransform x:Name="LineModeSelectionTransform" />
-                                            </Border.RenderTransform>
+                                    <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Margin="0,0,0,2" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource SettingsControlMutedForegroundBrush}" Text="排布" />
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource SettingLabel}" Text="开启歌词岛" />
+                                    <CheckBox x:Name="IslandEnabledSwitch" Grid.Row="2" Grid.Column="1" HorizontalAlignment="Right" Style="{StaticResource SettingsSwitchStyle}" />
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource SettingLabel}" Text="全屏时自动隐藏" />
+                                    <CheckBox x:Name="HideIslandInFullscreenCheckBox" Grid.Row="3" Grid.Column="1" HorizontalAlignment="Right" ToolTip="当前台应用覆盖歌词岛所在显示器时收起，退出全屏后恢复。" AutomationProperties.Name="全屏时自动隐藏" AutomationProperties.HelpText="当前台应用覆盖歌词岛所在显示器时收起，退出全屏后恢复。" Style="{StaticResource SettingsSwitchStyle}" />
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource SettingLabel}" Text="行数" />
+                                    <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal">
+                                        <Border x:Name="LineModeSegmentRoot" Padding="3" VerticalAlignment="Center" Background="{DynamicResource SettingsControlPressedBackgroundBrush}" ClipToBounds="True" CornerRadius="{StaticResource RadiusMedium}">
+                                            <Grid>
+                                                <Border x:Name="LineModeSelectionThumb" Width="92" Height="30" HorizontalAlignment="Left" IsHitTestVisible="False" Background="{DynamicResource SettingsSelectedBackgroundBrush}" BorderBrush="{DynamicResource SettingsControlBorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusSmall}">
+                                                    <Border.RenderTransform><TranslateTransform x:Name="LineModeSelectionTransform" /></Border.RenderTransform>
+                                                </Border>
+                                                <StackPanel Panel.ZIndex="1" Orientation="Horizontal">
+                                                    <RadioButton x:Name="SingleLineRadioButton" GroupName="LineMode" Style="{StaticResource SegmentButtonStyle}" Checked="LineModeRadioButton_Checked" PreviewMouseLeftButtonDown="SingleLineRadioButton_PreviewMouseLeftButtonDown" Content="单行" />
+                                                    <RadioButton x:Name="MultiLineRadioButton" GroupName="LineMode" Style="{StaticResource SegmentButtonStyle}" Checked="LineModeRadioButton_Checked" Content="多行" />
+                                                </StackPanel>
+                                            </Grid>
                                         </Border>
-                                        <StackPanel Panel.ZIndex="1" Orientation="Horizontal">
-                                        <RadioButton x:Name="SingleLineRadioButton"
-                                                     GroupName="LineMode"
-                                                     Style="{StaticResource SegmentButtonStyle}"
-                                                     Checked="LineModeRadioButton_Checked"
-                                                     PreviewMouseLeftButtonDown="SingleLineRadioButton_PreviewMouseLeftButtonDown"
-                                                     Content="单行" />
-                                        <RadioButton x:Name="MultiLineRadioButton"
-                                                     GroupName="LineMode"
-                                                     Style="{StaticResource SegmentButtonStyle}"
-                                                     Checked="LineModeRadioButton_Checked"
-                                                     Content="多行" />
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-                                <Border x:Name="TranslationModeToast"
-                                        Margin="10,0,0,0"
-                                        Padding="12,7"
-                                        VerticalAlignment="Center"
-                                        Opacity="0"
-                                        Visibility="Collapsed"
-                                        Background="{DynamicResource SettingsToastBackgroundBrush}"
-                                        BorderBrush="{DynamicResource SettingsToastBorderBrush}"
-                                        BorderThickness="1"
-                                        CornerRadius="{StaticResource RadiusSmall}"
-                                        IsHitTestVisible="False">
-                                    <TextBlock FontSize="12.5"
-                                               Foreground="{DynamicResource SettingsToastForegroundBrush}"
-                                               Text="翻译模式下仅支持多行模式" />
-                                </Border>
-                            </StackPanel>
+                                        <Border x:Name="TranslationModeToast" Margin="10,0,0,0" Padding="12,7" VerticalAlignment="Center" Opacity="0" Visibility="Collapsed" Background="{DynamicResource SettingsToastBackgroundBrush}" BorderBrush="{DynamicResource SettingsToastBorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusSmall}" IsHitTestVisible="False">
+                                            <TextBlock FontSize="12.5" Foreground="{DynamicResource SettingsToastForegroundBrush}" Text="翻译模式下仅支持多行模式" />
+                                        </Border>
+                                    </StackPanel>
 
-                            <TextBlock Grid.Row="4"
-                                       Grid.Column="0"
-                                       Style="{StaticResource SettingLabel}"
-                                       Text="翻译" />
-                            <CheckBox x:Name="ShowTranslationCheckBox"
-                                      Grid.Row="4"
-                                      Grid.Column="1"
-                                      HorizontalAlignment="Right"
-                                      Style="{StaticResource SettingsSwitchStyle}"
-                                      Checked="ShowTranslationCheckBox_Changed"
-                                      Unchecked="ShowTranslationCheckBox_Changed" />
-                            <TextBlock Grid.Row="5" Grid.Column="0" Style="{StaticResource SettingLabel}" Text="逐字跟随" />
-                            <CheckBox x:Name="IslandWordTrackingCheckBox" Grid.Row="5" Grid.Column="1" HorizontalAlignment="Right" Style="{StaticResource SettingsSwitchStyle}" />
-                            </Grid>
+                                    <Border Grid.Row="5" Grid.ColumnSpan="2" Height="1" Margin="0,10,0,10" VerticalAlignment="Center" Background="{DynamicResource SettingsControlBorderBrush}" Opacity="0.7" />
+                                    <TextBlock Grid.Row="6" Grid.ColumnSpan="2" Margin="0,0,0,2" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource SettingsControlMutedForegroundBrush}" Text="翻译与跟随" />
+                                    <TextBlock Grid.Row="7" Grid.Column="0" Style="{StaticResource SettingLabel}" Text="中文翻译" />
+                                    <CheckBox x:Name="ShowTranslationCheckBox" Grid.Row="7" Grid.Column="1" HorizontalAlignment="Right" Style="{StaticResource SettingsSwitchStyle}" Checked="ShowTranslationCheckBox_Changed" Unchecked="ShowTranslationCheckBox_Changed" />
+                                    <TextBlock Grid.Row="8" Grid.Column="0" Style="{StaticResource SettingLabel}" Text="逐字跟随" />
+                                    <CheckBox x:Name="IslandWordTrackingCheckBox" Grid.Row="8" Grid.Column="1" HorizontalAlignment="Right" Style="{StaticResource SettingsSwitchStyle}" />
+
+                                    <Border Grid.Row="9" Grid.ColumnSpan="2" Height="1" Margin="0,10,0,10" VerticalAlignment="Center" Background="{DynamicResource SettingsControlBorderBrush}" Opacity="0.7" />
+                                    <TextBlock Grid.Row="10" Grid.ColumnSpan="2" Margin="0,0,0,10" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource SettingsControlMutedForegroundBrush}" Text="字体" />
+                                    <Border Grid.Row="11" Grid.ColumnSpan="2" Margin="0,0,0,14" ClipToBounds="True" Background="{DynamicResource SettingsControlBackgroundBrush}" BorderBrush="{DynamicResource SettingsControlBorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMedium}">
+                                        <Grid Height="68" Margin="16,0,16,12" ClipToBounds="True" VerticalAlignment="Top" SizeChanged="IslandAppearancePreview_SizeChanged">
+                                            <Path x:Name="IslandAppearancePreviewShape" Fill="#FF08090C" Stroke="#FF667080" StrokeThickness="1" />
+                                            <Grid x:Name="IslandAppearancePreviewContent" Height="68" HorizontalAlignment="Stretch" VerticalAlignment="Top">
+                                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                    <TextBlock x:Name="IslandAppearancePreviewPrimary" FontSize="15" FontWeight="SemiBold" Foreground="White" TextAlignment="Center" Text="Dreaming of home, dear old home" />
+                                                    <TextBlock x:Name="IslandAppearancePreviewSecondary" Margin="0,2,0,0" FontSize="11.25" Foreground="#ECFFFFFF" TextAlignment="Center" Text="梦回故乡，亲爱的故乡" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Grid>
+                                    </Border>
+                                    <TextBlock Grid.Row="12" Grid.Column="0" Style="{StaticResource SettingLabel}" Text="中文字体" />
+                                    <ComboBox x:Name="IslandChineseFontComboBox" Grid.Row="12" Grid.Column="1" MinWidth="210" HorizontalAlignment="Stretch" VerticalAlignment="Center" Tag="FontFamilySelector" SelectedValuePath="SourceName" DropDownOpened="FontSelector_DropDownOpened" DropDownClosed="FontSelector_DropDownClosed">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding DisplayName}" FontFamily="{Binding SourceName}" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                    <TextBlock Grid.Row="13" Grid.Column="0" Style="{StaticResource SettingLabel}" Text="英文字体" />
+                                    <ComboBox x:Name="IslandEnglishFontComboBox" Grid.Row="13" Grid.Column="1" MinWidth="210" HorizontalAlignment="Stretch" VerticalAlignment="Center" Tag="FontFamilySelector" SelectedValuePath="SourceName" DropDownOpened="FontSelector_DropDownOpened" DropDownClosed="FontSelector_DropDownClosed">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding DisplayName}" FontFamily="{Binding SourceName}" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                    <TextBlock Grid.Row="14" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource SettingLabel}" Text="字体缩放" />
+                                    <Grid Grid.Row="14" Grid.Column="1" VerticalAlignment="Center">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="88" /><ColumnDefinition Width="42" /></Grid.ColumnDefinitions>
+                                        <Slider x:Name="IslandFontScaleSlider" Minimum="0.5" Maximum="3" Value="1" TickFrequency="0.05" VerticalAlignment="Center" />
+                                        <TextBox x:Name="IslandFontScaleTextBox" Grid.Column="1" Margin="8,0,0,0" TextAlignment="Center" VerticalContentAlignment="Center" Text="1.0" />
+                                        <TextBlock Grid.Column="2" Margin="8,0,0,0" HorizontalAlignment="Stretch" TextAlignment="Right" VerticalAlignment="Center" Foreground="{DynamicResource SettingsSecondaryForegroundBrush}" Text="×" />
+                                    </Grid>
+
+                                    <Border Grid.Row="15" Grid.ColumnSpan="2" Height="1" Margin="0,10,0,10" VerticalAlignment="Center" Background="{DynamicResource SettingsControlBorderBrush}" Opacity="0.7" />
+                                    <TextBlock Grid.Row="16" Grid.Column="0" Margin="0,0,0,10" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource SettingsControlMutedForegroundBrush}" Text="背景形状" />
+                                    <TextBlock Grid.Row="17" Grid.Column="0" Style="{StaticResource SettingLabel}" Text="上方角型" />
+                                    <Border x:Name="TopCornerModeSegmentRoot" Grid.Row="17" Grid.Column="1" Padding="3" Width="190" HorizontalAlignment="Left" VerticalAlignment="Center" Background="{DynamicResource SettingsControlPressedBackgroundBrush}" ClipToBounds="True" CornerRadius="{StaticResource RadiusMedium}">
+                                        <Grid>
+                                            <Border x:Name="TopCornerModeSelectionThumb" Width="92" Height="30" HorizontalAlignment="Left" IsHitTestVisible="False" Background="{DynamicResource SettingsSelectedBackgroundBrush}" BorderBrush="{DynamicResource SettingsControlBorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusSmall}">
+                                                <Border.RenderTransform><TranslateTransform x:Name="TopCornerModeSelectionTransform" /></Border.RenderTransform>
+                                            </Border>
+                                            <StackPanel Panel.ZIndex="1" Orientation="Horizontal">
+                                                <RadioButton x:Name="ConcaveTopCornersRadioButton" GroupName="TopCornerMode" Style="{StaticResource SegmentButtonStyle}" Checked="TopCornerModeRadioButton_Checked" Content="凹角" />
+                                                <RadioButton x:Name="ConvexTopCornersRadioButton" GroupName="TopCornerMode" Style="{StaticResource SegmentButtonStyle}" Checked="TopCornerModeRadioButton_Checked" Content="凸角" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                    <TextBlock x:Name="IslandConcaveRadiusLabel" Grid.Row="18" Grid.Column="0" Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource SettingLabel}" Text="凹角半径" />
+                                    <Grid Grid.Row="18" Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="88" /><ColumnDefinition Width="42" /></Grid.ColumnDefinitions>
+                                        <Slider x:Name="IslandConcaveRadiusSlider" Minimum="0" Maximum="120" Value="30" VerticalAlignment="Center" />
+                                        <TextBox x:Name="IslandConcaveRadiusTextBox" Grid.Column="1" Margin="8,0,0,0" TextAlignment="Center" VerticalContentAlignment="Center" Text="30" />
+                                        <TextBlock Grid.Column="2" Margin="8,0,0,0" HorizontalAlignment="Stretch" TextAlignment="Right" VerticalAlignment="Center" Foreground="{DynamicResource SettingsSecondaryForegroundBrush}" Text="DIP" />
+                                    </Grid>
+                                    <TextBlock Grid.Row="19" Grid.Column="0" Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource SettingLabel}" Text="凸角半径" />
+                                    <Grid Grid.Row="19" Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="88" /><ColumnDefinition Width="42" /></Grid.ColumnDefinitions>
+                                        <Slider x:Name="IslandConvexRadiusSlider" Minimum="0" Maximum="120" Value="13.2" VerticalAlignment="Center" />
+                                        <TextBox x:Name="IslandConvexRadiusTextBox" Grid.Column="1" Margin="8,0,0,0" TextAlignment="Center" VerticalContentAlignment="Center" Text="13.2" />
+                                        <TextBlock Grid.Column="2" Margin="8,0,0,0" HorizontalAlignment="Stretch" TextAlignment="Right" VerticalAlignment="Center" Foreground="{DynamicResource SettingsSecondaryForegroundBrush}" Text="DIP" />
+                                    </Grid>
+                                    <Button Grid.Row="20" Grid.ColumnSpan="2" MinWidth="138" Height="34" Margin="0,10,0,0" HorizontalAlignment="Right" Padding="16,0" Content="恢复默认半径" Click="ResetIslandRadiiButton_Click" />
+                                </Grid>
                             </Border>
 
                             <Border Grid.Row="2"
@@ -1279,6 +1317,11 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="56" />
+                                <RowDefinition Height="56" />
+                                <RowDefinition Height="56" />
+                                <RowDefinition Height="56" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
                                 <RowDefinition Height="56" />
                                 <RowDefinition Height="56" />
                                 <RowDefinition Height="56" />
@@ -1483,6 +1526,32 @@
                                       Unchecked="DockShowTranslationCheckBox_Changed" />
                             <TextBlock Grid.Row="7" Grid.Column="0" Style="{StaticResource SettingLabel}" Text="逐字跟随" />
                             <CheckBox x:Name="DockWordTrackingCheckBox" Grid.Row="7" Grid.Column="1" HorizontalAlignment="Right" Style="{StaticResource SettingsSwitchStyle}" />
+
+                            <Border Grid.Row="8" Grid.ColumnSpan="2" Height="1" Margin="0,10,0,10" VerticalAlignment="Center" Background="{DynamicResource SettingsControlBorderBrush}" Opacity="0.7" />
+                            <TextBlock Grid.Row="9" Grid.ColumnSpan="2" Margin="0,0,0,2" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource SettingsControlMutedForegroundBrush}" Text="字体" />
+                            <TextBlock Grid.Row="10" Grid.Column="0" Style="{StaticResource SettingLabel}" Text="中文字体" />
+                            <ComboBox x:Name="DockChineseFontComboBox" Grid.Row="10" Grid.Column="1" MinWidth="210" HorizontalAlignment="Stretch" VerticalAlignment="Center" Tag="FontFamilySelector" SelectedValuePath="SourceName" DropDownOpened="FontSelector_DropDownOpened" DropDownClosed="FontSelector_DropDownClosed">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding DisplayName}" FontFamily="{Binding SourceName}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <TextBlock Grid.Row="11" Grid.Column="0" Style="{StaticResource SettingLabel}" Text="英文字体" />
+                            <ComboBox x:Name="DockEnglishFontComboBox" Grid.Row="11" Grid.Column="1" MinWidth="210" HorizontalAlignment="Stretch" VerticalAlignment="Center" Tag="FontFamilySelector" SelectedValuePath="SourceName" DropDownOpened="FontSelector_DropDownOpened" DropDownClosed="FontSelector_DropDownClosed">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding DisplayName}" FontFamily="{Binding SourceName}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <TextBlock Grid.Row="12" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource SettingLabel}" Text="歌词字号" />
+                            <Grid Grid.Row="12" Grid.Column="1" VerticalAlignment="Center">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="88" /><ColumnDefinition Width="42" /></Grid.ColumnDefinitions>
+                                <Slider x:Name="DockFontSizeSlider" Minimum="8" Maximum="18" Value="13" TickFrequency="0.5" VerticalAlignment="Center" />
+                                <TextBox x:Name="DockFontSizeTextBox" Grid.Column="1" Margin="8,0,0,0" TextAlignment="Center" VerticalContentAlignment="Center" Text="13" />
+                                <TextBlock Grid.Column="2" Margin="8,0,0,0" HorizontalAlignment="Stretch" TextAlignment="Right" VerticalAlignment="Center" Foreground="{DynamicResource SettingsSecondaryForegroundBrush}" Text="DIP" />
+                            </Grid>
                             </Grid>
                             </Border>
                         </Grid>
@@ -2480,17 +2549,31 @@
                                                    Margin="0,0,16,12"
                                                    Style="{StaticResource SettingLabel}"
                                                    Text="缓存容量" />
-                                        <DockPanel Grid.Row="0"
-                                                   Grid.Column="1"
-                                                   Margin="0,0,0,12"
-                                                   LastChildFill="False">
+                                        <Grid Grid.Row="0"
+                                              Grid.Column="1"
+                                              Margin="0,0,0,12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
                                             <TextBox x:Name="CacheLimitTextBox"
+                                                     Grid.Column="0"
                                                      Width="118"
                                                      TextAlignment="Center" />
-                                            <TextBlock Margin="8,0,0,0"
+                                            <TextBlock Grid.Column="1"
+                                                       Margin="8,0,0,0"
                                                        Style="{StaticResource SettingLabel}"
                                                        Text="MB" />
-                                        </DockPanel>
+                                            <Button Grid.Column="3"
+                                                    Width="118"
+                                                    MinWidth="118"
+                                                    Padding="16,0"
+                                                    HorizontalAlignment="Right"
+                                                    Content="刷新歌词"
+                                                    Click="RefreshCurrentLyricsButton_Click" />
+                                        </Grid>
 
                                         <TextBlock Grid.Row="1"
                                                    Grid.Column="1"
@@ -2498,13 +2581,6 @@
                                                    FontSize="12.5"
                                                    TextWrapping="Wrap"
                                                    Text="用于保存已下载歌词，提高播放切换速度" />
-                                        <Button Grid.Row="2"
-                                                Grid.Column="1"
-                                                HorizontalAlignment="Left"
-                                                Margin="0,10,0,0"
-                                                Padding="14,6"
-                                                Content="强制刷新当前歌词"
-                                                Click="RefreshCurrentLyricsButton_Click" />
                                         <Button x:Name="CacheDetailsToggleButton"
                                                 Grid.Row="3"
                                                 Grid.Column="1"
@@ -3257,6 +3333,13 @@
                         Panel.ZIndex="2"
                         HorizontalAlignment="Right"
                         Orientation="Horizontal">
+                <TextBlock x:Name="SettingsSaveErrorText"
+                           MaxWidth="330"
+                           Margin="0,0,12,0"
+                           VerticalAlignment="Center"
+                           Foreground="#FFE07A5F"
+                           TextWrapping="Wrap"
+                           Visibility="Collapsed" />
                 <Button MinWidth="112"
                         Padding="20,0"
                         Margin="0,0,8,0"
@@ -3274,7 +3357,6 @@
                         Content="应用" />
                 <Button x:Name="SaveButton"
                         Padding="28,0"
-                        IsDefault="True"
                         Style="{StaticResource SettingsDoneButtonStyle}"
                         Click="SaveButton_Click"
                         Content="完成" />

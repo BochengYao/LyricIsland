@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Threading;
 
 namespace LyricHover.Core
 {
@@ -22,20 +23,43 @@ namespace LyricHover.Core
             try
             {
                 File.WriteAllText(temporaryPath, contents ?? string.Empty);
-                if (File.Exists(fullPath))
+                for (var attempt = 0; attempt < 3; attempt++)
                 {
-                    File.Replace(temporaryPath, fullPath, null, true);
-                }
-                else
-                {
-                    File.Move(temporaryPath, fullPath);
+                    try
+                    {
+                        if (File.Exists(fullPath))
+                        {
+                            try
+                            {
+                                File.Replace(temporaryPath, fullPath, null, true);
+                            }
+                            catch (IOException)
+                            {
+                                // MSIX file redirection and other file users can reject
+                                // ReplaceFile even when a same-directory rename works.
+                                File.Move(temporaryPath, fullPath, true);
+                            }
+                        }
+                        else
+                        {
+                            File.Move(temporaryPath, fullPath);
+                        }
+
+                        return;
+                    }
+                    catch (IOException) when (attempt < 2)
+                    {
+                        Thread.Sleep(80 * (attempt + 1));
+                    }
                 }
             }
             finally
             {
                 if (File.Exists(temporaryPath))
                 {
-                    File.Delete(temporaryPath);
+                    try { File.Delete(temporaryPath); }
+                    catch (IOException) { }
+                    catch (UnauthorizedAccessException) { }
                 }
             }
         }

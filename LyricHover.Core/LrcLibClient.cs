@@ -33,6 +33,16 @@ namespace LyricHover.Core
             }
 
             var cleanedTrack = TrackIdentityCleaner.Clean(track);
+            if (cleanedTrack.Duration > TimeSpan.Zero)
+            {
+                var exactMatch = await TryGetExactLyricsAsync(BuildExactRequestUri(cleanedTrack), cleanedTrack)
+                    .ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(exactMatch))
+                {
+                    return exactMatch;
+                }
+            }
+
             if (!string.IsNullOrWhiteSpace(cleanedTrack.Album))
             {
                 var albumMatch = await TryGetLyricsAsync(BuildSearchRequestUri(cleanedTrack, true), cleanedTrack).ConfigureAwait(false);
@@ -59,6 +69,49 @@ namespace LyricHover.Core
             catch (TaskCanceledException)
             {
                 return string.Empty;
+            }
+        }
+
+        private async Task<string> TryGetExactLyricsAsync(Uri uri, TrackIdentity track)
+        {
+            try
+            {
+                var json = await fetchJsonAsync(uri).ConfigureAwait(false);
+                return ExtractFromExactResult(json, track);
+            }
+            catch (HttpRequestException ex) when (IsNotFoundOrBadRequest(ex))
+            {
+                return string.Empty;
+            }
+            catch (TaskCanceledException)
+            {
+                return string.Empty;
+            }
+        }
+
+        private static string ExtractFromExactResult(string json, TrackIdentity track)
+        {
+            using (var document = JsonDocument.Parse(json))
+            {
+                var result = document.RootElement;
+                if (result.ValueKind != JsonValueKind.Object)
+                {
+                    return string.Empty;
+                }
+
+                var lyrics = ExtractSyncedLyrics(result);
+                if (string.IsNullOrWhiteSpace(lyrics))
+                {
+                    return string.Empty;
+                }
+
+                var title = ReadString(result, "trackName");
+                var artist = ReadString(result, "artistName");
+                var album = ReadString(result, "albumName");
+                var duration = TimeSpan.FromSeconds(ReadInt(result, "duration"));
+                return LyricsCandidateMatcher.Score(track, title, artist, album, duration) >= 45
+                    ? lyrics
+                    : string.Empty;
             }
         }
 
@@ -150,6 +203,20 @@ namespace LyricHover.Core
                 url += "&album_name=" + Uri.EscapeDataString(track.Album);
             }
 
+            return new Uri(url);
+        }
+
+        private static Uri BuildExactRequestUri(TrackIdentity track)
+        {
+            var url = "https://lrclib.net/api/get" +
+                "?track_name=" + Uri.EscapeDataString(track.Title) +
+                "&artist_name=" + Uri.EscapeDataString(track.Artist);
+            if (!string.IsNullOrWhiteSpace(track.Album))
+            {
+                url += "&album_name=" + Uri.EscapeDataString(track.Album);
+            }
+
+            url += "&duration=" + track.Duration.TotalSeconds.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
             return new Uri(url);
         }
 

@@ -26,6 +26,7 @@
         <SolidColorBrush x:Key="SettingsControlBorderBrush" Color="#D8DEE8" />
         <SolidColorBrush x:Key="SettingsControlHoverBackgroundBrush" Color="#FFFFFF" />
         <SolidColorBrush x:Key="SettingsControlPressedBackgroundBrush" Color="#EEF2F7" />
+        <SolidColorBrush x:Key="SupporterConfirmationBackgroundBrush" Color="#FFF4F3FA" />
         <Style x:Key="SecondaryButtonStyle" TargetType="Button">
             <Setter Property="MinWidth" Value="94" />
             <Setter Property="Height" Value="38" />
@@ -99,7 +100,7 @@
         </ResourceDictionary>
     </Window.Resources>
 
-    <Border Background="{DynamicResource SettingsRootBackgroundBrush}"
+    <Border Background="{DynamicResource SupporterConfirmationBackgroundBrush}"
             BorderBrush="{DynamicResource SettingsControlBorderBrush}"
             BorderThickness="1"
             CornerRadius="{StaticResource RadiusLarge}">

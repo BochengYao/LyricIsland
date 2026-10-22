@@ -12,6 +12,11 @@
         ShowInTaskbar="False"
         Topmost="True"
         Focusable="True"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="Grayscale"
+        TextOptions.TextHintingMode="Fixed"
         HorizontalContentAlignment="Stretch"
         VerticalContentAlignment="Stretch"
         AllowDrop="True"
@@ -48,7 +53,7 @@
                                   HorizontalAlignment="Stretch"
                                   VerticalAlignment="Center">
             <modules:IslandModuleHost.RenderTransform>
-                <TranslateTransform Y="-2.5" />
+                <TranslateTransform />
             </modules:IslandModuleHost.RenderTransform>
         </modules:IslandModuleHost>
     </Grid>

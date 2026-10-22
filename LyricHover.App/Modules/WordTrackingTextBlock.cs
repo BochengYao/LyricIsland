@@ -37,9 +37,15 @@ namespace LyricHover.App.Modules
         private double dimOpacity = 0.45;
         private IReadOnlyList<VisualWordSpan> visualWordSpans = Array.Empty<VisualWordSpan>();
         private double measuredTextWidth;
+        private string text = string.Empty;
+        private FontFamily chineseFontFamily = new FontFamily("Microsoft YaHei UI");
+        private FontFamily englishFontFamily = new FontFamily("Segoe UI");
 
         public WordTrackingTextBlock()
         {
+            TextOptions.SetTextFormattingMode(this, TextFormattingMode.Display);
+            TextOptions.SetTextRenderingMode(this, TextRenderingMode.Grayscale);
+            TextOptions.SetTextHintingMode(this, TextHintingMode.Fixed);
             dimText.IsHitTestVisible = false;
             highlightText.IsHitTestVisible = false;
             Children.Add(dimText);
@@ -54,13 +60,14 @@ namespace LyricHover.App.Modules
 
         public string Text
         {
-            get => highlightText.Text;
+            get => text;
             set
             {
                 var normalized = value ?? string.Empty;
-                if (highlightText.Text == normalized) return;
-                dimText.Text = normalized;
-                highlightText.Text = normalized;
+                if (text == normalized) return;
+                text = normalized;
+                ApplyInlineText(dimText);
+                ApplyInlineText(highlightText);
 
                 // Text is exposed as a CLR wrapper over the two child TextBlocks rather
                 // than as a dependency property on this Grid. Invalidate this wrapper
@@ -97,6 +104,31 @@ namespace LyricHover.App.Modules
         {
             get => highlightText.FontFamily;
             set => Apply(text => text.FontFamily = value);
+        }
+
+        public FontFamily ChineseFontFamily
+        {
+            get => chineseFontFamily;
+            set
+            {
+                chineseFontFamily = value ?? new FontFamily("Microsoft YaHei UI");
+                ApplyInlineText(dimText);
+                ApplyInlineText(highlightText);
+                RebuildVisualWordMap();
+            }
+        }
+
+        public FontFamily EnglishFontFamily
+        {
+            get => englishFontFamily;
+            set
+            {
+                englishFontFamily = value ?? new FontFamily("Segoe UI");
+                FontFamily = englishFontFamily;
+                ApplyInlineText(dimText);
+                ApplyInlineText(highlightText);
+                RebuildVisualWordMap();
+            }
         }
 
         public double FontSize
@@ -264,6 +296,11 @@ namespace LyricHover.App.Modules
             RebuildVisualWordMap();
         }
 
+        private void ApplyInlineText(TextBlock block)
+        {
+            IslandAppearanceRendering.SetMixedText(block, text, chineseFontFamily, englishFontFamily);
+        }
+
         private TimeSpan GetProjectedPosition(long timestamp)
         {
             var elapsedTicks = timestamp - anchorTimestamp;
@@ -303,7 +340,8 @@ namespace LyricHover.App.Modules
                 var cacheKey = new VisualWordMapCacheKey(
                     trackingLine,
                     Text,
-                    FontFamily?.Source ?? string.Empty,
+                    chineseFontFamily?.Source ?? string.Empty,
+                    englishFontFamily?.Source ?? string.Empty,
                     FontStyle,
                     FontWeight,
                     FontStretch,
@@ -351,8 +389,8 @@ namespace LyricHover.App.Modules
 
         private FormattedText CreateFormattedText(string value, double dpi)
         {
-            var typeface = new Typeface(FontFamily, FontStyle, FontWeight, FontStretch);
-            return new FormattedText(
+            var typeface = new Typeface(englishFontFamily ?? FontFamily, FontStyle, FontWeight, FontStretch);
+            var formatted = new FormattedText(
                 value ?? string.Empty,
                 CultureInfo.CurrentUICulture,
                 FlowDirection.LeftToRight,
@@ -360,6 +398,8 @@ namespace LyricHover.App.Modules
                 FontSize,
                 Foreground ?? Brushes.White,
                 dpi);
+            IslandAppearanceRendering.ApplyMixedFonts(formatted, value, chineseFontFamily, englishFontFamily);
+            return formatted;
         }
 
         private double GetPixelsPerDip()
@@ -407,6 +447,7 @@ namespace LyricHover.App.Modules
             private readonly LyricLine line;
             private readonly string text;
             private readonly string fontFamily;
+            private readonly string englishFontFamily;
             private readonly FontStyle fontStyle;
             private readonly FontWeight fontWeight;
             private readonly FontStretch fontStretch;
@@ -417,6 +458,7 @@ namespace LyricHover.App.Modules
                 LyricLine line,
                 string text,
                 string fontFamily,
+                string englishFontFamily,
                 FontStyle fontStyle,
                 FontWeight fontWeight,
                 FontStretch fontStretch,
@@ -426,6 +468,7 @@ namespace LyricHover.App.Modules
                 this.line = line;
                 this.text = text ?? string.Empty;
                 this.fontFamily = fontFamily ?? string.Empty;
+                this.englishFontFamily = englishFontFamily ?? string.Empty;
                 this.fontStyle = fontStyle;
                 this.fontWeight = fontWeight;
                 this.fontStretch = fontStretch;
@@ -438,6 +481,7 @@ namespace LyricHover.App.Modules
                 return ReferenceEquals(line, other.line) &&
                     string.Equals(text, other.text, StringComparison.Ordinal) &&
                     string.Equals(fontFamily, other.fontFamily, StringComparison.Ordinal) &&
+                    string.Equals(englishFontFamily, other.englishFontFamily, StringComparison.Ordinal) &&
                     fontStyle == other.fontStyle &&
                     fontWeight == other.fontWeight &&
                     fontStretch == other.fontStretch &&
@@ -454,6 +498,7 @@ namespace LyricHover.App.Modules
                     var hash = RuntimeHelpers.GetHashCode(line);
                     hash = (hash * 397) ^ text.GetHashCode();
                     hash = (hash * 397) ^ fontFamily.GetHashCode();
+                    hash = (hash * 397) ^ englishFontFamily.GetHashCode();
                     hash = (hash * 397) ^ fontStyle.GetHashCode();
                     hash = (hash * 397) ^ fontWeight.GetHashCode();
                     hash = (hash * 397) ^ fontStretch.GetHashCode();

@@ -698,6 +698,139 @@ html[lang="en"] :where(
   line-height: 1.5;
 }
 
+.responsivePicture {
+  display: block;
+  background-image: var(--responsive-image-placeholder);
+  background-position: var(--responsive-image-position, center);
+  background-size: cover;
+}
+
+.responsivePictureFill {
+  position: absolute;
+  inset: 0;
+}
+
+.responsivePicture img {
+  opacity: 0;
+  transition: opacity 160ms ease-out;
+}
+
+.responsivePicture[data-loaded="true"] img {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .responsivePicture img {
+    transition: none;
+  }
+}
+
+.recognitionBubble {
+  position: fixed;
+  z-index: 80;
+  right: 24px;
+  bottom: 22px;
+  left: 24px;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  width: min(calc(100% - 48px), 1332px);
+  min-height: 120px;
+  margin-inline: auto;
+  padding: 22px 52px 22px 28px;
+  border: 1px solid rgba(20, 20, 19, 0.08);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 16px 48px rgba(20, 20, 19, 0.13);
+}
+
+.recognitionBubbleCopy {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-left: 26px;
+}
+
+.recognitionBubbleCopy::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 6px;
+  min-height: 44px;
+  border-radius: 999px;
+  background: #edc83c;
+  content: "";
+}
+
+.recognitionBubbleLabel {
+  margin: 0 0 5px;
+  color: #806d3a;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.recognitionBubbleSummary {
+  margin: 0;
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.recognitionBubbleLink {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 44px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 650;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.recognitionBubbleLink:focus-visible,
+.recognitionBubbleClose:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.recognitionBubbleClose {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #969696;
+  cursor: pointer;
+  font: inherit;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.recognitionBubbleClose:hover {
+  background: rgba(20, 20, 19, 0.06);
+  color: #555;
+}
+
+.recognitionBubbleClose:focus-visible {
+  outline-color: #666;
+}
+
+.recognitionBubbleLink svg {
+  flex: 0 0 auto;
+}
+
 .buttonRow {
   display: flex;
   flex-wrap: wrap;
@@ -1027,6 +1160,10 @@ html[lang="en"] :where(
 }
 
 .portraitImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   --portrait-scale: 1;
   --portrait-hover-scale: 1.06;
   border-radius: inherit;
@@ -1444,6 +1581,8 @@ html[lang="en"] :where(
 }
 
 .moduleComposerImage img {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   transform: scale(var(--module-image-scale));
   transition: transform 80ms linear;
@@ -2648,6 +2787,42 @@ html[lang="en"] :where(
   .heroMedia {
     margin-top: 48px;
     border-radius: 40px;
+  }
+
+  .recognitionBubble {
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    width: calc(100% - 24px);
+    min-height: 0;
+    padding: 18px 40px 14px 18px;
+    border-radius: 24px;
+  }
+
+  .recognitionBubbleCopy {
+    padding-left: 18px;
+  }
+
+  .recognitionBubbleCopy::before {
+    width: 4px;
+  }
+
+  .recognitionBubbleLabel {
+    font-size: 12px;
+  }
+
+  .recognitionBubbleSummary {
+    font-size: 14px;
+  }
+
+  .recognitionBubbleLink {
+    justify-content: flex-start;
+    min-height: 44px;
+    padding-left: 18px;
+    font-size: 14px;
   }
 
   .experienceSection {

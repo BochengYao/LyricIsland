@@ -36,6 +36,7 @@ namespace LyricHover.App.Modules
         private int previewFinalIndex = -1;
         private ModuleDragGhostWindow dragGhost;
         private bool animationsEnabled = true;
+        private OverlayPlacementSettings appearanceSettings = new OverlayPlacementSettings();
 
         public IslandModuleHost()
         {
@@ -94,6 +95,39 @@ namespace LyricHover.App.Modules
             }
         }
 
+        public void ApplyAppearance(OverlayPlacementSettings settings)
+        {
+            appearanceSettings = settings?.DeepClone() ?? new OverlayPlacementSettings();
+            foreach (var module in ModulePanel.Children.OfType<FrameworkElement>())
+            {
+                ApplyModuleAppearance(module);
+            }
+            ContentSizeChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void ApplyModuleAppearance(FrameworkElement module)
+        {
+            var lyrics = module as LyricsModuleView;
+            if (lyrics != null)
+            {
+                lyrics.ApplyAppearance(appearanceSettings);
+                return;
+            }
+
+            var trackInfo = module as TrackInfoModuleView;
+            if (trackInfo != null)
+            {
+                trackInfo.ApplyAppearance(appearanceSettings);
+                return;
+            }
+
+            var progress = module as ProgressModuleView;
+            if (progress != null)
+            {
+                progress.ApplyAppearance(appearanceSettings);
+            }
+        }
+
         public void ApplyLayout(IslandLayoutProfile profile)
         {
             profile = profile ?? IslandLayoutDefaults.CreateCollapsed();
@@ -113,6 +147,17 @@ namespace LyricHover.App.Modules
             layoutSignature = nextSignature;
             ClearInsertionPreview(false);
             var existingModules = GetModuleElements();
+            if (CanUpdateLayoutInPlace(profile.Modules, existingModules))
+            {
+                foreach (var pair in profile.Modules.Zip(existingModules, (module, view) => new { module, view }))
+                {
+                    ApplyModuleSettings(pair.view, pair.module);
+                }
+
+                Update(lastRenderState);
+                return;
+            }
+
             var targetTypeCounts = profile.Modules
                 .GroupBy(module => module.Type)
                 .ToDictionary(group => group.Key, group => group.Count());
@@ -160,6 +205,29 @@ namespace LyricHover.App.Modules
             // Reusing the shared lyrics/module views preserves their current render and
             // word-tracking state while the island changes size, avoiding a one-frame reset.
             Update(lastRenderState);
+        }
+
+        private bool CanUpdateLayoutInPlace(
+            IReadOnlyList<IslandModuleInstance> modules,
+            IReadOnlyList<FrameworkElement> existingModules)
+        {
+            if (modules.Count != existingModules.Count)
+            {
+                return false;
+            }
+
+            for (var index = 0; index < modules.Count; index++)
+            {
+                var id = existingModules[index].Tag as string;
+                if (id != modules[index].Id ||
+                    !moduleTypesById.TryGetValue(id, out var type) ||
+                    type != modules[index].Type)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private FrameworkElement CreateModuleView(IslandModuleInstance module)
@@ -214,6 +282,8 @@ namespace LyricHover.App.Modules
             {
                 lyrics.AnimationsEnabled = animationsEnabled;
             }
+
+            ApplyModuleAppearance(view);
 
             var controls = view as PlaybackControlsModuleView;
             if (controls != null)
@@ -288,6 +358,11 @@ namespace LyricHover.App.Modules
             if (lyrics != null)
             {
                 lyrics.ApplyModuleSettings(module.LyricsWidth);
+            }
+
+            if (view is DividerModuleView divider)
+            {
+                divider.ApplySettings(module);
             }
         }
 

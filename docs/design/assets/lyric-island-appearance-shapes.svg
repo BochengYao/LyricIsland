@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="860" viewBox="0 0 1400 860" role="img" aria-labelledby="title desc">
+  <title id="title">歌词岛字体和凹凸半径配置示意</title>
+  <desc id="desc">显示现有上方凹角下方凸角，以及上方改成凸角后的胶囊形；设置包括独立中英文字体、字号、凹凸半径和恢复默认半径按钮。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#17191f"/><stop offset="1" stop-color="#242832"/></linearGradient>
+    <linearGradient id="island" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#111318"/><stop offset="1" stop-color="#07080b"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-40%" width="140%" height="190%"><feGaussianBlur stdDeviation="12"/></filter>
+    <style>
+      .title{font:700 30px 'Segoe UI',sans-serif;fill:#faf8f5}.label{font:600 18px 'Segoe UI',sans-serif;fill:#f1f1f4}.small{font:14px 'Segoe UI',sans-serif;fill:#d0d2d8}.muted{font:14px 'Segoe UI',sans-serif;fill:#a5aab5}.orange{fill:#ff9f78}.mint{fill:#8fd1b2}
+    </style>
+  </defs>
+  <rect width="1400" height="860" rx="32" fill="url(#bg)"/>
+  <text x="56" y="64" class="title">歌词岛 · 外观自定义</text>
+  <text x="56" y="94" class="muted">直接加入现有“歌词外观 → 歌词岛”设置列表</text>
+
+  <rect x="42" y="126" width="850" height="696" rx="24" fill="#20232b" stroke="#373b46"/>
+  <text x="74" y="166" class="label">岛体形状</text>
+  <text x="74" y="190" class="muted">上方凹角可切换为凸角；胶囊形由凸角半径形成</text>
+
+  <g transform="translate(102 226)">
+    <path d="M0 24 L270 24 C246 24 235 30 226 43 C220 52 220 63 220 78 L220 132 Q220 158 194 158 L76 158 Q50 158 50 132 L50 78 C50 63 50 52 44 43 C35 30 24 24 0 24 Z" transform="translate(0 12)" fill="#000" opacity=".42" filter="url(#shadow)"/>
+    <path d="M0 24 L270 24 C246 24 235 30 226 43 C220 52 220 63 220 78 L220 132 Q220 158 194 158 L76 158 Q50 158 50 132 L50 78 C50 63 50 52 44 43 C35 30 24 24 0 24 Z" fill="url(#island)" stroke="#858b97" stroke-width="2"/>
+    <text x="135" y="102" text-anchor="middle" class="small" font-size="17">中文歌词 English</text>
+    <path d="M42 40 C34 31 24 24 5 24" fill="none" stroke="#ff9f78" stroke-width="4"/>
+    <path d="M55 132 Q55 153 78 153" fill="none" stroke="#8fd1b2" stroke-width="4"/>
+    <text x="0" y="194" class="label">当前默认轮廓</text>
+    <text x="0" y="218" class="muted">上方内凹 · 下方外凸</text>
+    <text x="0" y="244" class="small"><tspan fill="#ff9f78">橙色</tspan><tspan> 凹角半径</tspan><tspan dx="18" fill="#8fd1b2">绿色</tspan><tspan> 凸角半径</tspan></text>
+  </g>
+
+  <g transform="translate(506 226)">
+    <rect x="0" y="38" width="270" height="120" rx="60" transform="translate(0 12)" fill="#000" opacity=".42" filter="url(#shadow)"/>
+    <rect x="0" y="38" width="270" height="120" rx="60" fill="url(#island)" stroke="#ff9f78" stroke-width="2"/>
+    <text x="135" y="108" text-anchor="middle" class="small" font-size="17">中文歌词 English</text>
+    <text x="0" y="194" class="label">上方切换为凸角</text>
+    <text x="0" y="218" class="muted">上下凸角使用胶囊半径</text>
+    <text x="0" y="244" class="small">随歌词岛高度自动适配</text>
+  </g>
+
+  <line x1="74" y1="512" x2="860" y2="512" stroke="#3a3e48"/>
+  <text x="74" y="548" class="label">凹凸半径</text>
+  <text x="88" y="590" class="small">凹角</text>
+  <path d="M156 585 H428" stroke="#454a55" stroke-width="8" stroke-linecap="round"/>
+  <path d="M156 585 H274" stroke="#ff9f78" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="274" cy="585" r="10" fill="#fff" stroke="#ff9f78" stroke-width="3"/>
+  <text x="450" y="590" class="muted">上方内凹弧度</text>
+  <text x="88" y="640" class="small">凸角</text>
+  <path d="M156 635 H428" stroke="#454a55" stroke-width="8" stroke-linecap="round"/>
+  <path d="M156 635 H322" stroke="#8fd1b2" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="322" cy="635" r="10" fill="#fff" stroke="#8fd1b2" stroke-width="3"/>
+  <text x="450" y="640" class="muted">下方外凸弧度与上凸模式</text>
+  <rect x="592" y="665" width="238" height="44" rx="10" fill="#30343e" stroke="#626976"/>
+  <path d="M612 687 a8 8 0 1 1 2 6" fill="none" stroke="#d6d8de" stroke-width="1.8"/>
+  <path d="M610 681 l1 7 7 -1" fill="none" stroke="#d6d8de" stroke-width="1.8"/>
+  <text x="634" y="692" class="small">恢复默认半径</text>
+  <text x="74" y="740" class="muted">恢复半径不改变当前上方角型</text>
+
+  <rect x="918" y="126" width="440" height="696" rx="24" fill="#20232b" stroke="#373b46"/>
+  <text x="952" y="166" class="label">中英文字体</text>
+  <text x="952" y="190" class="muted">同一句混排歌词实时预览</text>
+  <rect x="952" y="216" width="372" height="130" rx="38" fill="#08090c" stroke="#444a56"/>
+  <text x="1138" y="272" text-anchor="middle" font-family="Microsoft YaHei UI,sans-serif" font-size="21" font-weight="600" fill="#f5f5f7">夜空中最亮的 <tspan font-family="Segoe UI,sans-serif">Star</tspan></text>
+  <text x="1138" y="310" text-anchor="middle" font-family="Segoe UI,sans-serif" font-size="15" fill="#9da3af">You are <tspan font-family="Microsoft YaHei UI,sans-serif">我心中的光</tspan></text>
+
+  <text x="952" y="394" class="small">中文字体</text>
+  <rect x="952" y="406" width="372" height="42" rx="9" fill="#2c303a" stroke="#4a505d"/>
+  <text x="968" y="433" class="small">Microsoft YaHei UI</text>
+  <path d="M1302 422 l7 7 7 -7" fill="none" stroke="#b9bec8" stroke-width="2"/>
+
+  <text x="952" y="486" class="small">英文字体</text>
+  <rect x="952" y="498" width="372" height="42" rx="9" fill="#2c303a" stroke="#4a505d"/>
+  <text x="968" y="525" class="small">Segoe UI</text>
+  <path d="M1302 514 l7 7 7 -7" fill="none" stroke="#b9bec8" stroke-width="2"/>
+
+  <text x="952" y="578" class="small">歌词字号</text>
+  <rect x="952" y="590" width="88" height="40" rx="9" fill="#2c303a" stroke="#4a505d"/>
+  <text x="996" y="616" text-anchor="middle" class="small">22 DIP</text>
+  <path d="M1064 610 H1322" stroke="#454a55" stroke-width="8" stroke-linecap="round"/>
+  <path d="M1064 610 H1180" stroke="#ff9f78" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="1180" cy="610" r="10" fill="#fff" stroke="#ff9f78" stroke-width="3"/>
+  <text x="952" y="676" class="small">翻译字号默认继承歌词字号</text>
+  <text x="952" y="718" class="muted">中文、英文字符分别使用所选字体</text>
+  <text x="952" y="746" class="muted">缺字时使用系统字体回退</text>
+</svg>

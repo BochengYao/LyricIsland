@@ -1,6 +1,7 @@
 using System;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 using LyricHover.Core;
 
@@ -10,12 +11,25 @@ namespace LyricHover.App.Modules
     {
         private string lastTitle;
         private string lastArtist;
+        private FontFamily chineseFontFamily = new FontFamily("Microsoft YaHei UI");
+        private FontFamily englishFontFamily = new FontFamily("Segoe UI");
+        private double fontScale = 1;
 
         public event EventHandler PreferredWidthChanged;
 
         public TrackInfoModuleView()
         {
             InitializeComponent();
+        }
+
+        public void ApplyAppearance(OverlayPlacementSettings settings)
+        {
+            settings = settings ?? new OverlayPlacementSettings();
+            chineseFontFamily = IslandAppearanceRendering.ResolveFont(settings.IslandChineseFontFamily, "Microsoft YaHei UI");
+            englishFontFamily = IslandAppearanceRendering.ResolveFont(settings.IslandEnglishFontFamily, "Segoe UI");
+            fontScale = settings.IslandLyricsFontSize / OverlayPlacementSettings.LegacyIslandLyricsFontSize;
+            ApplyTextAppearance();
+            UpdatePreferredWidthAndMarquee();
         }
 
         public void Update(IslandRenderState state)
@@ -37,7 +51,16 @@ namespace LyricHover.App.Modules
             lastArtist = artist;
             TitleText.Text = title;
             ArtistText.Text = artist;
+            ApplyTextAppearance();
             UpdatePreferredWidthAndMarquee();
+        }
+
+        private void ApplyTextAppearance()
+        {
+            TitleText.FontSize = 13 * fontScale;
+            ArtistText.FontSize = 10.5 * fontScale;
+            IslandAppearanceRendering.SetMixedText(TitleText, TitleText.Text, chineseFontFamily, englishFontFamily);
+            IslandAppearanceRendering.SetMixedText(ArtistText, ArtistText.Text, chineseFontFamily, englishFontFamily);
         }
 
         private void UpdatePreferredWidthAndMarquee()

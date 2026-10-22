@@ -1,5 +1,5 @@
-import Image from "next/image";
 import Link from "next/link";
+import { preload } from "react-dom";
 import { AnimatedFaqItem } from "@/components/AnimatedFaqItem";
 import { ExternalArrow } from "@/components/ExternalArrow";
 import { IslandDemo } from "@/components/IslandDemo";
@@ -7,6 +7,8 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { LyricDockShowcase } from "@/components/LyricDockShowcase";
 import { ModuleComposer } from "@/components/ModuleComposer";
 import { PlayerOrbit } from "@/components/PlayerOrbit";
+import { RecognitionBubble } from "@/components/RecognitionBubble";
+import { ResponsiveImage } from "@/components/ResponsiveImage";
 import { SelectiveTextReveal } from "@/components/SelectiveTextReveal";
 import { SmoothSectionScroll } from "@/components/SmoothSectionScroll";
 import {
@@ -19,6 +21,39 @@ import {
 } from "@/data/site-copy";
 
 const githubUrl = "https://github.com/BochengYao/LyricHover";
+const secondaryMonitorFixUrl =
+  "https://github.com/BochengYao/LyricIsland/commit/807b7e71caa2150175ccb5b6b9dd3e4ae6b49fcf";
+const heroSrcSet = [640, 960, 1280, 2560]
+  .map((width) => {
+    const hashes: Record<number, string> = {
+      640: "539e9c76",
+      960: "3c8fca86",
+      1280: "16548e07",
+      2560: "439a97c7",
+    };
+    return `/images/responsive/product-hero-${width}.${hashes[width]}.webp ${width}w`;
+  })
+  .join(", ");
+const experienceImages: Record<string, { srcSet: string; placeholder: string }> = {
+  "/images/experience-playback.jpg": {
+    srcSet: [480, 640, 960]
+      .map((width) => `/images/responsive/experience-playback-${width}.${({ 480: "25ed436c", 640: "f0f0b6ae", 960: "1c26eed9" } as Record<number, string>)[width]}.webp ${width}w`)
+      .join(", "),
+    placeholder: "/images/responsive/experience-playback-placeholder.8ba4feff.webp",
+  },
+  "/images/experience-idle.png": {
+    srcSet: [480, 640, 960]
+      .map((width) => `/images/responsive/experience-idle-${width}.${({ 480: "3cf9ad5a", 640: "7382759d", 960: "79fcf976" } as Record<number, string>)[width]}.webp ${width}w`)
+      .join(", "),
+    placeholder: "/images/responsive/experience-idle-placeholder.09ee9ddc.webp",
+  },
+  "/images/experience-pointer.png": {
+    srcSet: [480, 640, 960]
+      .map((width) => `/images/responsive/experience-pointer-${width}.${({ 480: "97243483", 640: "4ce184d7", 960: "9544abde" } as Record<number, string>)[width]}.webp ${width}w`)
+      .join(", "),
+    placeholder: "/images/responsive/experience-pointer-placeholder.b2fe4b94.webp",
+  },
+};
 
 type Props = {
   locale: Locale;
@@ -42,13 +77,16 @@ export function Eyebrow({
 export function LogoLockup({ locale = "zh" }: { locale?: Locale }) {
   return (
     <span className="logoLockup">
-      <Image
-        src="/images/app-logo.png"
+      <ResponsiveImage
+        fallbackSrc="/images/app-logo.png"
+        srcSet="/images/responsive/app-logo-96.4db9ec5f.webp 96w, /images/responsive/app-logo-192.1cf078d7.webp 192w"
+        placeholderSrc="/images/responsive/app-logo-placeholder.5c74eab0.webp"
         alt=""
         width={42}
         height={42}
+        sizes="42px"
+        loading="eager"
         className="logoImage"
-        priority
       />
       <span>
         <strong>{displayBrand(locale)}</strong>
@@ -148,6 +186,13 @@ export function PrimaryNavigation({
 
 export function SitePage({ locale }: Props) {
   const copy = copyByLocale[locale];
+  preload("/images/responsive/product-hero-1280.16548e07.webp", {
+    as: "image",
+    type: "image/webp",
+    fetchPriority: "high",
+    imageSrcSet: heroSrcSet,
+    imageSizes: "(min-width: 1440px) 1280px, calc(100vw - 48px)",
+  });
 
   return (
     <>
@@ -183,20 +228,35 @@ export function SitePage({ locale }: Props) {
           </div>
 
           <div className="heroMedia">
-            <Image
-              src="/images/product-hero-v2-2x.png"
+            <ResponsiveImage
+              fallbackSrc="/images/product-hero-v2-2x.png"
+              srcSet={heroSrcSet}
+              placeholderSrc="/images/responsive/product-hero-placeholder.30a986f0.webp"
               alt={copy.heroImageAlt}
               width={4000}
               height={1334}
-              unoptimized
-              priority
+              loading="eager"
+              fetchPriority="high"
               sizes="(min-width: 1440px) 1280px, calc(100vw - 48px)"
               className="heroMediaImage"
             />
           </div>
         </section>
 
-        <section className="experienceSection" id="experience" data-snap-section>
+        <RecognitionBubble
+          label={copy.recognition.label}
+          summary={copy.recognition.summary}
+          linkLabel={copy.recognition.link}
+          dismissLabel={copy.recognition.dismissLabel}
+          href={secondaryMonitorFixUrl}
+        />
+
+        <section
+          className="experienceSection"
+          id="experience"
+          data-snap-section
+          data-wheel-scroll="native"
+        >
           <div className="sectionContainer experienceIntro">
             {copy.experience.eyebrow && (
               <Eyebrow reveal>{copy.experience.eyebrow}</Eyebrow>
@@ -224,12 +284,17 @@ export function SitePage({ locale }: Props) {
               {copy.experience.items.map((item, index) => (
                 <article className={"orbitCard orbitCard" + (index + 1)} key={item.title}>
                   <div className="portraitWrap">
-                    <Image
-                      src={item.image}
+                    <ResponsiveImage
+                      fallbackSrc={item.image}
+                      srcSet={experienceImages[item.image].srcSet}
+                      placeholderSrc={experienceImages[item.image].placeholder}
                       alt={item.imageAlt}
+                      width={960}
+                      height={960}
                       fill
                       sizes="(max-width: 767px) 240px, 320px"
                       className="portraitImage"
+                      placeholderPosition={item.imagePosition}
                       style={{ objectPosition: item.imagePosition }}
                     />
                   </div>

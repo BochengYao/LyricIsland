@@ -10,8 +10,8 @@
             <StackPanel.RenderTransform>
                 <TranslateTransform x:Name="CurrentLyricsTransform" />
             </StackPanel.RenderTransform>
-            <Grid x:Name="PrimaryLyricClip" Height="18" ClipToBounds="True">
-                <Canvas x:Name="PrimaryLyricCanvas" Height="18">
+            <Grid x:Name="PrimaryLyricClip" Height="21" ClipToBounds="True">
+                <Canvas x:Name="PrimaryLyricCanvas" Height="21">
                     <StackPanel x:Name="PrimaryLyricLinePanel"
                                 Canvas.Top="0"
                                 Orientation="Horizontal">
@@ -39,14 +39,14 @@
                     </StackPanel>
                 </Canvas>
             </Grid>
-            <Grid x:Name="SecondaryLyricClip" Height="13" ClipToBounds="True">
-                <Canvas x:Name="SecondaryLyricCanvas" Height="13">
+            <Grid x:Name="SecondaryLyricClip" Height="15" ClipToBounds="True">
+                <Canvas x:Name="SecondaryLyricCanvas" Height="15">
                     <TextBlock x:Name="SecondaryLyricText"
                                Canvas.Top="0"
                                FontFamily="Microsoft YaHei UI"
-                               FontSize="10.5"
+                               FontSize="11.25"
                                LineHeight="13"
-                               Foreground="#D9FFFFFF"
+                               Foreground="#ECFFFFFF"
                                TextAlignment="Left"
                                TextTrimming="None"
                                TextWrapping="NoWrap">
@@ -61,8 +61,8 @@
             <StackPanel.RenderTransform>
                 <TranslateTransform x:Name="IncomingLyricsTransform" Y="10" />
             </StackPanel.RenderTransform>
-            <Grid x:Name="IncomingPrimaryLyricClip" Height="18" ClipToBounds="True">
-                <Canvas Height="18">
+            <Grid x:Name="IncomingPrimaryLyricClip" Height="21" ClipToBounds="True">
+                <Canvas x:Name="IncomingPrimaryLyricCanvas" Height="21">
                     <StackPanel x:Name="IncomingPrimaryLyricLinePanel"
                                 Canvas.Top="0"
                                 Orientation="Horizontal">
@@ -90,14 +90,14 @@
                     </StackPanel>
                 </Canvas>
             </Grid>
-            <Grid x:Name="IncomingSecondaryLyricClip" Height="13" ClipToBounds="True">
-                <Canvas Height="13">
+            <Grid x:Name="IncomingSecondaryLyricClip" Height="15" ClipToBounds="True">
+                <Canvas x:Name="IncomingSecondaryLyricCanvas" Height="15">
                     <TextBlock x:Name="IncomingSecondaryLyricText"
                                Canvas.Top="0"
                                FontFamily="Microsoft YaHei UI"
-                               FontSize="10.5"
+                               FontSize="11.25"
                                LineHeight="13"
-                               Foreground="#D9FFFFFF"
+                               Foreground="#ECFFFFFF"
                                TextAlignment="Left"
                                TextTrimming="None"
                                TextWrapping="NoWrap">

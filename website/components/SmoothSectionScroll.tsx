@@ -8,6 +8,7 @@ const INPUT_RESET_MS = 180;
 const SETTLE_LOCK_MS = 280;
 const NATIVE_SCROLL_SETTLE_MS = 180;
 const EDGE_TOLERANCE = 2;
+const TOUCH_INTENT_THRESHOLD = 36;
 
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(maximum, Math.max(minimum, value));
@@ -36,6 +37,9 @@ export function SmoothSectionScroll() {
     const desktopPointer = window.matchMedia(
       "(min-width: 1024px) and (pointer: fine)"
     );
+    const mobilePointer = window.matchMedia(
+      "(max-width: 1023px), (pointer: coarse)"
+    );
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
     let animationFrame = 0;
@@ -45,8 +49,13 @@ export function SmoothSectionScroll() {
     let lockedUntil = 0;
     let scrollSettleTimer = 0;
     let pointerActive = false;
+    let touchStartY = 0;
+    let touchCurrentY = 0;
+    let touchMode: "idle" | "native" | "snap" = "idle";
 
     const isEnabled = () => desktopPointer.matches && !reducedMotion.matches;
+    const isMobileEnabled = () => mobilePointer.matches;
+    const isSnapEnabled = () => isEnabled() || isMobileEnabled();
 
     const cancelAnimation = () => {
       if (animationFrame) {
@@ -63,7 +72,7 @@ export function SmoothSectionScroll() {
     };
 
     const syncMode = () => {
-      if (isEnabled()) {
+      if (isSnapEnabled()) {
         document.documentElement.dataset.snapScroll = "enabled";
       } else {
         delete document.documentElement.dataset.snapScroll;
@@ -121,6 +130,10 @@ export function SmoothSectionScroll() {
       );
       const startTop = window.scrollY;
       const targetTop = clamp(requestedTop, 0, maximumTop);
+      if (reducedMotion.matches) {
+        window.scrollTo(0, targetTop);
+        return;
+      }
       const distance = Math.abs(targetTop - startTop);
       const duration =
         source === "navigation"
@@ -217,6 +230,8 @@ export function SmoothSectionScroll() {
       }
 
       const directSnap = current.section.dataset.wheelSnap === "direct";
+      const nativeWheelScroll =
+        current.section.dataset.wheelScroll === "native";
       const isLongSection =
         current.height > window.innerHeight + EDGE_TOLERANCE && !directSnap;
       const distanceToEdge =
@@ -236,6 +251,15 @@ export function SmoothSectionScroll() {
             ? current.bottom - window.innerHeight
             : current.top
         );
+        return;
+      }
+
+      if (
+        isLongSection &&
+        nativeWheelScroll &&
+        distanceToEdge > EDGE_TOLERANCE
+      ) {
+        accumulatedIntent = 0;
         return;
       }
 
@@ -275,7 +299,7 @@ export function SmoothSectionScroll() {
     };
 
     const onAnchorClick = (event: MouseEvent) => {
-      if (!isEnabled() || event.defaultPrevented || event.button !== 0) {
+      if (!isSnapEnabled() || event.defaultPrevented || event.button !== 0) {
         return;
       }
 
@@ -331,8 +355,82 @@ export function SmoothSectionScroll() {
       settleNativeScroll();
     };
 
+    const onTouchStart = (event: TouchEvent) => {
+      if (!isMobileEnabled() || event.touches.length !== 1) return;
+      cancelAnimation();
+      touchStartY = event.touches[0].clientY;
+      touchCurrentY = touchStartY;
+      touchMode = "idle";
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      if (!isMobileEnabled() || event.touches.length !== 1) return;
+      if (
+        event.target instanceof Element &&
+        event.target.closest("[data-native-scroll], dialog, [role='dialog']")
+      ) {
+        touchMode = "native";
+        return;
+      }
+
+      touchCurrentY = event.touches[0].clientY;
+      const delta = touchStartY - touchCurrentY;
+      if (Math.abs(delta) < EDGE_TOLERANCE) return;
+
+      const direction: 1 | -1 = delta > 0 ? 1 : -1;
+      const sections = sectionMetrics();
+      const current = currentSection(sections);
+      if (!current) return;
+
+      const directSnap = current.section.dataset.wheelSnap === "direct";
+      const nativeTouchScroll =
+        current.section.dataset.wheelScroll === "native";
+      const isLongSection =
+        current.height > window.innerHeight + EDGE_TOLERANCE && !directSnap;
+      const distanceToEdge =
+        direction > 0
+          ? current.bottom - (window.scrollY + window.innerHeight)
+          : window.scrollY - current.top;
+
+      if (
+        isLongSection &&
+        nativeTouchScroll &&
+        distanceToEdge > EDGE_TOLERANCE
+      ) {
+        touchMode = "native";
+        return;
+      }
+
+      touchMode = "snap";
+      event.preventDefault();
+    };
+
+    const finishTouch = () => {
+      if (!isMobileEnabled() || touchMode !== "snap") {
+        touchMode = "idle";
+        return;
+      }
+
+      const delta = touchStartY - touchCurrentY;
+      touchMode = "idle";
+      if (Math.abs(delta) < TOUCH_INTENT_THRESHOLD) return;
+
+      const direction: 1 | -1 = delta > 0 ? 1 : -1;
+      const sections = sectionMetrics();
+      const current = currentSection(sections);
+      const target = current && sections[current.index + direction];
+      if (!target) return;
+
+      const targetTop =
+        direction < 0 && target.height > window.innerHeight + EDGE_TOLERANCE
+          ? target.bottom - window.innerHeight
+          : target.top;
+      animateTo(targetTop);
+    };
+
     syncMode();
     desktopPointer.addEventListener("change", syncMode);
+    mobilePointer.addEventListener("change", syncMode);
     reducedMotion.addEventListener("change", syncMode);
     window.addEventListener("wheel", onWheel, { passive: false });
     window.addEventListener("scroll", settleNativeScroll, { passive: true });
@@ -341,12 +439,16 @@ export function SmoothSectionScroll() {
     window.addEventListener("pointerdown", onPointerDown);
     window.addEventListener("pointerup", onPointerUp);
     window.addEventListener("pointercancel", onPointerUp);
-    window.addEventListener("touchstart", cancelAnimation, { passive: true });
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
+    window.addEventListener("touchend", finishTouch, { passive: true });
+    window.addEventListener("touchcancel", finishTouch, { passive: true });
 
     return () => {
       cancelAnimation();
       delete document.documentElement.dataset.snapScroll;
       desktopPointer.removeEventListener("change", syncMode);
+      mobilePointer.removeEventListener("change", syncMode);
       reducedMotion.removeEventListener("change", syncMode);
       window.removeEventListener("wheel", onWheel);
       window.removeEventListener("scroll", settleNativeScroll);
@@ -355,7 +457,10 @@ export function SmoothSectionScroll() {
       window.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("pointercancel", onPointerUp);
-      window.removeEventListener("touchstart", cancelAnimation);
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", finishTouch);
+      window.removeEventListener("touchcancel", finishTouch);
     };
   }, []);
 

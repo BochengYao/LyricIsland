@@ -6,6 +6,7 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>LyricHover.App</AssemblyName>
     <PackageId>LyricHover.App</PackageId>
     <AssemblyTitle>LyricHover | LYRIC HOVER</AssemblyTitle>

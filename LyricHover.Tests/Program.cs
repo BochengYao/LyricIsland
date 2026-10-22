@@ -76,13 +76,16 @@ namespace LyricHover.Tests
             suite.Run("reuses cached lyrics when reported duration drifts", ReusesCachedLyricsWhenReportedDurationDrifts);
             suite.Run("evicts least recently used song cache files to stay under size limit", EvictsLeastRecentlyUsedSongCacheFilesToStayUnderSizeLimit);
             suite.Run("uses lrc lib search as the primary lyrics lookup", UsesLrcLibSearchAsPrimaryLyricsLookup);
+            suite.Run("finds Style when Apple Music duration differs from lyrics catalog", FindsStyleLyricsWhenAppleMusicDurationDrifts);
             suite.Run("falls back from album scoped lrc lib search", FallsBackFromAlbumScopedLrcLibSearch);
             suite.Run("returns empty lyrics when lrc lib reports 404", ReturnsEmptyLyricsWhenLrcLibReports404);
             suite.Run("returns empty lyrics when lrc lib request times out", ReturnsEmptyLyricsWhenLrcLibRequestTimesOut);
             suite.Run("fetches synced lyrics from netease response", FetchesSyncedLyricsFromNetEaseResponse);
             suite.Run("fetches translated lyrics from netease response", FetchesTranslatedLyricsFromNetEaseResponse);
             suite.Run("fetches translated lyrics from a 64-bit netease song id", FetchesTranslatedLyricsFrom64BitNetEaseSongId);
+            suite.Run("netease word timing probes a later safe candidate", NetEaseWordTimingProbesLaterSafeCandidate);
             suite.Run("fetches synced lyrics from qq music response", FetchesSyncedLyricsFromQqMusicResponse);
+            suite.Run("QQ word timing probes a later safe candidate", QqWordTimingProbesLaterSafeCandidate);
             suite.Run("falls back to QQ legacy lyrics when QRC payload is not text", FallsBackToQqLegacyLyricsWhenQrcPayloadIsNotText);
             suite.Run("QQ keeps valid primary lyrics when legacy enrichment fails", QqKeepsPrimaryWhenLegacyFails);
             suite.Run("reads QQ QRC from lyric when qrc is an availability flag", ReadsQqQrcFromLyricWhenQrcIsAvailabilityFlag);
@@ -92,6 +95,7 @@ namespace LyricHover.Tests
             suite.Run("does not reuse one short translation for adjacent same-source lines", DoesNotReuseOneShortTranslationForAdjacentLines);
             suite.Run("maps fast same-source translations one to one", MapsFastSameSourceTranslationsOneToOne);
             suite.Run("keeps verified word timing when translation fallback throws", KeepsWordTimingWhenTranslationFallbackThrows);
+            suite.Run("rejects wrong-track word timing before using a valid fallback", RejectsWrongTrackWordTimingBeforeFallback);
             suite.Run("rejects cached word timing truncated before a complete translation", RejectsTruncatedCachedWordTiming);
             suite.Run("falls back when word timing ends far before verified line lyrics", FallsBackFromTruncatedWordTiming);
             suite.Run("keeps word timing when only a sparse late reference line differs", KeepsWordTimingWithSparseLateReference);
@@ -121,6 +125,16 @@ namespace LyricHover.Tests
             suite.Run("creates independent A and C layouts", CreatesIndependentAAndCLayouts);
             suite.Run("keeps repeated divider modules", KeepsRepeatedDividerModules);
             suite.Run("settings schema contains independent layouts", SettingsSchemaContainsIndependentLayouts);
+            suite.Run("island appearance settings normalize and round trip compatibly", IslandAppearanceSettingsNormalizeAndRoundTrip);
+            suite.Run("Chinese font selectors only list families with CJK glyphs", ChineseFontSelectorsFilterForCjkGlyphs);
+            suite.Run("island appearance preview and live shape share pill geometry", IslandAppearanceGeometryKeepsCapsuleBounds);
+            suite.Run("settings fixes preserve DPI clarity and deliberate actions", SettingsFixesPreserveDpiClarityAndDeliberateActions);
+            suite.Run("island text rendering snaps static content to physical pixels", IslandTextRenderingSnapsToPhysicalPixels);
+            suite.Run("island lyrics reserve clearance for English descenders", IslandLyricsReserveDescenderClearance);
+            suite.Run("island secondary lyrics stay readable at small sizes", IslandSecondaryLyricsStayReadableAtSmallSizes);
+            suite.Run("overflowing island lyrics use short edge fades", OverflowingIslandLyricsUseShortEdgeFades);
+            suite.Run("island top corner mode applies immediately and persists", IslandTopCornerModeAppliesAndPersists);
+            suite.Run("island mixed-script text keeps source text and fallback runs", IslandMixedScriptTextKeepsFallbackRuns);
             suite.Run("removes retired lyric sources from persisted settings", RemovesRetiredLyricsSourcesFromPersistedSettings);
             suite.Run("tracks normalized settings dirty state", TracksNormalizedSettingsDirtyState);
             suite.Run("layout draft snapshots are isolated", LayoutDraftSnapshotsAreIsolated);
@@ -195,7 +209,7 @@ namespace LyricHover.Tests
             suite.Run("supporter badge options provide reusable defaults", SupporterBadgeOptionsProvideReusableDefaults);
             suite.Run("Pro entitlement presents all three support page states", ProEntitlementPresentsAllThreeSupportPageStates);
             suite.Run("support developer page exposes Pro and free support actions", SupportDeveloperPageExposesProAndFreeSupportActions);
-            suite.Run("formats the public Beta version", FormatsThePublicBetaVersion);
+            suite.Run("formats the public version and channel", FormatsThePublicBetaVersion);
             suite.Run("release version has one source and controlled candidate generation", ReleaseVersionHasOneSourceAndAutoIncrements);
             if (!skipReleaseVersionFixture)
             {
@@ -205,6 +219,7 @@ namespace LyricHover.Tests
             suite.Run("store package reuses the reserved product identity", StorePackageReusesReservedProductIdentity);
             suite.Run("tutorial waits for required user actions", TutorialWaitsForRequiredUserActions);
             suite.Run("tutorial requires temporary interaction for playback controls", TutorialRequiresTemporaryInteractionForPlaybackControls);
+            suite.Run("tutorial playback control stays clickable without a player", TutorialPlaybackControlStaysClickableWithoutPlayer);
             suite.Run("first launch tutorial is persisted and can be replayed", FirstLaunchTutorialIsPersistedAndCanBeReplayed);
             suite.Run("tutorial overlay is dimmer and cannot cover interactions", TutorialOverlayIsDimmerAndCannotCoverInteractions);
             suite.Run("layout rebuild replays the latest island content", LayoutRebuildReplaysLatestIslandContent);
@@ -262,6 +277,7 @@ namespace LyricHover.Tests
             suite.Run("ignores small backward timeline jitter while playing", IgnoresSmallBackwardTimelineJitterWhilePlaying);
             suite.Run("allows only one named application instance", AllowsOnlyOneNamedApplicationInstance);
             suite.Run("signals the existing application instance", SignalsExistingApplicationInstance);
+            suite.Run("mouse source traversal supports inline text elements", MouseSourceTraversalSupportsInlineTextElements);
             suite.Run("keeps island visible while playing even without lyrics", KeepsIslandVisibleWhilePlayingEvenWithoutLyrics);
             suite.Run("keeps island visible during startup hint", KeepsIslandVisibleDuringStartupHint);
             suite.Run("keeps paused island available during grace period", KeepsPausedIslandAvailableDuringGracePeriod);
@@ -303,6 +319,7 @@ namespace LyricHover.Tests
             suite.Run("coalesces repeated animation targets while preserving the latest target", CoalescesRepeatedAnimationTargets);
             suite.Run("main window stops all runtime activity when closed", MainWindowStopsAllRuntimeActivityWhenClosed);
             suite.Run("atomically replaces settings files without leaving temporary files", AtomicallyReplacesSettingsFilesWithoutLeavingTemporaryFiles);
+            suite.Run("locked settings file keeps committed state and can be retried", LockedSettingsFileKeepsCommittedStateAndCanBeRetried);
             suite.Run("tracks reference changes without treating equal content as the same object", TracksReferenceChangesWithoutTreatingEqualContentAsTheSameObject);
             suite.Run("module views skip unchanged rendering work", ModuleViewsSkipUnchangedRenderingWork);
             suite.Run("word tracking uses frame-smooth overlay clipping", WordTrackingUsesFrameSmoothOverlayClipping);
@@ -789,13 +806,26 @@ namespace LyricHover.Tests
             Assert.Equal("https://lrclib.net/api/search?track_name=Song%20Name&artist_name=Singer%20Name", requested.AbsoluteUri);
         }
 
+        static void FindsStyleLyricsWhenAppleMusicDurationDrifts()
+        {
+            var client = new LrcLibClient(uri =>
+                "[{\"trackName\":\"Style\",\"artistName\":\"Taylor Swift\",\"duration\":231,\"syncedLyrics\":\"[00:01.00]matched\"}]");
+
+            var lyrics = client.GetSyncedLyricsAsync(
+                    new TrackIdentity("Style", "Taylor Swift", TimeSpan.FromSeconds(198)))
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.Equal("[00:01.00]matched", lyrics);
+        }
+
         static void FallsBackFromAlbumScopedLrcLibSearch()
         {
             var requests = new List<Uri>();
             var client = new LrcLibClient(uri =>
             {
                 requests.Add(uri);
-                return requests.Count == 1
+                return requests.Count <= 2
                     ? "[]"
                     : "[{\"trackName\":\"Song Name\",\"artistName\":\"Singer Name\",\"syncedLyrics\":\"[00:01.00]fallback\"}]";
             });
@@ -805,8 +835,9 @@ namespace LyricHover.Tests
                 .GetResult();
 
             Assert.Equal("[00:01.00]fallback", lrc);
-            Assert.Equal("https://lrclib.net/api/search?track_name=Song%20Name&artist_name=Singer%20Name&album_name=Album%20Name", requests[0].AbsoluteUri);
-            Assert.Equal("https://lrclib.net/api/search?track_name=Song%20Name&artist_name=Singer%20Name", requests[1].AbsoluteUri);
+            Assert.Equal("https://lrclib.net/api/get?track_name=Song%20Name&artist_name=Singer%20Name&album_name=Album%20Name&duration=210", requests[0].AbsoluteUri);
+            Assert.Equal("https://lrclib.net/api/search?track_name=Song%20Name&artist_name=Singer%20Name&album_name=Album%20Name", requests[1].AbsoluteUri);
+            Assert.Equal("https://lrclib.net/api/search?track_name=Song%20Name&artist_name=Singer%20Name", requests[2].AbsoluteUri);
         }
 
         static void ReturnsEmptyLyricsWhenLrcLibReports404()
@@ -899,6 +930,36 @@ namespace LyricHover.Tests
 
             Assert.True(LyricsPackageParser.HasTranslation(package));
             Assert.True(package.Contains("[00:11.481]我的一天如此乏味"));
+        }
+
+        static void NetEaseWordTimingProbesLaterSafeCandidate()
+        {
+            var requestedIds = new List<string>();
+            var client = new NetEaseLyricsClient(uri =>
+            {
+                if (uri.AbsolutePath.EndsWith("/api/search/get/web", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "{\"result\":{\"songs\":[" +
+                        "{\"id\":1,\"name\":\"Song Name\",\"artists\":[{\"name\":\"Singer Name\"}],\"duration\":180000}," +
+                        "{\"id\":2,\"name\":\"Song Name\",\"artists\":[{\"name\":\"Singer Name\"}],\"duration\":190000}]}}";
+                }
+
+                var id = uri.Query.Contains("id=1", StringComparison.Ordinal) ? "1" : "2";
+                requestedIds.Add(id);
+                return id == "1"
+                    ? "{\"lrc\":{\"lyric\":\"[00:00.00]line only\"}}"
+                    : "{\"yrc\":{\"lyric\":\"[0,1000](0,500,0)word(500,500,0) timing\"}}";
+            }, true);
+
+            var package = client.GetSyncedLyricsAsync(
+                    new TrackIdentity("Song Name", "Singer Name", TimeSpan.FromSeconds(180)))
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.True(LyricsPackageParser.HasWordTiming(package));
+            Assert.Equal(2, requestedIds.Count);
+            Assert.Equal("1", requestedIds[0]);
+            Assert.Equal("2", requestedIds[1]);
         }
 
         static void UsesFallbackLyricsSourceWhenPrimarySourceIsEmpty()
@@ -1064,6 +1125,37 @@ namespace LyricHover.Tests
             Assert.True(requests[1].AbsoluteUri.Contains("musicu.fcg"));
             Assert.True(Uri.UnescapeDataString(requests[1].Query).Contains("\"songId\":103168363"));
             Assert.True(Uri.UnescapeDataString(requests[1].Query).Contains("\"trans\":1"));
+        }
+
+        static void QqWordTimingProbesLaterSafeCandidate()
+        {
+            var requestedIds = new List<string>();
+            var client = new QQMusicLyricsClient(uri =>
+            {
+                if (uri.AbsolutePath.EndsWith("/client_search_cp", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "{\"data\":{\"song\":{\"list\":[" +
+                        "{\"id\":1,\"title\":\"Song Name\",\"singer\":[{\"name\":\"Singer Name\"}],\"interval\":180}," +
+                        "{\"id\":2,\"title\":\"Song Name\",\"singer\":[{\"name\":\"Singer Name\"}],\"interval\":190}]}}}";
+                }
+
+                var query = Uri.UnescapeDataString(uri.Query);
+                var id = query.Contains("\"songId\":1", StringComparison.Ordinal) ? "1" : "2";
+                requestedIds.Add(id);
+                return id == "1"
+                    ? "{\"req_0\":{\"code\":0,\"data\":{\"lyric\":\"[00:00.00]line only\",\"trans\":\"\"}}}"
+                    : "{\"req_0\":{\"code\":0,\"data\":{\"lyric\":\"[ti:Song Name]\\n[ar:Singer Name]\\n[0,1000]word(0,500) timing(500,500)\",\"trans\":\"\"}}}";
+            }, true);
+
+            var package = client.GetSyncedLyricsAsync(
+                    new TrackIdentity("Song Name", "Singer Name", TimeSpan.FromSeconds(180)))
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.True(LyricsPackageParser.HasWordTiming(package));
+            Assert.Equal(2, requestedIds.Count);
+            Assert.Equal("1", requestedIds[0]);
+            Assert.Equal("2", requestedIds[1]);
         }
 
         static void QqKeepsPrimaryWhenLegacyFails()
@@ -1329,6 +1421,215 @@ namespace LyricHover.Tests
             Assert.True(settingsView.Contains("DockWordTrackingCheckBox"));
         }
 
+        static void IslandAppearanceSettingsNormalizeAndRoundTrip()
+        {
+            var legacy = JsonSerializer.Deserialize<OverlayPlacementSettings>("{\"SchemaVersion\":6,\"IslandWordTrackingEnabled\":true}");
+            legacy.Normalize();
+            Assert.Equal("Microsoft YaHei UI", legacy.IslandChineseFontFamily);
+            Assert.Equal("Segoe UI", legacy.IslandEnglishFontFamily);
+            Assert.Equal(OverlayPlacementSettings.DefaultIslandLyricsFontSize, legacy.IslandLyricsFontSize);
+            Assert.Equal("Microsoft YaHei UI", legacy.LyricDockChineseFontFamily);
+            Assert.Equal("Segoe UI", legacy.LyricDockEnglishFontFamily);
+            Assert.Equal(OverlayPlacementSettings.DefaultLyricDockLyricsFontSize, legacy.LyricDockLyricsFontSize);
+            Assert.Equal(OverlayPlacementSettings.DefaultIslandConcaveRadius, legacy.IslandConcaveRadius);
+            Assert.Equal(OverlayPlacementSettings.DefaultIslandConvexRadius, legacy.IslandConvexRadius);
+            Assert.Equal(0d, legacy.IslandConvexScreenEdgeDistance);
+            Assert.False(legacy.IslandTopCornersConvex);
+
+            var schemaSeven = JsonSerializer.Deserialize<OverlayPlacementSettings>(
+                "{\"SchemaVersion\":7,\"IslandFontScale\":1.14,\"IslandLyricsFontSize\":17.1}");
+            schemaSeven.Normalize();
+            Assert.True(Math.Abs(1d - schemaSeven.IslandFontScale) < 0.000001);
+            Assert.True(Math.Abs(17.1d - schemaSeven.IslandLyricsFontSize) < 0.000001);
+
+            var configured = new OverlayPlacementSettings
+            {
+                IslandChineseFontFamily = "  Example CJK  ",
+                IslandEnglishFontFamily = "Example Latin",
+                LyricDockChineseFontFamily = "  Dock CJK  ",
+                LyricDockEnglishFontFamily = "Dock Latin",
+                LyricDockLyricsFontSize = 99,
+                IslandFontScale = 3,
+                IslandConcaveRadius = -1,
+                IslandConvexRadius = 50,
+                IslandConvexScreenEdgeDistance = 130,
+                IslandTopCornersConvex = true
+            };
+            configured.Normalize();
+            Assert.Equal("Example CJK", configured.IslandChineseFontFamily);
+            Assert.Equal("Dock CJK", configured.LyricDockChineseFontFamily);
+            Assert.Equal(OverlayPlacementSettings.MaxLyricDockLyricsFontSize, configured.LyricDockLyricsFontSize);
+            Assert.Equal(48d, configured.IslandLyricsFontSize);
+            Assert.Equal(0d, configured.IslandConcaveRadius);
+            Assert.Equal(50d, configured.IslandConvexRadius);
+            Assert.Equal(120d, configured.IslandConvexScreenEdgeDistance);
+            var roundTrip = configured.DeepClone();
+            Assert.Equal("Example Latin", roundTrip.IslandEnglishFontFamily);
+            Assert.Equal("Dock Latin", roundTrip.LyricDockEnglishFontFamily);
+            Assert.Equal(50d, roundTrip.IslandConvexRadius);
+            Assert.Equal(120d, roundTrip.IslandConvexScreenEdgeDistance);
+            Assert.True(roundTrip.IslandTopCornersConvex);
+        }
+
+        static void ChineseFontSelectorsFilterForCjkGlyphs()
+        {
+            var families = ChineseFontFamilyCatalog.GetInstalledFamilyNames(true);
+            Assert.True(families.Count > 0);
+            Assert.True(families.Contains("Microsoft YaHei UI", StringComparer.OrdinalIgnoreCase));
+            Assert.False(families.Contains("Arial", StringComparer.OrdinalIgnoreCase));
+            var localizedFamilies = ChineseFontFamilyCatalog.GetInstalledFamilies(true, true);
+            Assert.Equal(
+                "微软雅黑 UI",
+                localizedFamilies.First(option => string.Equals(
+                    option.SourceName,
+                    "Microsoft YaHei UI",
+                    StringComparison.OrdinalIgnoreCase)).DisplayName);
+
+            var settingsView = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "PlacementSettingsWindow.xaml"));
+            Assert.True(settingsView.Contains("DockChineseFontComboBox"));
+            Assert.True(settingsView.Contains("DockEnglishFontComboBox"));
+            Assert.True(settingsView.Contains("DockFontSizeSlider"));
+            Assert.True(settingsView.Contains("Text=\"{Binding DisplayName}\""));
+            Assert.True(settingsView.Contains("SelectedValuePath=\"SourceName\""));
+            Assert.Equal(4, CountOccurrences(settingsView, "Tag=\"FontFamilySelector\""));
+            Assert.True(settingsView.Contains(
+                "Text=\"{Binding SelectedItem.DisplayName, RelativeSource={RelativeSource TemplatedParent}}\""));
+            Assert.True(settingsView.Contains(
+                "FontFamily=\"{Binding SelectedItem.SourceName, RelativeSource={RelativeSource TemplatedParent}}\""));
+            Assert.True(settingsView.Contains("<Trigger Property=\"Tag\" Value=\"FontFamilySelector\">"));
+            var mainWindow = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "MainWindow.xaml.cs"));
+            var dockWindow = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "LyricDock", "LyricDockWindow.cs"));
+            Assert.True(mainWindow.Contains("LyricDockController.ApplyTypography("));
+            Assert.True(dockWindow.Contains("primary.ChineseFontFamily = chineseFontFamily"));
+            Assert.True(dockWindow.Contains("IslandAppearanceRendering.SetMixedText("));
+        }
+
+        static void SettingsFixesPreserveDpiClarityAndDeliberateActions()
+        {
+            var root = GetSolutionRoot();
+            var project = File.ReadAllText(Path.Combine(root, "LyricHover.App", "LyricHover.App.csproj"));
+            var manifest = File.ReadAllText(Path.Combine(root, "LyricHover.App", "app.manifest"));
+            var settings = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml"));
+            var settingsCode = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml.cs"));
+            var confirmation = File.ReadAllText(Path.Combine(root, "LyricHover.App", "SupporterBadgeImprintConfirmationWindow.xaml"));
+            var confirmationCode = File.ReadAllText(Path.Combine(root, "LyricHover.App", "SupporterBadgeImprintConfirmationWindow.xaml.cs"));
+
+            Assert.True(project.Contains("<ApplicationManifest>app.manifest</ApplicationManifest>"));
+            Assert.True(manifest.Contains(">PerMonitorV2,PerMonitor</dpiAwareness>"));
+            Assert.True(settings.Contains("UseLayoutRounding=\"True\""));
+            Assert.True(settings.Contains("TextOptions.TextRenderingMode=\"ClearType\""));
+            Assert.True(settings.Contains("Margin=\"16,0,16,12\""));
+            Assert.False(settings.Contains("Margin=\"16,10,16,12\""));
+            Assert.True(settingsCode.Contains("Math.Max(68, Math.Ceiling(size * 2.06 + 20))"));
+            Assert.True(settings.Contains("Content=\"刷新歌词\""));
+            var refreshButtonContent = settings.IndexOf("Content=\"刷新歌词\"", StringComparison.Ordinal);
+            var refreshButtonStart = settings.LastIndexOf("<Button", refreshButtonContent, StringComparison.Ordinal);
+            var refreshButtonEnd = settings.IndexOf("/>", refreshButtonContent, StringComparison.Ordinal);
+            Assert.True(refreshButtonContent >= 0 && refreshButtonStart >= 0 && refreshButtonEnd > refreshButtonStart);
+            var refreshButton = settings.Substring(refreshButtonStart, refreshButtonEnd - refreshButtonStart);
+            Assert.True(refreshButton.Contains("Grid.Column=\"3\""));
+            Assert.True(refreshButton.Contains("HorizontalAlignment=\"Right\""));
+            Assert.True(refreshButton.Contains("Width=\"118\""));
+            Assert.False(settings.Contains("Content=\"强制刷新当前歌词\""));
+            Assert.False(settings.Contains("IsDefault=\"True\""));
+            Assert.True(confirmation.Contains("SupporterConfirmationBackgroundBrush"));
+            Assert.True(confirmationCode.Contains("ApplyOpaqueWindowBackground"));
+        }
+
+        static void IslandAppearanceGeometryKeepsCapsuleBounds()
+        {
+            var helper = typeof(OverlayPlacementSettings).Assembly.GetType("LyricHover.App.IslandAppearanceRendering");
+            var create = helper?.GetMethod("CreateGeometry", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+            Assert.True(create != null);
+            var settings = new OverlayPlacementSettings { IslandTopCornersConvex = true, IslandConvexRadius = 38 };
+            var geometry = (System.Windows.Media.Geometry)create.Invoke(null, new object[] { 340d, 76d, settings });
+            Assert.True(!geometry.FillContains(new System.Windows.Point(0, 0)));
+            Assert.True(geometry.FillContains(new System.Windows.Point(170, 38)));
+            Assert.Equal(340d, geometry.Bounds.Width);
+            Assert.Equal(76d, geometry.Bounds.Height);
+
+            settings.IslandConvexScreenEdgeDistance = 18;
+            geometry = (System.Windows.Media.Geometry)create.Invoke(null, new object[] { 340d, 76d, settings });
+            Assert.Equal(0d, geometry.Bounds.Top);
+            Assert.Equal(76d, geometry.Bounds.Height);
+            Assert.True(geometry.FillContains(new System.Windows.Point(170, 38)));
+
+            var maximumConvex = helper.GetMethod("GetMaximumConvexRadius", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+            var maximumConcave = helper.GetMethod("GetMaximumConcaveRadius", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+            var edgeOffset = helper.GetMethod("GetScreenEdgeOffset", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+            Assert.Equal(38d, (double)maximumConvex.Invoke(null, new object[] { 340d, 76d, true }));
+            Assert.Equal(33d, (double)maximumConcave.Invoke(null, new object[] { 340d, 76d, 38d }));
+            Assert.Equal(18d, (double)edgeOffset.Invoke(null, new object[] { settings }));
+            settings.IslandTopCornersConvex = false;
+            Assert.Equal(0d, (double)edgeOffset.Invoke(null, new object[] { settings }));
+
+            var defaultGeometry = (System.Windows.Media.Geometry)create.Invoke(null, new object[]
+            {
+                340d,
+                76d,
+                new OverlayPlacementSettings { IslandConvexRadius = 19, IslandTopCornersConvex = false }
+            });
+            Assert.False(defaultGeometry.FillContains(new System.Windows.Point(31, 70)));
+
+            var settingsView = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "PlacementSettingsWindow.xaml"));
+            Assert.True(settingsView.Contains("x:Name=\"IslandConcaveRadiusLabel\""));
+            Assert.True(settingsView.Contains("TextAlignment=\"Center\""));
+            Assert.True(settingsView.Contains("<ColumnDefinition Width=\"88\" />"));
+            Assert.True(settingsView.Contains("x:Name=\"ConvexTopCornersRadioButton\""));
+            Assert.False(settingsView.Contains("胶囊"));
+            var settingsCode = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "PlacementSettingsWindow.xaml.cs"));
+            Assert.True(settingsCode.Contains("IslandAppearanceRendering.GetMaximumConvexRadius(previewWidth, previewHeight, isConvex)"));
+            Assert.True(settingsCode.Contains("IslandAppearanceRendering.GetMaximumConcaveRadius(previewWidth, previewHeight, IslandConvexRadiusSlider.Maximum)"));
+            Assert.True(settingsCode.Contains("IslandAppearancePreviewContent.Height = previewHeight"));
+            Assert.True(settingsCode.Contains("IslandAppearancePreviewContent.RenderTransform = new TranslateTransform(0, gap)"));
+            Assert.True(settingsView.Contains("Text=\"Dreaming of home, dear old home\""));
+            Assert.True(settingsView.Contains("Text=\"梦回故乡，亲爱的故乡\""));
+            Assert.True(settingsCode.Contains("SetMixedText(IslandAppearancePreviewPrimary, \"Dreaming of home, dear old home\""));
+            Assert.True(settingsCode.Contains("SetMixedText(IslandAppearancePreviewSecondary, \"梦回故乡，亲爱的故乡\""));
+            Assert.True(settingsCode.Contains("settings.IslandTopCornersConvex = islandTopCornersConvexMode"));
+            Assert.True(settingsCode.Contains("TopCornerModeRadioButton_Checked"));
+            Assert.True(settingsCode.Contains("ApplyCurrentSettings();"));
+
+            var originalPreference = UiLanguageService.Preference;
+            try
+            {
+                UiLanguageService.SetPreference(AppLanguagePreference.SimplifiedChinese);
+                Assert.Equal("凸角", UiLanguageService.Translate("凸角"));
+                UiLanguageService.SetPreference(AppLanguagePreference.TraditionalChinese);
+                Assert.Equal("凸角", UiLanguageService.Translate("凸角"));
+                UiLanguageService.SetPreference(AppLanguagePreference.English);
+                Assert.Equal("Convex", UiLanguageService.Translate("凸角"));
+                UiLanguageService.SetPreference(AppLanguagePreference.Japanese);
+                Assert.Equal("凸型", UiLanguageService.Translate("凸角"));
+            }
+            finally
+            {
+                UiLanguageService.SetPreference(originalPreference);
+            }
+        }
+
+        static void IslandMixedScriptTextKeepsFallbackRuns()
+        {
+            var helper = typeof(OverlayPlacementSettings).Assembly.GetType("LyricHover.App.IslandAppearanceRendering");
+            var apply = helper?.GetMethod("SetMixedText", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+            Assert.True(apply != null);
+            var text = new System.Windows.Controls.TextBlock();
+            const string original = "中，A-1あ日🙂";
+            apply.Invoke(null, new object[]
+            {
+                text,
+                original,
+                new System.Windows.Media.FontFamily("Microsoft YaHei UI"),
+                new System.Windows.Media.FontFamily("Segoe UI")
+            });
+            var runs = text.Inlines.OfType<System.Windows.Documents.Run>().ToList();
+            Assert.Equal(original, string.Concat(runs.Select(run => run.Text)));
+            Assert.True(runs.Count >= 3);
+            Assert.Equal("Microsoft YaHei UI", runs[0].FontFamily.Source);
+            Assert.Equal("Segoe UI", runs[1].FontFamily.Source);
+            Assert.Equal(System.Windows.SystemFonts.MessageFontFamily.Source, runs[2].FontFamily.Source);
+        }
+
         static void WordFollowingProductNameIsLocalizedAcrossSupportedLanguages()
         {
             var originalPreference = UiLanguageService.Preference;
@@ -1366,7 +1667,7 @@ namespace LyricHover.Tests
 
             settings.Normalize();
 
-            Assert.Equal(6, settings.SchemaVersion);
+            Assert.Equal(9, settings.SchemaVersion);
             Assert.Equal(LyricsSourcePreference.LrcLib, settings.LyricsSource);
             Assert.False(settings.LyricsSourcePriority.Contains(retiredSource));
             Assert.Equal(3, settings.LyricsSourcePriority.Count);
@@ -1520,6 +1821,108 @@ namespace LyricHover.Tests
                 var restarted = new SettingsRuntimeStateCoordinator(store, store.Load());
 
                 Assert.True(restarted.CreateEditSnapshot().IslandEnabled);
+            });
+        }
+
+        static void IslandTextRenderingSnapsToPhysicalPixels()
+        {
+            var root = GetSolutionRoot();
+            var mainXaml = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml"));
+            var mainCode = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
+            var lyricsCode = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Modules", "LyricsModuleView.xaml.cs"));
+            var wordTrackingCode = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Modules", "WordTrackingTextBlock.cs"));
+
+            Assert.True(mainXaml.Contains("UseLayoutRounding=\"True\""));
+            Assert.True(mainXaml.Contains("TextOptions.TextFormattingMode=\"Display\""));
+            Assert.True(mainXaml.Contains("TextOptions.TextRenderingMode=\"Grayscale\""));
+            Assert.True(mainXaml.Contains("TextOptions.TextHintingMode=\"Fixed\""));
+            Assert.True(mainXaml.Contains("<modules:IslandModuleHost.RenderTransform>"));
+            Assert.False(mainXaml.Contains("<TranslateTransform Y=\"-2.5\""));
+            Assert.True(mainCode.Contains("UpdateIslandTextPixelAlignment"));
+            Assert.True(mainCode.Contains("DpiChanged +="));
+            Assert.True(lyricsCode.Contains("SnapToDevicePixel(placement.Left, dpiScale)"));
+            Assert.True(lyricsCode.Contains("SnapToDevicePixel(-placement.Overflow, dpiScale)"));
+            Assert.True(wordTrackingCode.Contains("TextRenderingMode.Grayscale"));
+
+            var helper = typeof(OverlayPlacementSettings).Assembly.GetType("LyricHover.App.IslandAppearanceRendering");
+            var snap = helper?.GetMethod("SnapToDevicePixel", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+            Assert.True(snap != null);
+            Assert.Equal(-3d, (double)snap.Invoke(null, new object[] { -2.5d, 1d }));
+            Assert.True(Math.Abs(-2.4d - (double)snap.Invoke(null, new object[] { -2.5d, 1.25d })) < 0.000001);
+            Assert.True(Math.Abs(-2.5d - (double)snap.Invoke(null, new object[] { -2.5d, 2d })) < 0.000001);
+        }
+
+        static void IslandLyricsReserveDescenderClearance()
+        {
+            var root = GetSolutionRoot();
+            var xaml = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Modules", "LyricsModuleView.xaml"));
+            var source = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Modules", "LyricsModuleView.xaml.cs"));
+
+            Assert.True(xaml.Contains("x:Name=\"PrimaryLyricClip\" Height=\"21\""));
+            Assert.True(xaml.Contains("x:Name=\"IncomingPrimaryLyricClip\" Height=\"21\""));
+            Assert.True(xaml.Contains("x:Name=\"SecondaryLyricClip\" Height=\"15\""));
+            Assert.True(xaml.Contains("x:Name=\"IncomingSecondaryLyricClip\" Height=\"15\""));
+            Assert.True(source.Contains("primaryClipHeight = Math.Ceiling(lyricFontSize * 1.34)"));
+            Assert.True(source.Contains("secondaryClipHeight = Math.Ceiling(lyricFontSize * 0.95)"));
+            Assert.True(source.Contains("primaryClipHeight + secondaryClipHeight + 17"));
+            Assert.False(source.Contains("PrimaryLyricClip.Height = IncomingPrimaryLyricClip.Height = primaryHeight"));
+        }
+
+        static void IslandSecondaryLyricsStayReadableAtSmallSizes()
+        {
+            var root = GetSolutionRoot();
+            var xaml = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Modules", "LyricsModuleView.xaml"));
+            var source = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Modules", "LyricsModuleView.xaml.cs"));
+            var settingsXaml = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml"));
+            var settingsSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml.cs"));
+
+            Assert.Equal(2, CountOccurrences(xaml, "FontSize=\"11.25\""));
+            Assert.Equal(2, CountOccurrences(xaml, "Foreground=\"#ECFFFFFF\""));
+            Assert.True(source.Contains("text.FontSize = lyricFontSize * 0.75"));
+            Assert.True(settingsXaml.Contains("x:Name=\"IslandAppearancePreviewSecondary\""));
+            Assert.True(settingsXaml.Contains("FontSize=\"11.25\" Foreground=\"#ECFFFFFF\""));
+            Assert.True(settingsSource.Contains("DefaultIslandLyricsFontSize * 0.75 * scale"));
+        }
+
+        static void OverflowingIslandLyricsUseShortEdgeFades()
+        {
+            var root = GetSolutionRoot();
+            var source = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Modules", "LyricsModuleView.xaml.cs"));
+            var helper = typeof(OverlayPlacementSettings).Assembly.GetType("LyricHover.App.IslandAppearanceRendering");
+            var createMask = helper?.GetMethod(
+                "CreateHorizontalOverflowFadeMask",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+
+            Assert.True(createMask != null);
+            var mask = (System.Windows.Media.LinearGradientBrush)createMask.Invoke(null, new object[] { 520d, 10d });
+            Assert.Equal(4, mask.GradientStops.Count);
+            Assert.True(Math.Abs(mask.GradientStops[1].Offset - (10d / 520d)) < 0.000001);
+            Assert.True(Math.Abs(mask.GradientStops[2].Offset - (510d / 520d)) < 0.000001);
+            Assert.Equal((byte)0, mask.GradientStops[0].Color.A);
+            Assert.Equal((byte)255, mask.GradientStops[1].Color.A);
+            Assert.Equal((byte)255, mask.GradientStops[2].Color.A);
+            Assert.Equal((byte)0, mask.GradientStops[3].Color.A);
+            Assert.True(source.Contains("clip.OpacityMask = placement.RequiresMarquee"));
+            Assert.True(source.Contains("CreateHorizontalOverflowFadeMask(availableWidth, OverflowFadeWidth)"));
+        }
+
+        static void IslandTopCornerModeAppliesAndPersists()
+        {
+            WithTemporarySettingsStore((store, path) =>
+            {
+                store.Save(new OverlayPlacementSettings { IslandTopCornersConvex = true });
+                var coordinator = new SettingsRuntimeStateCoordinator(store, store.Load());
+                var draft = coordinator.CreateEditSnapshot();
+                draft.IslandTopCornersConvex = false;
+                var synchronized = false;
+                coordinator.ApplyDraft(draft, (previous, runtime) =>
+                {
+                    synchronized = !runtime.IslandTopCornersConvex;
+                });
+
+                var restarted = new SettingsRuntimeStateCoordinator(store, store.Load());
+                Assert.True(synchronized);
+                Assert.False(restarted.CreateEditSnapshot().IslandTopCornersConvex);
             });
         }
 
@@ -1751,7 +2154,7 @@ namespace LyricHover.Tests
             Assert.True(albumArt.Contains("Width=\"60\""));
             Assert.True(albumArt.Contains("RectangleGeometry Rect=\"0,0,42,42\" RadiusX=\"4\" RadiusY=\"4\""));
             Assert.True(albumArt.Contains("VerticalAlignment=\"Center\""));
-            Assert.True(mainWindow.Contains("TranslateTransform Y=\"-2.5\""));
+            Assert.True(mainWindow.Contains("<modules:IslandModuleHost.RenderTransform>"));
         }
 
         static void TemporaryInteractionExpandsExpandableMode()
@@ -2011,7 +2414,7 @@ namespace LyricHover.Tests
             Assert.False(supportPanel.Contains("x:Key=\"SupportActionButtonStyle\""));
             Assert.Equal(4, CountOccurrences(supportPanel, "Style=\"{StaticResource TextLinkButtonStyle}\""));
             Assert.True(xaml.Contains("<Setter Property=\"Foreground\" Value=\"#FF2F91FF\" />"));
-            Assert.False(xaml.Contains("<Setter Property=\"Opacity\" Value=\"0.78\" />"));
+            Assert.True(xaml.Contains("<Setter Property=\"Opacity\" Value=\"0.78\" />"));
             Assert.Equal(1, CountOccurrences(supportPanel, "Click=\"SupportStoreReviewButton_Click\""));
             Assert.Equal(1, CountOccurrences(supportPanel, "Click=\"SupportShareButton_Click\""));
             Assert.Equal(1, CountOccurrences(supportPanel, "Click=\"OpenGitHubAboutRow_Click\""));
@@ -2492,6 +2895,12 @@ namespace LyricHover.Tests
             Assert.Equal("v2.0.24", ProductVersion.FormatDisplayVersion("2.0.24"));
             Assert.Equal("v2.0.24 Beta", ProductVersion.FormatDisplayVersion("2.0.24-beta+build.17"));
             Assert.True(ProductVersion.DisplayVersionNumber.StartsWith("v", StringComparison.Ordinal));
+            var props = File.ReadAllText(Path.Combine(GetSolutionRoot(), "Directory.Build.props"));
+            var versionMatch = System.Text.RegularExpressions.Regex.Match(
+                props,
+                "<VersionPrefix>(?<version>\\d+\\.\\d+\\.\\d+)</VersionPrefix>");
+            Assert.True(versionMatch.Success);
+            Assert.Equal("v" + versionMatch.Groups["version"].Value, ProductVersion.DisplayVersionNumber);
             Assert.Equal("Beta", ProductVersion.DisplayVersionChannel);
         }
 
@@ -2505,12 +2914,15 @@ namespace LyricHover.Tests
 
             var versionMatch = System.Text.RegularExpressions.Regex.Match(
                 props,
-                "<VersionPrefix>(?<major>\\d+)\\.\\d+\\.\\d+</VersionPrefix>");
+                "<VersionPrefix>(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)</VersionPrefix>");
             Assert.True(versionMatch.Success);
-            // The major stays on the V3 baseline. The patch digit is bumped by the publish
-            // script before this suite runs during candidate generation, so it must not be pinned.
+            // The major and minor stay on the V3.3 baseline. The patch digit is bumped by the
+            // publish script before this suite runs during candidate generation, so it is dynamic.
             Assert.Equal("3", versionMatch.Groups["major"].Value);
-            Assert.True(props.Contains("<VersionSuffix>Beta</VersionSuffix>"));
+            Assert.Equal("3", versionMatch.Groups["minor"].Value);
+            Assert.True(int.Parse(versionMatch.Groups["patch"].Value) >= 0);
+            Assert.True(props.Contains("<VersionSuffix>beta</VersionSuffix>"));
+            Assert.True(props.Contains("<Version>$(VersionPrefix)-$(VersionSuffix)</Version>"));
             Assert.True(props.Contains("<AssemblyVersion>$(VersionPrefix).0</AssemblyVersion>"));
             Assert.True(props.Contains("<FileVersion>$(VersionPrefix).0</FileVersion>"));
             Assert.False(appProject.Contains("<Version>"));
@@ -2603,7 +3015,7 @@ namespace LyricHover.Tests
             var versionMatch = System.Text.RegularExpressions.Regex.Match(
                 props,
                 "<VersionPrefix>(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)</VersionPrefix>");
-            var labelMatch = System.Text.RegularExpressions.Regex.Match(props, "<VersionSuffix>(?<label>[^<]+)</VersionSuffix>");
+            var labelMatch = System.Text.RegularExpressions.Regex.Match(props, "<VersionSuffix>(?<label>[^<]*)</VersionSuffix>");
             Assert.True(versionMatch.Success);
             Assert.True(labelMatch.Success);
             var major = int.Parse(versionMatch.Groups["major"].Value);
@@ -2926,10 +3338,15 @@ namespace LyricHover.Tests
         {
             var source = File.ReadAllText(Path.Combine(
                 GetSolutionRoot(), "LyricHover.App", "MainWindow.xaml.cs"));
+            var moduleHostSource = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "LyricHover.App", "Modules", "IslandModuleHost.xaml.cs"));
+            var dividerSource = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "LyricHover.App", "Modules", "DividerModuleView.xaml.cs"));
 
             Assert.True(source.Contains("bool forceSizeAnimation = false"));
             Assert.True(source.Contains("var animateSize = forceSizeAnimation ||"));
-            Assert.True(source.Contains("ApplyInteractionState(IslandInteractionState.Editing, payload.NewType.HasValue)"));
+            Assert.True(source.Contains("QueueModuleDropCompletion(layoutChanged, forceSizeAnimation, hadSizePreview)"));
+            Assert.True(source.Contains("ApplyInteractionState(IslandInteractionState.Editing, forceSizeAnimation)"));
             Assert.True(source.Contains("ApplyInteractionState(IslandInteractionState.Editing, true)"));
             Assert.True(source.Contains("CompositionTarget.Rendering += islandSizeAnimationFrameHandler"));
             Assert.True(source.Contains("int durationMilliseconds = 360"));
@@ -2939,6 +3356,10 @@ namespace LyricHover.Tests
             Assert.True(source.Contains("committedModuleDrops.Reset"));
             Assert.True(source.Contains("PreviewModuleDragSize"));
             Assert.True(source.Contains("ClearModuleDragSizePreview"));
+            Assert.True(moduleHostSource.Contains("CanUpdateLayoutInPlace(profile.Modules, existingModules)"));
+            Assert.True(moduleHostSource.Contains("private bool CanUpdateLayoutInPlace("));
+            Assert.True(moduleHostSource.Contains("divider.ApplySettings(module)"));
+            Assert.True(dividerSource.Contains("public void ApplySettings(IslandModuleInstance module)"));
         }
 
         static void ExpandableIslandAnimatesMeasuredSize()
@@ -3056,7 +3477,7 @@ namespace LyricHover.Tests
 
             Assert.True(hostSource.Contains("playbackInteractionEnabled && !LayoutEditingEnabled"));
             Assert.True(windowSource.Contains("IsInteractiveMouseSource"));
-            Assert.True(controlsSource.Contains("PlayPauseButton.IsEnabled = session != null"));
+            Assert.True(controlsSource.Contains("PlayPauseButton.IsEnabled = hasSession || isTutorialControlPractice"));
             Assert.True(controlsSource.Contains("PlayPauseButton.IsHitTestVisible = value"));
             Assert.True(hostSource.Contains("controls.SetInteractionEnabled(playbackInteractionEnabled && !LayoutEditingEnabled)"));
             Assert.True(controlsSource.Contains("PlayPauseRequested?.Invoke(this, EventArgs.Empty)"));
@@ -3075,6 +3496,23 @@ namespace LyricHover.Tests
             Assert.True(playPauseButton.IsHitTestVisible);
             host.SetPlaybackInteractionEnabled(false);
             Assert.False(playPauseButton.IsHitTestVisible);
+        }
+
+        static void MouseSourceTraversalSupportsInlineTextElements()
+        {
+            var mainWindowType = typeof(OverlayPlacementSettings).Assembly.GetType("LyricHover.App.MainWindow");
+            var isInteractive = mainWindowType?.GetMethod(
+                "IsInteractiveMouseSource",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            Assert.True(isInteractive != null);
+
+            var text = new System.Windows.Controls.TextBlock();
+            var run = new System.Windows.Documents.Run("lyrics");
+            text.Inlines.Add(run);
+            Assert.False((bool)isInteractive.Invoke(null, new object[] { run }));
+
+            var button = new System.Windows.Controls.Button { Content = text };
+            Assert.True((bool)isInteractive.Invoke(null, new object[] { run }));
         }
 
         static void TemporaryInteractionRefreshIsLimitedToLyricsModules()
@@ -4277,9 +4715,9 @@ namespace LyricHover.Tests
             Assert.True(xaml.Contains("Width=\"4\""));
             Assert.True(xaml.Contains("To=\"0.88\""));
             Assert.True(xaml.Contains("Duration=\"0:0:0.35\""));
-            Assert.True(xaml.Contains("<Setter Property=\"Height\" Value=\"38\" />"));
+            Assert.True(xaml.Contains("<Setter Property=\"Height\" Value=\"36\" />"));
             Assert.True(xaml.Contains("<Setter Property=\"FontSize\" Value=\"14.5\" />"));
-            Assert.True(xaml.Contains("<Setter Property=\"Opacity\" Value=\"0.72\" />"));
+            Assert.True(xaml.Contains("<Setter Property=\"Opacity\" Value=\"0.78\" />"));
             Assert.True(xaml.Contains("<Setter Property=\"Padding\" Value=\"24\" />"));
             Assert.False(xaml.Contains("Padding=\"32,20\""));
             Assert.False(xaml.Contains("Padding=\"40\""));
@@ -4477,6 +4915,33 @@ namespace LyricHover.Tests
             Assert.True(mainSource.Contains("tutorialFlow.ControlClicked(IsTemporaryInteractionHeld())"));
             Assert.True(mainSource.Contains("可暂时关闭鼠标避让来点击控制按钮"));
             Assert.False(mainSource.Contains("IsTutorialTemporaryInteractionHeld"));
+        }
+
+        static void TutorialPlaybackControlStaysClickableWithoutPlayer()
+        {
+            var controls = new LyricHover.App.Modules.PlaybackControlsModuleView();
+            var playPauseButton = System.Windows.LogicalTreeHelper.FindLogicalNode(controls, "PlayPauseButton")
+                as System.Windows.Controls.Button;
+            var update = controls.GetType().GetMethod("Update");
+
+            Assert.True(playPauseButton != null);
+            Assert.True(update != null);
+            var ordinaryState = Activator.CreateInstance(update.GetParameters()[0].ParameterType);
+            update.Invoke(controls, new[] { ordinaryState });
+            Assert.False(playPauseButton.IsEnabled);
+
+            var tutorialState = Activator.CreateInstance(update.GetParameters()[0].ParameterType);
+            tutorialState.GetType().GetProperty("IsTutorialControlPractice").SetValue(tutorialState, true);
+            update.Invoke(controls, new[] { tutorialState });
+            Assert.True(playPauseButton.IsEnabled);
+
+            update.Invoke(controls, new[] { ordinaryState });
+            Assert.False(playPauseButton.IsEnabled);
+
+            var root = GetSolutionRoot();
+            var mainSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
+            Assert.True(mainSource.Contains(
+                "islandState.IsTutorialControlPractice = tutorialFlow.Step == TutorialStep.AwaitingControlClick"));
         }
 
         static void FirstLaunchTutorialIsPersistedAndCanBeReplayed()
@@ -4766,7 +5231,8 @@ namespace LyricHover.Tests
             Assert.False(frame.Contains("Width = width"));
             Assert.False(frame.Contains("Height = height"));
             Assert.False(main.Contains("Geometry.Parse(IslandGeometryBuilder.BuildTopPath(width, height))"));
-            Assert.True(main.Contains("new StreamGeometry()"));
+            Assert.True(main.Contains("IslandAppearanceRendering.CreateGeometry(width, height, placementSettings)"));
+            Assert.True(main.Contains("IslandShell.Clip = geometry"));
             Assert.True(main.Contains("if (!islandSizeAnimationActive)"));
             Assert.True(xaml.Contains("HorizontalContentAlignment=\"Stretch\""));
             Assert.True(xaml.Contains("x:Name=\"IslandShellTranslate\""));
@@ -4825,6 +5291,43 @@ namespace LyricHover.Tests
                     Directory.Delete(root, true);
                 }
             }
+        }
+
+        static void LockedSettingsFileKeepsCommittedStateAndCanBeRetried()
+        {
+            WithTemporarySettingsStore((store, path) =>
+            {
+                store.Save(new OverlayPlacementSettings { IslandEnabled = true, LyricDockEnabled = false });
+                var original = File.ReadAllText(path);
+                var coordinator = new SettingsRuntimeStateCoordinator(store, store.Load());
+                var draft = coordinator.CreateEditSnapshot();
+                draft.LyricDockEnabled = true;
+                var failed = false;
+
+                using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
+                {
+                    try
+                    {
+                        coordinator.ApplyDraft(draft, (previous, current) => { });
+                    }
+                    catch (IOException)
+                    {
+                        failed = true;
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        failed = true;
+                    }
+                }
+
+                Assert.True(failed);
+                Assert.False(coordinator.CreateEditSnapshot().LyricDockEnabled);
+                Assert.Equal(original, File.ReadAllText(path));
+                Assert.Equal(0, Directory.GetFiles(Path.GetDirectoryName(path), "*.tmp").Length);
+
+                coordinator.ApplyDraft(draft, (previous, current) => { });
+                Assert.True(store.Load().LyricDockEnabled);
+            });
         }
 
         static void TracksReferenceChangesWithoutTreatingEqualContentAsTheSameObject()
@@ -5263,6 +5766,30 @@ namespace LyricHover.Tests
             Assert.False(LyricsPackageParser.HasTranslation(package));
         }
 
+        static void RejectsWrongTrackWordTimingBeforeFallback()
+        {
+            const string wrongVersion =
+                "[ti:Style (Taylor's Version)]\n" +
+                "[ar:Taylor Swift]\n" +
+                "[al:1989 (Taylor's Version)]\n" +
+                "[0,1000]wrong(0,500) version(500,500)";
+            const string original =
+                "[ti:Style]\n" +
+                "[ar:Taylor Swift]\n" +
+                "[al:1989]\n" +
+                "[00:00.00]correct original lyrics";
+            var track = new TrackIdentity("Style", "Taylor Swift", TimeSpan.FromSeconds(198), "1989");
+            var client = new WordTimedPreferredLyricsClient(
+                new ILyricsClient[] { new FakeLyricsClient(wrongVersion) },
+                new FakeLyricsClient(original));
+
+            var package = client.GetSyncedLyricsAsync(track).GetAwaiter().GetResult();
+
+            Assert.Equal(original, package);
+            Assert.False(LyricsPackageParser.HasWordTiming(package));
+            Assert.True(LyricsPackageValidator.TryAccept(track, package, out _));
+        }
+
         static void RejectsTruncatedCachedWordTiming()
         {
             var truncated = LyricsPackageParser.CreatePackage(
@@ -5613,7 +6140,7 @@ namespace LyricHover.Tests
         static void TaskbarSettingsSchemaDefaultsToDisabled()
         {
             var source = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "OverlayPlacementSettings.cs"));
-            Assert.True(source.Contains("SchemaVersion { get; set; } = 6"));
+            Assert.True(source.Contains("SchemaVersion { get; set; } = 9"));
             Assert.True(source.Contains("LyricDockEnabled { get; set; }"));
             var settingsView = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "PlacementSettingsWindow.xaml"));
             Assert.True(settingsView.Contains("LyricDockEnabledCheckBox"));
@@ -5623,7 +6150,7 @@ namespace LyricHover.Tests
         {
             var source = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "OverlayPlacementSettings.cs"));
             Assert.True(source.Contains("public bool LyricDockEnabled { get; set; }"));
-            Assert.True(source.Contains("SchemaVersion = 6"));
+            Assert.True(source.Contains("SchemaVersion = 9"));
             Assert.True(source.Contains("originalSchemaVersion"));
             Assert.False(source.Contains("LyricDockEnabled { get; set; } = true"));
         }
@@ -6347,6 +6874,7 @@ namespace LyricHover.Tests
         public void Hide() { IsVisible = false; }
         public void Present(LyricsPresentationSnapshot snapshot) { LastSnapshot = snapshot; }
         public void Place(LyricDockPlacement placement, double width) { PlaceCalls++; LastPlacement = placement; LastWidth = width; }
+        public void ApplyTypography(string chineseFontFamily, string englishFontFamily, double fontSize) { }
         public void RaiseSettingsRequested() { SettingsRequested?.Invoke(this, EventArgs.Empty); }
     }
 

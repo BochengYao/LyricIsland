@@ -8,6 +8,7 @@ namespace LyricHover.App.Modules
     {
         public MediaSessionSnapshot Session { get; set; }
         public MediaPlaybackStatus? PendingPlaybackStatus { get; set; }
+        public bool IsTutorialControlPractice { get; set; }
         public string PrimaryLyric { get; set; } = string.Empty;
         public string PrimaryAccent { get; set; } = string.Empty;
         public string SecondaryLyric { get; set; } = string.Empty;
