@@ -180,7 +180,7 @@ namespace LyricHover.App
             ["按下{0}可暂时关闭鼠标避让来点击控制按钮"] = new[] { "按下{0}可暂时关闭鼠标避让来点击控制按钮", "按下 {0} 可暫時關閉滑鼠避讓並點擊控制按鈕", "Hold {0} to pause mouse avoidance and use the controls", "{0} を押すとマウス回避を一時停止して操作できます" },
             ["来试试看！"] = new[] { "来试试看！", "來試試看！", "Try it now!", "試してみましょう！" },
             ["快捷键可在设置中修改"] = new[] { "快捷键可在设置中修改", "快速鍵可在設定中修改", "You can change shortcuts in Settings", "ショートカットは設定で変更できます" },
-            ["现在我们来体验新功能——自定义模块"] = new[] { "现在我们来体验新功能——自定义模块", "現在來試試新功能：自訂模組", "Now let's try custom modules", "次はカスタムモジュールを試しましょう" },
+            ["现在我们来体验自定义模块"] = new[] { "现在我们来体验自定义模块", "現在來試試自訂模組", "Now let's try custom modules", "次はカスタムモジュールを試しましょう" },
             ["现在右键岛打开设置"] = new[] { "现在右键岛打开设置", "現在右鍵點擊島來開啟設定", "Right-click the island to open Settings", "島を右クリックして設定を開きます" },
             ["您可以直接拖动“自定义模块”部分的内容到岛里"] = new[] { "您可以直接拖动“自定义模块”部分的内容到岛里", "可將「自訂模組」中的內容直接拖入島內", "Drag items from Custom modules directly into the island", "「カスタムモジュール」から島へ直接ドラッグできます" },
             ["进行自定义布局"] = new[] { "进行自定义布局", "進行自訂佈局", "to customize your layout", "レイアウトをカスタマイズします" },

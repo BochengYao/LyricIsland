@@ -19,8 +19,19 @@ namespace LyricHover.Core.Layout
 
         public void Add(IslandModuleType type, int index)
         {
-            Draft.Modules.Insert(Math.Max(0, Math.Min(index, Draft.Modules.Count)),
-                new IslandModuleInstance(type));
+            var module = new IslandModuleInstance(type);
+            if (type == IslandModuleType.Divider)
+            {
+                var existingDivider = Draft.Modules.FirstOrDefault(item => item.Type == IslandModuleType.Divider);
+                if (existingDivider != null)
+                {
+                    module.DividerOpacity = existingDivider.DividerOpacity;
+                    module.MarginBefore = existingDivider.MarginBefore;
+                    module.MarginAfter = existingDivider.MarginAfter;
+                }
+            }
+
+            Draft.Modules.Insert(Math.Max(0, Math.Min(index, Draft.Modules.Count)), module);
         }
 
         public void Move(string id, int index)

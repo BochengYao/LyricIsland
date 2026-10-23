@@ -3016,7 +3016,7 @@ namespace LyricHover.App
 
                 SetTutorialText("该功能可方便看到岛下内容", "无需频繁拖动LyricHover，助你高效工作");
                 await DelayTutorialAsync(3200, cancellationToken);
-                SetTutorialText("可以透过岛直接左键点击控制岛下内容", string.Empty, "（新功能！）");
+                SetTutorialText("可以透过岛直接左键点击控制岛下内容", string.Empty);
                 await DelayTutorialAsync(3000, cancellationToken);
 
                 tutorialLayoutOverride = CreateTutorialProfile(IslandModuleType.Lyrics, IslandModuleType.Divider, IslandModuleType.PlaybackControls);
@@ -3059,7 +3059,7 @@ namespace LyricHover.App
                 placementSettings.IslandLayouts.Mode = IslandLayoutMode.HorizontalBlocks;
                 tutorialLayoutOverride = null;
                 tutorialFlow.RequestCustomSettings();
-                SetTutorialText("现在我们来体验新功能——自定义模块", "现在右键岛打开设置");
+                SetTutorialText("现在我们来体验自定义模块", "现在右键岛打开设置");
                 ApplyInteractionState(IslandInteractionState.Expanded, true);
             }
             catch (OperationCanceledException)

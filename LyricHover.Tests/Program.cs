@@ -261,6 +261,7 @@ namespace LyricHover.Tests
             suite.Run("moves module after crossing midpoint", MovesModuleAfterCrossingMidpoint);
             suite.Run("moves module one slot right without skipping", MovesModuleOneSlotRightWithoutSkipping);
             suite.Run("allows duplicate modules in one layout", AllowsDuplicateModulesInOneLayout);
+            suite.Run("new divider inherits the active divider style", NewDividerInheritsActiveDividerStyle);
             suite.Run("deduplicates one layout drop operation", DeduplicatesOneLayoutDropOperation);
             suite.Run("deletes modules only after an outside mouse release", DeletesModulesOnlyAfterOutsideMouseRelease);
             suite.Run("projects a fixed placeholder while reordering", ProjectsFixedPlaceholderWhileReordering);
@@ -3999,6 +4000,27 @@ namespace LyricHover.Tests
             Assert.Equal(2, session.Draft.Modules.FindAll(module => module.Type == IslandModuleType.Divider).Count);
         }
 
+        static void NewDividerInheritsActiveDividerStyle()
+        {
+            var profile = new IslandLayoutProfile();
+            profile.Modules.Add(new IslandModuleInstance(IslandModuleType.Lyrics));
+            profile.Modules.Add(new IslandModuleInstance(IslandModuleType.Divider)
+            {
+                DividerOpacity = 0.67,
+                MarginBefore = 13,
+                MarginAfter = 13
+            });
+            var session = new LayoutEditSession(profile);
+
+            session.Add(IslandModuleType.Divider, 1);
+
+            var added = session.Draft.Modules[1];
+            Assert.Equal(IslandModuleType.Divider, added.Type);
+            Assert.Equal(0.67, added.DividerOpacity);
+            Assert.Equal(13.0, added.MarginBefore);
+            Assert.Equal(13.0, added.MarginAfter);
+        }
+
         static void DeduplicatesOneLayoutDropOperation()
         {
             var session = new LayoutEditSession(new IslandLayoutProfile());
@@ -5462,11 +5484,16 @@ namespace LyricHover.Tests
         {
             var root = GetSolutionRoot();
             var main = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
+            var language = File.ReadAllText(Path.Combine(root, "LyricHover.App", "UiLanguageService.cs"));
             var prompt = main.IndexOf("SetTutorialText(\"接下来演示鼠标避让\"", StringComparison.Ordinal);
             var delay = main.IndexOf("DelayTutorialAsync(1000", prompt, StringComparison.Ordinal);
             var enable = main.IndexOf("tutorialHoverSuppressed = false", prompt, StringComparison.Ordinal);
 
             Assert.True(prompt >= 0 && delay > prompt && enable > delay);
+            Assert.False(main.Contains("（新功能！）"));
+            Assert.False(main.Contains("体验新功能——自定义模块"));
+            Assert.True(main.Contains("现在我们来体验自定义模块"));
+            Assert.True(language.Contains("[\"现在我们来体验自定义模块\"]"));
         }
 
         static void TutorialNextRemainsVisibleAndKeepsSettingsOpen()
