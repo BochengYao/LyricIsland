@@ -46,6 +46,7 @@ namespace LyricHover.App
         private readonly LyricsCache cache;
         private readonly OverlaySettingsStore settingsStore;
         private readonly SettingsRuntimeStateCoordinator settingsStateCoordinator;
+        private readonly StoreProEntitlementService proEntitlementService;
         private readonly WindowsLyricDockEnvironment lyricDockEnvironment;
         private readonly LyricDockController LyricDockController;
         private readonly ScreenCatalog screenCatalog = new ScreenCatalog();
@@ -129,7 +130,6 @@ namespace LyricHover.App
         private int trackChangeGeneration;
         private bool runtimeStopped;
         private const double DragStartThreshold = 4.0;
-        private const double IslandHorizontalShapePadding = 144;
         private const double HoverMaskContentRadiusScale = 1.0;
         private const int RepeatedLaunchRevealSeconds = 30;
         private const int WM_NCHITTEST = 0x0084;
@@ -183,6 +183,7 @@ namespace LyricHover.App
                 Dispatcher.BeginInvoke(new Action(async () => await RefreshAsync()));
             settingsStore = new OverlaySettingsStore(settingsPath);
             settingsStateCoordinator = new SettingsRuntimeStateCoordinator(settingsStore, settingsStore.Load());
+            proEntitlementService = new StoreProEntitlementService(appData);
             UiLanguageService.SetPreference(placementSettings.Language);
             lyricDockEnvironment = new WindowsLyricDockEnvironment();
             var taskbarLease = new WidgetVisibilityLease(
@@ -260,6 +261,7 @@ namespace LyricHover.App
                 HideIsland(false);
                 Focus();
                 ShowWaitingForPlaybackHint();
+                _ = RestoreFreeProCustomizationDefaultsAsync();
                 try
                 {
                     await mediaSessions.InitializeAsync();
@@ -304,7 +306,8 @@ namespace LyricHover.App
             var dpi = VisualTreeHelper.GetDpi(this);
             if (ModuleHost.RenderTransform is TranslateTransform transform)
             {
-                transform.Y = IslandAppearanceRendering.SnapToDevicePixel(-2.5, dpi.DpiScaleY);
+                var verticalOffset = IslandAppearanceRendering.GetContentVerticalOffset(placementSettings);
+                transform.Y = IslandAppearanceRendering.SnapToDevicePixel(verticalOffset, dpi.DpiScaleY);
             }
         }
 
@@ -1352,6 +1355,38 @@ namespace LyricHover.App
             return settingsStateCoordinator.ApplyDraft(settings, SynchronizePlacementSettingsRuntime);
         }
 
+        private async Task RestoreFreeProCustomizationDefaultsAsync()
+        {
+            var result = await proEntitlementService.RefreshAsync();
+            var entitlement = PlacementSettingsWindow.ResolveSessionProEntitlement(result.Kind);
+            var entitlementWasVerified = result.StoreQuerySucceeded ||
+                result.UsedCache ||
+                PlacementSettingsWindow.HasSessionProEntitlementOverride;
+            if (!entitlementWasVerified || entitlement != ProEntitlementKind.None)
+            {
+                return;
+            }
+
+            var settings = placementSettings.DeepClone();
+            if (!settings.ResetProCustomizationToDefaults())
+            {
+                return;
+            }
+
+            try
+            {
+                ApplyPlacementSettings(settings);
+            }
+            catch (System.IO.IOException)
+            {
+                // Keep the last committed settings when the settings file is temporarily unavailable.
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Keep the last committed settings when Windows blocks the settings file.
+            }
+        }
+
         private void SynchronizePlacementSettingsRuntime(
             OverlayPlacementSettings previousSettings,
             OverlayPlacementSettings runtimeSettings)
@@ -1368,6 +1403,7 @@ namespace LyricHover.App
             ModuleHost.ApplyAppearance(runtimeSettings);
             RegisterGlobalHotkeys();
             UpdateIslandShape();
+            UpdateIslandTextPixelAlignment();
             if (!previousSettings.IslandTopCornersConvex.Equals(runtimeSettings.IslandTopCornersConvex) ||
                 !previousSettings.IslandConvexScreenEdgeDistance.Equals(runtimeSettings.IslandConvexScreenEdgeDistance))
             {
@@ -1615,8 +1651,11 @@ namespace LyricHover.App
         {
             var contentSize = ModuleHost.MeasureContentSize();
             var screen = ResolveScreen();
-            var targetWidth = Math.Min(screen.WorkWidth, Math.Max(240, contentSize.Width + IslandHorizontalShapePadding));
-            var targetHeight = Math.Max(60, contentSize.Height + 18);
+            var shapePadding = IslandAppearanceRendering.GetHorizontalShapePadding(placementSettings);
+            var targetWidth = Math.Min(screen.WorkWidth, Math.Max(240, contentSize.Width + shapePadding));
+            var targetHeight = Math.Max(
+                60,
+                contentSize.Height + IslandAppearanceRendering.GetVerticalShapePadding(placementSettings));
             var currentWidth = islandVisualWidth > 0 ? islandVisualWidth : ActualWidth > 0 ? ActualWidth : Width;
             var currentHeight = islandVisualHeight > 0 ? islandVisualHeight : ActualHeight > 0 ? ActualHeight : Height;
             var sizeChanged = Math.Abs(targetWidth - currentWidth) >= 0.5 ||
@@ -1671,8 +1710,12 @@ namespace LyricHover.App
             var screen = ResolveScreen();
             var targetWidth = Math.Min(
                 screen.WorkWidth,
-                Math.Max(240, contentSize.Width + IslandHorizontalShapePadding + 10));
-            var targetHeight = Math.Max(60, contentSize.Height + 18);
+                Math.Max(
+                    240,
+                    contentSize.Width + IslandAppearanceRendering.GetHorizontalShapePadding(placementSettings) + 10));
+            var targetHeight = Math.Max(
+                60,
+                contentSize.Height + IslandAppearanceRendering.GetVerticalShapePadding(placementSettings));
             AnimateIslandSize(targetWidth, targetHeight, 180);
         }
 

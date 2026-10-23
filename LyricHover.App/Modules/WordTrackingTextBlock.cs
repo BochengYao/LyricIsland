@@ -293,6 +293,9 @@ namespace LyricHover.App.Modules
         {
             update(dimText);
             update(highlightText);
+            dimText.InvalidateMeasure();
+            highlightText.InvalidateMeasure();
+            InvalidateMeasure();
             RebuildVisualWordMap();
         }
 

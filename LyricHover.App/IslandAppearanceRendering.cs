@@ -8,6 +8,9 @@ namespace LyricHover.App
 {
     internal static class IslandAppearanceRendering
     {
+        public const double DefaultTotalContentSafetyPadding =
+            OverlayPlacementSettings.DefaultIslandConvexContentEdgeDistance * 2;
+
         public static Geometry CreateGeometry(double width, double height, OverlayPlacementSettings settings)
         {
             settings = settings ?? new OverlayPlacementSettings();
@@ -75,6 +78,36 @@ namespace LyricHover.App
             return settings != null && settings.IslandTopCornersConvex
                 ? Clamp(settings.IslandConvexScreenEdgeDistance, 0, 120)
                 : 0;
+        }
+
+        public static double GetHorizontalShapePadding(OverlayPlacementSettings settings)
+        {
+            if (settings == null || !settings.IslandTopCornersConvex)
+            {
+                return 144;
+            }
+
+            return GetConvexContentEdgeDistance(settings) * 2;
+        }
+
+        public static double GetVerticalShapePadding(OverlayPlacementSettings settings)
+        {
+            return settings != null && settings.IslandTopCornersConvex
+                ? GetConvexContentEdgeDistance(settings) * 2
+                : DefaultTotalContentSafetyPadding;
+        }
+
+        public static double GetContentVerticalOffset(OverlayPlacementSettings settings)
+        {
+            return settings != null && settings.IslandTopCornersConvex ? 0 : -2.5;
+        }
+
+        private static double GetConvexContentEdgeDistance(OverlayPlacementSettings settings)
+        {
+            return Clamp(
+                settings.IslandConvexContentEdgeDistance,
+                0,
+                OverlayPlacementSettings.MaxIslandConvexContentEdgeDistance);
         }
 
         public static FontFamily ResolveFont(string family, string fallback)
@@ -156,9 +189,12 @@ namespace LyricHover.App
             var fadeOffset = width > 0 ? fade / width : 0.5;
             var mask = new LinearGradientBrush
             {
-                MappingMode = BrushMappingMode.RelativeToBoundingBox,
+                // Use the lyric viewport's local coordinate space. A relative brush can
+                // be remapped against the translated text's rendered bounds, which makes
+                // the fade appear attached to the first and last glyph during marquee.
+                MappingMode = BrushMappingMode.Absolute,
                 StartPoint = new Point(0, 0),
-                EndPoint = new Point(1, 0),
+                EndPoint = new Point(Math.Max(1, width), 0),
                 SpreadMethod = GradientSpreadMethod.Pad
             };
             mask.GradientStops.Add(new GradientStop(Colors.Transparent, 0));
@@ -167,6 +203,14 @@ namespace LyricHover.App
             mask.GradientStops.Add(new GradientStop(Colors.Transparent, 1));
             mask.Freeze();
             return mask;
+        }
+
+        public static double CalculateOverflowFadeWidth(double fontSize)
+        {
+            var size = double.IsNaN(fontSize) || double.IsInfinity(fontSize)
+                ? OverlayPlacementSettings.DefaultIslandLyricsFontSize
+                : Math.Max(0, fontSize);
+            return Math.Max(10, Math.Min(36, size * 0.7));
         }
 
         private static int GetScript(char value, bool fallbackCjk)

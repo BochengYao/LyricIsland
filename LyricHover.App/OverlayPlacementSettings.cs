@@ -36,14 +36,18 @@ namespace LyricHover.App
         public const double DefaultIslandLyricsFontSize = 17.1;
         public const double LegacyIslandLyricsFontSize = 15;
         public const double DefaultIslandFontScale = 1;
+        public const string DefaultChineseFontFamily = "Microsoft YaHei UI";
+        public const string DefaultEnglishFontFamily = "Segoe UI";
         public const double DefaultIslandConcaveRadius = 30;
         public const double DefaultIslandConvexRadius = 13.2;
+        public const double DefaultIslandConvexContentEdgeDistance = 9;
+        public const double MaxIslandConvexContentEdgeDistance = 48;
 
         public const double DefaultLyricDockLyricsFontSize = 13;
         public const double MinLyricDockLyricsFontSize = 8;
         public const double MaxLyricDockLyricsFontSize = 18;
 
-        public int SchemaVersion { get; set; } = 9;
+        public int SchemaVersion { get; set; } = 10;
 
         public IslandLayoutSettings IslandLayouts { get; set; } = IslandLayoutDefaults.Create();
 
@@ -87,9 +91,9 @@ namespace LyricHover.App
 
         public bool IslandWordTrackingEnabled { get; set; } = true;
 
-        public string IslandChineseFontFamily { get; set; } = "Microsoft YaHei UI";
+        public string IslandChineseFontFamily { get; set; } = DefaultChineseFontFamily;
 
-        public string IslandEnglishFontFamily { get; set; } = "Segoe UI";
+        public string IslandEnglishFontFamily { get; set; } = DefaultEnglishFontFamily;
 
         public double IslandLyricsFontSize { get; set; } = DefaultIslandLyricsFontSize;
 
@@ -100,6 +104,8 @@ namespace LyricHover.App
         public double IslandConvexRadius { get; set; } = DefaultIslandConvexRadius;
 
         public double IslandConvexScreenEdgeDistance { get; set; }
+
+        public double IslandConvexContentEdgeDistance { get; set; } = DefaultIslandConvexContentEdgeDistance;
 
         public bool IslandTopCornersConvex { get; set; }
 
@@ -115,9 +121,9 @@ namespace LyricHover.App
 
         public bool LyricDockWordTrackingEnabled { get; set; } = true;
 
-        public string LyricDockChineseFontFamily { get; set; } = "Microsoft YaHei UI";
+        public string LyricDockChineseFontFamily { get; set; } = DefaultChineseFontFamily;
 
-        public string LyricDockEnglishFontFamily { get; set; } = "Segoe UI";
+        public string LyricDockEnglishFontFamily { get; set; } = DefaultEnglishFontFamily;
 
         public double LyricDockLyricsFontSize { get; set; } = DefaultLyricDockLyricsFontSize;
 
@@ -149,6 +155,39 @@ namespace LyricHover.App
             var json = JsonSerializer.Serialize(this);
             return JsonSerializer.Deserialize<OverlayPlacementSettings>(json)
                 ?? new OverlayPlacementSettings();
+        }
+
+        public bool ResetTypographyToDefaults()
+        {
+            var changed =
+                !string.Equals(IslandChineseFontFamily, DefaultChineseFontFamily, StringComparison.Ordinal) ||
+                !string.Equals(IslandEnglishFontFamily, DefaultEnglishFontFamily, StringComparison.Ordinal) ||
+                Math.Abs(IslandFontScale - DefaultIslandFontScale) > 0.0001 ||
+                Math.Abs(IslandLyricsFontSize - DefaultIslandLyricsFontSize) > 0.0001 ||
+                !string.Equals(LyricDockChineseFontFamily, DefaultChineseFontFamily, StringComparison.Ordinal) ||
+                !string.Equals(LyricDockEnglishFontFamily, DefaultEnglishFontFamily, StringComparison.Ordinal) ||
+                Math.Abs(LyricDockLyricsFontSize - DefaultLyricDockLyricsFontSize) > 0.0001;
+
+            IslandChineseFontFamily = DefaultChineseFontFamily;
+            IslandEnglishFontFamily = DefaultEnglishFontFamily;
+            IslandFontScale = DefaultIslandFontScale;
+            IslandLyricsFontSize = DefaultIslandLyricsFontSize;
+            LyricDockChineseFontFamily = DefaultChineseFontFamily;
+            LyricDockEnglishFontFamily = DefaultEnglishFontFamily;
+            LyricDockLyricsFontSize = DefaultLyricDockLyricsFontSize;
+            return changed;
+        }
+
+        public bool ResetProCustomizationToDefaults()
+        {
+            var changed = ResetTypographyToDefaults();
+            if (IslandTopCornersConvex)
+            {
+                IslandTopCornersConvex = false;
+                changed = true;
+            }
+
+            return changed;
         }
 
         public void Normalize()
@@ -186,8 +225,8 @@ namespace LyricHover.App
             }
 
             IslandLayouts.Normalize();
-            IslandChineseFontFamily = string.IsNullOrWhiteSpace(IslandChineseFontFamily) ? "Microsoft YaHei UI" : IslandChineseFontFamily.Trim();
-            IslandEnglishFontFamily = string.IsNullOrWhiteSpace(IslandEnglishFontFamily) ? "Segoe UI" : IslandEnglishFontFamily.Trim();
+            IslandChineseFontFamily = string.IsNullOrWhiteSpace(IslandChineseFontFamily) ? DefaultChineseFontFamily : IslandChineseFontFamily.Trim();
+            IslandEnglishFontFamily = string.IsNullOrWhiteSpace(IslandEnglishFontFamily) ? DefaultEnglishFontFamily : IslandEnglishFontFamily.Trim();
             IslandFontScale = NormalizeRange(IslandFontScale, 0.5, 3.0, DefaultIslandFontScale);
             IslandLyricsFontSize = NormalizeRange(
                 DefaultIslandLyricsFontSize * IslandFontScale,
@@ -197,8 +236,13 @@ namespace LyricHover.App
             IslandConcaveRadius = NormalizeRange(IslandConcaveRadius, 0, 120, DefaultIslandConcaveRadius);
             IslandConvexRadius = NormalizeRange(IslandConvexRadius, 0, 120, DefaultIslandConvexRadius);
             IslandConvexScreenEdgeDistance = NormalizeRange(IslandConvexScreenEdgeDistance, 0, 120, 0);
-            LyricDockChineseFontFamily = string.IsNullOrWhiteSpace(LyricDockChineseFontFamily) ? "Microsoft YaHei UI" : LyricDockChineseFontFamily.Trim();
-            LyricDockEnglishFontFamily = string.IsNullOrWhiteSpace(LyricDockEnglishFontFamily) ? "Segoe UI" : LyricDockEnglishFontFamily.Trim();
+            IslandConvexContentEdgeDistance = NormalizeRange(
+                IslandConvexContentEdgeDistance,
+                0,
+                MaxIslandConvexContentEdgeDistance,
+                DefaultIslandConvexContentEdgeDistance);
+            LyricDockChineseFontFamily = string.IsNullOrWhiteSpace(LyricDockChineseFontFamily) ? DefaultChineseFontFamily : LyricDockChineseFontFamily.Trim();
+            LyricDockEnglishFontFamily = string.IsNullOrWhiteSpace(LyricDockEnglishFontFamily) ? DefaultEnglishFontFamily : LyricDockEnglishFontFamily.Trim();
             LyricDockLyricsFontSize = NormalizeRange(
                 LyricDockLyricsFontSize,
                 MinLyricDockLyricsFontSize,
@@ -215,7 +259,7 @@ namespace LyricHover.App
             ExpandedAutoCollapseSeconds = Math.Max(
                 MinAutoRetractSeconds,
                 Math.Min(MaxAutoRetractSeconds, ExpandedAutoCollapseSeconds));
-            SchemaVersion = 9;
+            SchemaVersion = 10;
             OffsetRatio = Math.Max(0, Math.Min(1, OffsetRatio));
             CacheLimitMegabytes = Math.Max(MinCacheLimitMegabytes, Math.Min(MaxCacheLimitMegabytes, CacheLimitMegabytes));
             HoverAuraSize = Math.Max(MinHoverAuraSize, Math.Min(MaxHoverAuraSize, HoverAuraSize));
@@ -392,6 +436,7 @@ namespace LyricHover.App
                 var originalUseMultiLineDisplay = settings.UseMultiLineDisplay;
                 var originalShowTranslation = settings.ShowTranslation;
                 var originalIslandWordTracking = settings.IslandWordTrackingEnabled;
+                var originalIslandConvexContentEdgeDistance = settings.IslandConvexContentEdgeDistance;
                 var originalIslandEnabled = settings.IslandEnabled;
                 var originalLyricDockEnabled = settings.LyricDockEnabled;
                 var originalLyricDockAlignment = settings.LyricDockAlignment;
@@ -419,6 +464,7 @@ namespace LyricHover.App
                     settings.UseMultiLineDisplay != originalUseMultiLineDisplay ||
                     settings.ShowTranslation != originalShowTranslation ||
                     settings.IslandWordTrackingEnabled != originalIslandWordTracking ||
+                    Math.Abs(settings.IslandConvexContentEdgeDistance - originalIslandConvexContentEdgeDistance) > 0.0001 ||
                     settings.IslandEnabled != originalIslandEnabled ||
                     settings.LyricDockEnabled != originalLyricDockEnabled ||
                     settings.LyricDockAlignment != originalLyricDockAlignment ||

@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Documents;
+using System.Windows.Threading;
 using LyricHover.Core;
 using LyricHover.Core.Layout;
 
@@ -11,7 +12,6 @@ namespace LyricHover.App.Modules
 {
     public partial class LyricsModuleView : UserControl, IIslandModuleView
     {
-        private const double OverflowFadeWidth = 10;
         private readonly LyricTextTransitionTracker lyricTextTransitionTracker = new LyricTextTransitionTracker();
         private string displayedPrimary;
         private string displayedAccent;
@@ -23,6 +23,9 @@ namespace LyricHover.App.Modules
         private TimeSpan displayedWordTrackingPosition;
         private bool displayedWordTrackingPlaying;
         private double displayedWordTrackingProgress = -1;
+        private TimeSpan displayedLineDuration;
+        private int viewportRefreshVersion;
+        private bool refreshingViewport;
         private FontFamily chineseFontFamily = new FontFamily("Microsoft YaHei UI");
         private FontFamily englishFontFamily = new FontFamily("Segoe UI");
         private double lyricFontSize = OverlayPlacementSettings.DefaultIslandLyricsFontSize;
@@ -58,6 +61,7 @@ namespace LyricHover.App.Modules
             SecondaryLyricClip.Height = IncomingSecondaryLyricClip.Height = secondaryClipHeight;
             SecondaryLyricCanvas.Height = IncomingSecondaryLyricCanvas.Height = secondaryClipHeight;
             ApplyCurrentLyricsText(displayedPrimary ?? string.Empty, displayedSecondary ?? string.Empty, displayedAccent ?? string.Empty);
+            QueueViewportLayoutRefresh();
         }
 
         public bool AnimationsEnabled
@@ -69,6 +73,7 @@ namespace LyricHover.App.Modules
         public LyricsModuleView()
         {
             InitializeComponent();
+            SizeChanged += LyricsModuleView_SizeChanged;
             ApplyModuleSettings(IslandModuleInstance.DefaultLyricsWidth);
         }
 
@@ -109,6 +114,7 @@ namespace LyricHover.App.Modules
             displayedPrimary = primary;
             displayedSecondary = secondary;
             displayedAccent = accent;
+            displayedLineDuration = lineDuration;
             var transitionVersion = ++lyricsTransitionVersion;
             lyricsTransitionInProgress = false;
 
@@ -340,13 +346,117 @@ namespace LyricHover.App.Modules
                 availableWidth = ActualWidth > 0 ? ActualWidth : Width;
             }
 
-            var placement = LyricTextPlacement.Calculate(availableWidth, textWidth);
+            var fadeWidth = IslandAppearanceRendering.CalculateOverflowFadeWidth(lyricFontSize);
+            // A font's visible ink can extend beyond its layout advance width. Reserve a
+            // fade-width guard on both sides so very large or wide-stroke glyphs enter the
+            // viewport mask before an outer clip can cut them off abruptly.
+            var naturalPlacement = LyricTextPlacement.Calculate(availableWidth, textWidth);
+            var guardedPlacement = LyricTextPlacement.Calculate(availableWidth, textWidth + (fadeWidth * 2));
+            var placement = guardedPlacement.RequiresMarquee ? guardedPlacement : naturalPlacement;
             var dpiScale = VisualTreeHelper.GetDpi(this).DpiScaleX;
-            Canvas.SetLeft(element, IslandAppearanceRendering.SnapToDevicePixel(placement.Left, dpiScale));
+            var elementLeft = guardedPlacement.RequiresMarquee ? fadeWidth : naturalPlacement.Left;
+            Canvas.SetLeft(element, IslandAppearanceRendering.SnapToDevicePixel(elementLeft, dpiScale));
             clip.OpacityMask = placement.RequiresMarquee
-                ? IslandAppearanceRendering.CreateHorizontalOverflowFadeMask(availableWidth, OverflowFadeWidth)
+                ? IslandAppearanceRendering.CreateHorizontalOverflowFadeMask(availableWidth, fadeWidth)
                 : null;
             return placement;
+        }
+
+        private void LyricsModuleView_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (!e.WidthChanged)
+            {
+                return;
+            }
+
+            // ApplyLayout can reuse this view and change its width while the lyric text
+            // remains identical. Update() then intentionally skips the text path, so wait
+            // for layout to expose the new clip width before rebuilding placement/masks.
+            QueueViewportLayoutRefresh();
+        }
+
+        private void QueueViewportLayoutRefresh()
+        {
+            var refreshVersion = ++viewportRefreshVersion;
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+            {
+                if (refreshVersion == viewportRefreshVersion)
+                {
+                    RefreshViewportLayout();
+                }
+            }));
+        }
+
+        private void RefreshViewportLayout()
+        {
+            if (refreshingViewport)
+            {
+                return;
+            }
+
+            refreshingViewport = true;
+            try
+            {
+                if (lyricsTransitionInProgress)
+                {
+                    RefreshLayerOverflow(
+                        PrimaryLyricLinePanel,
+                        PrimaryLyricTransform,
+                        PrimaryLyricClip,
+                        SecondaryLyricText,
+                        SecondaryLyricTransform,
+                        SecondaryLyricClip);
+                    RefreshLayerOverflow(
+                        IncomingPrimaryLyricLinePanel,
+                        IncomingPrimaryLyricTextTransform,
+                        IncomingPrimaryLyricClip,
+                        IncomingSecondaryLyricText,
+                        IncomingSecondaryLyricTextTransform,
+                        IncomingSecondaryLyricClip);
+                    return;
+                }
+
+                StopMarquee();
+                RefreshLayerOverflow(
+                    PrimaryLyricLinePanel,
+                    PrimaryLyricTransform,
+                    PrimaryLyricClip,
+                    SecondaryLyricText,
+                    SecondaryLyricTransform,
+                    SecondaryLyricClip);
+                StartMarquee(displayedLineDuration);
+            }
+            finally
+            {
+                refreshingViewport = false;
+            }
+        }
+
+        private void RefreshLayerOverflow(
+            FrameworkElement primary,
+            TranslateTransform primaryTransform,
+            FrameworkElement primaryClip,
+            FrameworkElement secondary,
+            TranslateTransform secondaryTransform,
+            FrameworkElement secondaryClip)
+        {
+            RefreshElementOverflow(primary, primaryTransform, primaryClip);
+            RefreshElementOverflow(secondary, secondaryTransform, secondaryClip);
+        }
+
+        private void RefreshElementOverflow(
+            FrameworkElement element,
+            TranslateTransform transform,
+            FrameworkElement clip)
+        {
+            if (element.Visibility == Visibility.Visible)
+            {
+                MeasureAndPositionElement(element, transform, clip);
+            }
+            else
+            {
+                clip.OpacityMask = null;
+            }
         }
 
         private void StopMarquee()

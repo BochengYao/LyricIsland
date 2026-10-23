@@ -1199,6 +1199,7 @@
                                         <RowDefinition Height="52" />
                                         <RowDefinition Height="52" />
                                         <RowDefinition Height="52" />
+                                        <RowDefinition Height="52" />
                                         <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
                                     <Grid.ColumnDefinitions>
@@ -1303,7 +1304,14 @@
                                         <TextBox x:Name="IslandConvexRadiusTextBox" Grid.Column="1" Margin="8,0,0,0" TextAlignment="Center" VerticalContentAlignment="Center" Text="13.2" />
                                         <TextBlock Grid.Column="2" Margin="8,0,0,0" HorizontalAlignment="Stretch" TextAlignment="Right" VerticalAlignment="Center" Foreground="{DynamicResource SettingsSecondaryForegroundBrush}" Text="DIP" />
                                     </Grid>
-                                    <Button Grid.Row="20" Grid.ColumnSpan="2" MinWidth="138" Height="34" Margin="0,10,0,0" HorizontalAlignment="Right" Padding="16,0" Content="恢复默认半径" Click="ResetIslandRadiiButton_Click" />
+                                    <TextBlock x:Name="IslandConvexContentEdgeDistanceLabel" Grid.Row="20" Grid.Column="0" Margin="12,0,0,0" VerticalAlignment="Center" Visibility="Collapsed" Style="{StaticResource SettingLabel}" Text="边缘距离" />
+                                    <Grid x:Name="IslandConvexContentEdgeDistanceEditor" Grid.Row="20" Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Visibility="Collapsed">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="88" /><ColumnDefinition Width="42" /></Grid.ColumnDefinitions>
+                                        <Slider x:Name="IslandConvexContentEdgeDistanceSlider" Minimum="0" Maximum="48" Value="9" VerticalAlignment="Center" />
+                                        <TextBox x:Name="IslandConvexContentEdgeDistanceTextBox" Grid.Column="1" Margin="8,0,0,0" TextAlignment="Center" VerticalContentAlignment="Center" Text="9" />
+                                        <TextBlock Grid.Column="2" Margin="8,0,0,0" HorizontalAlignment="Stretch" TextAlignment="Right" VerticalAlignment="Center" Foreground="{DynamicResource SettingsSecondaryForegroundBrush}" Text="DIP" />
+                                    </Grid>
+                                    <Button Grid.Row="21" Grid.ColumnSpan="2" MinWidth="138" Height="34" Margin="0,10,0,0" HorizontalAlignment="Right" Padding="16,0" Content="恢复默认半径" Click="ResetIslandRadiiButton_Click" />
                                 </Grid>
                             </Border>
 
@@ -3097,6 +3105,8 @@
                                                 Width="48"
                                                 Height="48"
                                                 VerticalAlignment="Center"
+                                                Tag="TextLink"
+                                                MouseLeftButtonUp="AboutAppLogo_MouseLeftButtonUp"
                                                 CornerRadius="{StaticResource RadiusSmall}"
                                                 ClipToBounds="True">
                                             <Image Source="Assets/app-logo.png" Stretch="UniformToFill" />
