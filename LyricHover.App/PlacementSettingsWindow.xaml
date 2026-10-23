@@ -1199,7 +1199,7 @@
                                         <RowDefinition Height="52" />
                                         <RowDefinition Height="52" />
                                         <RowDefinition Height="52" />
-                                        <RowDefinition Height="52" />
+                                        <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
                                     <Grid.ColumnDefinitions>
@@ -1290,26 +1290,34 @@
                                             </StackPanel>
                                         </Grid>
                                     </Border>
-                                    <TextBlock x:Name="IslandConcaveRadiusLabel" Grid.Row="18" Grid.Column="0" Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource SettingLabel}" Text="凹角半径" />
-                                    <Grid Grid.Row="18" Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock x:Name="IslandConcaveRadiusLabel" Grid.Row="18" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource SettingLabel}" Text="凹角半径" />
+                                    <Grid Grid.Row="18" Grid.Column="1" VerticalAlignment="Center">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="88" /><ColumnDefinition Width="42" /></Grid.ColumnDefinitions>
                                         <Slider x:Name="IslandConcaveRadiusSlider" Minimum="0" Maximum="120" Value="30" VerticalAlignment="Center" />
                                         <TextBox x:Name="IslandConcaveRadiusTextBox" Grid.Column="1" Margin="8,0,0,0" TextAlignment="Center" VerticalContentAlignment="Center" Text="30" />
                                         <TextBlock Grid.Column="2" Margin="8,0,0,0" HorizontalAlignment="Stretch" TextAlignment="Right" VerticalAlignment="Center" Foreground="{DynamicResource SettingsSecondaryForegroundBrush}" Text="DIP" />
                                     </Grid>
-                                    <TextBlock Grid.Row="19" Grid.Column="0" Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource SettingLabel}" Text="凸角半径" />
-                                    <Grid Grid.Row="19" Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Grid.Row="19" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource SettingLabel}" Text="凸角半径" />
+                                    <Grid Grid.Row="19" Grid.Column="1" VerticalAlignment="Center">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="88" /><ColumnDefinition Width="42" /></Grid.ColumnDefinitions>
                                         <Slider x:Name="IslandConvexRadiusSlider" Minimum="0" Maximum="120" Value="13.2" VerticalAlignment="Center" />
                                         <TextBox x:Name="IslandConvexRadiusTextBox" Grid.Column="1" Margin="8,0,0,0" TextAlignment="Center" VerticalContentAlignment="Center" Text="13.2" />
                                         <TextBlock Grid.Column="2" Margin="8,0,0,0" HorizontalAlignment="Stretch" TextAlignment="Right" VerticalAlignment="Center" Foreground="{DynamicResource SettingsSecondaryForegroundBrush}" Text="DIP" />
                                     </Grid>
-                                    <TextBlock x:Name="IslandConvexContentEdgeDistanceLabel" Grid.Row="20" Grid.Column="0" Margin="12,0,0,0" VerticalAlignment="Center" Visibility="Collapsed" Style="{StaticResource SettingLabel}" Text="边缘距离" />
-                                    <Grid x:Name="IslandConvexContentEdgeDistanceEditor" Grid.Row="20" Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Visibility="Collapsed">
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="88" /><ColumnDefinition Width="42" /></Grid.ColumnDefinitions>
-                                        <Slider x:Name="IslandConvexContentEdgeDistanceSlider" Minimum="0" Maximum="48" Value="9" VerticalAlignment="Center" />
-                                        <TextBox x:Name="IslandConvexContentEdgeDistanceTextBox" Grid.Column="1" Margin="8,0,0,0" TextAlignment="Center" VerticalContentAlignment="Center" Text="9" />
-                                        <TextBlock Grid.Column="2" Margin="8,0,0,0" HorizontalAlignment="Stretch" TextAlignment="Right" VerticalAlignment="Center" Foreground="{DynamicResource SettingsSecondaryForegroundBrush}" Text="DIP" />
+                                    <Grid x:Name="IslandConvexContentEdgeDistanceRow" Grid.Row="20" Grid.ColumnSpan="2" Height="0" Opacity="0" Visibility="Collapsed" ClipToBounds="True">
+                                        <Grid Height="52" VerticalAlignment="Top">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="160" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock x:Name="IslandConvexContentEdgeDistanceLabel" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource SettingLabel}" Text="边缘距离" />
+                                            <Grid x:Name="IslandConvexContentEdgeDistanceEditor" Grid.Column="1" VerticalAlignment="Center">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="88" /><ColumnDefinition Width="42" /></Grid.ColumnDefinitions>
+                                                <Slider x:Name="IslandConvexContentEdgeDistanceSlider" Minimum="0" Maximum="48" Value="9" VerticalAlignment="Center" />
+                                                <TextBox x:Name="IslandConvexContentEdgeDistanceTextBox" Grid.Column="1" Margin="8,0,0,0" TextAlignment="Center" VerticalContentAlignment="Center" Text="9" />
+                                                <TextBlock Grid.Column="2" Margin="8,0,0,0" HorizontalAlignment="Stretch" TextAlignment="Right" VerticalAlignment="Center" Foreground="{DynamicResource SettingsSecondaryForegroundBrush}" Text="DIP" />
+                                            </Grid>
+                                        </Grid>
                                     </Grid>
                                     <Button Grid.Row="21" Grid.ColumnSpan="2" MinWidth="138" Height="34" Margin="0,10,0,0" HorizontalAlignment="Right" Padding="16,0" Content="恢复默认半径" Click="ResetIslandRadiiButton_Click" />
                                 </Grid>

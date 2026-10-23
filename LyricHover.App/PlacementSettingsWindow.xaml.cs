@@ -36,6 +36,8 @@ namespace LyricHover.App
         private readonly IReadOnlyList<MediaSessionSnapshot> playerSessions;
         private readonly IReadOnlyList<InstalledPlayer> installedPlayers;
         private readonly Func<OverlayPlacementSettings, OverlayPlacementSettings> applySettings;
+        private readonly Func<OverlayPlacementSettings, OverlayPlacementSettings> applyIslandShapeSettings;
+        private readonly Action<OverlayPlacementSettings> previewIslandShapeSettings;
         private readonly Action<IslandLayoutMode, bool> beginLayoutEditing;
         private readonly Action saveLayoutEditing;
         private readonly Action cancelLayoutEditing;
@@ -59,6 +61,7 @@ namespace LyricHover.App
         private bool settingsDirty;
         private bool dirtyStateUpdateQueued;
         private bool applyingAutoSave;
+        private Func<OverlayPlacementSettings, OverlayPlacementSettings> pendingAutoApplySettingsApplier;
         private bool powerSavingModePending;
         private readonly Dictionary<UIElement, Effect> suppressedVisualEffects = new Dictionary<UIElement, Effect>();
         private readonly Dictionary<CheckBox, FrameworkElement> initializedSwitchKnobs = new Dictionary<CheckBox, FrameworkElement>();
@@ -82,6 +85,9 @@ namespace LyricHover.App
         private double islandConcaveRadiusDraft = OverlayPlacementSettings.DefaultIslandConcaveRadius;
         private double islandConvexScreenEdgeDistanceDraft;
         private bool islandTopCornersConvexMode;
+        private int convexContentEdgeDistanceAnimationVersion;
+        private int topCornerRadiusSliderAnimationVersion;
+        private bool animatingTopCornerRadiusSlider;
         private DispatcherTimer translationModeToastTimer;
         private DispatcherTimer settingsAutoApplyTimer;
         private Border activeTranslationModeToast;
@@ -198,7 +204,9 @@ namespace LyricHover.App
             Action startTutorial = null,
             Action<string> tutorialSectionChanged = null,
             Func<bool> tryExitTutorial = null,
-            Action refreshCurrentLyrics = null)
+            Action refreshCurrentLyrics = null,
+            Func<OverlayPlacementSettings, OverlayPlacementSettings> applyIslandShapeSettings = null,
+            Action<OverlayPlacementSettings> previewIslandShapeSettings = null)
         {
             InitializeComponent();
             settingsAutoApplyTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(220) };
@@ -208,8 +216,19 @@ namespace LyricHover.App
                 if (dirtyStateTracker != null && dirtyStateTracker.IsDirty(CaptureSettings()))
                 {
                     applyingAutoSave = true;
-                    try { ApplyCurrentSettings(includePendingPowerSavingMode: false); }
+                    try
+                    {
+                        var settingsApplier = pendingAutoApplySettingsApplier;
+                        pendingAutoApplySettingsApplier = null;
+                        ApplyCurrentSettings(
+                            includePendingPowerSavingMode: false,
+                            settingsApplier: settingsApplier);
+                    }
                     finally { applyingAutoSave = false; }
+                }
+                else
+                {
+                    pendingAutoApplySettingsApplier = null;
                 }
             };
             var localApplicationDataRoot = Environment.GetFolderPath(
@@ -224,6 +243,8 @@ namespace LyricHover.App
             this.playerSessions = playerSessions ?? new List<MediaSessionSnapshot>().AsReadOnly();
             this.installedPlayers = installedPlayers ?? new List<InstalledPlayer>().AsReadOnly();
             this.applySettings = applySettings ?? throw new ArgumentNullException(nameof(applySettings));
+            this.applyIslandShapeSettings = applyIslandShapeSettings ?? this.applySettings;
+            this.previewIslandShapeSettings = previewIslandShapeSettings;
             this.beginLayoutEditing = beginLayoutEditing;
             this.saveLayoutEditing = saveLayoutEditing;
             this.cancelLayoutEditing = cancelLayoutEditing;
@@ -851,24 +872,73 @@ namespace LyricHover.App
         private void TopCornerModeRadioButton_Checked(object sender, RoutedEventArgs e)
         {
             if (initializingSettings || ConvexTopCornersRadioButton == null || !IsLoaded) return;
-            islandConcaveRadiusDraft = islandTopCornersConvexMode
-                ? islandConcaveRadiusDraft
-                : IslandConcaveRadiusSlider.Value;
-            islandConvexScreenEdgeDistanceDraft = islandTopCornersConvexMode
-                ? IslandConcaveRadiusSlider.Value
-                : islandConvexScreenEdgeDistanceDraft;
+            if (!animatingTopCornerRadiusSlider)
+            {
+                if (islandTopCornersConvexMode) islandConvexScreenEdgeDistanceDraft = IslandConcaveRadiusSlider.Value;
+                else islandConcaveRadiusDraft = IslandConcaveRadiusSlider.Value;
+            }
             islandTopCornersConvexMode = ConvexTopCornersRadioButton.IsChecked == true;
             workingSettings.IslandTopCornersConvex = islandTopCornersConvexMode;
-            IslandConcaveRadiusSlider.Value = islandTopCornersConvexMode
+            var targetRadius = islandTopCornersConvexMode
                 ? islandConvexScreenEdgeDistanceDraft
                 : islandConcaveRadiusDraft;
             IslandConcaveRadiusLabel.Text = UiLanguageService.Translate(
                 islandTopCornersConvexMode ? "屏幕边缘距离" : "凹角半径");
             UpdateConvexContentEdgeDistanceVisibility();
-            TopCornerModeSelectionTransform.X = islandTopCornersConvexMode ? 92 : 0;
-            UpdateIslandAppearancePreview();
+            AnimateSegmentSelection(
+                TopCornerModeSelectionTransform,
+                islandTopCornersConvexMode ? 92 : 0,
+                true);
+            AnimateTopCornerRadiusSlider(targetRadius);
+            UpdateIslandAppearancePreview(false);
             settingsAutoApplyTimer.Stop();
-            ApplyCurrentSettings();
+            if (previewIslandShapeSettings == null)
+            {
+                ApplyCurrentSettings(settingsApplier: applyIslandShapeSettings);
+                return;
+            }
+
+            previewIslandShapeSettings(CaptureSettings(includePendingPowerSavingMode: false));
+            pendingAutoApplySettingsApplier = applyIslandShapeSettings;
+            QueueDirtyStateUpdate();
+        }
+
+        private void AnimateTopCornerRadiusSlider(double target)
+        {
+            target = Math.Max(IslandConcaveRadiusSlider.Minimum, Math.Min(IslandConcaveRadiusSlider.Maximum, target));
+            var current = IslandConcaveRadiusSlider.Value;
+            var animationVersion = ++topCornerRadiusSliderAnimationVersion;
+            animatingTopCornerRadiusSlider = true;
+            IslandConcaveRadiusSlider.BeginAnimation(RangeBase.ValueProperty, null);
+            IslandConcaveRadiusSlider.Value = target;
+            if (!CanAnimateSettingsVisuals || !IsLoaded || Math.Abs(current - target) < 0.05)
+            {
+                animatingTopCornerRadiusSlider = false;
+                SyncIslandAppearanceNumericText(IslandConcaveRadiusSlider);
+                return;
+            }
+
+            var animation = new DoubleAnimation(current, target, TimeSpan.FromMilliseconds(220))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+                FillBehavior = FillBehavior.Stop
+            };
+            animation.Completed += (sender, args) =>
+            {
+                if (animationVersion != topCornerRadiusSliderAnimationVersion)
+                {
+                    return;
+                }
+
+                IslandConcaveRadiusSlider.BeginAnimation(RangeBase.ValueProperty, null);
+                animatingTopCornerRadiusSlider = false;
+                SyncIslandAppearanceNumericText(IslandConcaveRadiusSlider);
+                UpdateIslandAppearancePreview(false);
+            };
+            IslandConcaveRadiusSlider.BeginAnimation(
+                RangeBase.ValueProperty,
+                animation,
+                HandoffBehavior.SnapshotAndReplace);
         }
 
         private void FontSelector_DropDownOpened(object sender, EventArgs e)
@@ -1000,13 +1070,18 @@ namespace LyricHover.App
         private void SettingsRange_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (updatingIslandAppearancePreview) return;
+            if (animatingTopCornerRadiusSlider && ReferenceEquals(sender, IslandConcaveRadiusSlider))
+            {
+                SyncIslandAppearanceNumericText(IslandConcaveRadiusSlider);
+                return;
+            }
             if (ReferenceEquals(sender, IslandConcaveRadiusSlider))
             {
                 if (islandTopCornersConvexMode) islandConvexScreenEdgeDistanceDraft = IslandConcaveRadiusSlider.Value;
                 else islandConcaveRadiusDraft = IslandConcaveRadiusSlider.Value;
             }
             SyncIslandAppearanceNumericText(sender as RangeBase);
-            UpdateIslandAppearancePreview();
+            UpdateIslandAppearancePreview(ReferenceEquals(sender, IslandFontScaleSlider));
             QueueDirtyStateUpdate();
         }
 
@@ -1021,7 +1096,7 @@ namespace LyricHover.App
             {
                 UpdateExpandableInteractionHint();
             }
-            UpdateIslandAppearancePreview();
+            UpdateIslandAppearancePreview(ReferenceEquals(sender, IslandFontScaleTextBox));
             QueueDirtyStateUpdate();
         }
 
@@ -1116,10 +1191,10 @@ namespace LyricHover.App
         private void IslandAppearancePreview_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             if (e.WidthChanged && !updatingIslandAppearancePreview)
-                UpdateIslandAppearancePreview();
+                UpdateIslandAppearancePreview(false);
         }
 
-        private void UpdateIslandAppearancePreview()
+        private void UpdateIslandAppearancePreview(bool updateTypography = true)
         {
             if (IslandAppearancePreviewShape == null || IslandFontScaleSlider == null) return;
             updatingIslandAppearancePreview = true;
@@ -1144,12 +1219,15 @@ namespace LyricHover.App
                     ? 120
                     : IslandAppearanceRendering.GetMaximumConcaveRadius(previewWidth, previewHeight, IslandConvexRadiusSlider.Maximum);
                 IslandConcaveRadiusSlider.Maximum = concaveMaximum;
-                IslandConcaveRadiusSlider.Value = Math.Min(
-                    isConvex ? islandConvexScreenEdgeDistanceDraft : islandConcaveRadiusDraft,
-                    concaveMaximum);
-                if (isConvex) islandConvexScreenEdgeDistanceDraft = IslandConcaveRadiusSlider.Value;
-                else islandConcaveRadiusDraft = IslandConcaveRadiusSlider.Value;
-                SyncIslandAppearanceNumericText(IslandConcaveRadiusSlider);
+                if (!animatingTopCornerRadiusSlider)
+                {
+                    IslandConcaveRadiusSlider.Value = Math.Min(
+                        isConvex ? islandConvexScreenEdgeDistanceDraft : islandConcaveRadiusDraft,
+                        concaveMaximum);
+                    if (isConvex) islandConvexScreenEdgeDistanceDraft = IslandConcaveRadiusSlider.Value;
+                    else islandConcaveRadiusDraft = IslandConcaveRadiusSlider.Value;
+                    SyncIslandAppearanceNumericText(IslandConcaveRadiusSlider);
+                }
 
                 var preview = new OverlayPlacementSettings
                 {
@@ -1159,19 +1237,22 @@ namespace LyricHover.App
                     IslandConvexContentEdgeDistance = IslandConvexContentEdgeDistanceSlider.Value,
                     IslandTopCornersConvex = isConvex
                 };
-                var chinese = IslandAppearanceRendering.ResolveFont(IslandChineseFontComboBox.SelectedValue as string, "Microsoft YaHei UI");
-                var english = IslandAppearanceRendering.ResolveFont(IslandEnglishFontComboBox.SelectedValue as string, "Segoe UI");
                 if (previewGrid != null) previewGrid.Height = previewHeight;
                 IslandAppearancePreviewContent.Height = previewHeight;
                 IslandAppearancePreviewShape.RenderTransform = Transform.Identity;
                 IslandAppearancePreviewContent.RenderTransform = Transform.Identity;
                 IslandAppearancePreviewShape.Data = IslandAppearanceRendering.CreateGeometry(previewWidth, previewHeight, preview);
-                IslandAppearancePreviewPrimary.FontSize = size;
-                IslandAppearancePreviewPrimary.FontFamily = english;
-                IslandAppearanceRendering.SetMixedText(IslandAppearancePreviewPrimary, "Dreaming of home, dear old home", chinese, english);
-                IslandAppearancePreviewSecondary.FontSize = OverlayPlacementSettings.DefaultIslandLyricsFontSize * 0.75 * scale;
-                IslandAppearancePreviewSecondary.FontFamily = english;
-                IslandAppearanceRendering.SetMixedText(IslandAppearancePreviewSecondary, "梦回故乡，亲爱的故乡", chinese, english);
+                if (updateTypography)
+                {
+                    var chinese = IslandAppearanceRendering.ResolveFont(IslandChineseFontComboBox.SelectedValue as string, "Microsoft YaHei UI");
+                    var english = IslandAppearanceRendering.ResolveFont(IslandEnglishFontComboBox.SelectedValue as string, "Segoe UI");
+                    IslandAppearancePreviewPrimary.FontSize = size;
+                    IslandAppearancePreviewPrimary.FontFamily = english;
+                    IslandAppearanceRendering.SetMixedText(IslandAppearancePreviewPrimary, "Dreaming of home, dear old home", chinese, english);
+                    IslandAppearancePreviewSecondary.FontSize = OverlayPlacementSettings.DefaultIslandLyricsFontSize * 0.75 * scale;
+                    IslandAppearancePreviewSecondary.FontFamily = english;
+                    IslandAppearanceRendering.SetMixedText(IslandAppearancePreviewSecondary, "梦回故乡，亲爱的故乡", chinese, english);
+                }
             }
             finally
             {
@@ -1187,17 +1268,67 @@ namespace LyricHover.App
                 ? 0
                 : OverlayPlacementSettings.DefaultIslandConcaveRadius;
             IslandConvexRadiusSlider.Value = OverlayPlacementSettings.DefaultIslandConvexRadius;
-            UpdateIslandAppearancePreview();
+            UpdateIslandAppearancePreview(false);
             QueueDirtyStateUpdate();
         }
 
         private void UpdateConvexContentEdgeDistanceVisibility()
         {
-            var visibility = islandTopCornersConvexMode ? Visibility.Visible : Visibility.Collapsed;
-            if (IslandConvexContentEdgeDistanceLabel != null)
-                IslandConvexContentEdgeDistanceLabel.Visibility = visibility;
-            if (IslandConvexContentEdgeDistanceEditor != null)
-                IslandConvexContentEdgeDistanceEditor.Visibility = visibility;
+            if (IslandConvexContentEdgeDistanceRow == null)
+            {
+                return;
+            }
+
+            const double expandedHeight = 52;
+            var row = IslandConvexContentEdgeDistanceRow;
+            var expand = islandTopCornersConvexMode;
+            var animationVersion = ++convexContentEdgeDistanceAnimationVersion;
+            var animate = IsLoaded && !initializingSettings && CanAnimateSettingsVisuals;
+            var currentHeight = row.Visibility == Visibility.Visible ? row.ActualHeight : 0;
+            var currentOpacity = row.Visibility == Visibility.Visible ? row.Opacity : 0;
+
+            row.BeginAnimation(FrameworkElement.HeightProperty, null);
+            row.BeginAnimation(UIElement.OpacityProperty, null);
+            if (!animate)
+            {
+                row.Visibility = expand ? Visibility.Visible : Visibility.Collapsed;
+                row.Height = expand ? double.NaN : 0;
+                row.Opacity = expand ? 1 : 0;
+                return;
+            }
+
+            row.Visibility = Visibility.Visible;
+            row.Height = currentHeight;
+            row.Opacity = currentOpacity;
+            var targetHeight = expand ? expandedHeight : 0;
+            var targetOpacity = expand ? 1 : 0;
+            var duration = TimeSpan.FromMilliseconds(expand ? 220 : 180);
+            var easing = new QuinticEase { EasingMode = EasingMode.EaseInOut };
+            var heightAnimation = new DoubleAnimation(currentHeight, targetHeight, duration)
+            {
+                EasingFunction = easing,
+                FillBehavior = FillBehavior.HoldEnd
+            };
+            var opacityAnimation = new DoubleAnimation(currentOpacity, targetOpacity, duration)
+            {
+                EasingFunction = easing,
+                FillBehavior = FillBehavior.HoldEnd
+            };
+            heightAnimation.Completed += (sender, args) =>
+            {
+                if (animationVersion != convexContentEdgeDistanceAnimationVersion)
+                {
+                    return;
+                }
+
+                row.BeginAnimation(FrameworkElement.HeightProperty, null);
+                row.BeginAnimation(UIElement.OpacityProperty, null);
+                row.Visibility = expand ? Visibility.Visible : Visibility.Collapsed;
+                row.Height = expand ? double.NaN : 0;
+                row.Opacity = expand ? 1 : 0;
+            };
+            row.BeginAnimation(FrameworkElement.HeightProperty, heightAnimation, HandoffBehavior.SnapshotAndReplace);
+            row.BeginAnimation(UIElement.OpacityProperty, opacityAnimation, HandoffBehavior.SnapshotAndReplace);
         }
 
         private void UpdateExpandableInteractionHint()
@@ -1490,14 +1621,17 @@ namespace LyricHover.App
             PowerSavingDetailsCollapseButton.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
         }
 
-        private bool ApplyCurrentSettings(bool includePendingPowerSavingMode = true)
+        private bool ApplyCurrentSettings(
+            bool includePendingPowerSavingMode = true,
+            Func<OverlayPlacementSettings, OverlayPlacementSettings> settingsApplier = null)
         {
             settingsAutoApplyTimer.Stop();
+            pendingAutoApplySettingsApplier = null;
             var settings = CaptureSettings(includePendingPowerSavingMode);
             OverlayPlacementSettings committedSettings;
             try
             {
-                committedSettings = applySettings(settings) ?? settings;
+                committedSettings = (settingsApplier ?? applySettings)(settings) ?? settings;
             }
             catch (System.IO.IOException)
             {

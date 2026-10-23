@@ -129,6 +129,8 @@ namespace LyricHover.Tests
             suite.Run("Chinese font selectors only list families with CJK glyphs", ChineseFontSelectorsFilterForCjkGlyphs);
             suite.Run("island appearance preview and live shape share pill geometry", IslandAppearanceGeometryKeepsCapsuleBounds);
             suite.Run("settings fixes preserve DPI clarity and deliberate actions", SettingsFixesPreserveDpiClarityAndDeliberateActions);
+            suite.Run("convex-only appearance row aligns and collapses smoothly", ConvexOnlyAppearanceRowAlignsAndCollapsesSmoothly);
+            suite.Run("top corner mode switch animates once without remeasuring modules", TopCornerModeSwitchAnimatesWithoutRemeasuringModules);
             suite.Run("island text rendering snaps static content to physical pixels", IslandTextRenderingSnapsToPhysicalPixels);
             suite.Run("island lyrics reserve clearance for English descenders", IslandLyricsReserveDescenderClearance);
             suite.Run("island secondary lyrics stay readable at small sizes", IslandSecondaryLyricsStayReadableAtSmallSizes);
@@ -227,6 +229,7 @@ namespace LyricHover.Tests
             suite.Run("tutorial overlay is dimmer and cannot cover interactions", TutorialOverlayIsDimmerAndCannotCoverInteractions);
             suite.Run("layout rebuild replays the latest island content", LayoutRebuildReplaysLatestIslandContent);
             suite.Run("expandable layout reuses the shared lyrics view", ExpandableLayoutReusesSharedLyricsView);
+            suite.Run("module layout reconciliation preserves unchanged views", ModuleLayoutReconciliationPreservesUnchangedViews);
             suite.Run("escape exits tutorial from island and settings", EscapeExitsTutorialFromIslandAndSettings);
             suite.Run("lyric transition keeps centered canvas position", LyricTransitionKeepsCenteredCanvasPosition);
             suite.Run("word-tracked lyric centers with the current line width", WordTrackedLyricCentersWithCurrentLineWidth);
@@ -241,6 +244,7 @@ namespace LyricHover.Tests
             suite.Run("expanded island measures unconstrained module content", ExpandedIslandMeasuresUnconstrainedModuleContent);
             suite.Run("island size animation avoids per-frame transparent window resizing", IslandSizeAnimationAvoidsPerFrameTransparentWindowResizing);
             suite.Run("module toolbox captures mouse down for drag", ModuleToolboxCapturesMouseDownForDrag);
+            suite.Run("module drag payload stays application private", ModuleDragPayloadStaysApplicationPrivate);
             suite.Run("settings stays modeless while editing modules", SettingsStaysModelessWhileEditingModules);
             suite.Run("expandable island animates measured size", ExpandableIslandAnimatesMeasuredSize);
             suite.Run("auto retract delays are configurable", AutoRetractDelaysAreConfigurable);
@@ -264,6 +268,8 @@ namespace LyricHover.Tests
             suite.Run("layout drag shows snapped insertion placeholder", LayoutDragShowsSnappedInsertionPlaceholder);
             suite.Run("module drop handler is registered once", ModuleDropHandlerIsRegisteredOnce);
             suite.Run("layout module add and remove animate island size", LayoutModuleAddAndRemoveAnimateIslandSize);
+            suite.Run("module drag handoff keeps one stable island size transition", ModuleDragHandoffKeepsOneStableIslandSizeTransition);
+            suite.Run("convex island size animation updates geometry before window bounds", ConvexIslandSizeAnimationUpdatesGeometryBeforeWindowBounds);
             suite.Run("cancels layout draft without mutating original", CancelsLayoutDraftWithoutMutatingOriginal);
             suite.Run("uses approved lyric offset hotkeys", UsesApprovedLyricOffsetHotkeys);
             suite.Run("translation mode explains why single line is unavailable", TranslationModeExplainsSingleLineRestriction);
@@ -1619,6 +1625,73 @@ namespace LyricHover.Tests
             {
                 UiLanguageService.SetPreference(originalPreference);
             }
+        }
+
+        static void ConvexOnlyAppearanceRowAlignsAndCollapsesSmoothly()
+        {
+            var root = GetSolutionRoot();
+            var xaml = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml"));
+            var source = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml.cs"));
+            var radiusRowsStart = xaml.IndexOf("x:Name=\"IslandConcaveRadiusLabel\"", StringComparison.Ordinal);
+            var radiusRowsEnd = xaml.IndexOf("Content=\"恢复默认半径\"", radiusRowsStart, StringComparison.Ordinal);
+            Assert.True(radiusRowsStart >= 0 && radiusRowsEnd > radiusRowsStart);
+            var radiusRows = xaml.Substring(radiusRowsStart, radiusRowsEnd - radiusRowsStart);
+
+            Assert.False(radiusRows.Contains("Margin=\"12,0,0,0\""));
+            Assert.True(radiusRows.Contains("x:Name=\"IslandConvexContentEdgeDistanceRow\""));
+            Assert.True(radiusRows.Contains("Grid.ColumnSpan=\"2\" Height=\"0\" Opacity=\"0\" Visibility=\"Collapsed\" ClipToBounds=\"True\""));
+            Assert.True(radiusRows.Contains("<Grid Height=\"52\" VerticalAlignment=\"Top\">"));
+            Assert.True(source.Contains("new QuinticEase { EasingMode = EasingMode.EaseInOut }"));
+            Assert.True(source.Contains("IsLoaded && !initializingSettings && CanAnimateSettingsVisuals"));
+            Assert.True(source.Contains("row.Height = expand ? double.NaN : 0"));
+            Assert.True(source.Contains("row.Visibility = expand ? Visibility.Visible : Visibility.Collapsed"));
+        }
+
+        static void TopCornerModeSwitchAnimatesWithoutRemeasuringModules()
+        {
+            var root = GetSolutionRoot();
+            var settingsSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml.cs"));
+            var mainSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
+            var handlerStart = settingsSource.IndexOf("private void TopCornerModeRadioButton_Checked", StringComparison.Ordinal);
+            var handlerEnd = settingsSource.IndexOf("private void AnimateTopCornerRadiusSlider", handlerStart, StringComparison.Ordinal);
+            Assert.True(handlerStart >= 0 && handlerEnd > handlerStart);
+            var handler = settingsSource.Substring(handlerStart, handlerEnd - handlerStart);
+
+            Assert.True(handler.Contains("AnimateSegmentSelection("));
+            Assert.True(handler.Contains("AnimateTopCornerRadiusSlider(targetRadius)"));
+            Assert.Equal(1, CountOccurrences(handler, "ApplyCurrentSettings(settingsApplier: applyIslandShapeSettings);"));
+            Assert.True(handler.Contains("UpdateIslandAppearancePreview(false)"));
+            Assert.True(handler.Contains("previewIslandShapeSettings(CaptureSettings(includePendingPowerSavingMode: false))"));
+            Assert.True(handler.Contains("pendingAutoApplySettingsApplier = applyIslandShapeSettings"));
+            Assert.True(handler.Contains("QueueDirtyStateUpdate();"));
+            Assert.True(settingsSource.Contains("BeginAnimation(\n                RangeBase.ValueProperty"));
+            Assert.True(settingsSource.Contains("new CubicEase { EasingMode = EasingMode.EaseOut }"));
+            Assert.True(settingsSource.Contains("animatingTopCornerRadiusSlider && ReferenceEquals(sender, IslandConcaveRadiusSlider)"));
+            Assert.True(mainSource.Contains("if (HasIslandModuleAppearanceChanged(previousSettings, runtimeSettings))"));
+            Assert.True(mainSource.Contains("private static bool HasIslandModuleAppearanceChanged("));
+            Assert.True(mainSource.Contains("private void SynchronizeIslandShapeSettingsRuntime("));
+            Assert.True(mainSource.Contains("if (!HasOnlyIslandShapeChanges(previousSettings, runtimeSettings))"));
+
+            var mainWindowType = typeof(OverlayPlacementSettings).Assembly.GetType("LyricHover.App.MainWindow");
+            var appearanceChanged = mainWindowType?.GetMethod(
+                "HasIslandModuleAppearanceChanged",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            Assert.True(appearanceChanged != null);
+            var baseline = new OverlayPlacementSettings();
+            var cornerOnly = baseline.DeepClone();
+            cornerOnly.IslandTopCornersConvex = true;
+            cornerOnly.IslandConvexScreenEdgeDistance = 12;
+            Assert.False((bool)appearanceChanged.Invoke(null, new object[] { baseline, cornerOnly }));
+            var typography = baseline.DeepClone();
+            typography.IslandEnglishFontFamily = "Example Latin";
+            Assert.True((bool)appearanceChanged.Invoke(null, new object[] { baseline, typography }));
+
+            var onlyShapeChanged = mainWindowType?.GetMethod(
+                "HasOnlyIslandShapeChanges",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            Assert.True(onlyShapeChanged != null);
+            Assert.True((bool)onlyShapeChanged.Invoke(null, new object[] { baseline, cornerOnly }));
+            Assert.False((bool)onlyShapeChanged.Invoke(null, new object[] { baseline, typography }));
         }
 
         static void IslandMixedScriptTextKeepsFallbackRuns()
@@ -3446,6 +3519,33 @@ namespace LyricHover.Tests
             Assert.True(mainWindowSource.Contains("moduleDragPreviewWidth"));
         }
 
+        static void ModuleDragPayloadStaysApplicationPrivate()
+        {
+            var payload = new LyricHover.App.LayoutEditing.IslandLayoutDragPayload
+            {
+                NewType = IslandModuleType.Lyrics
+            };
+            var data = LyricHover.App.LayoutEditing.IslandLayoutDragPayload.CreateDataObject(payload);
+
+            Assert.True(data.GetDataPresent(
+                LyricHover.App.LayoutEditing.IslandLayoutDragPayload.DataFormat,
+                false));
+            Assert.True(object.ReferenceEquals(
+                payload,
+                LyricHover.App.LayoutEditing.IslandLayoutDragPayload.FromData(data)));
+            Assert.False(data.GetFormats(true).Any(format =>
+                string.Equals(format, System.Windows.DataFormats.Text, StringComparison.Ordinal) ||
+                string.Equals(format, System.Windows.DataFormats.UnicodeText, StringComparison.Ordinal) ||
+                string.Equals(format, System.Windows.DataFormats.FileDrop, StringComparison.Ordinal)));
+            var payloadSource = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "LyricHover.App", "LayoutEditing", "IslandLayoutDragPayload.cs"));
+            var imageSource = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "LyricHover.App", "LayoutEditing", "OleDragImage.cs"));
+            Assert.True(payloadSource.Contains("OleDragImage.SuppressSystemImage(data)"));
+            Assert.True(imageSource.Contains("InitializeFromBitmap(ref dragImage, comData)"));
+            Assert.True(imageSource.Contains("new Bitmap(1, 1"));
+        }
+
         static void SettingsStaysModelessWhileEditingModules()
         {
             var root = GetSolutionRoot();
@@ -3495,6 +3595,60 @@ namespace LyricHover.Tests
             Assert.True(moduleHostSource.Contains("private bool CanUpdateLayoutInPlace("));
             Assert.True(moduleHostSource.Contains("divider.ApplySettings(module)"));
             Assert.True(dividerSource.Contains("public void ApplySettings(IslandModuleInstance module)"));
+        }
+
+        static void ModuleDragHandoffKeepsOneStableIslandSizeTransition()
+        {
+            var root = GetSolutionRoot();
+            var main = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
+            var host = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Modules", "IslandModuleHost.xaml.cs"));
+            var args = File.ReadAllText(Path.Combine(root, "LyricHover.App", "LayoutEditing", "ModuleDragCompletedEventArgs.cs"));
+            var dragLeaveStart = main.IndexOf("private void ModuleHost_DragLeave", StringComparison.Ordinal);
+            var dragLeaveEnd = main.IndexOf("private int FindModuleInsertionIndex", dragLeaveStart, StringComparison.Ordinal);
+            var dragLeave = main.Substring(dragLeaveStart, dragLeaveEnd - dragLeaveStart);
+            var dropCompletionStart = main.IndexOf("private void QueueModuleDropCompletion", StringComparison.Ordinal);
+            var dropCompletionEnd = main.IndexOf("private void ModuleHost_DragLeave", dropCompletionStart, StringComparison.Ordinal);
+            var dropCompletion = main.Substring(dropCompletionStart, dropCompletionEnd - dropCompletionStart);
+
+            Assert.True(args.Contains("public bool AcceptedByIsland { get; }"));
+            Assert.True(host.Contains("if (!acceptedByIsland)"));
+            Assert.True(main.Contains("if (!args.AcceptedByIsland)"));
+            Assert.False(dragLeave.Contains("ApplyMeasuredIslandSize(true)"));
+            Assert.True(dropCompletion.IndexOf("if (layoutChanged", StringComparison.Ordinal) <
+                dropCompletion.IndexOf("ModuleHost.ClearInsertionPreview();", StringComparison.Ordinal));
+            Assert.False(main.Contains("GetHorizontalShapePadding(placementSettings) + 10"));
+            Assert.True(main.Contains("Math.Abs(islandSizeAnimationTargetWidth - targetWidth) < 0.5"));
+            Assert.True(main.Contains("ScheduleModuleDragPreviewClear(payload)"));
+            Assert.True(main.Contains("Interval = TimeSpan.FromMilliseconds(90)"));
+            Assert.True(main.Contains("moduleDragLeaveTimer.Stop();"));
+        }
+
+        static void ConvexIslandSizeAnimationUpdatesGeometryBeforeWindowBounds()
+        {
+            var main = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "LyricHover.App", "MainWindow.xaml.cs"));
+            var measuredStart = main.IndexOf("private bool ApplyMeasuredIslandSize", StringComparison.Ordinal);
+            var measuredEnd = main.IndexOf("private void QueueModuleContentSizeUpdate", measuredStart, StringComparison.Ordinal);
+            var measured = main.Substring(measuredStart, measuredEnd - measuredStart);
+            var animateStart = main.IndexOf("private void AnimateIslandSize", StringComparison.Ordinal);
+            var animateEnd = main.IndexOf("private void StopIslandSizeAnimationFrames", animateStart, StringComparison.Ordinal);
+            var animate = main.Substring(animateStart, animateEnd - animateStart);
+            var animatedSetupStart = animate.IndexOf("islandSizeAnimationActive = true", StringComparison.Ordinal);
+            var animatedSetupEnd = animate.IndexOf("islandSizeAnimationFrameHandler =", animatedSetupStart, StringComparison.Ordinal);
+            var animatedSetup = animate.Substring(animatedSetupStart, animatedSetupEnd - animatedSetupStart);
+            var completionStart = animate.IndexOf("if (progress < 1)", StringComparison.Ordinal);
+            var completion = animate.Substring(completionStart);
+
+            Assert.True(measured.LastIndexOf("UpdateIslandSizeVisuals(targetWidth, targetHeight)", StringComparison.Ordinal) <
+                measured.LastIndexOf("Width = targetWidth", StringComparison.Ordinal));
+            Assert.True(animatedSetup.IndexOf("UpdateIslandSizeVisuals(startWidth, startHeight)", StringComparison.Ordinal) <
+                animatedSetup.IndexOf("Width = Math.Max(startWidth, targetWidth)", StringComparison.Ordinal));
+            Assert.True(completion.IndexOf("UpdateIslandSizeVisuals(targetWidth, targetHeight)", StringComparison.Ordinal) <
+                completion.IndexOf("Width = targetWidth", StringComparison.Ordinal));
+            Assert.True(main.Contains("if (!islandSizeAnimationActive &&\n                islandVisible"));
+            Assert.True(animate.Contains("var placementDeltaY = currentShellTop - newStartPosition.Top"));
+            Assert.True(animate.Contains("Top = outerPosition.Top + placementDeltaY * (1 - eased)"));
+            Assert.True(animate.Contains("IslandShellTranslate.Y = visualPosition.Top - outerPosition.Top"));
         }
 
         static void ExpandableIslandAnimatesMeasuredSize()
@@ -5173,6 +5327,54 @@ namespace LyricHover.Tests
 
             Assert.True(collapsedLyrics != null);
             Assert.True(object.ReferenceEquals(collapsedLyrics, expandedLyrics));
+        }
+
+        static void ModuleLayoutReconciliationPreservesUnchangedViews()
+        {
+            var lyrics = new IslandModuleInstance(IslandModuleType.Lyrics) { Id = "lyrics" };
+            var progress = new IslandModuleInstance(IslandModuleType.Progress) { Id = "progress" };
+            var controls = new IslandModuleInstance(IslandModuleType.PlaybackControls) { Id = "controls" };
+            var host = new LyricHover.App.Modules.IslandModuleHost();
+            var modulePanelField = typeof(LyricHover.App.Modules.IslandModuleHost).GetField(
+                "ModulePanel",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            var initial = new IslandLayoutProfile();
+            initial.Modules.Add(lyrics);
+            initial.Modules.Add(progress);
+            host.ApplyLayout(initial);
+            var panel = modulePanelField?.GetValue(host) as System.Windows.Controls.StackPanel;
+            Assert.True(panel != null);
+            var lyricsView = panel.Children.Cast<System.Windows.FrameworkElement>()
+                .Single(view => string.Equals(view.Tag as string, lyrics.Id, StringComparison.Ordinal));
+            var progressView = panel.Children.Cast<System.Windows.FrameworkElement>()
+                .Single(view => string.Equals(view.Tag as string, progress.Id, StringComparison.Ordinal));
+
+            var reorderedAndExpanded = new IslandLayoutProfile();
+            reorderedAndExpanded.Modules.Add(progress);
+            reorderedAndExpanded.Modules.Add(controls);
+            reorderedAndExpanded.Modules.Add(lyrics);
+            host.ApplyLayout(reorderedAndExpanded);
+
+            Assert.Equal(progress.Id, ((System.Windows.FrameworkElement)panel.Children[0]).Tag as string);
+            Assert.Equal(controls.Id, ((System.Windows.FrameworkElement)panel.Children[1]).Tag as string);
+            Assert.Equal(lyrics.Id, ((System.Windows.FrameworkElement)panel.Children[2]).Tag as string);
+            Assert.True(object.ReferenceEquals(progressView, panel.Children[0]));
+            Assert.True(object.ReferenceEquals(lyricsView, panel.Children[2]));
+
+            var removed = new IslandLayoutProfile();
+            removed.Modules.Add(controls);
+            removed.Modules.Add(lyrics);
+            host.ApplyLayout(removed);
+            Assert.Equal(2, panel.Children.Count);
+            Assert.True(object.ReferenceEquals(lyricsView, panel.Children[1]));
+
+            var source = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(),
+                "LyricHover.App",
+                "Modules",
+                "IslandModuleHost.xaml.cs"));
+            Assert.True(source.Contains("ReconcileModuleChildren(targetViews)"));
+            Assert.False(source.Contains("ModulePanel.Children.Clear();"));
         }
 
         static void EscapeExitsTutorialFromIslandAndSettings()

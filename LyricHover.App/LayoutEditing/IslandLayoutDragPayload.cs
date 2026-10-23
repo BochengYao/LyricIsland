@@ -15,14 +15,19 @@ namespace LyricHover.App.LayoutEditing
         public static DataObject CreateDataObject(IslandLayoutDragPayload payload)
         {
             var data = new DataObject();
-            data.SetData(DataFormat, payload);
+            // Keep the payload application-private.  WPF's default auto-conversion can
+            // expose the descriptor's ToString() value as text, which makes Windows add a
+            // second generic document drag image (and a misleading "not allowed" badge)
+            // beside our own module ghost.
+            data.SetData(DataFormat, payload, false);
+            OleDragImage.SuppressSystemImage(data);
             return data;
         }
 
         public static IslandLayoutDragPayload FromData(IDataObject data)
         {
-            return data?.GetDataPresent(DataFormat) == true
-                ? data.GetData(DataFormat) as IslandLayoutDragPayload
+            return data?.GetDataPresent(DataFormat, false) == true
+                ? data.GetData(DataFormat, false) as IslandLayoutDragPayload
                 : null;
         }
     }

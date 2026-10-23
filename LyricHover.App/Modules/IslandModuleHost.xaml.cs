@@ -161,22 +161,36 @@ namespace LyricHover.App.Modules
             var targetTypeCounts = profile.Modules
                 .GroupBy(module => module.Type)
                 .ToDictionary(group => group.Key, group => group.Count());
+            var existingTypesById = new Dictionary<string, IslandModuleType>(
+                moduleTypesById,
+                StringComparer.Ordinal);
+            var reusableById = existingModules
+                .Where(element => element.Tag is string && existingTypesById.ContainsKey((string)element.Tag))
+                .GroupBy(element => (string)element.Tag)
+                .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
             var reusableByUniqueType = existingModules
-                .Where(element => element.Tag is string && moduleTypesById.ContainsKey((string)element.Tag))
-                .GroupBy(element => moduleTypesById[(string)element.Tag])
+                .Where(element => element.Tag is string && existingTypesById.ContainsKey((string)element.Tag))
+                .GroupBy(element => existingTypesById[(string)element.Tag])
                 .Where(group => group.Key != IslandModuleType.Divider &&
                     group.Count() == 1 &&
                     targetTypeCounts.TryGetValue(group.Key, out var count) &&
                     count == 1)
                 .ToDictionary(group => group.Key, group => group.Single());
             var reusedModules = new HashSet<FrameworkElement>();
-            ModulePanel.Children.Clear();
-            moduleTypesById.Clear();
+            var targetViews = new List<FrameworkElement>();
+            var targetTypesById = new Dictionary<string, IslandModuleType>(StringComparer.Ordinal);
 
             foreach (var module in profile.Modules)
             {
                 FrameworkElement view = null;
-                if (reusableByUniqueType.TryGetValue(module.Type, out var uniqueTypeView) &&
+                if (reusableById.TryGetValue(module.Id, out var sameInstanceView) &&
+                    existingTypesById.TryGetValue(module.Id, out var existingType) &&
+                    existingType == module.Type &&
+                    !reusedModules.Contains(sameInstanceView))
+                {
+                    view = sameInstanceView;
+                }
+                else if (reusableByUniqueType.TryGetValue(module.Type, out var uniqueTypeView) &&
                     !reusedModules.Contains(uniqueTypeView))
                 {
                     view = uniqueTypeView;
@@ -197,14 +211,51 @@ namespace LyricHover.App.Modules
                 ApplyRuntimeModuleState(view);
                 ApplyModuleSettings(view, module);
                 view.Tag = module.Id;
-                moduleTypesById[module.Id] = module.Type;
+                targetTypesById[module.Id] = module.Type;
                 view.Cursor = LayoutEditingEnabled ? LayoutDragCursors.OpenHand : Cursors.Arrow;
-                ModulePanel.Children.Add(view);
+                targetViews.Add(view);
+            }
+
+            ReconcileModuleChildren(targetViews);
+            moduleTypesById.Clear();
+            foreach (var pair in targetTypesById)
+            {
+                moduleTypesById[pair.Key] = pair.Value;
             }
 
             // Reusing the shared lyrics/module views preserves their current render and
             // word-tracking state while the island changes size, avoiding a one-frame reset.
             Update(lastRenderState);
+        }
+
+        private void ReconcileModuleChildren(IReadOnlyList<FrameworkElement> targetViews)
+        {
+            var targetSet = new HashSet<FrameworkElement>(targetViews);
+            for (var index = ModulePanel.Children.Count - 1; index >= 0; index--)
+            {
+                var child = ModulePanel.Children[index] as FrameworkElement;
+                if (child == null || !targetSet.Contains(child))
+                {
+                    ModulePanel.Children.RemoveAt(index);
+                }
+            }
+
+            for (var targetIndex = 0; targetIndex < targetViews.Count; targetIndex++)
+            {
+                var view = targetViews[targetIndex];
+                var currentIndex = ModulePanel.Children.IndexOf(view);
+                if (currentIndex == targetIndex)
+                {
+                    continue;
+                }
+
+                if (currentIndex >= 0)
+                {
+                    ModulePanel.Children.RemoveAt(currentIndex);
+                }
+
+                ModulePanel.Children.Insert(targetIndex, view);
+            }
         }
 
         private bool CanUpdateLayoutInPlace(
@@ -798,7 +849,6 @@ namespace LyricHover.App.Modules
                     element.ReleaseMouseCapture();
                 }
                 element.Cursor = LayoutEditingEnabled ? LayoutDragCursors.OpenHand : Cursors.Arrow;
-                ClearInsertionPreview();
                 dragGhost?.Close();
                 dragGhost = null;
                 var acceptedByIsland = result == DragDropEffects.Move;
@@ -813,7 +863,12 @@ namespace LyricHover.App.Modules
                         payload.ExistingInstanceId,
                         payload.OperationId,
                         droppedOutside,
-                        wasCancelled));
+                        wasCancelled,
+                        acceptedByIsland));
+                if (!acceptedByIsland)
+                {
+                    ClearInsertionPreview();
+                }
             }
         }
 

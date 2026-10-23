@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -97,6 +98,8 @@ namespace LyricHover.App
         private int islandSizeAnimationVersion;
         private EventHandler islandSizeAnimationFrameHandler;
         private bool islandSizeAnimationActive;
+        private double islandSizeAnimationTargetWidth = double.NaN;
+        private double islandSizeAnimationTargetHeight = double.NaN;
         private double islandVisualWidth;
         private double islandVisualHeight;
         private bool moduleDragActive;
@@ -122,6 +125,7 @@ namespace LyricHover.App
         private double moduleDragPreviewWidth;
         private readonly LayoutDropCommitGuard committedModuleDrops = new LayoutDropCommitGuard();
         private bool moduleDragPreviewQueued;
+        private readonly DispatcherTimer moduleDragLeaveTimer;
         private bool moduleContentSizeUpdateQueued;
         private bool shutdownWaitingForDockRestore;
         private bool shutdownFinalizing;
@@ -155,6 +159,17 @@ namespace LyricHover.App
         public MainWindow()
         {
             InitializeComponent();
+            moduleDragLeaveTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(90)
+            };
+            moduleDragLeaveTimer.Tick += (sender, args) =>
+            {
+                moduleDragLeaveTimer.Stop();
+                queuedModuleDragPayload = null;
+                ModuleHost.ClearInsertionPreview();
+                ClearModuleDragSizePreview(true);
+            };
             ModuleHost.PreviousRequested += async (sender, args) => await PreviousRequested();
             ModuleHost.PlayPauseRequested += async (sender, args) => await PlayPauseRequested();
             ModuleHost.NextRequested += async (sender, args) => await NextRequested();
@@ -166,8 +181,11 @@ namespace LyricHover.App
                 {
                     RemoveModuleAfterOutsideDrop(args.InstanceId);
                 }
-                ModuleHost.ClearInsertionPreview();
-                ClearModuleDragSizePreview(true);
+                if (!args.AcceptedByIsland)
+                {
+                    ModuleHost.ClearInsertionPreview();
+                    ClearModuleDragSizePreview(true);
+                }
                 SetModuleDragActive(false);
             };
 
@@ -1036,6 +1054,7 @@ namespace LyricHover.App
             startupHintTimer?.Stop();
             repeatedLaunchRevealTimer?.Stop();
             lyricLineBoundaryTimer?.Stop();
+            moduleDragLeaveTimer.Stop();
             islandSizeAnimationVersion++;
             StopIslandSizeAnimationFrames();
             ClearPositionAnimation();
@@ -1355,6 +1374,78 @@ namespace LyricHover.App
             return settingsStateCoordinator.ApplyDraft(settings, SynchronizePlacementSettingsRuntime);
         }
 
+        private OverlayPlacementSettings ApplyIslandShapeSettings(OverlayPlacementSettings settings)
+        {
+            return settingsStateCoordinator.ApplyDraft(settings, SynchronizeIslandShapeSettingsRuntime);
+        }
+
+        private void PreviewIslandShapeSettings(OverlayPlacementSettings settings)
+        {
+            var previous = placementSettings.DeepClone();
+            var preview = placementSettings.DeepClone();
+            CopyIslandShapeSettings(settings, preview);
+            preview.Normalize();
+            settingsStateCoordinator.SetTransientRuntimeSnapshot(preview);
+            SynchronizeIslandShapeSettingsRuntime(previous, preview);
+        }
+
+        private void SynchronizeIslandShapeSettingsRuntime(
+            OverlayPlacementSettings previousSettings,
+            OverlayPlacementSettings runtimeSettings)
+        {
+            if (!HasOnlyIslandShapeChanges(previousSettings, runtimeSettings))
+            {
+                SynchronizePlacementSettingsRuntime(previousSettings, runtimeSettings);
+                return;
+            }
+
+            runtimeSettings.Normalize();
+            var positionChanged =
+                !previousSettings.IslandTopCornersConvex.Equals(runtimeSettings.IslandTopCornersConvex) ||
+                !previousSettings.IslandConvexScreenEdgeDistance.Equals(runtimeSettings.IslandConvexScreenEdgeDistance);
+            if (positionChanged)
+            {
+                ClearPositionAnimation();
+            }
+            UpdateIslandShape();
+            UpdateIslandTextPixelAlignment();
+            if (positionChanged && !islandSizeAnimationActive)
+            {
+                var adjustedPosition = islandVisible ? GetVisiblePosition() : GetHiddenPosition();
+                AnimateTo(adjustedPosition.Left, adjustedPosition.Top);
+            }
+        }
+
+        private static bool HasOnlyIslandShapeChanges(
+            OverlayPlacementSettings previousSettings,
+            OverlayPlacementSettings runtimeSettings)
+        {
+            if (previousSettings == null || runtimeSettings == null)
+            {
+                return false;
+            }
+
+            var comparison = previousSettings.DeepClone();
+            CopyIslandShapeSettings(runtimeSettings, comparison);
+            comparison.Normalize();
+            runtimeSettings.Normalize();
+            return string.Equals(
+                JsonSerializer.Serialize(comparison),
+                JsonSerializer.Serialize(runtimeSettings),
+                StringComparison.Ordinal);
+        }
+
+        private static void CopyIslandShapeSettings(
+            OverlayPlacementSettings source,
+            OverlayPlacementSettings target)
+        {
+            target.IslandConcaveRadius = source.IslandConcaveRadius;
+            target.IslandConvexRadius = source.IslandConvexRadius;
+            target.IslandConvexScreenEdgeDistance = source.IslandConvexScreenEdgeDistance;
+            target.IslandConvexContentEdgeDistance = source.IslandConvexContentEdgeDistance;
+            target.IslandTopCornersConvex = source.IslandTopCornersConvex;
+        }
+
         private async Task RestoreFreeProCustomizationDefaultsAsync()
         {
             var result = await proEntitlementService.RefreshAsync();
@@ -1400,7 +1491,10 @@ namespace LyricHover.App
             SynchronizeLyricDockRuntime(runtimeSettings);
             UiLanguageService.SetPreference(runtimeSettings.Language);
             ApplyTrayMenuTheme(runtimeSettings.SettingsTheme);
-            ModuleHost.ApplyAppearance(runtimeSettings);
+            if (HasIslandModuleAppearanceChanged(previousSettings, runtimeSettings))
+            {
+                ModuleHost.ApplyAppearance(runtimeSettings);
+            }
             RegisterGlobalHotkeys();
             UpdateIslandShape();
             UpdateIslandTextPixelAlignment();
@@ -1447,6 +1541,23 @@ namespace LyricHover.App
             {
                 ShowIsland();
             }
+        }
+
+        private static bool HasIslandModuleAppearanceChanged(
+            OverlayPlacementSettings previousSettings,
+            OverlayPlacementSettings runtimeSettings)
+        {
+            return previousSettings == null ||
+                runtimeSettings == null ||
+                !string.Equals(
+                    previousSettings.IslandChineseFontFamily,
+                    runtimeSettings.IslandChineseFontFamily,
+                    StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(
+                    previousSettings.IslandEnglishFontFamily,
+                    runtimeSettings.IslandEnglishFontFamily,
+                    StringComparison.OrdinalIgnoreCase) ||
+                !previousSettings.IslandLyricsFontSize.Equals(runtimeSettings.IslandLyricsFontSize);
         }
 
         private bool SynchronizeLyricDockRuntime(OverlayPlacementSettings runtimeSettings)
@@ -1672,10 +1783,11 @@ namespace LyricHover.App
             StopIslandSizeAnimationFrames();
             BeginAnimation(WidthProperty, null);
             BeginAnimation(HeightProperty, null);
+            UpdateIslandSizeVisuals(targetWidth, targetHeight);
             Width = targetWidth;
             Height = targetHeight;
             IslandShellTranslate.X = 0;
-            UpdateIslandSizeVisuals(targetWidth, targetHeight);
+            IslandShellTranslate.Y = 0;
             return false;
         }
 
@@ -1712,7 +1824,7 @@ namespace LyricHover.App
                 screen.WorkWidth,
                 Math.Max(
                     240,
-                    contentSize.Width + IslandAppearanceRendering.GetHorizontalShapePadding(placementSettings) + 10));
+                    contentSize.Width + IslandAppearanceRendering.GetHorizontalShapePadding(placementSettings)));
             var targetHeight = Math.Max(
                 60,
                 contentSize.Height + IslandAppearanceRendering.GetVerticalShapePadding(placementSettings));
@@ -1734,6 +1846,13 @@ namespace LyricHover.App
         {
             var startWidth = islandVisualWidth > 0 ? islandVisualWidth : ActualWidth > 0 ? ActualWidth : Width;
             var startHeight = islandVisualHeight > 0 ? islandVisualHeight : ActualHeight > 0 ? ActualHeight : Height;
+            if (islandSizeAnimationActive &&
+                Math.Abs(islandSizeAnimationTargetWidth - targetWidth) < 0.5 &&
+                Math.Abs(islandSizeAnimationTargetHeight - targetHeight) < 0.5)
+            {
+                return;
+            }
+
             if (powerSavingActive)
             {
                 islandSizeAnimationVersion++;
@@ -1742,14 +1861,15 @@ namespace LyricHover.App
                 BeginAnimation(HeightProperty, null);
                 ModuleHost.BeginAnimation(OpacityProperty, null);
                 ModuleHost.Opacity = 1.0;
+                UpdateIslandSizeVisuals(targetWidth, targetHeight);
                 Width = targetWidth;
                 Height = targetHeight;
                 IslandShellTranslate.X = 0;
+                IslandShellTranslate.Y = 0;
                 var directPosition = GetVisiblePosition(
                     placementSettings.ToPlacement(), ResolveScreen(), new OverlaySize(targetWidth, targetHeight));
                 Left = directPosition.Left;
                 Top = directPosition.Top;
-                UpdateIslandSizeVisuals(targetWidth, targetHeight);
                 return;
             }
 
@@ -1757,10 +1877,11 @@ namespace LyricHover.App
             {
                 islandSizeAnimationVersion++;
                 StopIslandSizeAnimationFrames();
+                UpdateIslandSizeVisuals(targetWidth, targetHeight);
                 Width = targetWidth;
                 Height = targetHeight;
                 IslandShellTranslate.X = 0;
-                UpdateIslandSizeVisuals(targetWidth, targetHeight);
+                IslandShellTranslate.Y = 0;
                 return;
             }
             var expanding = targetWidth > startWidth || targetHeight > startHeight;
@@ -1771,23 +1892,30 @@ namespace LyricHover.App
             var outerHeight = Math.Max(startHeight, targetHeight);
             var screen = ResolveScreen();
             var placement = placementSettings.ToPlacement();
+            var currentShellLeft = Left + IslandShellTranslate.X;
+            var currentShellTop = Top + IslandShellTranslate.Y;
+            var newStartPosition = GetVisiblePosition(
+                placement, screen, new OverlaySize(startWidth, startHeight));
+            var placementDeltaX = currentShellLeft - newStartPosition.Left;
+            var placementDeltaY = currentShellTop - newStartPosition.Top;
             var outerPosition = GetVisiblePosition(
                 placement, screen, new OverlaySize(outerWidth, outerHeight));
 
             StopIslandSizeAnimationFrames();
             islandSizeAnimationActive = true;
+            islandSizeAnimationTargetWidth = targetWidth;
+            islandSizeAnimationTargetHeight = targetHeight;
             BeginAnimation(WidthProperty, null);
             BeginAnimation(HeightProperty, null);
             ModuleHost.BeginAnimation(OpacityProperty, null);
             ModuleHost.Opacity = 1.0;
+            UpdateIslandSizeVisuals(startWidth, startHeight);
             Width = Math.Max(startWidth, targetWidth);
             Height = Math.Max(startHeight, targetHeight);
-            Left = outerPosition.Left;
-            Top = outerPosition.Top;
-            var startPosition = GetVisiblePosition(
-                placement, screen, new OverlaySize(startWidth, startHeight));
-            IslandShellTranslate.X = startPosition.Left - outerPosition.Left;
-            UpdateIslandSizeVisuals(startWidth, startHeight);
+            Left = outerPosition.Left + placementDeltaX;
+            Top = outerPosition.Top + placementDeltaY;
+            IslandShellTranslate.X = newStartPosition.Left - outerPosition.Left;
+            IslandShellTranslate.Y = newStartPosition.Top - outerPosition.Top;
 
             islandSizeAnimationFrameHandler = (sender, args) =>
             {
@@ -1807,7 +1935,10 @@ namespace LyricHover.App
                 var height = startHeight + (targetHeight - startHeight) * eased;
                 var visualPosition = GetVisiblePosition(
                     placement, screen, new OverlaySize(width, height));
+                Left = outerPosition.Left + placementDeltaX * (1 - eased);
+                Top = outerPosition.Top + placementDeltaY * (1 - eased);
                 IslandShellTranslate.X = visualPosition.Left - outerPosition.Left;
+                IslandShellTranslate.Y = visualPosition.Top - outerPosition.Top;
                 UpdateIslandSizeVisuals(width, height);
 
                 if (progress < 1)
@@ -1815,15 +1946,16 @@ namespace LyricHover.App
                     return;
                 }
 
-                StopIslandSizeAnimationFrames();
+                UpdateIslandSizeVisuals(targetWidth, targetHeight);
                 Width = targetWidth;
                 Height = targetHeight;
                 IslandShellTranslate.X = 0;
-                UpdateIslandSizeVisuals(targetWidth, targetHeight);
+                IslandShellTranslate.Y = 0;
                 var targetPosition = GetVisiblePosition(
                     placement, screen, new OverlaySize(targetWidth, targetHeight));
                 Left = targetPosition.Left;
                 Top = targetPosition.Top;
+                StopIslandSizeAnimationFrames();
             };
 
             CompositionTarget.Rendering += islandSizeAnimationFrameHandler;
@@ -1832,6 +1964,8 @@ namespace LyricHover.App
         private void StopIslandSizeAnimationFrames()
         {
             islandSizeAnimationActive = false;
+            islandSizeAnimationTargetWidth = double.NaN;
+            islandSizeAnimationTargetHeight = double.NaN;
             if (islandSizeAnimationFrameHandler == null)
             {
                 return;
@@ -1847,7 +1981,10 @@ namespace LyricHover.App
             {
                 UpdateIslandSizeVisuals(ActualWidth, ActualHeight);
             }
-            if (islandVisible && !horizontalDragActive && positionAnimationFrameHandler == null)
+            if (!islandSizeAnimationActive &&
+                islandVisible &&
+                !horizontalDragActive &&
+                positionAnimationFrameHandler == null)
             {
                 var point = GetVisiblePosition();
                 Left = point.Left;
@@ -2322,7 +2459,9 @@ namespace LyricHover.App
                 () => _ = StartTutorialAsync(),
                 OnTutorialSettingsSectionChanged,
                 TryExitTutorial,
-                () => RefreshCurrentTrackLyrics(true));
+                () => RefreshCurrentTrackLyrics(true),
+                ApplyIslandShapeSettings,
+                PreviewIslandShapeSettings);
             settingsWindow.Closed += async (sender, args) =>
             {
                 settingsWindow = null;
@@ -2415,7 +2554,6 @@ namespace LyricHover.App
             }
 
             layoutEditSession.Remove(instanceId);
-            ModuleHost.ClearInsertionPreview();
             ApplyInteractionState(IslandInteractionState.Editing, true);
             settingsWindow?.NotifyExternalSettingsChanged();
         }
@@ -2434,6 +2572,14 @@ namespace LyricHover.App
             }
             else
             {
+                var pendingOutsideClear = moduleDragLeaveTimer.IsEnabled;
+                moduleDragLeaveTimer.Stop();
+                if (pendingOutsideClear)
+                {
+                    queuedModuleDragPayload = null;
+                    ModuleHost.ClearInsertionPreview();
+                    ClearModuleDragSizePreview(true);
+                }
                 UpdateHoverProximity();
             }
         }
@@ -2538,6 +2684,7 @@ namespace LyricHover.App
 
         private void ModuleHost_DragOver(object sender, DragEventArgs e)
         {
+            moduleDragLeaveTimer.Stop();
             if (!layoutEditing || layoutEditSession == null)
             {
                 ClearModuleDragSizePreview(true);
@@ -2549,8 +2696,7 @@ namespace LyricHover.App
             var payload = IslandLayoutDragPayload.FromData(e.Data);
             if (payload == null || !IsIslandDropPoint(e))
             {
-                ModuleHost.ClearInsertionPreview();
-                ClearModuleDragSizePreview(true);
+                ScheduleModuleDragPreviewClear(payload);
                 e.Effects = DragDropEffects.None;
                 e.Handled = true;
                 return;
@@ -2566,6 +2712,7 @@ namespace LyricHover.App
 
         private void ModuleHost_Drop(object sender, DragEventArgs e)
         {
+            moduleDragLeaveTimer.Stop();
             var payload = IslandLayoutDragPayload.FromData(e.Data);
             var validTarget = payload != null && IsIslandDropPoint(e);
             queuedModuleDragPayload = null;
@@ -2630,16 +2777,20 @@ namespace LyricHover.App
                     return;
                 }
 
-                ModuleHost.ClearInsertionPreview();
-                moduleDragPreviewWidth = 0;
                 if (layoutChanged && layoutEditing && layoutEditSession != null)
                 {
+                    moduleDragPreviewWidth = 0;
                     ApplyInteractionState(IslandInteractionState.Editing, forceSizeAnimation);
                     settingsWindow?.NotifyExternalSettingsChanged();
                 }
-                else if (hadSizePreview)
+                else
                 {
-                    ApplyMeasuredIslandSize(true);
+                    ModuleHost.ClearInsertionPreview();
+                    moduleDragPreviewWidth = 0;
+                    if (hadSizePreview)
+                    {
+                        ApplyMeasuredIslandSize(true);
+                    }
                 }
             }));
         }
@@ -2655,16 +2806,32 @@ namespace LyricHover.App
             var payload = IslandLayoutDragPayload.FromData(e.Data);
             if (!string.IsNullOrWhiteSpace(payload?.ExistingInstanceId))
             {
+                moduleDragLeaveTimer.Stop();
                 ModuleHost.ShowRemovalPreview(payload.ExistingInstanceId);
-                ApplyMeasuredIslandSize(true);
             }
             else
             {
-                ModuleHost.ClearInsertionPreview();
-                ClearModuleDragSizePreview(true);
+                ScheduleModuleDragPreviewClear(payload);
             }
             queuedModuleDragPayload = null;
             e.Handled = true;
+        }
+
+        private void ScheduleModuleDragPreviewClear(IslandLayoutDragPayload payload)
+        {
+            if (payload?.NewType.HasValue != true)
+            {
+                moduleDragLeaveTimer.Stop();
+                ModuleHost.ClearInsertionPreview();
+                ClearModuleDragSizePreview(true);
+                return;
+            }
+
+            // Resizing a layered WPF window can briefly synthesize DragLeave even while
+            // the pointer is still over the island. Give DragOver one short interval to
+            // cancel the clear so the preview cannot shrink and immediately expand again.
+            moduleDragLeaveTimer.Stop();
+            moduleDragLeaveTimer.Start();
         }
 
         private int FindModuleInsertionIndex(double pointerX, IslandLayoutDragPayload payload)
