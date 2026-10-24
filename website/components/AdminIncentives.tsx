@@ -8,6 +8,7 @@ import { ExternalArrow } from "@/components/ExternalArrow";
 import { LogoLockup } from "@/components/SitePage";
 import {
   defaultFeatureContent,
+  FEATURE_CONTENT_SECTION_LIMIT,
   LEGACY_FEATURE_RELEASE_VERSION,
   isFeatureReleaseVersion,
   parseFeatureContentModules,
@@ -474,6 +475,7 @@ export function AdminIncentives() {
   const [selectedFeatureVersion, setSelectedFeatureVersion] = useState("");
   const [featureVersionDraft, setFeatureVersionDraft] = useState("");
   const [featureExtractInput, setFeatureExtractInput] = useState("");
+  const [featureExtractMessage, setFeatureExtractMessage] = useState("");
   const [legacyMigrationDraft, setLegacyMigrationDraft] = useState("V2.0.36");
   const [featureVersionSaving, setFeatureVersionSaving] = useState(false);
   const [previews, setPreviews] = useState<ReleasePreview[]>([]);
@@ -1497,21 +1499,29 @@ export function AdminIncentives() {
 
   function extractFeatureSections() {
     if (activeFeatureVersion === LEGACY_FEATURE_RELEASE_VERSION || !isFeatureReleaseVersion(activeFeatureVersion)) {
-      setFeatureMessage("请先在此页新建规范的完整版本号（例如 V3.3.8），再批量提取功能条目");
+      const message = "请先在此页新建规范的完整版本号（例如 V3.3.8），再批量提取功能条目";
+      setFeatureExtractMessage(message);
+      setFeatureMessage(message);
       return;
     }
     const extractedModules = parseFeatureContentModules(featureExtractInput);
     if (!extractedModules.length) {
-      setFeatureMessage("未提取：请粘贴至少一个中文功能模块");
+      const message = "未提取：请粘贴至少一个中文功能模块";
+      setFeatureExtractMessage(message);
+      setFeatureMessage(message);
       return;
     }
     const incompleteIndex = extractedModules.findIndex((module) => !module.title);
     if (incompleteIndex >= 0) {
-      setFeatureMessage(`未导入：第 ${incompleteIndex + 1} 个模块没有识别出标题，请补充“标题：”后重试`);
+      const message = `未导入：第 ${incompleteIndex + 1} 个模块没有识别出标题，请补充“标题：”后重试`;
+      setFeatureExtractMessage(message);
+      setFeatureMessage(message);
       return;
     }
-    if (featureContent.sections.length + extractedModules.length > 30) {
-      setFeatureMessage(`未导入：一次加入 ${extractedModules.length} 个模块后会超过 30 个功能条目的上限`);
+    if (featureContent.sections.length + extractedModules.length > FEATURE_CONTENT_SECTION_LIMIT) {
+      const message = `未导入：一次加入 ${extractedModules.length} 个模块后会超过 ${FEATURE_CONTENT_SECTION_LIMIT} 个功能条目的上限`;
+      setFeatureExtractMessage(message);
+      setFeatureMessage(message);
       return;
     }
     const timestamp = Date.now();
@@ -1541,7 +1551,9 @@ export function AdminIncentives() {
     }));
     setFeatureExtractInput("");
     const itemCount = extractedModules.reduce((total, module) => total + module.items.length, 0);
-    setFeatureMessage(`已批量导入 ${extractedModules.length} 个模块、${itemCount} 条分条；请确认后翻译并保存`);
+    const message = `已批量导入 ${extractedModules.length} 个模块、${itemCount} 条分条；请确认后翻译并保存`;
+    setFeatureExtractMessage(message);
+    setFeatureMessage(message);
   }
 
   function deleteFeatureSection(section: FeatureContentSection) {
@@ -1845,13 +1857,19 @@ export function AdminIncentives() {
                 rows={7}
                 value={featureExtractInput}
                 disabled={featureVersionSaving || translationLocked}
-                onChange={(event) => setFeatureExtractInput(event.target.value)}
+                onChange={(event) => {
+                  setFeatureExtractInput(event.target.value);
+                  setFeatureExtractMessage("");
+                }}
                 placeholder={"标题：逐字跟随\n描述：歌词随着演唱进度逐字呈现，带来更自然的跟唱体验。\n分条：\n- 支持平滑逐字高亮\n- 暂停与跳转后自动重新对齐\n\n标题：歌词坞\n描述：让当前歌词直接呈现在 Windows 任务栏。\n分条：\n- 支持左右任务栏\n- 支持多显示器"}
               />
               <div className="featureTextExtractActions">
                 <small>每个模块从新的“标题：”开始；也可用 --- 分隔，或用空行分隔多组“标题 | 描述”。分条支持 -、• 和数字列表。</small>
                 <button className="button buttonSecondary" type="button" disabled={featureVersionSaving || translationLocked || !featureExtractInput.trim()} onClick={extractFeatureSections}>批量提取并导入</button>
               </div>
+              <p className="featureTextExtractStatus" role="status" aria-live="polite">
+                {featureExtractMessage || `当前共 ${featureContent.sections.length} 个功能条目，最多可保存 ${FEATURE_CONTENT_SECTION_LIMIT} 个。`}
+              </p>
             </section>
 
             <div className="featureAdminList">

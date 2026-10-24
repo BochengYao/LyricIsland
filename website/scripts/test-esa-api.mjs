@@ -849,6 +849,32 @@ try {
   ]);
   assert.doesNotMatch(JSON.stringify(redactedFeaturesData.content), /LRCLIB/);
 
+  const expandedManagedFeatures = structuredClone(renamedVersionData.content);
+  expandedManagedFeatures.sections = Array.from({ length: 32 }, (_, index) => ({
+    ...renamedVersionData.content.sections[index % renamedVersionData.content.sections.length],
+    id: `feature-capacity-${index + 1}`,
+    title_zh: `容量测试 ${index + 1}`,
+    title_en: `Capacity test ${index + 1}`,
+    visible: false
+  }));
+  const expandedFeatureSaveResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/features", {
+      method: "PUT",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({ content: expandedManagedFeatures })
+    })
+  );
+  assert.equal(expandedFeatureSaveResponse.status, 200);
+  assert.equal(
+    (await expandedFeatureSaveResponse.json()).content.sections.length,
+    32,
+    "ESA feature storage must not truncate content at the former 30-section limit"
+  );
+
   const proxiedLoginResponse = await api.fetch(
     new Request("https://internal-worker.local/api/incentives/admin/login", {
       method: "POST",

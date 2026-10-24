@@ -5,6 +5,7 @@ import type { Locale } from "@/data/site-copy";
 export const defaultFeatureContent = defaultContentJson as FeatureContent;
 
 export const LEGACY_FEATURE_RELEASE_VERSION = "早期更新";
+export const FEATURE_CONTENT_SECTION_LIMIT = 120;
 const FEATURE_RELEASE_VERSION_PATTERN = /^v\d+\.\d+\.\d+$/i;
 
 export type ExtractedFeatureText = {
@@ -39,8 +40,10 @@ function cleanLines(value: unknown, maxItems: number, maxLength: number) {
 
 function cleanFeatureExtractLine(value: string) {
   return value
+    .replace(/(?:&#x20;|&#32;|&nbsp;)/gi, " ")
     .replace(/^\s*#{1,6}\s*/, "")
     .replace(/\*\*/g, "")
+    .replace(/\\\s*$/, "")
     .trim();
 }
 
@@ -189,7 +192,7 @@ export function sanitizeFeatureContent(value: unknown): FeatureContent {
   const summaryItemsJa = cleanLines(summarySource.items_ja, 12, 200);
   const sections = sectionsSource
     .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object"))
-    .slice(0, 30)
+    .slice(0, FEATURE_CONTENT_SECTION_LIMIT)
     .map((item, index): FeatureContentSection => {
       const titleZh = cleanText(item.title_zh, 160);
       const titleEn = cleanText(item.title_en, 160);

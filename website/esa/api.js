@@ -23,6 +23,7 @@ const MAX_PUBLIC_PREVIEW_LIMIT = 50;
 const REVIEW_META_PREFIX = "[[lyric-island-review:v1]]";
 const FEATURE_CONTENT_VERSION = "__FEATURE_CONTENT_V1__";
 const LEGACY_FEATURE_RELEASE_VERSION = "早期更新";
+const FEATURE_CONTENT_SECTION_LIMIT = 120;
 const AUDIT_VERSION = "__AUDIT_LOG_V1__";
 const RELEASE_PREVIEW_SCHEMA_VERSION = 3;
 const RELEASE_PREVIEW_PROGRESS_ANCHORS = [0, 10, 30, 50, 65, 80, 90, 95];
@@ -136,7 +137,7 @@ function sanitizeFeatureContent(value) {
     : {};
   const sections = (Array.isArray(source.sections) ? source.sections : [])
     .filter((item) => item && typeof item === "object")
-    .slice(0, 30)
+    .slice(0, FEATURE_CONTENT_SECTION_LIMIT)
     .map((item, index) => {
       const titleZh = cleanFeatureText(item.title_zh, 160);
       const titleEn = cleanFeatureText(item.title_en, 160);
