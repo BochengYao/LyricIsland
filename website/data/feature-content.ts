@@ -44,6 +44,14 @@ function cleanFeatureExtractLine(value: string) {
     .trim();
 }
 
+function isFeatureExtractDivider(value: string) {
+  return /^\s*(?:-{3,}|={3,}|_{3,}|\*{3,})\s*$/.test(value);
+}
+
+function isFeatureExtractTitleLabel(value: string) {
+  return /^(?:标题|功能标题|title)\s*[:：]/i.test(cleanFeatureExtractLine(value));
+}
+
 function featureExtractBullet(value: string) {
   const match = value.match(/^\s*(?:[-–—*•·▪◦]|\d+[.)、])\s*(.+)$/);
   return match?.[1].trim() ?? "";
@@ -66,6 +74,7 @@ export function parseFeatureContentText(value: unknown): ExtractedFeatureText {
   let recognizedLabel = false;
 
   for (const rawLine of lines) {
+    if (isFeatureExtractDivider(rawLine)) continue;
     const line = cleanFeatureExtractLine(rawLine);
     if (!line) continue;
 
@@ -115,6 +124,41 @@ export function parseFeatureContentText(value: unknown): ExtractedFeatureText {
     description: description.join("\n").trim().slice(0, 1200),
     items: items.map((item) => item.slice(0, 240)).filter(Boolean).slice(0, 12)
   };
+}
+
+export function parseFeatureContentModules(value: unknown): ExtractedFeatureText[] {
+  if (typeof value !== "string" || !value.trim()) return [];
+  const normalized = value.replace(/\r\n?/g, "\n").trim();
+  const lines = normalized.split("\n");
+  const titleLabelCount = lines.filter(isFeatureExtractTitleLabel).length;
+  const hasExplicitDivider = lines.some(isFeatureExtractDivider);
+  let blocks: string[];
+
+  if (hasExplicitDivider) {
+    blocks = normalized
+      .split(/^\s*(?:-{3,}|={3,}|_{3,}|\*{3,})\s*$/m)
+      .map((block) => block.trim())
+      .filter(Boolean);
+  } else if (titleLabelCount > 0) {
+    const collected: string[][] = [];
+    let current: string[] = [];
+    for (const line of lines) {
+      if (isFeatureExtractTitleLabel(line)) {
+        if (current.some((item) => item.trim())) collected.push(current);
+        current = [line];
+      } else if (current.length) {
+        current.push(line);
+      }
+    }
+    if (current.some((item) => item.trim())) collected.push(current);
+    blocks = collected.map((block) => block.join("\n"));
+  } else {
+    blocks = normalized.split(/\n\s*\n+/).map((block) => block.trim()).filter(Boolean);
+  }
+
+  return blocks
+    .map(parseFeatureContentText)
+    .filter((module) => module.title || module.description || module.items.length);
 }
 
 export function sanitizeAppUpdatePrompt(value: unknown): AppUpdatePrompt {
