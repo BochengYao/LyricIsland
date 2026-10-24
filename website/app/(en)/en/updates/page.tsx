@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { UpdatesPage } from "@/components/UpdatesPage";
 
 export const metadata: Metadata = {
-  title: "v2.0 updates | Lyric Hover",
+  title: "Updates | Lyric Hover",
   description:
     "A detailed look at modular layouts, multi-player support, timeline strategy, lyric providers, and interaction changes in Lyric Hover v2.0.",
   alternates: {

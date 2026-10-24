@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { UpdatesPage } from "@/components/UpdatesPage";
 
 export const metadata: Metadata = {
-  title: "v2.0 アップデート | LyricHover",
+  title: "更新内容",
   description:
     "LyricHover v2.0 のモジュール式レイアウト、複数プレーヤー対応、タイムライン、歌詞ソース、操作性の更新をご紹介します。",
   alternates: {
