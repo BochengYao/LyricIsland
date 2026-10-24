@@ -344,7 +344,79 @@ namespace LyricHover.Tests
             suite.Run("settings dirty fingerprint avoids a second JSON deep clone", SettingsDirtyFingerprintAvoidsASecondJsonDeepClone);
             suite.Run("user visible product branding uses lyric hover", UserVisibleProductBrandingUsesLyricHover);
             suite.Run("word-following product name is localized across supported languages", WordFollowingProductNameIsLocalizedAcrossSupportedLanguages);
+            suite.Run("selects the newest visible Store release above the installed version", SelectsNewestVisibleStoreRelease);
+            suite.Run("localizes Store update notes with safe fallbacks", LocalizesStoreUpdateNotesWithFallbacks);
+            suite.Run("desktop update prompt keeps startup and both destinations wired", DesktopUpdatePromptKeepsStartupAndDestinationsWired);
             return suite.ExitCode;
+        }
+
+        static void SelectsNewestVisibleStoreRelease()
+        {
+            const string json = @"{""update"":{""enabled"":true,""release_version"":""V3.4.0"",""content_zh"":""新版外观\n稳定性改进"",""content_en"":""New look\nStability improvements"",""content_zh_tw"":"""",""content_ja"":""""}}";
+
+            Assert.True(AppUpdateFeedParser.TryGetAvailableUpdate(
+                json,
+                new Version(3, 3, 29, 0),
+                "zh",
+                out var release));
+            Assert.Equal(new Version(3, 4, 0, 0), release.Version);
+            Assert.Equal("V3.4.0", release.VersionLabel);
+            Assert.Equal(2, release.Notes.Count);
+            Assert.Equal("新版外观", release.Notes[0]);
+            Assert.Equal("稳定性改进", release.Notes[1]);
+
+            Assert.False(AppUpdateFeedParser.TryGetAvailableUpdate(
+                json,
+                new Version(3, 4, 0, 0),
+                "zh",
+                out _));
+            Assert.False(AppUpdateFeedParser.TryGetAvailableUpdate(json.Replace("\"enabled\":true", "\"enabled\":false"), new Version(3, 3, 0, 0), "zh", out _));
+        }
+
+        static void LocalizesStoreUpdateNotesWithFallbacks()
+        {
+            const string json = @"{""update"":{""enabled"":true,""release_version"":""V3.4.1"",""content_zh"":""中文说明\n中文分条"",""content_en"":""English body\nEnglish item"",""content_zh_tw"":""繁中說明\n繁中分點"",""content_ja"":""""}}";
+
+            Assert.True(AppUpdateFeedParser.TryGetAvailableUpdate(json, new Version(3, 4, 0), "zh-Hant", out var traditional));
+            Assert.Equal("繁中說明", traditional.Notes[0]);
+            Assert.Equal("繁中分點", traditional.Notes[1]);
+
+            Assert.True(AppUpdateFeedParser.TryGetAvailableUpdate(json, new Version(3, 4, 0), "ja", out var japanese));
+            Assert.Equal("English body", japanese.Notes[0]);
+            Assert.Equal("English item", japanese.Notes[1]);
+
+            Assert.False(AppUpdateFeedParser.TryGetAvailableUpdate("not-json", new Version(1, 0, 0), "en", out _));
+            Assert.True(AppUpdateFeedParser.TryParseReleaseVersion("v3.4.1-beta", out var parsed));
+            Assert.Equal(new Version(3, 4, 1, 0), parsed);
+        }
+
+        static void DesktopUpdatePromptKeepsStartupAndDestinationsWired()
+        {
+            var root = GetSolutionRoot();
+            var app = File.ReadAllText(Path.Combine(root, "LyricHover.App", "App.xaml.cs"));
+            var checker = File.ReadAllText(Path.Combine(root, "LyricHover.App", "AppUpdateChecker.cs"));
+            var storeAvailability = File.ReadAllText(Path.Combine(root, "LyricHover.App", "StoreAppUpdateAvailability.cs"));
+            var window = File.ReadAllText(Path.Combine(root, "LyricHover.App", "UpdateAvailableWindow.xaml"));
+            var windowCode = File.ReadAllText(Path.Combine(root, "LyricHover.App", "UpdateAvailableWindow.xaml.cs"));
+            var admin = File.ReadAllText(Path.Combine(root, "website", "components", "AdminIncentives.tsx"));
+
+            Assert.True(app.Contains("DispatcherPriority.ApplicationIdle"));
+            Assert.True(app.Contains("CheckForAvailableUpdateAsync"));
+            Assert.True(app.Contains("UpdateLocale(UiLanguageService.EffectiveLanguage)"));
+            Assert.True(app.Contains("release.Version == storeVersion"));
+            Assert.True(checker.Contains("https://lyric-island.top/api/app-update"));
+            Assert.True(storeAvailability.Contains("GetAppAndOptionalStorePackageUpdatesAsync"));
+            Assert.True(storeAvailability.Contains("Package.Current.Id.Name"));
+            Assert.True(window.Contains("x:Name=\"DetailsButton\""));
+            Assert.True(window.Contains("x:Name=\"StoreButton\""));
+            Assert.True(window.Contains("Content=\"查看详情\""));
+            Assert.True(window.Contains("Content=\"立即更新\""));
+            Assert.True(windowCode.Contains("ms-windows-store://pdp/?ProductId=9NRXZP5HMXK2"));
+            Assert.True(windowCode.Contains("https://lyric-island.top/zh-hant/updates/"));
+            Assert.True(windowCode.Contains("https://lyric-island.top/en/updates/"));
+            Assert.True(windowCode.Contains("https://lyric-island.top/ja/updates/"));
+            Assert.True(admin.Contains("保存更新弹窗设置"));
+            Assert.True(admin.Contains("Microsoft Store 接口确认同一版本已可更新"));
         }
 
         static void ParsesSyncedLrcLinesAndMetadata()

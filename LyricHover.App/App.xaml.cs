@@ -1,3 +1,7 @@
+using System;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 using LyricHover.App.LyricDock;
@@ -9,6 +13,8 @@ namespace LyricHover.App
     {
         private SingleInstanceGuard instanceGuard;
         private DispatcherTimer activationSignalTimer;
+        private readonly CancellationTokenSource updateCheckCancellation = new CancellationTokenSource();
+        private bool updateCheckStarted;
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -51,13 +57,88 @@ namespace LyricHover.App
                 }
             };
             activationSignalTimer.Start();
+            Dispatcher.BeginInvoke(new Action(BeginUpdateCheck), DispatcherPriority.ApplicationIdle);
         }
 
         protected override void OnExit(ExitEventArgs e)
         {
+            updateCheckCancellation.Cancel();
             activationSignalTimer?.Stop();
             instanceGuard?.Dispose();
             base.OnExit(e);
+        }
+
+        private void BeginUpdateCheck()
+        {
+            if (updateCheckStarted || !(MainWindow is MainWindow owner))
+            {
+                return;
+            }
+
+            if (!owner.IsLoaded)
+            {
+                RoutedEventHandler loaded = null;
+                loaded = (sender, args) =>
+                {
+                    owner.Loaded -= loaded;
+                    BeginUpdateCheck();
+                };
+                owner.Loaded += loaded;
+                return;
+            }
+
+            updateCheckStarted = true;
+            _ = CheckForAvailableUpdateAsync(owner);
+        }
+
+        private async Task CheckForAvailableUpdateAsync(Window owner)
+        {
+            try
+            {
+                var currentVersion = typeof(App).Assembly.GetName().Version;
+                var locale = UpdateLocale(UiLanguageService.EffectiveLanguage);
+                var storeVersionTask = StoreAppUpdateAvailability.GetLatestAvailableVersionAsync();
+                var releaseTask = new AppUpdateChecker().CheckAsync(
+                    currentVersion,
+                    locale,
+                    updateCheckCancellation.Token);
+                await Task.WhenAll(storeVersionTask, releaseTask);
+                var storeVersion = storeVersionTask.Result;
+                var release = releaseTask.Result;
+                if (release != null &&
+                    storeVersion != null &&
+                    release.Version == storeVersion &&
+                    !updateCheckCancellation.IsCancellationRequested &&
+                    owner.IsLoaded)
+                {
+                    new UpdateAvailableWindow(owner, release, locale).ShowDialog();
+                }
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (HttpRequestException)
+            {
+            }
+            catch (Exception)
+            {
+                // Update discovery is best effort and must never prevent the lyrics island from starting.
+            }
+        }
+
+        private static string UpdateLocale(AppLanguagePreference language)
+        {
+            switch (language)
+            {
+                case AppLanguagePreference.TraditionalChinese:
+                    return "zh-Hant";
+                case AppLanguagePreference.Japanese:
+                    return "ja";
+                case AppLanguagePreference.English:
+                    return "en";
+                default:
+                    return "zh";
+            }
         }
 
         private bool TryHandleElevatedTaskbarWrite(string[] args)

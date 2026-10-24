@@ -567,6 +567,20 @@ try {
   assert.equal(publicFeaturesData.content.sections[0].major_version, "OTHER");
   assert.equal(calls.length, 2, "first feature read must import the bundled content in two requests");
 
+  const initialAppUpdateResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/app-update")
+  );
+  assert.equal(initialAppUpdateResponse.status, 200);
+  const initialAppUpdateData = await initialAppUpdateResponse.json();
+  assert.deepEqual(initialAppUpdateData.update, {
+    enabled: false,
+    release_version: "",
+    content_zh: "",
+    content_en: "",
+    content_zh_tw: "",
+    content_ja: ""
+  }, "legacy feature rows must default the dedicated update prompt to disabled");
+
   const loginResponse = await api.fetch(
     new Request("https://lyric-island.top/api/incentives/admin/login", {
       method: "POST",
@@ -581,6 +595,53 @@ try {
   assert.equal(loginResponse.status, 200);
   const adminCookie = loginResponse.headers.get("set-cookie");
   assert.match(adminCookie, /HttpOnly; Secure; SameSite=Strict/);
+
+  const unauthenticatedUpdateSaveResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/app-update", {
+      method: "PUT",
+      headers: { Origin: "https://lyric-island.top", "Content-Type": "application/json" },
+      body: JSON.stringify({ update: { enabled: false } })
+    })
+  );
+  assert.equal(unauthenticatedUpdateSaveResponse.status, 401, "update prompt settings require an authenticated admin session");
+
+  const appUpdate = {
+    enabled: true,
+    release_version: "v3.4.1",
+    content_zh: "全新更新弹窗\n改进歌词显示稳定性",
+    content_en: "New update prompt\nImproved lyric stability",
+    content_zh_tw: "全新更新彈窗\n改善歌詞顯示穩定性",
+    content_ja: "新しい更新ダイアログ\n歌詞表示の安定性を改善"
+  };
+  const updateSaveResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/app-update", {
+      method: "PUT",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({ update: appUpdate })
+    })
+  );
+  assert.equal(updateSaveResponse.status, 200);
+  assert.deepEqual((await updateSaveResponse.json()).update, appUpdate);
+  const publicAppUpdateResponse = await api.fetch(new Request("https://lyric-island.top/api/app-update"));
+  assert.equal(publicAppUpdateResponse.status, 200);
+  assert.deepEqual((await publicAppUpdateResponse.json()).update, appUpdate, "public desktop feed returns the saved prompt verbatim");
+
+  const invalidUpdateResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/app-update", {
+      method: "PUT",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({ update: { ...appUpdate, release_version: "v3.4" } })
+    })
+  );
+  assert.equal(invalidUpdateResponse.status, 400, "enabled update prompts require a complete release version");
 
   calls.length = 0;
   const translationResponse = await api.fetch(
@@ -738,6 +799,7 @@ try {
   assert.equal(featureSaveData.content.sections[0].id, "feature-06");
   assert.match(featureSaveData.content.summary.items_zh.join(" "), /LRCLIB/, "admin summary saves must preserve source data");
   assert.match(featureSaveData.content.sections[0].items_zh.join(" "), /LRCLIB/, "admin saves must preserve source data");
+  assert.deepEqual(featureSaveData.content.update_prompt, appUpdate, "saving feature-page content must not overwrite update prompt settings");
 
   const renameVersionResponse = await featureOperation({ type: "rename", from: "v3.3.0", to: "V3.3.8" });
   assert.equal(renameVersionResponse.status, 200, "feature versions can be renamed independently from previews");

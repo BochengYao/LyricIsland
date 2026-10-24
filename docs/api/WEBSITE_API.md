@@ -14,6 +14,7 @@
 | --- | --- | --- | --- |
 | `/api/access` | `POST` | 访问/登记类提交 | 公开输入，服务端校验 |
 | `/api/features` | `GET` | 功能展示数据 | 公开只读 |
+| `/api/app-update` | `GET` | 桌面端更新弹窗配置 | 公开只读 |
 | `/api/incentives/public` | `GET` | 激励活动公开数据 | 公开只读 |
 | `/api/incentives/submissions` | `POST` | 激励活动提交 | 公开输入，服务端校验 |
 | `/api/incentives/likes` | `POST` | 点赞交互 | 公开输入，服务端限权 |
@@ -21,11 +22,14 @@
 | `/api/incentives/admin/logout` | `POST` | 结束管理员会话 | 已认证会话 |
 | `/api/incentives/admin/access-logs` | `GET`、`PATCH` | 管理访问记录 | 管理员 |
 | `/api/incentives/admin/features` | `GET`、`PUT` | 管理功能数据 | 管理员 |
+| `/api/incentives/admin/app-update` | `GET`、`PUT` | 管理桌面端更新弹窗 | 管理员 |
 | `/api/incentives/admin/previews` | `GET`、`POST`、`PATCH` | 管理预览内容 | 管理员 |
 | `/api/incentives/admin/submissions` | `GET`、`PATCH`、`DELETE` | 审核提交 | 管理员 |
 | `/api/incentives/admin/translate` | `POST` | 管理端翻译辅助 | 管理员，依赖服务端配置 |
 
 ## 本地化内容字段
+
+桌面端更新提示由独立的 `update_prompt` 配置管理，不依赖新功能页条目的可见性。`GET /api/app-update` 返回 `enabled`、完整 `release_version` 以及 `content_zh`、`content_en`、`content_zh_tw`、`content_ja`；旧记录默认 `enabled=false`。管理员通过 `GET/PUT /api/incentives/admin/app-update` 维护该配置，启用时必须填写规范 `vX.Y.Z` 版本号和简中、英文内容。桌面端只在配置已启用、该版本高于本机版本，且 Microsoft Store 接口确认完全相同的版本已可更新时显示弹窗。保存新功能页内容必须保留已存的 `update_prompt`，避免两个后台面板互相覆盖。
 
 `/api/features` 的 `content` 与 `/api/incentives/public` 的 `previews` 均返回简中、英文、繁中和日文内容。繁中字段以 `_zh_tw` 结尾，日文字段以 `_ja` 结尾；新功能内容使用 `label_*`、`title_*`、`body_*`、`items_*`，功能预告使用 `title_*`、`body_*`、`highlights_*`。管理端上传表单可编辑全部四种语言字段。每个公开预告还返回 `major_version`（如 `V2`、`V3`），供前台按大版本分组。
 

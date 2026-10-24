@@ -10,11 +10,13 @@ import {
   defaultFeatureContent,
   LEGACY_FEATURE_RELEASE_VERSION,
   isFeatureReleaseVersion,
+  sanitizeAppUpdatePrompt,
   sanitizeFeatureContent
 } from "@/data/feature-content";
 import type {
   AccessLogEntry,
   AccessSeverity,
+  AppUpdatePrompt,
   FeatureContent,
   FeatureContentSection,
   FeatureContentVersionOperation,
@@ -43,7 +45,7 @@ import {
 } from "@/lib/release-timing";
 
 type AuthState = "checking" | "login" | "ready";
-type Panel = "submissions" | "features" | "previews" | "access" | "promo-codes";
+type Panel = "submissions" | "features" | "app-update" | "previews" | "access" | "promo-codes";
 type SaveFeedback = { tone: "pending" | "success" | "error"; message: string };
 type PreviewDraft = {
   id?: string;
@@ -460,6 +462,9 @@ export function AdminIncentives() {
   const [featureContent, setFeatureContent] = useState<FeatureContent>(() => sanitizeFeatureContent(defaultFeatureContent));
   const [featureSaving, setFeatureSaving] = useState(false);
   const [featureMessage, setFeatureMessage] = useState("");
+  const [appUpdatePrompt, setAppUpdatePrompt] = useState<AppUpdatePrompt>(() => sanitizeAppUpdatePrompt(null));
+  const [appUpdateSaving, setAppUpdateSaving] = useState(false);
+  const [appUpdateMessage, setAppUpdateMessage] = useState("");
   const [selectedFeatureVersion, setSelectedFeatureVersion] = useState("");
   const [featureVersionDraft, setFeatureVersionDraft] = useState("");
   const [legacyMigrationDraft, setLegacyMigrationDraft] = useState("V2.0.36");
@@ -537,25 +542,28 @@ export function AdminIncentives() {
   }, [previewDraft.features, previewDraft.version]);
 
   async function loadData() {
-    const [submissionResponse, featureResponse, previewResponse, logResponse] = await Promise.all([
+    const [submissionResponse, featureResponse, appUpdateResponse, previewResponse, logResponse] = await Promise.all([
       fetch("/api/incentives/admin/submissions", { cache: "no-store" }),
       fetch("/api/incentives/admin/features", { cache: "no-store" }),
+      fetch("/api/incentives/admin/app-update", { cache: "no-store" }),
       fetch("/api/incentives/admin/previews", { cache: "no-store" }),
       fetch("/api/incentives/admin/access-logs", { cache: "no-store" })
     ]);
-    if ([submissionResponse, featureResponse, previewResponse, logResponse].some((response) => response.status === 401)) {
+    if ([submissionResponse, featureResponse, appUpdateResponse, previewResponse, logResponse].some((response) => response.status === 401)) {
       setAuth("login");
       return;
     }
-    if (!submissionResponse.ok || !featureResponse.ok || !previewResponse.ok) throw new Error("后台数据读取失败");
+    if (!submissionResponse.ok || !featureResponse.ok || !appUpdateResponse.ok || !previewResponse.ok) throw new Error("后台数据读取失败");
     const submissionData = (await submissionResponse.json()) as { submissions: IncentiveSubmission[] };
     const featureData = (await featureResponse.json()) as { content: unknown };
+    const appUpdateData = (await appUpdateResponse.json()) as { update: unknown };
     const previewData = (await previewResponse.json()) as { previews: ReleasePreview[]; drafts?: ReleasePreview[] };
     const logData = logResponse.ok
       ? await logResponse.json() as { logs: AccessLogEntry[]; unreadAlerts: number }
       : { logs: [] as AccessLogEntry[], unreadAlerts: 0 };
     setSubmissions(submissionData.submissions);
     setFeatureContent(sanitizeFeatureContent(featureData.content));
+    setAppUpdatePrompt(sanitizeAppUpdatePrompt(appUpdateData.update));
     setPreviews(previewData.previews);
     setDraftPreviews(previewData.drafts ?? []);
     const currentPreview = previewData.previews[0] ?? previewData.drafts?.[0];
@@ -1487,6 +1495,34 @@ export function AdminIncentives() {
     }
   }
 
+  async function saveAppUpdateSettings() {
+    setAppUpdateSaving(true);
+    setAppUpdateMessage("正在保存…");
+    try {
+      const response = await fetch("/api/incentives/admin/app-update", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ update: appUpdatePrompt })
+      });
+      const result = await response.json().catch(() => ({})) as { error?: string; update?: unknown };
+      if (response.status === 401) {
+        setAuth("login");
+        throw new Error("登录已过期");
+      }
+      if (!response.ok || !result.update) throw new Error(result.error ?? "保存失败");
+      const saved = sanitizeAppUpdatePrompt(result.update);
+      setAppUpdatePrompt(saved);
+      setAppUpdateMessage(saved.enabled
+        ? `已启用 ${saved.release_version} 更新弹窗；客户端仍会核对 Microsoft Store 已发布版本`
+        : "已保存，更新弹窗当前关闭");
+    } catch (saveError) {
+      const message = saveError instanceof Error ? saveError.message : "网络异常";
+      setAppUpdateMessage(`未保存：${message}`);
+    } finally {
+      setAppUpdateSaving(false);
+    }
+  }
+
   if (auth === "checking") return <main className="adminLoading">正在确认后台身份…</main>;
 
   if (auth === "login") {
@@ -1599,6 +1635,34 @@ export function AdminIncentives() {
           </>
         )}
 
+        {panel === "app-update" && (
+          <>
+            <header className="adminPageHeader">
+              <div><p>APP UPDATE PROMPT</p><h2>更新弹窗</h2></div>
+              <div className="featureAdminActions">
+                <span role="status">{appUpdateMessage || "独立管理客户端更新提示，不影响官网新功能页内容"}</span>
+                <button className="button buttonPrimary" type="button" disabled={appUpdateSaving} onClick={() => void saveAppUpdateSettings()}>{appUpdateSaving ? "保存中…" : "保存更新弹窗设置"}</button>
+              </div>
+            </header>
+
+            <section className="featureAdminSummary appUpdatePromptEditor">
+              <header>
+                <div><strong>Microsoft Store 更新提示</strong><small>先在商店发布，再填写完全一致的版本号并启用；客户端会双重核对后才显示</small></div>
+                <button className={`displayToggle ${appUpdatePrompt.enabled ? "isPublic" : ""}`} type="button" onClick={() => setAppUpdatePrompt((current) => ({ ...current, enabled: !current.enabled }))}><span aria-hidden="true" />{appUpdatePrompt.enabled ? "弹窗已启用" : "弹窗已关闭"}</button>
+              </header>
+              <label className="appUpdateVersionField"><span>Microsoft Store 已发布版本</span><input value={appUpdatePrompt.release_version} onChange={(event) => setAppUpdatePrompt((current) => ({ ...current, release_version: event.target.value }))} placeholder="例如 v3.4.1" /></label>
+              <p className="featureAdminNotice">每行会在客户端弹窗中显示为一条更新内容。简体中文和英文是启用时的必填项；繁中、日文留空时，客户端会按语言安全回退。</p>
+              <div className="featureLanguageGrid">
+                <label><span>简体中文更新内容（每行一条）</span><textarea rows={8} value={appUpdatePrompt.content_zh} onChange={(event) => setAppUpdatePrompt((current) => ({ ...current, content_zh: event.target.value }))} placeholder={"全新更新弹窗\n改进歌词显示稳定性"} /></label>
+                <label><span>English update notes (one per line)</span><textarea rows={8} value={appUpdatePrompt.content_en} onChange={(event) => setAppUpdatePrompt((current) => ({ ...current, content_en: event.target.value }))} /></label>
+                <label><span>繁中更新內容（每行一條）</span><textarea rows={8} value={appUpdatePrompt.content_zh_tw} onChange={(event) => setAppUpdatePrompt((current) => ({ ...current, content_zh_tw: event.target.value }))} /></label>
+                <label><span>日本語の更新内容（1行ずつ）</span><textarea rows={8} value={appUpdatePrompt.content_ja} onChange={(event) => setAppUpdatePrompt((current) => ({ ...current, content_ja: event.target.value }))} /></label>
+              </div>
+              <p className="featureAdminNotice"><strong>显示条件：</strong>后台已启用、设置版本高于本机版本，并且 Microsoft Store 接口确认同一版本已可更新。关闭开关可立即停止新的弹窗提示。</p>
+            </section>
+          </>
+        )}
+
         {panel === "features" && (
           <>
             <header className="adminPageHeader">
@@ -1649,7 +1713,7 @@ export function AdminIncentives() {
                       <button className="button buttonSecondary" type="button" disabled={featureVersionSaving || !activeFeatureSections.length} onClick={() => void migrateLegacyFeatures()}>迁移历史条目（{activeFeatureSections.length}）</button>
                     </div>
                   </>
-                : <p role="status">当前版本共 {activeFeatureSections.length} 条；{hiddenActiveFeatureCount ? `${hiddenActiveFeatureCount} 条已隐藏，保存后也不会出现在前台。` : "全部会在保存后显示到前台。"}</p>}
+                : <p role="status">当前版本共 {activeFeatureSections.length} 条；{hiddenActiveFeatureCount ? `${hiddenActiveFeatureCount} 条已隐藏，保存后也不会出现在前台。` : "全部会在保存后显示到前台。"} 客户端更新通知请在左侧“更新弹窗”中独立设置。</p>}
               <div className="featureVersionActions">
                 <label><span>新建或重命名为</span><input value={featureVersionDraft} disabled={featureVersionSaving} placeholder="例如 V3.3.8" onChange={(event) => setFeatureVersionDraft(event.target.value)} /></label>
                 <button className="button buttonSecondary" type="button" disabled={featureVersionSaving} onClick={() => void createFeatureVersion()}>新建版本</button>

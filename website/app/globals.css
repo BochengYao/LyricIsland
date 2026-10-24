@@ -5754,6 +5754,17 @@ button.danger,
   gap: 18px;
 }
 
+.appUpdateVersionField {
+  max-width: 360px;
+}
+
+.featureAdminNotice {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 .featureLocaleTabs {
   display: flex;
   flex-wrap: wrap;

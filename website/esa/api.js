@@ -117,6 +117,18 @@ function cleanFeatureLines(value, maxItems, maxLength) {
     : [];
 }
 
+function sanitizeAppUpdatePrompt(value) {
+  const source = value && typeof value === "object" ? value : {};
+  return {
+    enabled: source.enabled === true,
+    release_version: cleanFeatureText(source.release_version, 40),
+    content_zh: cleanFeatureText(source.content_zh, 4000),
+    content_en: cleanFeatureText(source.content_en, 4000),
+    content_zh_tw: cleanFeatureText(source.content_zh_tw, 4000),
+    content_ja: cleanFeatureText(source.content_ja, 4000)
+  };
+}
+
 function sanitizeFeatureContent(value) {
   const source = value && typeof value === "object" ? value : {};
   const summary = source.summary && typeof source.summary === "object"
@@ -166,6 +178,7 @@ function sanitizeFeatureContent(value) {
   const summaryItemsZhTw = cleanFeatureLines(summary.items_zh_tw, 12, 200);
   const summaryItemsJa = cleanFeatureLines(summary.items_ja, 12, 200);
   return {
+    update_prompt: sanitizeAppUpdatePrompt(source.update_prompt),
     versions: [...new Set(versions)],
     summary: {
       label_zh: summaryLabelZh,
@@ -1309,7 +1322,7 @@ async function getFeatureContent() {
   return sanitizeFeatureContent((rows[0] && rows[0].highlights_zh) || content);
 }
 
-async function saveFeatureContent(value) {
+async function saveFeatureContent(value, preserveStoredUpdatePrompt = true) {
   const rawSections = value && typeof value === "object" && Array.isArray(value.sections) ? value.sections : [];
   if (rawSections.some((section) => !section || typeof section !== "object" || typeof section.release_version !== "string" || !section.release_version.trim())) {
     throw new Error("Every feature section requires a complete release version");
@@ -1335,13 +1348,16 @@ async function saveFeatureContent(value) {
     throw new Error("Every feature section must belong to a managed feature version");
   }
   const existing = await getFeatureContentRow();
+  const contentToPersist = existing && preserveStoredUpdatePrompt
+    ? { ...content, update_prompt: sanitizeFeatureContent(existing.highlights_zh).update_prompt }
+    : content;
   if (!existing) {
     const rows = await supabase("/rest/v1/release_previews", {
       method: "POST",
       headers: supabaseHeaders("return=representation"),
-      body: JSON.stringify(featureContentRowPayload(content))
+      body: JSON.stringify(featureContentRowPayload(contentToPersist))
     });
-    return sanitizeFeatureContent((rows[0] && rows[0].highlights_zh) || content);
+    return sanitizeFeatureContent((rows[0] && rows[0].highlights_zh) || contentToPersist);
   }
   const rows = await supabase(
     `/rest/v1/release_previews?id=eq.${encodeURIComponent(existing.id)}`,
@@ -1349,12 +1365,24 @@ async function saveFeatureContent(value) {
       method: "PATCH",
       headers: supabaseHeaders("return=representation"),
       body: JSON.stringify({
-        highlights_zh: content,
+        highlights_zh: contentToPersist,
         updated_at: new Date().toISOString()
       })
     }
   );
-  return sanitizeFeatureContent((rows[0] && rows[0].highlights_zh) || content);
+  return sanitizeFeatureContent((rows[0] && rows[0].highlights_zh) || contentToPersist);
+}
+
+async function saveAppUpdatePrompt(value) {
+  const prompt = sanitizeAppUpdatePrompt(value);
+  if (prompt.enabled && !/^v\d+\.\d+\.\d+$/i.test(prompt.release_version)) {
+    throw new Error("Enabled update prompt requires a complete release version");
+  }
+  if (prompt.enabled && (!prompt.content_zh || !prompt.content_en)) {
+    throw new Error("Enabled update prompt requires Chinese and English content");
+  }
+  const content = await getFeatureContent();
+  return (await saveFeatureContent({ ...content, update_prompt: prompt }, false)).update_prompt;
 }
 
 function managedFeatureVersion(content, value) {
@@ -1578,6 +1606,14 @@ async function handleFeatures() {
     return json({ content: publicFeatureContent(await getFeatureContent()) });
   } catch {
     return jsonError("Unable to load feature content", 500);
+  }
+}
+
+async function handleAppUpdate() {
+  try {
+    return json({ update: (await getFeatureContent()).update_prompt });
+  } catch {
+    return jsonError("Unable to load app update information", 500);
   }
 }
 
@@ -2133,6 +2169,31 @@ async function handleAdminFeatures(request) {
   return jsonError("Unauthorized", 401);
 }
 
+async function handleAdminAppUpdate(request) {
+  if (!(await isAdminRequest(request))) return jsonError("Unauthorized", 401);
+  if (request.method === "GET") {
+    try {
+      return json({ update: (await getFeatureContent()).update_prompt });
+    } catch {
+      return jsonError("无法读取更新弹窗设置", 500);
+    }
+  }
+  if (request.method === "PUT" && isSameOrigin(request)) {
+    try {
+      const body = await request.json();
+      return json({ update: await saveAppUpdatePrompt(body.update) });
+    } catch (error) {
+      const message = error instanceof Error && error.message.includes("release version")
+        ? "启用弹窗前请填写完整版本号（例如 v3.4.1）"
+        : error instanceof Error && error.message.includes("Chinese and English")
+          ? "启用弹窗前请补全简体中文和英文更新内容"
+          : "保存失败";
+      return jsonError(message, 400);
+    }
+  }
+  return jsonError("Unauthorized", 401);
+}
+
 // ---------------------------------------------------------------------------
 // Promo Code helpers
 // ---------------------------------------------------------------------------
@@ -2593,6 +2654,9 @@ async function handleRequest(request) {
   if (path === "/api/features" && request.method === "GET") {
     return handleFeatures();
   }
+  if (path === "/api/app-update" && request.method === "GET") {
+    return handleAppUpdate();
+  }
   if (path === "/api/incentives/submissions" && request.method === "POST") {
     return handleSubmission(request);
   }
@@ -2613,6 +2677,9 @@ async function handleRequest(request) {
   }
   if (path === "/api/incentives/admin/features") {
     return handleAdminFeatures(request);
+  }
+  if (path === "/api/incentives/admin/app-update") {
+    return handleAdminAppUpdate(request);
   }
   if (path === "/api/incentives/admin/promo-codes") {
     return handleAdminPromoCodes(request);

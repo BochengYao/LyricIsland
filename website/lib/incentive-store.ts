@@ -13,6 +13,7 @@ import type {
 import {
   defaultFeatureContent,
   isFeatureReleaseVersion,
+  sanitizeAppUpdatePrompt,
   sanitizeFeatureContent
 } from "@/data/feature-content";
 import {
@@ -654,7 +655,7 @@ export async function getFeatureContent() {
   return sanitizeFeatureContent(rows[0]?.highlights_zh ?? content);
 }
 
-export async function saveFeatureContent(value: unknown) {
+export async function saveFeatureContent(value: unknown, preserveStoredUpdatePrompt = true) {
   const rawSections = value && typeof value === "object" && Array.isArray((value as { sections?: unknown }).sections)
     ? (value as { sections: unknown[] }).sections
     : [];
@@ -684,13 +685,16 @@ export async function saveFeatureContent(value: unknown) {
     throw new Error("Every feature section must belong to a managed feature version");
   }
   const existing = await getFeatureContentRow();
+  const contentToPersist = existing && preserveStoredUpdatePrompt
+    ? { ...content, update_prompt: sanitizeFeatureContent(existing.highlights_zh).update_prompt }
+    : content;
   if (!existing) {
     const rows = await supabase<StoredFeatureRow[]>("/rest/v1/release_previews", {
       method: "POST",
       headers: headers("return=representation"),
-      body: JSON.stringify(featureContentRowPayload(content))
+      body: JSON.stringify(featureContentRowPayload(contentToPersist))
     });
-    return sanitizeFeatureContent(rows[0]?.highlights_zh ?? content);
+    return sanitizeFeatureContent(rows[0]?.highlights_zh ?? contentToPersist);
   }
 
   const rows = await supabase<StoredFeatureRow[]>(
@@ -699,12 +703,24 @@ export async function saveFeatureContent(value: unknown) {
       method: "PATCH",
       headers: headers("return=representation"),
       body: JSON.stringify({
-        highlights_zh: content,
+        highlights_zh: contentToPersist,
         updated_at: new Date().toISOString()
       })
     }
   );
-  return sanitizeFeatureContent(rows[0]?.highlights_zh ?? content);
+  return sanitizeFeatureContent(rows[0]?.highlights_zh ?? contentToPersist);
+}
+
+export async function saveAppUpdatePrompt(value: unknown) {
+  const prompt = sanitizeAppUpdatePrompt(value);
+  if (prompt.enabled && !/^v\d+\.\d+\.\d+$/i.test(prompt.release_version)) {
+    throw new Error("Enabled update prompt requires a complete release version");
+  }
+  if (prompt.enabled && (!prompt.content_zh || !prompt.content_en)) {
+    throw new Error("Enabled update prompt requires Chinese and English content");
+  }
+  const content = await getFeatureContent();
+  return (await saveFeatureContent({ ...content, update_prompt: prompt }, false)).update_prompt;
 }
 
 function managedFeatureVersion(content: FeatureContent, value: string) {

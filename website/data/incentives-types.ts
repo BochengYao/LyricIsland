@@ -123,7 +123,18 @@ export type FeatureContentVersionOperation =
   | { type: "delete"; release_version: string; delete_sections?: boolean }
   | { type: "migrate-legacy"; to: string };
 
+export type AppUpdatePrompt = {
+  enabled: boolean;
+  release_version: string;
+  content_zh: string;
+  content_en: string;
+  content_zh_tw: string;
+  content_ja: string;
+};
+
 export type FeatureContent = {
+  /** Dedicated desktop update prompt, independent from updates-page visibility. */
+  update_prompt: AppUpdatePrompt;
   /** Independently managed versions for the published feature-content page. */
   versions: string[];
   summary: {

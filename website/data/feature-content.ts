@@ -1,5 +1,5 @@
 import defaultContentJson from "@/data/feature-content-default.json";
-import type { FeatureContent, FeatureContentSection } from "@/data/incentives-types";
+import type { AppUpdatePrompt, FeatureContent, FeatureContentSection } from "@/data/incentives-types";
 import type { Locale } from "@/data/site-copy";
 
 export const defaultFeatureContent = defaultContentJson as FeatureContent;
@@ -29,6 +29,18 @@ function cleanLines(value: unknown, maxItems: number, maxLength: number) {
         .filter(Boolean)
         .slice(0, maxItems)
     : [];
+}
+
+export function sanitizeAppUpdatePrompt(value: unknown): AppUpdatePrompt {
+  const source = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return {
+    enabled: source.enabled === true,
+    release_version: cleanText(source.release_version, 40),
+    content_zh: cleanText(source.content_zh, 4000),
+    content_en: cleanText(source.content_en, 4000),
+    content_zh_tw: cleanText(source.content_zh_tw, 4000),
+    content_ja: cleanText(source.content_ja, 4000)
+  };
 }
 
 export function sanitizeFeatureContent(value: unknown): FeatureContent {
@@ -84,6 +96,7 @@ export function sanitizeFeatureContent(value: unknown): FeatureContent {
     .filter((value): value is string => Boolean(value) && value !== LEGACY_FEATURE_RELEASE_VERSION && FEATURE_RELEASE_VERSION_PATTERN.test(value));
 
   return {
+    update_prompt: sanitizeAppUpdatePrompt(source.update_prompt),
     versions: [...new Set(versions)],
     summary: {
       label_zh: summaryLabelZh,
