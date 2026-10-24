@@ -199,6 +199,10 @@ function previewTranslationSignature(draft: PreviewDraft) {
   });
 }
 
+function appUpdateTranslationSignature(prompt: AppUpdatePrompt) {
+  return prompt.content_zh;
+}
+
 function previewBulkLine(feature: ReleasePreviewFeature) {
   return feature.title_zh.trim()
     ? `${feature.title_zh.trim()} | ${feature.description_zh.trim()}`
@@ -463,6 +467,7 @@ export function AdminIncentives() {
   const [featureSaving, setFeatureSaving] = useState(false);
   const [featureMessage, setFeatureMessage] = useState("");
   const [appUpdatePrompt, setAppUpdatePrompt] = useState<AppUpdatePrompt>(() => sanitizeAppUpdatePrompt(null));
+  const appUpdatePromptRef = useRef(appUpdatePrompt);
   const [appUpdateSaving, setAppUpdateSaving] = useState(false);
   const [appUpdateMessage, setAppUpdateMessage] = useState("");
   const [selectedFeatureVersion, setSelectedFeatureVersion] = useState("");
@@ -501,14 +506,18 @@ export function AdminIncentives() {
   const [previewBulkVersion, setPreviewBulkVersion] = useState("");
   const [previewSaving, setPreviewSaving] = useState(false);
   const [draftMenuOpen, setDraftMenuOpen] = useState(false);
-  const [translationSaving, setTranslationSaving] = useState<"features" | "preview" | null>(null);
-  const translationRequestRef = useRef<"features" | "preview" | null>(null);
+  const [translationSaving, setTranslationSaving] = useState<"app-update" | "features" | "preview" | null>(null);
+  const translationRequestRef = useRef<"app-update" | "features" | "preview" | null>(null);
   const translationLocked = translationSaving !== null;
   const previewTranslationLocked = translationLocked;
 
   useEffect(() => {
     previewDraftRef.current = previewDraft;
   }, [previewDraft]);
+
+  useEffect(() => {
+    appUpdatePromptRef.current = appUpdatePrompt;
+  }, [appUpdatePrompt]);
 
   const featureVersionOptions = useMemo(() => {
     const options = [...featureContent.versions]
@@ -894,6 +903,52 @@ export function AdminIncentives() {
     setPreviewDraft((draft) => ({ ...draft, version }));
     if (!previewBulkVersion.trim() || samePreviewVersion(previewBulkVersion, previousVersion)) {
       setPreviewBulkVersion(version);
+    }
+  }
+
+  async function translateAppUpdatePrompt() {
+    if (translationRequestRef.current) {
+      setAppUpdateMessage("另一项翻译仍在进行，请稍候");
+      return;
+    }
+    const sourceSignature = appUpdateTranslationSignature(appUpdatePrompt);
+    const sourceLines = sourceSignature.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    if (!sourceLines.length) {
+      setAppUpdateMessage("请先填写简体中文更新内容");
+      return;
+    }
+    const entryKey = (index: number) => `app-update.line.${index}`;
+    const entries = sourceLines.map((text, index) => ({ key: entryKey(index), text }));
+    translationRequestRef.current = "app-update";
+    setTranslationSaving("app-update");
+    setAppUpdateMessage("正在翻译英文、繁中和日文…");
+    setError("");
+    try {
+      const translations = await requestTranslations(entries);
+      if (appUpdateTranslationSignature(appUpdatePromptRef.current) !== sourceSignature) {
+        setAppUpdateMessage("简体中文内容已变化，已丢弃过期翻译结果，请重新翻译");
+        return;
+      }
+      const translatedLines = (locale: TranslationLocale) => sourceLines
+        .map((_, index) => translations[locale][entryKey(index)])
+        .filter(Boolean)
+        .join("\n");
+      setAppUpdatePrompt((prompt) => ({
+        ...prompt,
+        content_en: translatedLines("en"),
+        content_zh_tw: translatedLines("zh-tw"),
+        content_ja: translatedLines("ja")
+      }));
+      setAppUpdateMessage("英文、繁中和日文内容已自动生成，请确认后保存更新弹窗设置");
+    } catch (translationError) {
+      const message = translationError instanceof Error ? translationError.message : "翻译失败";
+      setAppUpdateMessage(`自动翻译未完成：${message}`);
+      setError(message);
+    } finally {
+      if (translationRequestRef.current === "app-update") {
+        translationRequestRef.current = null;
+        setTranslationSaving(null);
+      }
     }
   }
 
@@ -1641,7 +1696,8 @@ export function AdminIncentives() {
               <div><p>APP UPDATE PROMPT</p><h2>更新弹窗</h2></div>
               <div className="featureAdminActions">
                 <span role="status">{appUpdateMessage || "独立管理客户端更新提示，不影响官网新功能页内容"}</span>
-                <button className="button buttonPrimary" type="button" disabled={appUpdateSaving} onClick={() => void saveAppUpdateSettings()}>{appUpdateSaving ? "保存中…" : "保存更新弹窗设置"}</button>
+                <button className="button buttonSecondary" type="button" disabled={appUpdateSaving || translationLocked} onClick={() => void translateAppUpdatePrompt()}>{translationSaving === "app-update" ? "正在翻译…" : "一键翻译"}</button>
+                <button className="button buttonPrimary" type="button" disabled={appUpdateSaving || translationLocked} onClick={() => void saveAppUpdateSettings()}>{appUpdateSaving ? "保存中…" : "保存更新弹窗设置"}</button>
               </div>
             </header>
 
