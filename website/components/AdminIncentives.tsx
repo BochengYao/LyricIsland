@@ -10,6 +10,7 @@ import {
   defaultFeatureContent,
   LEGACY_FEATURE_RELEASE_VERSION,
   isFeatureReleaseVersion,
+  parseFeatureContentText,
   sanitizeAppUpdatePrompt,
   sanitizeFeatureContent
 } from "@/data/feature-content";
@@ -472,6 +473,7 @@ export function AdminIncentives() {
   const [appUpdateMessage, setAppUpdateMessage] = useState("");
   const [selectedFeatureVersion, setSelectedFeatureVersion] = useState("");
   const [featureVersionDraft, setFeatureVersionDraft] = useState("");
+  const [featureExtractInput, setFeatureExtractInput] = useState("");
   const [legacyMigrationDraft, setLegacyMigrationDraft] = useState("V2.0.36");
   const [featureVersionSaving, setFeatureVersionSaving] = useState(false);
   const [previews, setPreviews] = useState<ReleasePreview[]>([]);
@@ -1493,6 +1495,44 @@ export function AdminIncentives() {
     markFeatureDirty();
   }
 
+  function extractFeatureSection() {
+    if (activeFeatureVersion === LEGACY_FEATURE_RELEASE_VERSION || !isFeatureReleaseVersion(activeFeatureVersion)) {
+      setFeatureMessage("请先在此页新建规范的完整版本号（例如 V3.3.8），再提取功能条目");
+      return;
+    }
+    const extracted = parseFeatureContentText(featureExtractInput);
+    if (!extracted.title) {
+      setFeatureMessage("未提取：请粘贴包含标题的中文功能说明");
+      return;
+    }
+    const id = typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `feature-${Date.now()}`;
+    setFeatureContent((content) => ({
+      ...content,
+      sections: [...content.sections, {
+        id,
+        release_version: activeFeatureVersion,
+        major_version: "OTHER",
+        title_zh: extracted.title,
+        title_en: "",
+        title_zh_tw: "",
+        title_ja: "",
+        body_zh: extracted.description,
+        body_en: "",
+        body_zh_tw: "",
+        body_ja: "",
+        items_zh: extracted.items,
+        items_en: [],
+        items_zh_tw: [],
+        items_ja: [],
+        visible: false
+      }]
+    }));
+    setFeatureExtractInput("");
+    setFeatureMessage(`已提取“${extracted.title}”的标题、描述和 ${extracted.items.length} 条分条；请确认后翻译并保存`);
+  }
+
   function deleteFeatureSection(section: FeatureContentSection) {
     if (!window.confirm(`确定删除“${section.title_zh || section.title_en || "未命名条目"}”吗？保存后前台也会删除。`)) return;
     setFeatureContent((content) => ({
@@ -1782,6 +1822,25 @@ export function AdminIncentives() {
                 )}
               </div>
               {!hasUsableFeatureVersion && activeFeatureVersion === LEGACY_FEATURE_RELEASE_VERSION && <p role="status">尚无可用的新功能版本。请在此处新建完整版本号后，再新增功能条目。</p>}
+            </section>
+
+            <section className="featureTextExtract" aria-labelledby="feature-text-extract-heading">
+              <div>
+                <strong id="feature-text-extract-heading">中文文字提取</strong>
+                <small>粘贴一段功能说明，自动提取标题、描述和分条，并新增为当前版本的隐藏条目。</small>
+              </div>
+              <textarea
+                aria-label="中文功能文字提取"
+                rows={7}
+                value={featureExtractInput}
+                disabled={featureVersionSaving || translationLocked}
+                onChange={(event) => setFeatureExtractInput(event.target.value)}
+                placeholder={"标题：逐字跟随\n描述：歌词随着演唱进度逐字呈现，带来更自然的跟唱体验。\n分条：\n- 支持平滑逐字高亮\n- 暂停与跳转后自动重新对齐"}
+              />
+              <div className="featureTextExtractActions">
+                <small>也支持首行“标题 | 描述”或“标题｜描述”，后续每行使用 -、• 或数字列表作为分条。</small>
+                <button className="button buttonSecondary" type="button" disabled={featureVersionSaving || translationLocked || !featureExtractInput.trim()} onClick={extractFeatureSection}>提取标题、描述和分条</button>
+              </div>
             </section>
 
             <div className="featureAdminList">

@@ -252,10 +252,26 @@ try {
     .replace(/import type[^;]+;\r?\n/g, "");
   const featureEntry = resolve(temp, "feature-content.mjs");
   await writeFile(featureEntry, ts.transpileModule(featureSource, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText);
-  const { publicFeatureContent, sanitizeFeatureContent } = await import(pathToFileURL(featureEntry).href);
+  const { parseFeatureContentText, publicFeatureContent, sanitizeFeatureContent } = await import(pathToFileURL(featureEntry).href);
   const clientContent = publicFeatureContent(sanitizeFeatureContent(feature));
   assert.doesNotMatch(JSON.stringify(clientContent), /LRCLIB/i, "client fail-closed filter must cover every localized field");
   assert.match(clientContent.sections.at(-1).body_zh, /QQ 音乐、网易云音乐和酷狗播放器/);
+  assert.deepEqual(
+    parseFeatureContentText("标题：逐字跟随\n描述：歌词随着演唱进度逐字呈现。\n分条：\n- 支持平滑高亮\n2. 跳转后自动对齐"),
+    {
+      title: "逐字跟随",
+      description: "歌词随着演唱进度逐字呈现。",
+      items: ["支持平滑高亮", "跳转后自动对齐"]
+    }
+  );
+  assert.deepEqual(
+    parseFeatureContentText("歌词坞｜让歌词显示在任务栏。\n• 支持左右任务栏\n• 支持多显示器"),
+    {
+      title: "歌词坞",
+      description: "让歌词显示在任务栏。",
+      items: ["支持左右任务栏", "支持多显示器"]
+    }
+  );
 
   // W04: strict calendar/time components and the one legal never-expire sentinel.
   const parserSource = await readFile(resolve(root, "lib", "promo-code-tsv-parser.ts"), "utf8");

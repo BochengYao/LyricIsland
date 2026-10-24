@@ -5612,6 +5612,7 @@ button.danger,
 
 .featureAdminSummary,
 .featureVersionPanel,
+.featureTextExtract,
 .featureAdminList article {
   padding: 16px;
   border: 1px solid var(--line);
@@ -5728,6 +5729,49 @@ button.danger,
   display: grid;
   gap: 12px;
   margin-bottom: 10px;
+}
+
+.featureTextExtract {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.featureTextExtract > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.featureTextExtract small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.featureTextExtract textarea {
+  width: 100%;
+  min-height: 150px;
+  resize: vertical;
+  padding: 12px 14px;
+  border: 1px solid #aaa49d;
+  border-radius: 12px;
+  outline: 0;
+  background: var(--white);
+  color: var(--ink);
+  font: inherit;
+  line-height: 1.55;
+}
+
+.featureTextExtract textarea:focus {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px rgba(255, 199, 57, 0.28);
+}
+
+.featureTextExtractActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
 }
 
 .featureAdminSummary > header,
@@ -6902,6 +6946,15 @@ button.danger,
 }
 
 @media (max-width: 720px) {
+  .featureTextExtractActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .featureTextExtractActions .button {
+    width: 100%;
+  }
+
   .featureVersionPanel > header {
     align-items: stretch;
     flex-direction: column;

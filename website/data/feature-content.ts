@@ -7,6 +7,12 @@ export const defaultFeatureContent = defaultContentJson as FeatureContent;
 export const LEGACY_FEATURE_RELEASE_VERSION = "早期更新";
 const FEATURE_RELEASE_VERSION_PATTERN = /^v\d+\.\d+\.\d+$/i;
 
+export type ExtractedFeatureText = {
+  title: string;
+  description: string;
+  items: string[];
+};
+
 export function isFeatureReleaseVersion(value: unknown) {
   const normalized = typeof value === "string" ? value.trim() : "";
   return normalized === LEGACY_FEATURE_RELEASE_VERSION || FEATURE_RELEASE_VERSION_PATTERN.test(normalized);
@@ -29,6 +35,86 @@ function cleanLines(value: unknown, maxItems: number, maxLength: number) {
         .filter(Boolean)
         .slice(0, maxItems)
     : [];
+}
+
+function cleanFeatureExtractLine(value: string) {
+  return value
+    .replace(/^\s*#{1,6}\s*/, "")
+    .replace(/\*\*/g, "")
+    .trim();
+}
+
+function featureExtractBullet(value: string) {
+  const match = value.match(/^\s*(?:[-–—*•·▪◦]|\d+[.)、])\s*(.+)$/);
+  return match?.[1].trim() ?? "";
+}
+
+function splitFeatureExtractItems(value: string) {
+  return value
+    .split(/[；;]/)
+    .map((item) => featureExtractBullet(item) || item.trim())
+    .filter(Boolean);
+}
+
+export function parseFeatureContentText(value: unknown): ExtractedFeatureText {
+  if (typeof value !== "string") return { title: "", description: "", items: [] };
+  const lines = value.replace(/\r\n?/g, "\n").split("\n");
+  const title: string[] = [];
+  const description: string[] = [];
+  const items: string[] = [];
+  let field: "title" | "description" | "items" | null = null;
+  let recognizedLabel = false;
+
+  for (const rawLine of lines) {
+    const line = cleanFeatureExtractLine(rawLine);
+    if (!line) continue;
+
+    const label = line.match(/^(标题|功能标题|title|描述|功能描述|说明|description|分条|要点|功能点|条目|bullets?|items?)\s*[:：]\s*(.*)$/i);
+    if (label) {
+      recognizedLabel = true;
+      const name = label[1].toLocaleLowerCase();
+      const content = label[2].trim();
+      field = /标题|title/.test(name)
+        ? "title"
+        : /描述|说明|description/.test(name)
+          ? "description"
+          : "items";
+      if (!content) continue;
+      if (field === "items") items.push(...splitFeatureExtractItems(content));
+      else if (field === "title") title.push(content);
+      else description.push(content);
+      continue;
+    }
+
+    const bullet = featureExtractBullet(line);
+    if (bullet) {
+      items.push(bullet);
+      field = "items";
+      continue;
+    }
+
+    if (field === "items") items.push(...splitFeatureExtractItems(line));
+    else if (field === "title") title.push(line);
+    else if (field === "description") description.push(line);
+    else if (!recognizedLabel && title.length === 0) {
+      const separator = line.search(/[|｜]/);
+      if (separator > 0) {
+        title.push(line.slice(0, separator).trim());
+        const compactDescription = line.slice(separator + 1).trim();
+        if (compactDescription) description.push(compactDescription);
+      } else {
+        title.push(line);
+      }
+    } else {
+      description.push(line);
+    }
+  }
+
+  return {
+    title: title.join(" ").trim().slice(0, 160),
+    description: description.join("\n").trim().slice(0, 1200),
+    items: items.map((item) => item.slice(0, 240)).filter(Boolean).slice(0, 12)
+  };
 }
 
 export function sanitizeAppUpdatePrompt(value: unknown): AppUpdatePrompt {
