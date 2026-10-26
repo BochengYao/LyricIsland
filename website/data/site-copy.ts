@@ -252,7 +252,7 @@ const rawCopyByLocale: Record<"zh" | "en", SiteCopy> = {
       title: "换个播放器，\n歌词照常在场。",
       body:
         "LyricHover会自动识别当前正在使用的播放器，并随播放状态切换。你也可以在设置中锁定常用播放器，让每次播放都保持一致。",
-      note: "*网易云音乐需最新版本手动到“设置-系统”中开启SMTC以正常使用全部功能。",
+      note: "*使用网易云音乐时，请更新至最新版本，并前往「设置 → 系统」手动开启 SMTC。受网易云音乐接口限制，手动调整播放进度后，歌词岛将暂时无法同步当前歌曲的歌词，切换至下一首歌曲后即可恢复。",
       players: ["Apple Music", "QQ 音乐", "网易云音乐*", "酷狗音乐", "Spotify", "酷我音乐", "通用 SMTC"]
     },
     sources: {
@@ -424,7 +424,7 @@ const rawCopyByLocale: Record<"zh" | "en", SiteCopy> = {
       body:
         "LyricHover automatically recognizes the player in use and follows its playback state. You can also lock in a favorite player from Settings for a consistent experience every time.",
       note:
-        "*NetEase Cloud Music must be updated to the latest version, and SMTC must be manually enabled in “Settings - System” to use all features normally.",
+        "*When using NetEase Cloud Music, update to the latest version and manually enable SMTC under Settings → System. Due to limitations in the NetEase Cloud Music interface, LyricHover will temporarily be unable to sync lyrics for the current track after you manually seek. Synchronization will resume after switching to the next track.",
       players: sharedPlayers
     },
     sources: {
@@ -511,7 +511,7 @@ const traditionalSiteCopy = {
   ...transformCopy(rawCopyByLocale.zh, (text) => Array.from(text, (character) => traditionalCharacters[character] ?? character).join("")),
   compatibility: {
     ...transformCopy(rawCopyByLocale.zh.compatibility, (text) => Array.from(text, (character) => traditionalCharacters[character] ?? character).join("")),
-    note: "*網易雲音樂需使用最新版本，並手動前往「設定－系統」開啟 SMTC，才能正常使用全部功能。"
+    note: "*使用網易雲音樂時，請更新至最新版本，並前往「設定 → 系統」手動開啟 SMTC。受網易雲音樂介面限制，手動調整播放進度後，歌詞島將暫時無法同步目前歌曲的歌詞，切換至下一首歌曲後即可恢復。"
   },
   faq: {
     ...transformCopy(rawCopyByLocale.zh.faq, (text) => Array.from(text, (character) => traditionalCharacters[character] ?? character).join("")),
@@ -579,7 +579,7 @@ const japaneseSiteCopy: SiteCopy = {
     imageAlt: "Lyric Dock の公式ビジュアルにある Windows デスクトップ、タスクバー、二言語歌詞の場面"
   },
   modules: { eyebrow: "自分で組み立てる", title: "どう広げるか、\nどう見せるか。", body: "横並びならのびやかに。自動収納なら省スペースに。LyricHover は選んだレイアウトに自然になじみます。", names: ["アルバムアート", "同期歌詞", "再生コントロール", "曲情報", "再生位置", "区切り線"], imageAlt: "3 つのデスクトップ場面での LyricHover レイアウト" },
-  compatibility: { title: "プレーヤーが変わっても、\n歌詞はそのまま。", body: "LyricHover は使用中のプレーヤーを自動で認識し、再生状態に合わせます。設定でよく使うプレーヤーを固定すれば、いつでも一貫した体験です。", note: "*NetEase Cloud Music を最新バージョンに更新し、「設定 - システム」で SMTC を手動で有効にすると、すべての機能を正常に使用できます。", players: sharedPlayers },
+  compatibility: { title: "プレーヤーが変わっても、\n歌詞はそのまま。", body: "LyricHover は使用中のプレーヤーを自動で認識し、再生状態に合わせます。設定でよく使うプレーヤーを固定すれば、いつでも一貫した体験です。", note: "*NetEase Cloud Music を使用する場合は、最新バージョンに更新し、「設定 → システム」で SMTC を手動で有効にしてください。NetEase Cloud Music のインターフェース上の制限により、再生位置を手動で変更すると、LyricHover は現在の曲の歌詞を一時的に同期できなくなります。次の曲に切り替えると復旧します。", players: sharedPlayers },
   sources: { eyebrow: "歌詞はどこから", title: "複数のソースを、\n一度にマッチ。", body: "オンライン歌詞は、第三者の提供元から必要に応じて取得します。", facts: [{ value: "3+", label: "歌詞ソース", detail: "複数の第三者提供元を自動で照合します。" }, { value: "6+", label: "主要プレーヤー", detail: "Windows SMTC に対応する複数のプレーヤーで動作します。" }, { value: "0", label: "広告の中断", detail: "広告なし。歌詞だけに集中できます。" }], note: "歌詞の提供状況は、曲と第三者提供元によって異なります。" },
   faq: { eyebrow: "よくある質問", title: "始める前に、\n知っておきたいこと。", items: [
     { question: "LyricHover はどの音楽プレーヤーに対応していますか？", answer: "LyricHover は Apple Music、NetEase Cloud Music、QQ Music、Kugou Music、Kuwo Music などに対応します。Windows SMTC メディア制御プロトコルに接続するプレーヤーなら、再生中の曲を通常は自動で認識します。\nNetEase Cloud Music の Windows SMTC 対応は完全ではありません。プレーヤー内で手動シークすると、歌詞の位置がすぐに更新されない場合があります。" },

@@ -816,7 +816,9 @@ def test_navigation_and_orbit(page: Page) -> None:
         ["歌词来源", "主流播放器", "广告打扰"]
     )
     expect(page.locator(".sourcesNote")).to_have_text(
-        "*网易云音乐需最新版本手动到“设置-系统”中开启SMTC以正常使用全部功能。"
+        "*使用网易云音乐时，请更新至最新版本，并前往「设置 → 系统」手动开启 SMTC。"
+        "受网易云音乐接口限制，手动调整播放进度后，歌词岛将暂时无法同步当前歌曲的歌词，"
+        "切换至下一首歌曲后即可恢复。"
     )
     expect(page.locator(".faqItem").nth(2).locator(".faqAnswer")).to_contain_text(
         "如果使用网易云音乐，请先更新至最新版本，并手动前往“设置-系统”开启 SMTC，"
@@ -849,8 +851,10 @@ def test_navigation_and_orbit(page: Page) -> None:
         ["lyric sources", "popular players", "ad interruptions"]
     )
     expect(page.locator(".sourcesNote")).to_have_text(
-        "*NetEase Cloud Music must be updated to the latest version, and SMTC "
-        "must be manually enabled in “Settings - System” to use all features normally."
+        "*When using NetEase Cloud Music, update to the latest version and manually enable "
+        "SMTC under Settings → System. Due to limitations in the NetEase Cloud Music interface, "
+        "LyricHover will temporarily be unable to sync lyrics for the current track after you "
+        "manually seek. Synchronization will resume after switching to the next track."
     )
     expect(page.locator(".faqItem").nth(2).locator(".faqAnswer")).to_contain_text(
         "If you use NetEase Cloud Music, update it to the latest version and manually "
@@ -873,8 +877,9 @@ def test_navigation_and_orbit(page: Page) -> None:
 
     page.goto(BASE_URL + "/zh-hant", wait_until="networkidle")
     expect(page.locator(".sourcesNote")).to_have_text(
-        "*網易雲音樂需使用最新版本，並手動前往「設定－系統」開啟 SMTC，才能正常使用"
-        "全部功能。"
+        "*使用網易雲音樂時，請更新至最新版本，並前往「設定 → 系統」手動開啟 SMTC。"
+        "受網易雲音樂介面限制，手動調整播放進度後，歌詞島將暫時無法同步目前歌曲的歌詞，"
+        "切換至下一首歌曲後即可恢復。"
     )
     expect(page.locator(".faqItem").nth(2).locator(".faqAnswer")).to_contain_text(
         "如果使用網易雲音樂，請先更新至最新版本，並手動前往「設定－系統」開啟 SMTC，"
@@ -883,8 +888,10 @@ def test_navigation_and_orbit(page: Page) -> None:
 
     page.goto(BASE_URL + "/ja", wait_until="networkidle")
     expect(page.locator(".sourcesNote")).to_have_text(
-        "*NetEase Cloud Music を最新バージョンに更新し、「設定 - システム」で SMTC を"
-        "手動で有効にすると、すべての機能を正常に使用できます。"
+        "*NetEase Cloud Music を使用する場合は、最新バージョンに更新し、「設定 → システム」で "
+        "SMTC を手動で有効にしてください。NetEase Cloud Music のインターフェース上の制限により、"
+        "再生位置を手動で変更すると、LyricHover は現在の曲の歌詞を一時的に同期できなくなります。"
+        "次の曲に切り替えると復旧します。"
     )
     expect(page.locator(".faqItem").nth(2).locator(".faqAnswer")).to_contain_text(
         "NetEase Cloud Music を使用する場合は、最新バージョンに更新し、"
