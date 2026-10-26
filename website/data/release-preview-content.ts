@@ -75,7 +75,7 @@ function safeProgress(value: unknown): number {
 }
 
 function legacyContent(title: string, description: string) {
-  return title ? `${title} — ${description}` : description;
+  return title && description ? `${title} — ${description}` : title || description;
 }
 
 type SafeLegacyMigration = {
@@ -140,11 +140,13 @@ function sanitizeFeature(value: unknown, fallbackOrder: number, previewVersion =
   const titleEn = text(source.title_en, 180);
   const titleZhTw = text(source.title_zh_tw, 180);
   const titleJa = text(source.title_ja, 180);
-  const descriptionZh = text(source.description_zh) || migration?.description || legacyZh;
-  const descriptionEn = text(source.description_en) || legacyEn;
-  const descriptionZhTw = text(source.description_zh_tw) || legacyZhTw;
-  const descriptionJa = text(source.description_ja) || legacyJa;
-  if (!id || (!descriptionZh && !descriptionEn && !descriptionZhTw && !descriptionJa)) return null;
+  const descriptionZh = Object.hasOwn(source, "description_zh")
+    ? text(source.description_zh)
+    : migration?.description || legacyZh;
+  const descriptionEn = Object.hasOwn(source, "description_en") ? text(source.description_en) : legacyEn;
+  const descriptionZhTw = Object.hasOwn(source, "description_zh_tw") ? text(source.description_zh_tw) : legacyZhTw;
+  const descriptionJa = Object.hasOwn(source, "description_ja") ? text(source.description_ja) : legacyJa;
+  if (!id || (![titleZh, titleEn, titleZhTw, titleJa, descriptionZh, descriptionEn, descriptionZhTw, descriptionJa].some(Boolean))) return null;
   const rawOrder = typeof source.sort_order === "number" && Number.isFinite(source.sort_order)
     ? Math.round(source.sort_order)
     : fallbackOrder;

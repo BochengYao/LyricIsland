@@ -45,7 +45,7 @@ function FeatureRow({ item, locale }: { item: LocalizedFeature; locale: Locale }
         {title ? <h4>{title}</h4> : <p className="previewLegacyContent">{description}</p>}
         <ReleasePreviewProgressRing progress={feature.progress} stage={feature.stage} locale={locale} />
       </div>
-      {title && <p>{description}</p>}
+      {title && description && <p>{description}</p>}
     </li>
   );
 }
@@ -67,7 +67,7 @@ export function ReleasePreviewArticle({
       title: localizedFeatureTitle(feature, locale).trim(),
       description: localizedFeatureDescription(feature, locale).trim()
     }))
-    .filter((item) => Boolean(item.description));
+    .filter((item) => Boolean(item.title || item.description));
   const currentVersion = preview.version.trim();
   const currentFeatures = features.filter((item) => releasePreviewFeatureVersion(item.feature, currentVersion).toLocaleLowerCase() === currentVersion.toLocaleLowerCase());
   const futureGroups = new Map<string, LocalizedFeature[]>();
@@ -104,7 +104,7 @@ export function ReleasePreviewArticle({
             {items.map(({ feature, title, description }) => (
               <li key={feature.id}>
                 {title && <h4>{title}</h4>}
-                <p>{description}</p>
+                {description && <p>{description}</p>}
               </li>
             ))}
           </ul>

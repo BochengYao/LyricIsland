@@ -338,7 +338,7 @@ function safeLegacyPreviewMigration(version, contentZh) {
 }
 
 function legacyPreviewContent(title, description) {
-  return title ? `${title} — ${description}` : description;
+  return title && description ? `${title} — ${description}` : title || description;
 }
 
 function sanitizeReleasePreviewFeature(value, fallbackOrder, previewVersion = "") {
@@ -353,11 +353,17 @@ function sanitizeReleasePreviewFeature(value, fallbackOrder, previewVersion = ""
   const titleEn = firstPreviewText(value.title_en).slice(0, 180);
   const titleZhTw = firstPreviewText(value.title_zh_tw).slice(0, 180);
   const titleJa = firstPreviewText(value.title_ja).slice(0, 180);
-  const descriptionZh = firstPreviewText(value.description_zh).slice(0, 2400) || migration?.description || legacyZh;
-  const descriptionEn = firstPreviewText(value.description_en).slice(0, 2400) || legacyEn;
-  const descriptionZhTw = firstPreviewText(value.description_zh_tw).slice(0, 2400) || legacyZhTw;
-  const descriptionJa = firstPreviewText(value.description_ja).slice(0, 2400) || legacyJa;
-  if (!id || (!descriptionZh && !descriptionEn && !descriptionZhTw && !descriptionJa)) return null;
+  const hasOwn = (field) => Object.prototype.hasOwnProperty.call(value, field);
+  const descriptionZh = hasOwn("description_zh")
+    ? firstPreviewText(value.description_zh).slice(0, 2400)
+    : migration?.description || legacyZh;
+  const descriptionEn = hasOwn("description_en") ? firstPreviewText(value.description_en).slice(0, 2400) : legacyEn;
+  const descriptionZhTw = hasOwn("description_zh_tw") ? firstPreviewText(value.description_zh_tw).slice(0, 2400) : legacyZhTw;
+  const descriptionJa = hasOwn("description_ja") ? firstPreviewText(value.description_ja).slice(0, 2400) : legacyJa;
+  if (!id || ![
+    titleZh, titleEn, titleZhTw, titleJa,
+    descriptionZh, descriptionEn, descriptionZhTw, descriptionJa
+  ].some(Boolean)) return null;
   const rawOrder = typeof value.sort_order === "number" && Number.isFinite(value.sort_order)
     ? Math.round(value.sort_order)
     : fallbackOrder;
@@ -1498,11 +1504,13 @@ function previewFeatures(value) {
     const titleEn = localizedText("title_en", 180);
     const titleZhTw = localizedText("title_zh_tw", 180);
     const titleJa = localizedText("title_ja", 180);
-    const descriptionZh = localizedText("description_zh") || localizedText("content_zh");
-    const descriptionEn = localizedText("description_en") || localizedText("content_en");
-    const descriptionZhTw = localizedText("description_zh_tw") || localizedText("content_zh_tw");
-    const descriptionJa = localizedText("description_ja") || localizedText("content_ja");
-    if (!descriptionZh || !descriptionEn) throw new PreviewValidationError("每条功能项均需填写中英文描述");
+    const descriptionZh = Object.prototype.hasOwnProperty.call(item, "description_zh") ? localizedText("description_zh") : localizedText("content_zh");
+    const descriptionEn = Object.prototype.hasOwnProperty.call(item, "description_en") ? localizedText("description_en") : localizedText("content_en");
+    const descriptionZhTw = Object.prototype.hasOwnProperty.call(item, "description_zh_tw") ? localizedText("description_zh_tw") : localizedText("content_zh_tw");
+    const descriptionJa = Object.prototype.hasOwnProperty.call(item, "description_ja") ? localizedText("description_ja") : localizedText("content_ja");
+    if ((!titleZh && !descriptionZh) || (!titleEn && !descriptionEn)) {
+      throw new PreviewValidationError("每条功能项均需填写中英文标题或描述");
+    }
     if (item.display_group !== undefined && item.display_group !== "featured" && item.display_group !== "improvement" && item.display_group !== "future") {
       throw new PreviewValidationError("展示分组无效");
     }
@@ -2091,8 +2099,8 @@ async function handleAdminPreviews(request) {
   if (request.method === "POST") {
     try {
       const payload = previewPayload(await request.json());
-      if (!payload.version || !payload.body_zh || !payload.body_en) {
-        return jsonError("版本号、中英文更新内容均为必填项");
+      if (!payload.version) {
+        return jsonError("版本号为必填项");
       }
       return json({ preview: await createReleasePreview(payload) }, 201);
     } catch (error) {
@@ -2119,8 +2127,8 @@ async function handleAdminPreviews(request) {
         }
       }
       const payload = hasContent ? previewPayload(body) : { status: body.status };
-      if (hasContent && (!payload.version || !payload.body_zh || !payload.body_en)) {
-        return jsonError("版本号、中英文更新内容均为必填项");
+      if (hasContent && !payload.version) {
+        return jsonError("版本号为必填项");
       }
       return json({
         preview: await updateReleasePreview(id, payload)

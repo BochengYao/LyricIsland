@@ -57,11 +57,13 @@ function previewFeatures(value: unknown): ReleasePreviewFeature[] {
     const titleEn = localizedText("title_en", 180);
     const titleZhTw = localizedText("title_zh_tw", 180);
     const titleJa = localizedText("title_ja", 180);
-    const descriptionZh = localizedText("description_zh") || localizedText("content_zh");
-    const descriptionEn = localizedText("description_en") || localizedText("content_en");
-    const descriptionZhTw = localizedText("description_zh_tw") || localizedText("content_zh_tw");
-    const descriptionJa = localizedText("description_ja") || localizedText("content_ja");
-    if (!descriptionZh || !descriptionEn) throw new PreviewValidationError("每条功能项均需填写中英文描述");
+    const descriptionZh = Object.hasOwn(source, "description_zh") ? localizedText("description_zh") : localizedText("content_zh");
+    const descriptionEn = Object.hasOwn(source, "description_en") ? localizedText("description_en") : localizedText("content_en");
+    const descriptionZhTw = Object.hasOwn(source, "description_zh_tw") ? localizedText("description_zh_tw") : localizedText("content_zh_tw");
+    const descriptionJa = Object.hasOwn(source, "description_ja") ? localizedText("description_ja") : localizedText("content_ja");
+    if ((!titleZh && !descriptionZh) || (!titleEn && !descriptionEn)) {
+      throw new PreviewValidationError("每条功能项均需填写中英文标题或描述");
+    }
     if (source.display_group !== undefined && source.display_group !== "featured" && source.display_group !== "improvement" && source.display_group !== "future") {
       throw new PreviewValidationError("展示分组无效");
     }
@@ -70,7 +72,8 @@ function previewFeatures(value: unknown): ReleasePreviewFeature[] {
       : "featured";
     const targetVersion = displayGroup === "future" ? localizedText("target_version", 40) : "";
     if (displayGroup === "future" && !targetVersion) throw new PreviewValidationError("稍后推出的功能必须填写目标版本");
-    const legacyContent = (title: string, description: string) => title ? `${title} — ${description}` : description;
+    const legacyContent = (title: string, description: string) =>
+      title && description ? `${title} — ${description}` : title || description;
     return {
       id,
       sort_order: index + 1,
@@ -157,8 +160,8 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as Record<string, unknown>;
     const payload = previewPayload(body);
-    if (!payload.version || !payload.body_zh || !payload.body_en) {
-      return Response.json({ error: "版本号、中英文更新内容均为必填项" }, { status: 400 });
+    if (!payload.version) {
+      return Response.json({ error: "版本号为必填项" }, { status: 400 });
     }
     return Response.json({ preview: await createReleasePreview(payload) }, { status: 201 });
   } catch (error) {
@@ -187,8 +190,8 @@ export async function PATCH(request: Request) {
         }
       }
       const payload = previewPayload(body);
-      if (!payload.version || !payload.body_zh || !payload.body_en) {
-        return Response.json({ error: "版本号、中英文更新内容均为必填项" }, { status: 400 });
+      if (!payload.version) {
+        return Response.json({ error: "版本号为必填项" }, { status: 400 });
       }
       return Response.json({
         preview: await updateReleasePreview(id, payload)

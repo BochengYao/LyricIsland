@@ -163,7 +163,7 @@ function newPreviewFeature(
     description_en: "",
     description_zh_tw: "",
     description_ja: "",
-    content_zh: titleZh ? `${titleZh} — ${descriptionZh}` : descriptionZh,
+    content_zh: titleZh && descriptionZh ? `${titleZh} — ${descriptionZh}` : titleZh || descriptionZh,
     content_en: "",
     content_zh_tw: "",
     content_ja: ""
@@ -1929,14 +1929,13 @@ export function AdminIncentives() {
 
               <div className="previewEditorLanguages">
                 <label>
-                  <span>{previewLocale === "zh" ? "版本说明 Note（中文）" : previewLocale === "en" ? "Version Note (English)" : previewLocale === "zh-tw" ? "版本說明 Note（繁中）" : "バージョンノート（日本語）"}</span>
+                  <span>{previewLocale === "zh" ? "版本说明 Note（中文，选填）" : previewLocale === "en" ? "Version Note (English, optional)" : previewLocale === "zh-tw" ? "版本說明 Note（繁中，選填）" : "バージョンノート（日本語、任意）"}</span>
                   <textarea
                     name={previewNoteFields[previewLocale]}
                     rows={4}
                     value={previewDraft[previewNoteFields[previewLocale]]}
                     disabled={previewTranslationLocked}
                     onChange={(event) => setPreviewDraft((draft) => ({ ...draft, [previewNoteFields[previewLocale]]: event.target.value }))}
-                    required={previewLocale === "zh" || previewLocale === "en"}
                   />
                 </label>
               </div>
@@ -1974,8 +1973,8 @@ export function AdminIncentives() {
                           <input value={feature[previewFeatureFields[previewLocale].title]} disabled={previewTranslationLocked} onChange={(event) => updatePreviewFeature(feature.id, { [previewFeatureFields[previewLocale].title]: event.target.value })} placeholder={previewLocale === "zh" ? "旧数据可暂时留空" : ""} />
                         </label>
                         <label>
-                          <span>{previewLocaleOptions.find((option) => option.value === previewLocale)?.label} 功能描述</span>
-                          <textarea rows={3} value={feature[previewFeatureFields[previewLocale].description]} disabled={previewTranslationLocked} onChange={(event) => updatePreviewFeature(feature.id, { [previewFeatureFields[previewLocale].description]: event.target.value })} required={previewLocale === "zh" || previewLocale === "en"} />
+                          <span>{previewLocaleOptions.find((option) => option.value === previewLocale)?.label} 功能描述（选填）</span>
+                          <textarea rows={3} value={feature[previewFeatureFields[previewLocale].description]} disabled={previewTranslationLocked} onChange={(event) => updatePreviewFeature(feature.id, { [previewFeatureFields[previewLocale].description]: event.target.value })} />
                         </label>
                       </div>
                       <div className="previewFeatureSettings">

@@ -1432,6 +1432,44 @@ try {
     ]
   );
 
+  const optionalCopyResponse = await api.fetch(
+    new Request("https://lyric-island.top/api/incentives/admin/previews", {
+      method: "POST",
+      headers: {
+        Origin: "https://lyric-island.top",
+        "Content-Type": "application/json",
+        cookie: adminCookie.split(";")[0]
+      },
+      body: JSON.stringify({
+        version: "v2.4 Optional Copy",
+        note_zh: "",
+        note_en: "",
+        features: [{
+          ...structuredPreviewFeatures[0],
+          id: "feature-title-only",
+          title_zh: "仅标题功能",
+          title_en: "Title-only feature",
+          description_zh: "",
+          description_en: "",
+          description_zh_tw: "",
+          description_ja: "",
+          content_zh: "",
+          content_en: "",
+          content_zh_tw: "",
+          content_ja: ""
+        }],
+        status: "draft"
+      })
+    })
+  );
+  assert.equal(optionalCopyResponse.status, 201, "version notes and feature descriptions must be optional");
+  const optionalCopyData = await optionalCopyResponse.json();
+  assert.equal(optionalCopyData.preview.note_zh, "");
+  assert.equal(optionalCopyData.preview.note_en, "");
+  assert.equal(optionalCopyData.preview.features.length, 1, "title-only features must survive normalization");
+  assert.equal(optionalCopyData.preview.features[0].description_zh, "");
+  assert.equal(optionalCopyData.preview.features[0].content_zh, "仅标题功能");
+
   const knownV32Note = "新版本的主要功能已基本完成，目前正在进一步优化性能、功耗与长期运行体验，发布时间调整至本月内。";
   releasePreviewRows = [{
     ...publicPreviewRow("preview-v3-2-legacy", "V3.2", "2026-09-16T00:00:00.000Z"),
