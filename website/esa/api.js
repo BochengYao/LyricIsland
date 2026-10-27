@@ -1467,6 +1467,10 @@ function validEmail(value) {
 
 class PreviewValidationError extends Error {}
 
+// The production table still requires body_zh to contain at least one character.
+// A single space satisfies that legacy constraint and normalizes back to an empty note.
+const EMPTY_REQUIRED_PREVIEW_BODY = " ";
+
 function previewFeatures(value) {
   if (!Array.isArray(value) || !value.length) {
     throw new PreviewValidationError("请至少添加一条功能项");
@@ -1566,7 +1570,7 @@ function previewPayload(body) {
     title_en: version,
     title_zh_tw: version,
     title_ja: version,
-    body_zh: bodyZh,
+    body_zh: bodyZh || EMPTY_REQUIRED_PREVIEW_BODY,
     body_en: bodyEn,
     highlights_zh: features
       ? [{ schema_version: RELEASE_PREVIEW_SCHEMA_VERSION, features }, ...features.map((feature) => feature.content_zh)]

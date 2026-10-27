@@ -13,6 +13,10 @@ import {
 
 class PreviewValidationError extends Error {}
 
+// The production table still requires body_zh to contain at least one character.
+// A single space satisfies that legacy constraint and normalizes back to an empty note.
+const EMPTY_REQUIRED_PREVIEW_BODY = " ";
+
 function hasStructuredPreviewInput(body: Record<string, unknown>) {
   return Array.isArray(body.features) || ["note_zh", "note_en", "note_zh_tw", "note_ja"]
     .some((field) => Object.hasOwn(body, field));
@@ -121,7 +125,7 @@ function previewPayload(body: Record<string, unknown>) {
     title_en: version,
     title_zh_tw: version,
     title_ja: version,
-    body_zh: bodyZh,
+    body_zh: bodyZh || EMPTY_REQUIRED_PREVIEW_BODY,
     body_en: bodyEn,
     highlights_zh: features ? encodeReleasePreviewFeatures(features) : [] as string[],
     highlights_en: features ? features.map((feature) => feature.content_en) : [] as string[],

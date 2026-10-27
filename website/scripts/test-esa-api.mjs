@@ -244,6 +244,9 @@ globalThis.fetch = async (input, init = {}) => {
   }
   if (url.endsWith("/rest/v1/release_previews") && init.method === "POST") {
     const body = JSON.parse(init.body);
+    if (typeof body.body_zh !== "string" || body.body_zh.length < 1) {
+      return response({ code: "23514", message: "release_previews_body_zh_check" }, 400);
+    }
     const row = {
       id: "22222222-2222-4222-8222-222222222222",
       ...body,
@@ -272,6 +275,9 @@ globalThis.fetch = async (input, init = {}) => {
   }
   if (url.includes("/rest/v1/release_previews?id=eq.") && init.method === "PATCH") {
     const body = JSON.parse(init.body);
+    if (Object.hasOwn(body, "body_zh") && (typeof body.body_zh !== "string" || body.body_zh.length < 1)) {
+      return response({ code: "23514", message: "release_previews_body_zh_check" }, 400);
+    }
     const id = decodeURIComponent(url.split("id=eq.")[1]);
     const previewIndex = releasePreviewRows.findIndex((row) => row.id === id);
     if (previewIndex >= 0) {
@@ -1469,6 +1475,8 @@ try {
   assert.equal(optionalCopyData.preview.features.length, 1, "title-only features must survive normalization");
   assert.equal(optionalCopyData.preview.features[0].description_zh, "");
   assert.equal(optionalCopyData.preview.features[0].content_zh, "仅标题功能");
+  const storedOptionalCopy = releasePreviewRows.find((row) => row.id === optionalCopyData.preview.id);
+  assert.equal(storedOptionalCopy.body_zh, " ", "empty notes must satisfy the legacy database constraint");
 
   const knownV32Note = "新版本的主要功能已基本完成，目前正在进一步优化性能、功耗与长期运行体验，发布时间调整至本月内。";
   releasePreviewRows = [{
