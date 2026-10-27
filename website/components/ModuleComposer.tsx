@@ -81,9 +81,9 @@ export function ModuleComposer({ label, names, imageAlt }: Props) {
         aria-hidden={contentVisible ? "true" : undefined}
       >
         <ResponsiveImage
-          fallbackSrc="/images/module-layout-intro.png"
-          srcSet="/images/responsive/module-layout-intro-720.39773615.webp 720w, /images/responsive/module-layout-intro-1200.c8c850a2.webp 1200w, /images/responsive/module-layout-intro-2000.4de3e65f.webp 2000w"
-          placeholderSrc="/images/responsive/module-layout-intro-placeholder.308695f1.webp"
+          fallbackSrc="/images/module-layout-intro-v2.png"
+          srcSet="/images/responsive/module-layout-intro-720.270a930d.webp 720w, /images/responsive/module-layout-intro-1200.15900bb4.webp 1200w, /images/responsive/module-layout-intro-2000.babbea89.webp 2000w"
+          placeholderSrc="/images/responsive/module-layout-intro-placeholder.2504c56b.webp"
           alt={imageAlt}
           width={2560}
           height={1442}

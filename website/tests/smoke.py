@@ -252,10 +252,10 @@ def test_interactions(page: Page, locale: str) -> None:
         module_intro_metrics["viewportHeight"] * 1.35
     ), "The modules anchor should provide in-section scroll distance"
     assert module_intro_metrics["imageFile"] in {
-        "module-layout-intro-720.39773615.webp",
-        "module-layout-intro-1200.c8c850a2.webp",
-        "module-layout-intro-2000.4de3e65f.webp",
-        "module-layout-intro.png",
+        "module-layout-intro-720.270a930d.webp",
+        "module-layout-intro-1200.15900bb4.webp",
+        "module-layout-intro-2000.babbea89.webp",
+        "module-layout-intro-v2.png",
     }
     assert module_intro_metrics["naturalWidth"] >= module_intro_metrics["renderedWidth"]
     assert abs(
