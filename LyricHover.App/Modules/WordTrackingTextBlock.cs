@@ -18,7 +18,9 @@ namespace LyricHover.App.Modules
     /// </summary>
     public sealed class WordTrackingTextBlock : Grid
     {
-        private static readonly TimeSpan MaximumContinuousAnchorDrift = TimeSpan.FromMilliseconds(500);
+        // Match the shared timeline's jitter tolerance. A wider local tolerance lets
+        // word highlighting keep running ahead after the player has corrected time.
+        private static readonly TimeSpan MaximumContinuousAnchorDrift = TimeSpan.FromMilliseconds(120);
         private const int MaximumCachedVisualWordMaps = 128;
         private static readonly object VisualWordMapCacheSync = new object();
         private static readonly Dictionary<VisualWordMapCacheKey, VisualWordMap> VisualWordMapCache =
@@ -28,6 +30,9 @@ namespace LyricHover.App.Modules
         private readonly TextBlock dimText = new TextBlock();
         private readonly TextBlock highlightText = new TextBlock();
         private readonly RectangleGeometry highlightClip = new RectangleGeometry();
+        private readonly GeometryGroup wrappedHighlightClip = new GeometryGroup();
+        private readonly RectangleGeometry wrappedPartialClip = new RectangleGeometry();
+        private readonly CombinedGeometry wrappedPartialGeometry = new CombinedGeometry { GeometryCombineMode = GeometryCombineMode.Intersect };
         private LyricLine trackingLine;
         private TimeSpan anchorPosition;
         private long anchorTimestamp;
@@ -36,6 +41,8 @@ namespace LyricHover.App.Modules
         private double displayedProgress = -1;
         private double dimOpacity = 0.45;
         private IReadOnlyList<VisualWordSpan> visualWordSpans = Array.Empty<VisualWordSpan>();
+        private IReadOnlyList<Geometry> wrappedWordGeometries = Array.Empty<Geometry>();
+        private int wrappedHighlightWordIndex = -1;
         private double measuredTextWidth;
         private string text = string.Empty;
         private FontFamily chineseFontFamily = new FontFamily("Microsoft YaHei UI");
@@ -43,18 +50,26 @@ namespace LyricHover.App.Modules
 
         public WordTrackingTextBlock()
         {
-            TextOptions.SetTextFormattingMode(this, TextFormattingMode.Display);
+            // Ideal + Animated keeps glyph outlines stable while the fullscreen view
+            // applies a short composition scale. Display/Fixed snaps the glyphs to the
+            // pixel grid on every intermediate scale and produces visible stair-steps.
+            TextOptions.SetTextFormattingMode(this, TextFormattingMode.Ideal);
             TextOptions.SetTextRenderingMode(this, TextRenderingMode.Grayscale);
-            TextOptions.SetTextHintingMode(this, TextHintingMode.Fixed);
+            TextOptions.SetTextHintingMode(this, TextHintingMode.Animated);
             dimText.IsHitTestVisible = false;
             highlightText.IsHitTestVisible = false;
+            wrappedPartialGeometry.Geometry2 = wrappedPartialClip;
             Children.Add(dimText);
             Children.Add(highlightText);
 
             Loaded += (sender, args) => UpdateRenderingSubscription();
             Unloaded += (sender, args) => SetRenderingSubscribed(false);
             IsVisibleChanged += (sender, args) => UpdateRenderingSubscription();
-            SizeChanged += (sender, args) => ApplyClip(displayedProgress);
+            SizeChanged += (sender, args) =>
+            {
+                if (Math.Abs(args.NewSize.Width - args.PreviousSize.Width) > 0.5) RebuildVisualWordMap();
+                ApplyClip(displayedProgress);
+            };
             Foreground = Brushes.White;
         }
 
@@ -99,6 +114,8 @@ namespace LyricHover.App.Modules
                 dimText.Foreground = CreateDimBrush(Foreground, dimOpacity);
             }
         }
+
+        public bool UseWrappedLineHighlight { get; set; }
 
         public FontFamily FontFamily
         {
@@ -259,8 +276,17 @@ namespace LyricHover.App.Modules
             }
 
             dimText.Visibility = Visibility.Visible;
-            highlightText.Clip = highlightClip;
             var normalized = Math.Max(0, Math.Min(1, progress));
+            if (UseWrappedLineHighlight && TextWrapping != TextWrapping.NoWrap &&
+                trackingLine != null && wrappedWordGeometries.Count == visualWordSpans.Count &&
+                wrappedWordGeometries.Count > 0)
+            {
+                ApplyWrappedHighlightClip(normalized);
+                highlightText.Clip = wrappedHighlightClip;
+                return;
+            }
+
+            highlightText.Clip = highlightClip;
             var width = ActualWidth > 0 ? ActualWidth : DesiredSize.Width;
             var height = ActualHeight > 0 ? ActualHeight : DesiredSize.Height;
             var textWidth = measuredTextWidth > 0 ? Math.Min(width, measuredTextWidth) : width;
@@ -268,6 +294,45 @@ namespace LyricHover.App.Modules
                 ? Math.Max(0, (width - textWidth) / 2)
                 : TextAlignment == TextAlignment.Right ? Math.Max(0, width - textWidth) : 0;
             highlightClip.Rect = new Rect(origin, 0, Math.Max(0, textWidth * normalized), Math.Max(0, height));
+        }
+
+        private void ApplyWrappedHighlightClip(double progress)
+        {
+            var activeIndex = wrappedWordGeometries.Count;
+            var activeFraction = 0d;
+            for (var index = 0; index < visualWordSpans.Count; index++)
+            {
+                var span = visualWordSpans[index];
+                if (progress >= span.End) continue;
+                activeIndex = index;
+                activeFraction = progress <= span.Start || span.End <= span.Start
+                    ? 0
+                    : Math.Max(0, Math.Min(1, (progress - span.Start) / (span.End - span.Start)));
+                break;
+            }
+
+            if (wrappedHighlightWordIndex != activeIndex)
+            {
+                wrappedHighlightWordIndex = activeIndex;
+                wrappedHighlightClip.Children.Clear();
+                for (var index = 0; index < activeIndex && index < wrappedWordGeometries.Count; index++)
+                    wrappedHighlightClip.Children.Add(wrappedWordGeometries[index]);
+                if (activeIndex < wrappedWordGeometries.Count)
+                {
+                    wrappedPartialGeometry.Geometry1 = wrappedWordGeometries[activeIndex];
+                    wrappedHighlightClip.Children.Add(wrappedPartialGeometry);
+                }
+            }
+
+            if (activeIndex >= wrappedWordGeometries.Count)
+            {
+                wrappedPartialClip.Rect = Rect.Empty;
+                return;
+            }
+            var bounds = wrappedWordGeometries[activeIndex].Bounds;
+            wrappedPartialClip.Rect = activeFraction <= 0
+                ? Rect.Empty
+                : new Rect(bounds.Left, bounds.Top, bounds.Width * activeFraction, bounds.Height);
         }
 
         private void UpdateRenderingSubscription()
@@ -334,6 +399,10 @@ namespace LyricHover.App.Modules
         private void RebuildVisualWordMap()
         {
             visualWordSpans = Array.Empty<VisualWordSpan>();
+            wrappedWordGeometries = Array.Empty<Geometry>();
+            wrappedHighlightWordIndex = -1;
+            wrappedHighlightClip.Children.Clear();
+            wrappedPartialClip.Rect = Rect.Empty;
             measuredTextWidth = 0;
             if (string.IsNullOrEmpty(Text)) return;
 
@@ -354,6 +423,7 @@ namespace LyricHover.App.Modules
                 {
                     visualWordSpans = cachedMap.Spans;
                     measuredTextWidth = CreateFormattedText(Text, dpi).WidthIncludingTrailingWhitespace;
+                    RebuildWrappedWordGeometries(dpi);
                     return;
                 }
 
@@ -361,6 +431,7 @@ namespace LyricHover.App.Modules
                 visualWordSpans = builtMap.Spans;
                 measuredTextWidth = builtMap.TextWidth;
                 CacheVisualWordMap(cacheKey, builtMap);
+                RebuildWrappedWordGeometries(dpi);
                 return;
             }
 
@@ -385,9 +456,27 @@ namespace LyricHover.App.Modules
                 }
                 cursor = index + word.Text.Length;
                 var bounds = formattedText.BuildHighlightGeometry(new Point(0, 0), index, word.Text.Length).Bounds;
-                spans.Add(new VisualWordSpan(bounds.Left / textWidth, bounds.Right / textWidth));
+                spans.Add(new VisualWordSpan(bounds.Left / textWidth, bounds.Right / textWidth, index, word.Text.Length));
             }
             return new VisualWordMap(textWidth, spans.ToArray());
+        }
+
+        private void RebuildWrappedWordGeometries(double dpi)
+        {
+            if (!UseWrappedLineHighlight || TextWrapping == TextWrapping.NoWrap ||
+                trackingLine == null || visualWordSpans.Count != trackingLine.Words.Count || ActualWidth <= 0) return;
+            var formatted = CreateFormattedText(Text, dpi);
+            formatted.MaxTextWidth = Math.Max(1, ActualWidth);
+            formatted.TextAlignment = TextAlignment;
+            if (!double.IsNaN(LineHeight) && LineHeight > 0) formatted.LineHeight = LineHeight;
+            var geometries = new List<Geometry>(visualWordSpans.Count);
+            foreach (var span in visualWordSpans)
+            {
+                var geometry = formatted.BuildHighlightGeometry(new Point(0, 0), span.TextIndex, span.TextLength);
+                if (geometry.CanFreeze) geometry.Freeze();
+                geometries.Add(geometry);
+            }
+            wrappedWordGeometries = geometries.AsReadOnly();
         }
 
         private FormattedText CreateFormattedText(string value, double dpi)
@@ -514,9 +603,11 @@ namespace LyricHover.App.Modules
 
         private sealed class VisualWordSpan
         {
-            public VisualWordSpan(double start, double end) { Start = start; End = end; }
+            public VisualWordSpan(double start, double end, int textIndex, int textLength) { Start = start; End = end; TextIndex = textIndex; TextLength = textLength; }
             public double Start { get; }
             public double End { get; }
+            public int TextIndex { get; }
+            public int TextLength { get; }
         }
 
         private static bool IsMatchingWordTimedLine(LyricLine line, string text)

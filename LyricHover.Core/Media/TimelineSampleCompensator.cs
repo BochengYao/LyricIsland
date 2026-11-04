@@ -4,6 +4,23 @@ namespace LyricHover.Core.Media
 {
     public static class TimelineSampleCompensator
     {
+        public static TimeSpan ProjectDeliveredPosition(
+            MediaSessionSnapshot snapshot,
+            DateTimeOffset now)
+        {
+            if (snapshot == null)
+            {
+                return TimeSpan.Zero;
+            }
+
+            return Compensate(
+                snapshot.Position,
+                snapshot.PositionSampledAtUtc,
+                now,
+                snapshot.PlaybackStatus,
+                snapshot.Duration);
+        }
+
         public static TimeSpan Compensate(
             TimeSpan reportedPosition,
             DateTimeOffset lastUpdatedTime,

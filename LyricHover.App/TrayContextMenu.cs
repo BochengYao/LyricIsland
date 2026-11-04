@@ -26,8 +26,12 @@ namespace LyricHover.App
             out uint dpiX,
             out uint dpiY);
 
-        public static Forms.ContextMenuStrip Create(Action openSettings, Action exitApplication)
+        public static Forms.ContextMenuStrip Create(Action openFullscreenLyrics, Action openSettings, Action exitApplication)
         {
+            if (openFullscreenLyrics == null)
+            {
+                throw new ArgumentNullException(nameof(openFullscreenLyrics));
+            }
             if (openSettings == null)
             {
                 throw new ArgumentNullException(nameof(openSettings));
@@ -50,8 +54,10 @@ namespace LyricHover.App
                 ShowImageMargin = false
             };
 
+            var fullscreenItem = CreateItem("TrayFullscreenLyricsMenuItem", "全屏沉浸歌词", openFullscreenLyrics);
+            fullscreenItem.Margin = new Forms.Padding(5, 3, 5, 1);
+            menu.Items.Add(fullscreenItem);
             var settingsItem = CreateItem("TraySettingsMenuItem", "偏好设置", openSettings);
-            settingsItem.Margin = new Forms.Padding(5, 3, 5, 1);
             menu.Items.Add(settingsItem);
             menu.Items.Add(CreateItem("TrayExitMenuItem", "退出", exitApplication));
             ApplyDpiLayout(menu);
@@ -59,6 +65,11 @@ namespace LyricHover.App
             menu.Opened += (sender, args) => TrayContextMenuTheme.ApplyRoundedRegion(menu);
             menu.SizeChanged += (sender, args) => TrayContextMenuTheme.ApplyRoundedRegion(menu);
             return menu;
+        }
+
+        public static Forms.ContextMenuStrip Create(Action openSettings, Action exitApplication)
+        {
+            return Create(() => { }, openSettings, exitApplication);
         }
 
         private static Forms.ToolStripMenuItem CreateItem(string name, string text, Action action)
@@ -359,7 +370,9 @@ namespace LyricHover.App
             var glyphColor = !item.Enabled
                 ? palette.MutedForeground
                 : palette.HighContrast && item.Selected ? palette.SelectedForeground : palette.Glyph;
-            var glyph = string.Equals(item.Name, "TraySettingsMenuItem", StringComparison.Ordinal)
+            var glyph = string.Equals(item.Name, "TrayFullscreenLyricsMenuItem", StringComparison.Ordinal)
+                ? "\uE740"
+                : string.Equals(item.Name, "TraySettingsMenuItem", StringComparison.Ordinal)
                 ? "\uE713"
                 : string.Equals(item.Name, "TrayExitMenuItem", StringComparison.Ordinal)
                     ? "\uE7E8"

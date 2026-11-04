@@ -12,6 +12,7 @@ namespace LyricHover.Core.Media
         public string Album { get; set; } = string.Empty;
         public byte[] ArtworkBytes { get; set; }
         public TimeSpan Position { get; set; }
+        public DateTimeOffset PositionSampledAtUtc { get; set; }
         public TimeSpan Duration { get; set; }
         public bool HasReliableTimeline { get; set; }
         public MediaPlaybackStatus PlaybackStatus { get; set; }

@@ -2050,6 +2050,11 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
 
+                            <TextBlock Grid.Row="0" Grid.Column="0" Margin="0,0,16,16" Style="{StaticResource SettingLabel}" Text="打开/关闭全屏歌词" />
+                            <TextBox x:Name="FullscreenLyricsHotkeyTextBox" Grid.Row="0" Grid.Column="1" Margin="0,0,0,16"
+                                     IsReadOnly="True" Cursor="Hand" ToolTip="单击后直接按下新的快捷键"
+                                     PreviewKeyDown="HotkeyTextBox_PreviewKeyDown" GotKeyboardFocus="HotkeyTextBox_GotKeyboardFocus" />
+
                             <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,0,16,16" Style="{StaticResource SettingLabel}" Text="歌词提前 0.5 秒" />
                             <TextBox x:Name="EarlierHotkeyTextBox" Grid.Row="1" Grid.Column="1" Margin="0,0,0,16"
                                      IsReadOnly="True" Cursor="Hand" ToolTip="单击后直接按下新的快捷键"

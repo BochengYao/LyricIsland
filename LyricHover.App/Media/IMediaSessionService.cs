@@ -17,5 +17,6 @@ namespace LyricHover.App.Media
         Task<bool> TryPauseAsync(string sessionId);
         Task<bool> TrySkipPreviousAsync(string sessionId);
         Task<bool> TrySkipNextAsync(string sessionId);
+        Task<bool> TrySeekAsync(string sessionId, TimeSpan position);
     }
 }

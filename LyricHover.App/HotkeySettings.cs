@@ -12,6 +12,8 @@ namespace LyricHover.App
 
         public string Reset { get; set; }
 
+        public string FullscreenLyrics { get; set; }
+
         public string TemporaryInteraction { get; set; }
 
         public static HotkeySettings CreateDefault()
@@ -21,6 +23,7 @@ namespace LyricHover.App
                 Earlier = "Ctrl+Alt+Left",
                 Later = "Ctrl+Alt+Right",
                 Reset = "Ctrl+Alt+Down",
+                FullscreenLyrics = "Ctrl+Alt+F",
                 TemporaryInteraction = "Ctrl"
             };
         }
@@ -31,6 +34,9 @@ namespace LyricHover.App
             Earlier = string.IsNullOrWhiteSpace(Earlier) ? defaults.Earlier : Earlier.Trim();
             Later = string.IsNullOrWhiteSpace(Later) ? defaults.Later : Later.Trim();
             Reset = string.IsNullOrWhiteSpace(Reset) ? defaults.Reset : Reset.Trim();
+            FullscreenLyrics = string.IsNullOrWhiteSpace(FullscreenLyrics)
+                ? defaults.FullscreenLyrics
+                : FullscreenLyrics.Trim();
             TemporaryInteraction = string.IsNullOrWhiteSpace(TemporaryInteraction)
                 ? defaults.TemporaryInteraction
                 : TemporaryInteraction.Trim();

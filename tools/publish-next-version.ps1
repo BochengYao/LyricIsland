@@ -1,7 +1,9 @@
 param(
     [switch]$KeepVersion,
     [switch]$NoLaunch,
-    [switch]$SkipTests
+    [switch]$SkipTests,
+    [ValidatePattern('^\d+\.\d+\.\d+$')]
+    [string]$TargetVersion
 )
 
 $ErrorActionPreference = 'Stop'
@@ -58,8 +60,13 @@ try {
     $currentVersion = $versionMatch.Groups['version'].Value
     $currentPatch = [int]$versionMatch.Groups['patch'].Value
     $nextPatch = $currentPatch + 1
+    if ($KeepVersion -and -not [string]::IsNullOrWhiteSpace($TargetVersion)) {
+        throw '-KeepVersion 与 -TargetVersion 不能同时使用。'
+    }
     $targetVersion = if ($KeepVersion) {
         $currentVersion
+    } elseif (-not [string]::IsNullOrWhiteSpace($TargetVersion)) {
+        $TargetVersion
     } else {
         $currentVersion.Substring(0, $currentVersion.LastIndexOf('.') + 1) + $nextPatch
     }

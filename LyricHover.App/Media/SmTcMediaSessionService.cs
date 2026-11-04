@@ -20,10 +20,13 @@ namespace LyricHover.App.Media
             new Dictionary<string, DateTimeOffset>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, ArtworkCacheEntry> artworkBySessionId =
             new Dictionary<string, ArtworkCacheEntry>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, int> mediaChangeVersionBySessionId =
+            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         private readonly object sessionsSync = new object();
         private readonly SemaphoreSlim refreshGate = new SemaphoreSlim(1, 1);
         private readonly Dispatcher ownerDispatcher;
         private int scheduledRefreshVersion;
+        private static readonly int[] MediaPropertiesRefreshDelaysMs = { 40, 250, 750 };
 
         public event EventHandler SessionsChanged;
         public IReadOnlyList<MediaSessionSnapshot> Sessions { get; private set; } =
@@ -100,6 +103,7 @@ namespace LyricHover.App.Media
                         sessions.Remove(staleId);
                         lastActivityBySessionId.Remove(staleId);
                         artworkBySessionId.Remove(staleId);
+                        mediaChangeVersionBySessionId.Remove(staleId);
                     }
                 }
 
@@ -156,6 +160,11 @@ namespace LyricHover.App.Media
         public Task<bool> TryPauseAsync(string id) => InvokeAsync(id, session => session.TryPauseAsync().AsTask());
         public Task<bool> TrySkipPreviousAsync(string id) => InvokeAsync(id, session => session.TrySkipPreviousAsync().AsTask());
         public Task<bool> TrySkipNextAsync(string id) => InvokeAsync(id, session => session.TrySkipNextAsync().AsTask());
+        public Task<bool> TrySeekAsync(string id, TimeSpan position)
+        {
+            var normalized = position < TimeSpan.Zero ? TimeSpan.Zero : position;
+            return InvokeAsync(id, session => session.TryChangePlaybackPositionAsync(normalized.Ticks).AsTask());
+        }
 
         private Task<bool> InvokeAsync(
             string id,
@@ -216,6 +225,7 @@ namespace LyricHover.App.Media
                     (properties.AlbumTitle ?? string.Empty),
                     properties.Thumbnail),
                 Position = compensatedPosition,
+                PositionSampledAtUtc = sampledAt,
                 Duration = duration,
                 HasReliableTimeline = hasReliableTimeline,
                 PlaybackStatus = playbackStatus,
@@ -224,7 +234,8 @@ namespace LyricHover.App.Media
                     CanPlay = controls.IsPlayEnabled,
                     CanPause = controls.IsPauseEnabled,
                     CanSkipPrevious = controls.IsPreviousEnabled,
-                    CanSkipNext = controls.IsNextEnabled
+                    CanSkipNext = controls.IsNextEnabled,
+                    CanSeek = controls.IsPlaybackPositionEnabled
                 },
                 LastActivityUtc = GetLastActivity(session.SourceAppUserModelId)
             };
@@ -297,15 +308,15 @@ namespace LyricHover.App.Media
 
         private void AttachSession(GlobalSystemMediaTransportControlsSession session)
         {
-            session.MediaPropertiesChanged += Session_Changed;
-            session.PlaybackInfoChanged += Session_Changed;
+            session.MediaPropertiesChanged += Session_MediaPropertiesChanged;
+            session.PlaybackInfoChanged += Session_PlaybackInfoChanged;
             session.TimelinePropertiesChanged += Session_TimelineChanged;
         }
 
         private void DetachSession(GlobalSystemMediaTransportControlsSession session)
         {
-            session.MediaPropertiesChanged -= Session_Changed;
-            session.PlaybackInfoChanged -= Session_Changed;
+            session.MediaPropertiesChanged -= Session_MediaPropertiesChanged;
+            session.PlaybackInfoChanged -= Session_PlaybackInfoChanged;
             session.TimelinePropertiesChanged -= Session_TimelineChanged;
         }
 
@@ -344,7 +355,29 @@ namespace LyricHover.App.Media
             catch { }
         }
 
-        private async void Session_Changed(
+        private async void Session_MediaPropertiesChanged(
+            GlobalSystemMediaTransportControlsSession sender,
+            object args)
+        {
+            try
+            {
+                await RunOnOwnerThreadAsync(async () =>
+                {
+                    var sessionId = sender?.SourceAppUserModelId;
+                    if (!string.IsNullOrWhiteSpace(sessionId))
+                    {
+                        lock (sessionsSync)
+                        {
+                            lastActivityBySessionId[sessionId] = DateTimeOffset.UtcNow;
+                        }
+                    }
+                    await ScheduleMediaPropertiesRefreshAsync(sessionId);
+                });
+            }
+            catch { }
+        }
+
+        private async void Session_PlaybackInfoChanged(
             GlobalSystemMediaTransportControlsSession sender,
             object args)
         {
@@ -387,6 +420,39 @@ namespace LyricHover.App.Media
             }
         }
 
+        private async Task ScheduleMediaPropertiesRefreshAsync(string sessionId)
+        {
+            int version;
+            lock (sessionsSync)
+            {
+                int currentVersion;
+                mediaChangeVersionBySessionId.TryGetValue(sessionId ?? string.Empty, out currentVersion);
+                version = currentVersion + 1;
+                mediaChangeVersionBySessionId[sessionId ?? string.Empty] = version;
+            }
+
+            foreach (var delayMs in MediaPropertiesRefreshDelaysMs)
+            {
+                await Task.Delay(delayMs);
+                lock (sessionsSync)
+                {
+                    int currentVersion;
+                    if (!mediaChangeVersionBySessionId.TryGetValue(sessionId ?? string.Empty, out currentVersion) ||
+                        currentVersion != version)
+                    {
+                        return;
+                    }
+
+                    // Some players publish the new title before replacing the SMTC thumbnail.
+                    // Reopen it during the short settling window instead of pinning stale bytes
+                    // to the new track signature for the rest of the song.
+                    artworkBySessionId.Remove(sessionId ?? string.Empty);
+                }
+
+                await RefreshCoreAsync();
+            }
+        }
+
         public void Dispose()
         {
             if (!ownerDispatcher.CheckAccess())
@@ -409,9 +475,10 @@ namespace LyricHover.App.Media
             lock (sessionsSync)
             {
                 sessions.Clear();
+                lastActivityBySessionId.Clear();
+                artworkBySessionId.Clear();
+                mediaChangeVersionBySessionId.Clear();
             }
-            lastActivityBySessionId.Clear();
-            artworkBySessionId.Clear();
         }
 
         private Task RunOnOwnerThreadAsync(Func<Task> action)

@@ -16,6 +16,7 @@ using System.Windows.Threading;
 using LyricHover.App.LayoutEditing;
 using LyricHover.App.Modules;
 using LyricHover.App.LyricDock;
+using LyricHover.App.Fullscreen;
 using LyricHover.Core;
 using LyricHover.App.Media;
 using LyricHover.Core.Layout;
@@ -66,6 +67,10 @@ namespace LyricHover.App
         private bool islandFullscreenSuppressed;
         private TimeSpan lyricOffset = TimeSpan.Zero;
         private TimeSpan currentEffectivePosition;
+        private TimeSpan? pendingSeekPosition;
+        private DateTimeOffset pendingSeekRequestedUtc;
+        private string pendingSeekSessionId = string.Empty;
+        private bool pendingSeekShouldAdvance;
         private TimelineReliability currentTimelineReliability;
         private string currentPrimaryText = string.Empty;
         private string currentSecondaryText = string.Empty;
@@ -95,6 +100,7 @@ namespace LyricHover.App
         private bool hoverFadeOutActive;
         private IslandInteractionState appliedInteractionState = IslandInteractionState.Collapsed;
         private PlacementSettingsWindow settingsWindow;
+        private FullscreenLyricsWindow fullscreenLyricsWindow;
         private int islandSizeAnimationVersion;
         private EventHandler islandSizeAnimationFrameHandler;
         private bool islandSizeAnimationActive;
@@ -146,6 +152,10 @@ namespace LyricHover.App
         private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
         private const uint MOUSEEVENTF_LEFTUP = 0x0004;
         private static readonly TimeSpan NormalTimerInterval = TimeSpan.FromMilliseconds(250);
+        // The original SMTC presentation path used an 800 ms lead. Keep that player/audio
+        // pipeline calibration separate from the user's per-track hotkey adjustment so
+        // reset still means zero user offset and nothing is remembered per song.
+        private static readonly TimeSpan LyricSynchronizationLead = TimeSpan.FromMilliseconds(800);
         private static readonly TimeSpan PowerSavingTimerInterval = TimeSpan.FromMilliseconds(1000);
         private static readonly TimeSpan PowerSavingIdleTimerInterval = TimeSpan.FromSeconds(4);
         private static readonly TimeSpan FullscreenMonitorInterval = TimeSpan.FromMilliseconds(300);
@@ -310,6 +320,7 @@ namespace LyricHover.App
             Closing += MainWindow_Closing;
             Closed += (sender, args) =>
             {
+                fullscreenLyricsWindow?.Close();
                 hotkeyService?.Dispose();
                 LyricDockController?.Dispose();
                 lyricDockEnvironment?.Dispose();
@@ -332,6 +343,7 @@ namespace LyricHover.App
         private void InitializeTrayIcon()
         {
             trayMenu = TrayContextMenuFactory.Create(
+                () => Dispatcher.BeginInvoke(new Action(OpenFullscreenLyrics)),
                 () => Dispatcher.BeginInvoke(new Action(() => OpenPlacementSettingsWindow())),
                 () => Dispatcher.BeginInvoke(new Action(RequestApplicationShutdown)));
             trayMenu.Opening += (sender, args) => ApplyTrayMenuTheme();
@@ -425,6 +437,7 @@ namespace LyricHover.App
             RegisterConfiguredHotkey(1, configured.Earlier, () => AdjustLyricOffset(-500, false));
             RegisterConfiguredHotkey(2, configured.Later, () => AdjustLyricOffset(500, false));
             RegisterConfiguredHotkey(3, configured.Reset, () => AdjustLyricOffset(0, true));
+            RegisterConfiguredHotkey(4, configured.FullscreenLyrics, ToggleFullscreenLyrics);
             if (tutorialFlow.IsActive)
             {
                 RegisterTutorialEscapeHotkey();
@@ -590,6 +603,7 @@ namespace LyricHover.App
                     lyricLineBoundaryTimer?.Stop();
                     playbackIntents.CancelUnless(string.Empty);
                     timelineSessionId = string.Empty;
+                    ClearPendingSeek();
                     timelineCoordinator.Reset();
                     if (settingsWindow != null)
                     {
@@ -681,14 +695,28 @@ namespace LyricHover.App
                 var track = TrackIdentityCleaner.Clean(
                     new TrackIdentity(selected.Title, selected.Artist, selected.Duration, selected.Album));
                 var isNewTrack = IsNewTrack(track);
+                if (!isNewTrack && IsSameTrack(currentTrack, track))
+                {
+                    // SMTC commonly publishes title/artist before duration. Treat the later
+                    // 0 -> known duration transition as metadata hydration for the same song,
+                    // not a second track change that resets the smooth timeline.
+                    currentTrack = track;
+                }
                 if (!string.Equals(timelineSessionId, selected.SessionId, StringComparison.OrdinalIgnoreCase) || isNewTrack)
                 {
                     timelineSessionId = selected.SessionId ?? string.Empty;
+                    ClearPendingSeek();
                     timelineCoordinator.Reset();
                 }
 
+                // SMTC snapshot construction can still be waiting on artwork after the
+                // timeline was sampled. Project that delivery age before anchoring the
+                // shared clock so lyrics do not inherit the artwork/dispatch delay.
+                var nowUtc = DateTimeOffset.UtcNow;
+                var deliveredPosition = TimelineSampleCompensator.ProjectDeliveredPosition(selected, nowUtc);
+                deliveredPosition = ApplyPendingSeekAnchor(selected, deliveredPosition, nowUtc);
                 var timeline = timelineCoordinator.Update(
-                    selected.Position,
+                    deliveredPosition,
                     selected.HasReliableTimeline,
                     selected.PlaybackStatus);
                 currentEffectivePosition = timeline.Position;
@@ -719,10 +747,11 @@ namespace LyricHover.App
                     return;
                 }
 
+                var effectiveLyricOffset = GetEffectiveLyricOffset(lyricOffset);
                 var lines = LyricsDisplaySelector.Select(
                     currentLyrics,
                     timeline.Position,
-                    lyricOffset,
+                    effectiveLyricOffset,
                     placementSettings.UseMultiLineDisplay,
                     placementSettings.ShowTranslation);
                 // The taskbar dock keeps its own lines/translation preference, independent
@@ -730,19 +759,19 @@ namespace LyricHover.App
                 var dockLines = LyricsDisplaySelector.Select(
                     currentLyrics,
                     timeline.Position,
-                    lyricOffset,
+                    effectiveLyricOffset,
                     placementSettings.LyricDockUseMultiLineDisplay,
                     placementSettings.LyricDockShowTranslation);
                 var lineDuration = currentLyrics.GetCurrentLineDuration(
                     timeline.Position,
-                    lyricOffset,
+                    effectiveLyricOffset,
                     TimeSpan.FromSeconds(4));
-                var currentLine = currentLyrics.GetCurrentLine(timeline.Position, lyricOffset);
-                var wordProgress = currentLine.GetWordProgress(timeline.Position + lyricOffset);
+                var currentLine = currentLyrics.GetCurrentLine(timeline.Position, effectiveLyricOffset);
+                var wordProgress = currentLine.GetWordProgress(timeline.Position + effectiveLyricOffset);
                 ScheduleLyricLineBoundaryRefresh(
                     currentLine,
                     lineDuration,
-                    timeline.Position + lyricOffset,
+                    timeline.Position + effectiveLyricOffset,
                     selected.PlaybackStatus == MediaPlaybackStatus.Playing);
                 SetIslandText(
                     lines.Count > 0 ? lines[0].Text : string.Empty,
@@ -752,7 +781,7 @@ namespace LyricHover.App
                     dockLines.Count > 1 ? dockLines[1].Text : string.Empty,
                     wordProgress,
                     currentLine,
-                    timeline.Position + lyricOffset);
+                    timeline.Position + effectiveLyricOffset);
                 ShowIsland();
             }
             catch (Exception ex)
@@ -764,6 +793,7 @@ namespace LyricHover.App
             {
                 refreshingState = false;
                 UpdateRefreshTimerInterval();
+                PresentFullscreenLyrics();
             }
         }
 
@@ -834,7 +864,7 @@ namespace LyricHover.App
             return currentTrack == null ||
                 !currentTrack.Title.Equals(track.Title, StringComparison.OrdinalIgnoreCase) ||
                 !currentTrack.Artist.Equals(track.Artist, StringComparison.OrdinalIgnoreCase) ||
-                Math.Abs((currentTrack.Duration - track.Duration).TotalSeconds) > 2;
+                HasMaterialDurationChange(currentTrack.Duration, track.Duration);
         }
 
         private static bool IsSameTrack(TrackIdentity first, TrackIdentity second)
@@ -843,7 +873,16 @@ namespace LyricHover.App
                 second != null &&
                 first.Title.Equals(second.Title, StringComparison.OrdinalIgnoreCase) &&
                 first.Artist.Equals(second.Artist, StringComparison.OrdinalIgnoreCase) &&
-                Math.Abs((first.Duration - second.Duration).TotalSeconds) <= 2;
+                !HasMaterialDurationChange(first.Duration, second.Duration);
+        }
+
+        private static bool HasMaterialDurationChange(TimeSpan first, TimeSpan second)
+        {
+            // Zero means the player has not published duration yet. It must not create a
+            // second synthetic track transition when the real duration arrives moments later.
+            return first > TimeSpan.Zero &&
+                second > TimeSpan.Zero &&
+                Math.Abs((first - second).TotalSeconds) > 2;
         }
 
         private static string FormatTrack(TrackIdentity track)
@@ -858,6 +897,11 @@ namespace LyricHover.App
 
         private void ShowIsland()
         {
+            if (fullscreenLyricsWindow != null)
+            {
+                ApplyIslandHiddenState(false);
+                return;
+            }
             if (!placementSettings.IslandEnabled && !lyricDockRuntimeFallbackToIsland)
             {
                 return;
@@ -2077,7 +2121,186 @@ namespace LyricHover.App
             }
             ModuleHost.Update(islandState);
             LyricDockController?.Present(taskbarSnapshot);
+            PresentFullscreenLyrics();
         }
+
+        private void PresentFullscreenLyrics()
+        {
+            fullscreenLyricsWindow?.Present(new FullscreenLyricsPresentation
+            {
+                Session = currentSession,
+                Lyrics = currentLyrics,
+                Position = currentEffectivePosition,
+                Offset = GetEffectiveLyricOffset(lyricOffset),
+                LyricsSearchFinished = lyricsSearchFinished
+            });
+        }
+
+        private void OpenFullscreenLyrics()
+        {
+            if (fullscreenLyricsWindow != null)
+            {
+                fullscreenLyricsWindow.Activate();
+                return;
+            }
+
+            var window = new FullscreenLyricsWindow(settingsStateCoordinator.CreateEditSnapshot());
+            fullscreenLyricsWindow = window;
+            window.Owner = null;
+            window.PreviousRequested += async (sender, args) => await PreviousRequested();
+            window.PlayPauseRequested += async (sender, args) => await PlayPauseRequested();
+            window.NextRequested += async (sender, args) => await NextRequested();
+            window.SeekRequested += async (sender, position) => await SeekRequested(position);
+            window.SettingsApplyRequested += (sender, draft) =>
+            {
+                try
+                {
+                    var committed = ApplyPlacementSettings(draft);
+                    window.ApplyCommittedSettings(committed);
+                }
+                catch (System.IO.IOException) { }
+                catch (UnauthorizedAccessException) { }
+            };
+            window.Closed += async (sender, args) =>
+            {
+                fullscreenLyricsWindow = null;
+                await RefreshAsync();
+            };
+            HideIsland(false);
+            window.Show();
+            PresentFullscreenLyrics();
+        }
+
+        private void ToggleFullscreenLyrics()
+        {
+            if (fullscreenLyricsWindow != null)
+            {
+                fullscreenLyricsWindow.Close();
+                return;
+            }
+
+            OpenFullscreenLyrics();
+        }
+
+#if DEBUG
+        internal void OpenFullscreenLyricsPreview()
+        {
+            OpenFullscreenLyrics();
+            var lines = new[]
+            {
+                new LyricLine(TimeSpan.Zero, "But it's all reused"),
+                new LyricLine(TimeSpan.FromSeconds(4), "That was the show we talked about"),
+                new LyricLine(TimeSpan.FromSeconds(9), "Played you the song she's singing now"),
+                new LyricLine(TimeSpan.FromSeconds(14), "Do you get déjà vu when she's with you?"),
+                new LyricLine(TimeSpan.FromSeconds(20), "很长的一句歌词会保持字号并自然换行，用来验证中英日文混排 Lyrics テスト")
+            };
+            var translations = new[]
+            {
+                new LyricLine(TimeSpan.Zero, "但一切都在重演"),
+                new LyricLine(TimeSpan.FromSeconds(4), "那是我们聊过的节目"),
+                new LyricLine(TimeSpan.FromSeconds(9), "播放着她如今唱给你的歌"),
+                new LyricLine(TimeSpan.FromSeconds(14), "当她陪着你，你是否也有似曾相识？"),
+                new LyricLine(TimeSpan.FromSeconds(20), "Long mixed-script line preview")
+            };
+            fullscreenLyricsWindow?.Present(new FullscreenLyricsPresentation
+            {
+                Session = new MediaSessionSnapshot
+                {
+                    SessionId = "debug-preview",
+                    Title = "deja vu",
+                    Artist = "Olivia Rodrigo",
+                    Album = "SOUR",
+                    Duration = TimeSpan.FromMinutes(3.5),
+                    PlaybackStatus = MediaPlaybackStatus.Playing,
+                    HasReliableTimeline = true
+                },
+                Lyrics = new TimedLyrics(lines, "deja vu", "Olivia Rodrigo", translations),
+                Position = TimeSpan.FromSeconds(5),
+                LyricsSearchFinished = true
+            });
+        }
+#endif
+
+        private async Task SeekRequested(TimeSpan position)
+        {
+            var session = currentSession;
+            if (session?.Controls?.CanSeek != true) return;
+            var target = position < TimeSpan.Zero ? TimeSpan.Zero : position;
+            if (session.Duration > TimeSpan.Zero && target > session.Duration) target = session.Duration;
+            pendingSeekPosition = target;
+            pendingSeekRequestedUtc = DateTimeOffset.UtcNow;
+            pendingSeekSessionId = session.SessionId ?? string.Empty;
+            pendingSeekShouldAdvance = session.PlaybackStatus == MediaPlaybackStatus.Playing;
+            timelineCoordinator.Reset();
+            currentEffectivePosition = target;
+            PresentFullscreenLyrics();
+            try
+            {
+                if (await mediaSessions.TrySeekAsync(session.SessionId, target))
+                {
+                    if (session.PlaybackStatus != MediaPlaybackStatus.Playing)
+                    {
+                        pendingSeekShouldAdvance = await mediaSessions.TryPlayAsync(session.SessionId);
+                    }
+                    await mediaSessions.RefreshAsync();
+                    await RefreshAsync();
+                    return;
+                }
+            }
+            catch { }
+            ClearPendingSeek();
+            await RefreshAsync();
+        }
+
+        private TimeSpan ApplyPendingSeekAnchor(
+            MediaSessionSnapshot session,
+            TimeSpan deliveredPosition,
+            DateTimeOffset nowUtc)
+        {
+            if (!pendingSeekPosition.HasValue) return deliveredPosition;
+            if (session == null || !string.Equals(
+                pendingSeekSessionId,
+                session.SessionId ?? string.Empty,
+                StringComparison.OrdinalIgnoreCase))
+            {
+                ClearPendingSeek();
+                return deliveredPosition;
+            }
+
+            var elapsed = nowUtc - pendingSeekRequestedUtc;
+            if (!ShouldHoldPendingSeek(deliveredPosition, pendingSeekPosition.Value, elapsed))
+            {
+                ClearPendingSeek();
+                return deliveredPosition;
+            }
+
+            var projected = pendingSeekPosition.Value;
+            if (pendingSeekShouldAdvance && elapsed > TimeSpan.Zero) projected += elapsed;
+            if (session.Duration > TimeSpan.Zero && projected > session.Duration) projected = session.Duration;
+            return projected < TimeSpan.Zero ? TimeSpan.Zero : projected;
+        }
+
+        private static bool ShouldHoldPendingSeek(
+            TimeSpan deliveredPosition,
+            TimeSpan targetPosition,
+            TimeSpan elapsed)
+        {
+            if (elapsed < TimeSpan.Zero || elapsed > TimeSpan.FromSeconds(3)) return false;
+            var expected = targetPosition + elapsed;
+            return Math.Abs((deliveredPosition - expected).TotalMilliseconds) > 1200 ||
+                elapsed < TimeSpan.FromMilliseconds(750);
+        }
+
+        private void ClearPendingSeek()
+        {
+            pendingSeekPosition = null;
+            pendingSeekRequestedUtc = default;
+            pendingSeekSessionId = string.Empty;
+            pendingSeekShouldAdvance = false;
+        }
+
+        private static TimeSpan GetEffectiveLyricOffset(TimeSpan userOffset) =>
+            userOffset + LyricSynchronizationLead;
 
         private Task PreviousRequested()
         {

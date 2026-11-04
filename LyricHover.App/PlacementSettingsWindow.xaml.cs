@@ -305,6 +305,7 @@ namespace LyricHover.App
             EarlierHotkeyTextBox.Text = settings.LyricOffsetHotkeys.Earlier;
             LaterHotkeyTextBox.Text = settings.LyricOffsetHotkeys.Later;
             ResetHotkeyTextBox.Text = settings.LyricOffsetHotkeys.Reset;
+            FullscreenLyricsHotkeyTextBox.Text = settings.LyricOffsetHotkeys.FullscreenLyrics;
             TemporaryInteractionHotkeyTextBox.Text = settings.LyricOffsetHotkeys.TemporaryInteraction;
             UpdateExpandableInteractionHint();
             SetHoverSpectrumControls(settings.HoverSpectrumStops);
@@ -812,6 +813,7 @@ namespace LyricHover.App
                 EarlierHotkeyTextBox,
                 LaterHotkeyTextBox,
                 ResetHotkeyTextBox,
+                FullscreenLyricsHotkeyTextBox,
                 TemporaryInteractionHotkeyTextBox,
                 IslandFontScaleTextBox,
                 IslandConcaveRadiusTextBox,
@@ -1628,6 +1630,10 @@ namespace LyricHover.App
             settingsAutoApplyTimer.Stop();
             pendingAutoApplySettingsApplier = null;
             var settings = CaptureSettings(includePendingPowerSavingMode);
+            if (!TryValidateGlobalHotkeys(settings.LyricOffsetHotkeys))
+            {
+                return false;
+            }
             OverlayPlacementSettings committedSettings;
             try
             {
@@ -1676,6 +1682,32 @@ namespace LyricHover.App
         {
             SettingsSaveErrorText.Text = UiLanguageService.Translate("设置暂时无法保存，请检查设置文件是否被占用后重试。");
             SettingsSaveErrorText.Visibility = Visibility.Visible;
+        }
+
+        private bool TryValidateGlobalHotkeys(HotkeySettings hotkeys)
+        {
+            var gestures = new[]
+            {
+                hotkeys.Earlier,
+                hotkeys.Later,
+                hotkeys.Reset,
+                hotkeys.FullscreenLyrics
+            };
+            if (gestures.Any(gesture => !HotkeyGestureParser.TryParseGlobal(gesture, out _, out _)))
+            {
+                SettingsSaveErrorText.Text = UiLanguageService.Translate("全局快捷键必须包含一个非修饰键。");
+                SettingsSaveErrorText.Visibility = Visibility.Visible;
+                return false;
+            }
+
+            if (gestures.Distinct(StringComparer.OrdinalIgnoreCase).Count() != gestures.Length)
+            {
+                SettingsSaveErrorText.Text = UiLanguageService.Translate("全局快捷键不能重复。");
+                SettingsSaveErrorText.Visibility = Visibility.Visible;
+                return false;
+            }
+
+            return true;
         }
 
         private OverlayPlacementSettings CaptureSettings(bool includePendingPowerSavingMode = true)
@@ -1741,6 +1773,7 @@ namespace LyricHover.App
                 Earlier = EarlierHotkeyTextBox.Text,
                 Later = LaterHotkeyTextBox.Text,
                 Reset = ResetHotkeyTextBox.Text,
+                FullscreenLyrics = FullscreenLyricsHotkeyTextBox.Text,
                 TemporaryInteraction = TemporaryInteractionHotkeyTextBox.Text
             };
             settings.IslandLayouts.Mode = ReadEditedLayoutMode();
@@ -4226,6 +4259,7 @@ namespace LyricHover.App
                 if (ReferenceEquals(textBox, EarlierHotkeyTextBox) ||
                     ReferenceEquals(textBox, LaterHotkeyTextBox) ||
                     ReferenceEquals(textBox, ResetHotkeyTextBox) ||
+                    ReferenceEquals(textBox, FullscreenLyricsHotkeyTextBox) ||
                     ReferenceEquals(textBox, TemporaryInteractionHotkeyTextBox))
                 {
                     return true;

@@ -4,6 +4,10 @@ namespace LyricHover.Core.Media
 {
     public sealed class TimelineCoordinator
     {
+        // Apple Music can refresh LastUpdatedTime while leaving the coarse Position
+        // unchanged. The compensated sample then appears to jump backwards by almost
+        // a second even though playback never moved. Ignore that bounded sawtooth;
+        // real seeks remain much larger and re-anchor immediately.
         private static readonly TimeSpan MaxBackwardJitter = TimeSpan.FromMilliseconds(1500);
 
         private readonly IMonotonicClock clock;

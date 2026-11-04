@@ -48,6 +48,15 @@ namespace LyricHover.App
             }
 
             base.OnStartup(e);
+#if DEBUG
+            if (Array.Exists(e.Args, arg => string.Equals(arg, "--fullscreen-preview", StringComparison.OrdinalIgnoreCase)))
+            {
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (MainWindow is MainWindow window) window.OpenFullscreenLyricsPreview();
+                }), DispatcherPriority.ApplicationIdle);
+            }
+#endif
             activationSignalTimer = new DispatcherTimer { Interval = System.TimeSpan.FromMilliseconds(400) };
             activationSignalTimer.Tick += (sender, args) =>
             {

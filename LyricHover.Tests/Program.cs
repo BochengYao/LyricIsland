@@ -14,6 +14,7 @@ using LyricHover.Core.Layout;
 using LyricHover.Core.Media;
 using LyricHover.App;
 using LyricHover.App.LyricDock;
+using LyricHover.App.Fullscreen;
 
 namespace LyricHover.Tests
 {
@@ -41,6 +42,41 @@ namespace LyricHover.Tests
                 suite.Run("settings window lifecycle keeps temporary state out of business state", SettingsWindowLifecycleKeepsTemporaryStateIsolated);
                 suite.Run("fullscreen island auto-hide setting persists and stays backward compatible", FullscreenIslandAutoHideSettingPersists);
                 suite.Run("fullscreen island auto-hide keeps desired visibility while suppressed", FullscreenIslandAutoHideKeepsDesiredVisibility);
+                return suite.ExitCode;
+            }
+
+            if (args.Length == 1 && string.Equals(args[0], "--fullscreen-feature-fixture", StringComparison.Ordinal))
+            {
+                suite.Run("fullscreen settings normalize and survive JSON restart", FullscreenSettingsNormalizeAndSurviveJsonRestart);
+                suite.Run("fullscreen view reuses timeline and rejects stale artwork", FullscreenViewReusesTimelineAndRejectsStaleArtwork);
+                suite.Run("fullscreen audio capture declares fallback and releases resources", FullscreenAudioCaptureFallsBackAndReleasesResources);
+                suite.Run("fullscreen shortcut defaults, persists, and toggles the shared view", FullscreenShortcutDefaultsPersistsAndToggles);
+                suite.Run("fullscreen window XAML loads without runtime conversion errors", FullscreenWindowXamlLoads);
+                suite.Run("fullscreen progress falls back to the shared lyric timeline", FullscreenProgressFallsBackToLyricTimeline);
+                suite.Run("fullscreen progress preserves timeline while duration hydrates", FullscreenProgressPreservesTimelineWhileDurationHydrates);
+                suite.Run("fullscreen lyric click requests an exact seek", FullscreenLyricClickRequestsExactSeek);
+                suite.Run("fullscreen lyrics disable seeking affordance when unsupported", FullscreenLyricsDisableSeekingAffordanceWhenUnsupported);
+                suite.Run("fullscreen seek ignores stale SMTC positions until confirmed", FullscreenSeekIgnoresStaleSmtcPositionsUntilConfirmed);
+                suite.Run("fullscreen artwork enhancer upscales low resolution thumbnails", FullscreenArtworkEnhancerUpscalesLowResolutionThumbnails);
+                suite.Run("fullscreen online artwork only accepts matching resolution upgrades", FullscreenOnlineArtworkOnlyAcceptsMatchingUpgrades);
+                suite.Run("fullscreen wrapped word highlight advances one visual line at a time", FullscreenWrappedWordHighlightAdvancesOneLineAtATime);
+                return suite.ExitCode;
+            }
+
+            if (args.Length == 1 && string.Equals(args[0], "--fullscreen-animation-probe", StringComparison.Ordinal))
+            {
+                return FullscreenAnimationProbe.Run();
+            }
+
+            if (args.Length == 1 && string.Equals(args[0], "--timeline-fixture", StringComparison.Ordinal))
+            {
+                suite.Run("advances repeated reliable timeline sample", AdvancesRepeatedReliableTimelineSample);
+                suite.Run("compensates stale playing timeline samples", CompensatesStalePlayingTimelineSamples);
+                suite.Run("projects snapshot delivery delay before sharing timeline", ProjectsSnapshotDeliveryDelay);
+                suite.Run("does not compensate paused timeline samples", DoesNotCompensatePausedTimelineSamples);
+                suite.Run("accepts large real timeline correction", AcceptsLargeRealTimelineCorrection);
+                suite.Run("ignores compensated SMTC backward refreshes", IgnoresSmallBackwardTimelineJitterWhilePlaying);
+                suite.Run("word tracking preserves only tiny timeline jitter", WordTrackingPreservesProjectionAcrossSmallTimelineJitter);
                 return suite.ExitCode;
             }
 
@@ -147,6 +183,7 @@ namespace LyricHover.Tests
             suite.Run("settings runtime state is restored after restart", SettingsRuntimeStateRestoresAfterRestart);
             suite.Run("settings window lifecycle keeps temporary state out of business state", SettingsWindowLifecycleKeepsTemporaryStateIsolated);
             suite.Run("fullscreen island auto-hide setting persists and stays backward compatible", FullscreenIslandAutoHideSettingPersists);
+            suite.Run("fullscreen window XAML loads without runtime conversion errors", FullscreenWindowXamlLoads);
             suite.Run("fullscreen detection requires complete monitor coverage", FullscreenDetectionRequiresCompleteMonitorCoverage);
             suite.Run("fullscreen island auto-hide keeps desired visibility while suppressed", FullscreenIslandAutoHideKeepsDesiredVisibility);
             suite.Run("lyric dock monitors taskbar visibility without lyric refreshes", LyricDockMonitorsTaskbarVisibilityWithoutLyricRefreshes);
@@ -333,7 +370,7 @@ namespace LyricHover.Tests
             suite.Run("tracks reference changes without treating equal content as the same object", TracksReferenceChangesWithoutTreatingEqualContentAsTheSameObject);
             suite.Run("module views skip unchanged rendering work", ModuleViewsSkipUnchangedRenderingWork);
             suite.Run("word tracking uses frame-smooth overlay clipping", WordTrackingUsesFrameSmoothOverlayClipping);
-            suite.Run("word tracking preserves its projection across small timeline jitter", WordTrackingPreservesProjectionAcrossSmallTimelineJitter);
+            suite.Run("word tracking preserves only tiny timeline jitter", WordTrackingPreservesProjectionAcrossSmallTimelineJitter);
             suite.Run("word tracking clip follows glyph width", WordTrackingClipFollowsGlyphWidth);
             suite.Run("word tracking reuses glyph map for the same line", WordTrackingReusesGlyphMapForSameLine);
             suite.Run("word tracking shares cached glyph maps across lyric layers", WordTrackingSharesGlyphMapsAcrossLayers);
@@ -348,6 +385,666 @@ namespace LyricHover.Tests
             suite.Run("localizes Store update notes with safe fallbacks", LocalizesStoreUpdateNotesWithFallbacks);
             suite.Run("desktop update prompt keeps startup and both destinations wired", DesktopUpdatePromptKeepsStartupAndDestinationsWired);
             return suite.ExitCode;
+        }
+
+        static void FullscreenSettingsNormalizeAndSurviveJsonRestart()
+        {
+            var settings = new OverlayPlacementSettings
+            {
+                FullscreenPrimaryChineseFontFamily = "  Missing CJK Choice  ",
+                FullscreenPrimaryEnglishFontFamily = "  Segoe UI  ",
+                FullscreenTranslationChineseFontFamily = "",
+                FullscreenPrimaryFontSize = 400,
+                FullscreenTranslationFontSize = 2,
+                FullscreenPrimaryFontWeight = 999,
+                FullscreenTranslationFontWeight = 1,
+                FullscreenLineHeightRatio = 9,
+                FullscreenMotionMode = (FullscreenMotionMode)99,
+                FullscreenMotionIntensity = FullscreenMotionIntensity.High,
+                FullscreenRenderQuality = FullscreenRenderQuality.Balanced30Fps,
+                FullscreenReduceMotion = true
+            };
+            settings.Normalize();
+            Assert.Equal("Missing CJK Choice", settings.FullscreenPrimaryChineseFontFamily);
+            Assert.Equal("Segoe UI", settings.FullscreenPrimaryEnglishFontFamily);
+            Assert.Equal(OverlayPlacementSettings.DefaultChineseFontFamily, settings.FullscreenTranslationChineseFontFamily);
+            Assert.Equal(96d, settings.FullscreenPrimaryFontSize);
+            Assert.Equal(16d, settings.FullscreenTranslationFontSize);
+            Assert.Equal(800, settings.FullscreenPrimaryFontWeight);
+            Assert.Equal(300, settings.FullscreenTranslationFontWeight);
+            Assert.Equal(1.6d, settings.FullscreenLineHeightRatio);
+            Assert.Equal(FullscreenMotionMode.Ambient, settings.FullscreenMotionMode);
+
+            var restarted = JsonSerializer.Deserialize<OverlayPlacementSettings>(JsonSerializer.Serialize(settings));
+            restarted.Normalize();
+            Assert.Equal(FullscreenMotionIntensity.High, restarted.FullscreenMotionIntensity);
+            Assert.Equal(FullscreenRenderQuality.Balanced30Fps, restarted.FullscreenRenderQuality);
+            Assert.True(restarted.FullscreenReduceMotion);
+
+            var closeSettings = new OverlayPlacementSettings
+            {
+                FullscreenMotionMode = FullscreenMotionMode.Static,
+                FullscreenReduceMotion = true
+            };
+            using (var window = new FullscreenLyricsWindow(closeSettings))
+            {
+                OverlayPlacementSettings applied = null;
+                window.SettingsApplyRequested += (sender, value) => applied = value;
+                var combo = (System.Windows.Controls.ComboBox)window.FindName("MotionModeCombo");
+                combo.SelectedItem = combo.Items.Cast<System.Windows.Controls.ComboBoxItem>()
+                    .First(item => string.Equals(item.Tag?.ToString(), "Ambient", StringComparison.Ordinal));
+                var close = typeof(FullscreenLyricsWindow).GetMethod(
+                    "SettingsClose_Click",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                close.Invoke(window, new object[] { window, new System.Windows.RoutedEventArgs() });
+                Assert.True(applied != null);
+                Assert.Equal(FullscreenMotionMode.Ambient, applied.FullscreenMotionMode);
+            }
+        }
+
+        static void FullscreenViewReusesTimelineAndRejectsStaleArtwork()
+        {
+            var root = GetSolutionRoot();
+            var main = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
+            var window = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Fullscreen", "FullscreenLyricsWindow.xaml.cs"));
+            var windowXaml = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Fullscreen", "FullscreenLyricsWindow.xaml"));
+            var ambientBackground = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Fullscreen", "LowResolutionAmbientBackgroundControl.cs"));
+            var media = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Media", "SmTcMediaSessionService.cs"));
+            Assert.True(main.Contains("Session = currentSession"));
+            Assert.True(main.Contains("Lyrics = currentLyrics"));
+            Assert.True(main.Contains("Position = currentEffectivePosition"));
+            Assert.True(main.Contains("Offset = GetEffectiveLyricOffset(lyricOffset)"));
+            Assert.True(main.Contains("LyricSynchronizationLead = TimeSpan.FromMilliseconds(800)"));
+            Assert.True(window.Contains("generation != themeGeneration"));
+            Assert.True(window.Contains("!string.Equals(trackKey, renderedTrackKey"));
+            Assert.True(window.Contains("previousTrackArtworkKey"));
+            Assert.True(window.Contains("AcceptArtworkWhenStable"));
+            Assert.False(window.Contains("pendingArtworkSamples"));
+            Assert.True(window.Contains("_ = BeginOnlineArtworkUpgradeAsync(trackKey, artworkKey, artwork"));
+            Assert.True(window.Contains("Online artwork is optional enrichment"));
+            Assert.False(window.Contains("private async void BeginOnlineArtworkUpgrade"));
+            Assert.True(window.Contains("Window_Closing"));
+            Assert.True(window.Contains("Window_ContentRendered"));
+            Assert.True(window.Contains("currentLineCenterInViewport"));
+            Assert.True(window.Contains("SplineDoubleKeyFrame"));
+            Assert.True(window.Contains("lyricViewportHeight * .5, 0, lyricViewportHeight * .5"));
+            Assert.True(media.Contains("TryChangePlaybackPositionAsync(normalized.Ticks)"));
+            Assert.True(window.Contains("TimeSpan.FromSeconds(5)"));
+            Assert.True(window.Contains("TextWrapping = TextWrapping.Wrap"));
+            Assert.True(window.Contains("visual.Line.HasWordTiming ? visual.Line : null"));
+            Assert.True(window.Contains("visual.WasTrackingCurrent"));
+            Assert.True(window.Contains("draftSettings.FullscreenPrimaryFontSize * 1.10"));
+            Assert.True(window.Contains("const double inactiveScale = 0.90"));
+            Assert.True(window.Contains("ApplySingleLayerTransition(visual, isCurrent"));
+            Assert.False(window.Contains("InactiveContent"));
+            Assert.False(window.Contains("InactivePrimary"));
+            Assert.False(window.Contains("InactiveTranslation"));
+            Assert.True(window.Contains("visual.Line.Timestamp, false, 0"));
+            Assert.True(window.Contains("RenderTransform = new ScaleTransform(1, 1)"));
+            Assert.False(window.Contains("visual.Primary.FontSize = primarySize"));
+            Assert.False(window.Contains("AnimatedVerticalOffsetProperty"));
+            Assert.True(window.Contains("lyricsMotionTransform.BeginAnimation"));
+            Assert.True(window.Contains("visual.TargetOpacity.HasValue"));
+            Assert.True(windowXaml.Contains("TextOptions.TextFormattingMode=\"Ideal\""));
+            Assert.True(windowXaml.Contains("TextOptions.TextRenderingMode=\"ClearType\""));
+            Assert.True(windowXaml.Contains("TextOptions.TextHintingMode=\"Fixed\""));
+            Assert.True(windowXaml.Contains("RenderOptions.ClearTypeHint=\"Enabled\""));
+            Assert.True(windowXaml.Contains("x:Name=\"ArtworkFrame\" SnapsToDevicePixels=\"True\""));
+            Assert.True(windowXaml.Contains("BlurRadius=\"32\" ShadowDepth=\"6\" Opacity=\"0.22\""));
+            Assert.True(window.Contains("ArtworkImage.Clip = artworkClip"));
+            Assert.True(window.Contains("artworkClip.RadiusX = radius"));
+            Assert.False(windowXaml.Contains("中文阅读"));
+            Assert.False(window.Contains("ChinesePreset_Click"));
+            Assert.True(windowXaml.Contains("x:Key=\"SettingCircleButton\""));
+            Assert.True(windowXaml.Contains("x:Name=\"SettingsCloseButton\""));
+            Assert.True(windowXaml.Contains("x:Name=\"SettingsActionsFooter\" Grid.Row=\"2\""));
+            Assert.True(windowXaml.Contains("<LinearGradientBrush StartPoint=\"0,0\" EndPoint=\"0,1\""));
+            Assert.True(windowXaml.Contains("Background=\"#EC202025\" BorderThickness=\"0\" CornerRadius=\"12\""));
+            Assert.True(windowXaml.Contains("x:Name=\"SettingsPanel\" Panel.ZIndex=\"2\" Visibility=\"Collapsed\" Opacity=\"0\""));
+            Assert.True(windowXaml.Contains("Background=\"#802C2C2E\" BorderThickness=\"0\" CornerRadius=\"22\""));
+            Assert.True(windowXaml.Contains("x:Name=\"AuxiliaryControls\" Panel.ZIndex=\"3\""));
+            Assert.True(windowXaml.Contains("x:Name=\"SettingsToggleButton\""));
+            Assert.True(windowXaml.Contains("x:Name=\"SettingsPanelTransform\" X=\"430\""));
+            Assert.True(window.Contains("new QuinticEase { EasingMode = EasingMode.EaseOut }"));
+            Assert.True(window.Contains("ShowSettingsPanel();"));
+            Assert.True(window.Contains("HideSettingsPanel();"));
+            Assert.True(window.Contains("if (settingsPanelOpen)"));
+            Assert.True(window.Contains("settingsPanelOpen = true"));
+            Assert.True(windowXaml.Contains("x:Key=\"SettingFontCombo\""));
+            Assert.True(windowXaml.Contains("Text=\"{Binding DisplayName}\" FontFamily=\"{Binding SourceName}\""));
+            Assert.True(window.Contains("ChineseFontFamilyCatalog.GetInstalledFamilies(true, true)"));
+            Assert.False(windowXaml.Contains("TranslationEnglishFontCombo"));
+            Assert.False(window.Contains("TranslationEnglishFontCombo"));
+            Assert.True(windowXaml.Contains("Text=\"翻译字体\""));
+            Assert.True(window.Contains("FullscreenTranslationEnglishFontFamily = translationFont"));
+            Assert.True(windowXaml.Contains("x:Name=\"PlayPauseIcon\""));
+            Assert.True(windowXaml.Contains("PreviousIconGeometry"));
+            Assert.True(windowXaml.Contains("StrokeThickness=\"2.4\""));
+            Assert.False(windowXaml.Contains("Content=\"&#xEA37;\""));
+            Assert.False(windowXaml.Contains("Margin=\"0,0,-6,0\""));
+            Assert.True(windowXaml.Contains("UseLayoutRounding=\"False\""));
+            Assert.True(window.Contains("CornerRadius = new CornerRadius(24)"));
+            Assert.True(window.Contains("SeekRequested?.Invoke(this, target)"));
+            Assert.True(main.Contains("await mediaSessions.TryPlayAsync(session.SessionId)"));
+            Assert.True(window.Contains("Style = (Style)FindResource(\"LyricHitButton\")"));
+            Assert.True(window.Contains("hitTarget.Click += LyricHitTarget_Click"));
+            Assert.True(window.Contains("UpdateLyricSeekAvailability(session?.Controls?.CanSeek == true)"));
+            Assert.True(main.Contains("session?.Controls?.CanSeek != true"));
+            Assert.True(File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "Media", "SmTcMediaSessionService.cs"))
+                .Contains("CanSeek = controls.IsPlaybackPositionEnabled"));
+            Assert.True(main.Contains("ApplyPendingSeekAnchor(selected, deliveredPosition, nowUtc)"));
+            Assert.True(main.Contains("private static bool ShouldHoldPendingSeek"));
+            Assert.False(main.Contains("session == null || !session.HasReliableTimeline"));
+            Assert.False(window.Contains("new BlurEffect"));
+            Assert.False(ambientBackground.Contains("new BlurEffect"));
+            var centeredOffsetMethod = typeof(FullscreenLyricsWindow).GetMethod(
+                "CalculateCenteredScrollOffset",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            Assert.True(centeredOffsetMethod != null);
+            Assert.Equal(480d, (double)centeredOffsetMethod.Invoke(null, new object[] { 400d, 620d, 1080d, 1200d }));
+            var shouldCorrectMethod = typeof(FullscreenLyricsWindow).GetMethod(
+                "ShouldCorrectCenter",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            Assert.True(shouldCorrectMethod != null);
+            Assert.False((bool)shouldCorrectMethod.Invoke(null, new object[] { 501d, 1000d }));
+            Assert.True((bool)shouldCorrectMethod.Invoke(null, new object[] { 520d, 1000d }));
+            Assert.True(window.Contains("followCenterTimer = new DispatcherTimer(DispatcherPriority.Render)"));
+            Assert.True(window.Contains("Interval = TimeSpan.FromMilliseconds(33)"));
+            Assert.True(window.Contains("UpdatePlaybackProgress();"));
+            Assert.True(window.Contains("CompositionTarget.Rendering += ProgressRendering"));
+            Assert.True(window.Contains("CompositionTarget.Rendering -= ProgressRendering"));
+            Assert.True(window.Contains("UpdateLyricsPosition(true)"));
+            Assert.False(window.Contains("FollowLinePrecenterLead"));
+            Assert.True(window.Contains("manualBrowsing || scrollAnimationActive"));
+            Assert.True(window.Contains("if (!manualBrowsing && targetVisualReady) ScrollToCurrent(true)"));
+            Assert.True(window.Contains("A delayed"));
+            Assert.True(window.Contains("ScrollChanged from ScrollToVerticalOffset must not suspend following"));
+            Assert.True(window.Contains("Math.Max(300, Math.Min(420"));
+            Assert.True(window.Contains("TimeSpan.FromMilliseconds(285)"));
+            Assert.True(window.Contains("TimeSpan.FromMilliseconds(260)"));
+            Assert.False(window.Contains("var overshoot = translation"));
+            Assert.True(window.Contains("PrepareWordTracking(lyricVisuals[index])"));
+            Assert.True(window.Contains("visual.WordTrackingPrepared"));
+            Assert.False(windowXaml.Contains("ScrollViewer.OpacityMask"));
+            var wheelTargetMethod = typeof(FullscreenLyricsWindow).GetMethod(
+                "CalculateWheelScrollTarget",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            Assert.True(wheelTargetMethod != null);
+            Assert.Equal(598d, (double)wheelTargetMethod.Invoke(null, new object[] { 400d, -120, 1200d }));
+            Assert.Equal(0d, (double)wheelTargetMethod.Invoke(null, new object[] { 40d, 120, 1200d }));
+            var wheelEaseMethod = typeof(FullscreenLyricsWindow).GetMethod(
+                "CalculateManualScrollPosition",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            Assert.True(wheelEaseMethod != null);
+            var firstEaseStep = (double)wheelEaseMethod.Invoke(null, new object[] { 0d, 100d, 0.016d });
+            var secondEaseStep = (double)wheelEaseMethod.Invoke(null, new object[] { firstEaseStep, 100d, 0.016d });
+            Assert.True(firstEaseStep > 20 && firstEaseStep < 40);
+            Assert.True(secondEaseStep > firstEaseStep && secondEaseStep < 100);
+            Assert.True(window.Contains("manualScrollTimer.Tick += ManualScrollTimer_Tick"));
+            Assert.True(window.Contains("1 - Math.Exp(-22 * seconds)"));
+            Assert.True(window.Contains("followResumeTimer.Start();"));
+            Assert.False(window.Contains("var duration = (int)Math.Max(105"));
+            var wordTracking = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Modules", "WordTrackingTextBlock.cs"));
+            Assert.True(wordTracking.Contains("TextFormattingMode.Ideal"));
+            Assert.True(wordTracking.Contains("TextHintingMode.Animated"));
+        }
+
+        static void FullscreenWrappedWordHighlightAdvancesOneLineAtATime()
+        {
+            var line = new LyricLine(
+                TimeSpan.Zero,
+                "WWWW WWWW",
+                new[]
+                {
+                    new LyricWord(TimeSpan.Zero, TimeSpan.FromSeconds(1), "WWWW"),
+                    new LyricWord(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), "WWWW")
+                });
+            var block = new LyricHover.App.Modules.WordTrackingTextBlock
+            {
+                FontFamily = new System.Windows.Media.FontFamily("Arial"),
+                FontSize = 36,
+                LineHeight = 44,
+                TextWrapping = System.Windows.TextWrapping.Wrap,
+                UseWrappedLineHighlight = true
+            };
+            block.Measure(new System.Windows.Size(135, 160));
+            block.Arrange(new System.Windows.Rect(0, 0, 135, 160));
+            block.Present(line.Text, line, TimeSpan.FromMilliseconds(500), false);
+            var highlightTextField = typeof(LyricHover.App.Modules.WordTrackingTextBlock).GetField(
+                "highlightText",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            var highlightText = (System.Windows.Controls.TextBlock)highlightTextField.GetValue(block);
+            Assert.True(highlightText.Clip != null);
+            Assert.True(highlightText.Clip.Bounds.Bottom <= 48);
+        }
+
+        static void FullscreenAudioCaptureFallsBackAndReleasesResources()
+        {
+            var root = GetSolutionRoot();
+            var analyzer = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Fullscreen", "SystemOutputAudioAnalyzer.cs"));
+            var window = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Fullscreen", "FullscreenLyricsWindow.xaml.cs"));
+            var background = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Fullscreen", "LowResolutionAmbientBackgroundControl.cs"));
+            Assert.True(analyzer.Contains("WasapiLoopbackCapture"));
+            Assert.True(analyzer.Contains("Samples are"));
+            Assert.True(analyzer.Contains("never stored or transmitted"));
+            Assert.True(analyzer.Contains("StopCapture()"));
+            Assert.True(analyzer.Contains("public void Stop()"));
+            Assert.True(window.Contains("音频不可用，已回退氛围流动"));
+            Assert.True(window.Contains("audioAnalyzer.Stop();"));
+            Assert.True(window.Contains("audioAnalyzer.Dispose()"));
+            Assert.True(background.Contains("smoothedBass * 0.045"));
+            Assert.True(background.Contains("targetTransient = activeAudio ? audio.Transient"));
+            Assert.True(background.Contains("CalculateAudioDrift("));
+            Assert.True(background.Contains("var audioPhase = activeAudio"));
+        }
+
+        static void FullscreenShortcutDefaultsPersistsAndToggles()
+        {
+            var settings = new OverlayPlacementSettings();
+            settings.Normalize();
+            Assert.Equal("Ctrl+Alt+F", settings.LyricOffsetHotkeys.FullscreenLyrics);
+
+            settings.LyricOffsetHotkeys.FullscreenLyrics = "Ctrl+Shift+L";
+            var restarted = JsonSerializer.Deserialize<OverlayPlacementSettings>(JsonSerializer.Serialize(settings));
+            restarted.Normalize();
+            Assert.Equal("Ctrl+Shift+L", restarted.LyricOffsetHotkeys.FullscreenLyrics);
+
+            var root = GetSolutionRoot();
+            var main = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
+            var settingsXaml = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml"));
+            var settingsCode = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml.cs"));
+            Assert.True(main.Contains("configured.FullscreenLyrics, ToggleFullscreenLyrics"));
+            Assert.True(main.Contains("fullscreenLyricsWindow.Close()"));
+            Assert.True(settingsXaml.Contains("FullscreenLyricsHotkeyTextBox"));
+            Assert.True(settingsCode.Contains("FullscreenLyrics = FullscreenLyricsHotkeyTextBox.Text"));
+            Assert.True(settingsCode.Contains("TryValidateGlobalHotkeys"));
+        }
+
+        static void FullscreenWindowXamlLoads()
+        {
+            var root = GetSolutionRoot();
+            var xaml = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Fullscreen", "FullscreenLyricsWindow.xaml"));
+            Assert.False(xaml.Contains("%"));
+            Assert.True(xaml.Contains("ResizeMode=\"NoResize\""));
+            Assert.True(xaml.Contains("Opacity=\"0\""));
+            Assert.True(xaml.Contains("<local:LowResolutionAmbientBackgroundControl"));
+            Assert.False(xaml.Contains("ToggleWindow_Click"));
+            Assert.False(xaml.Contains("ReturnToCurrentButton"));
+            Assert.False(xaml.Contains("回到当前歌词"));
+            Assert.False(xaml.Contains("Margin=\"6,12,-6,-12\" Background=\"#64000000\""));
+            Assert.False(xaml.Contains("Margin=\"0,0,-6,0\""));
+            Assert.True(xaml.Contains("UseLayoutRounding=\"False\""));
+            Assert.True(xaml.Contains("<Border Height=\"6\" VerticalAlignment=\"Center\" Background=\"#45FFFFFF\" CornerRadius=\"3\"/>"));
+            Assert.True(xaml.Contains("<Track.IncreaseRepeatButton><RepeatButton Command=\"{x:Static Slider.IncreaseLarge}\" Focusable=\"False\"><RepeatButton.Template><ControlTemplate TargetType=\"RepeatButton\"><Border Background=\"Transparent\"/>"));
+            Assert.True(xaml.Contains("<Trigger Property=\"Value\" Value=\"0\"><Setter TargetName=\"PlayedTrackButton\" Property=\"Opacity\" Value=\"0\"/>"));
+            Assert.True(xaml.Contains("TranslateTransform Y=\"2\""));
+            Assert.False(xaml.Contains("TargetName=\"HoverShadow\" Property=\"Background\" Value=\"#20FFFFFF\""));
+            Assert.True(xaml.Contains("TargetName=\"HoverShadow\" Property=\"Background\" Value=\"#4A000000\""));
+            Assert.False(xaml.Contains("<GradientStop Color=\"Transparent\" Offset=\"0\"/>"));
+
+            using (var window = new FullscreenLyricsWindow(new OverlayPlacementSettings()))
+            {
+                Assert.True(window.Content != null);
+                var ambient = (System.Windows.FrameworkElement)window.FindName("AmbientBackground");
+                Assert.Equal("LowResolutionAmbientBackgroundControl", ambient.GetType().Name);
+                ambient.Measure(new System.Windows.Size(2560, 1440));
+                ambient.Arrange(new System.Windows.Rect(0, 0, 2560, 1440));
+                var backgroundType = ambient.GetType();
+                var renderFrame = backgroundType.GetMethod(
+                    "RenderFrame",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                var pixelField = backgroundType.GetField(
+                    "pixels",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                var bitmapField = backgroundType.GetField(
+                    "bitmap",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                var rowWarpField = backgroundType.GetField(
+                    "rowWarp",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                Assert.True(renderFrame != null && pixelField != null && bitmapField != null && rowWarpField != null);
+                renderFrame.Invoke(ambient, new object[] { TimeSpan.FromSeconds(1) });
+                var firstBuffer = pixelField.GetValue(ambient);
+                var firstRowWarp = rowWarpField.GetValue(ambient);
+                var firstPixels = ((byte[])firstBuffer).ToArray();
+                renderFrame.Invoke(ambient, new object[] { TimeSpan.FromSeconds(4) });
+                Assert.True(ReferenceEquals(firstBuffer, pixelField.GetValue(ambient)));
+                Assert.True(ReferenceEquals(firstRowWarp, rowWarpField.GetValue(ambient)));
+                var changedPixels = firstPixels.Zip((byte[])pixelField.GetValue(ambient),
+                    (before, after) => before == after ? 0 : 1).Sum();
+                Assert.True(changedPixels > firstPixels.Length / 20);
+                var advanceEnvelope = backgroundType.GetMethod(
+                    "AdvanceEnvelope",
+                    System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+                Assert.True(advanceEnvelope != null);
+                var rising = (double)advanceEnvelope.Invoke(null, new object[] { 0d, 1d, 12d, 3.4d, 0.016d });
+                var falling = (double)advanceEnvelope.Invoke(null, new object[] { 1d, 0d, 12d, 3.4d, 0.016d });
+                Assert.True(rising > 0 && rising < 0.25);
+                Assert.True(falling > 0.90 && falling < 1);
+                var backgroundBitmap = (System.Windows.Media.Imaging.WriteableBitmap)bitmapField.GetValue(ambient);
+                Assert.True(backgroundBitmap.PixelWidth <= 320);
+                Assert.True(backgroundBitmap.PixelHeight <= 200);
+                var progressField = typeof(FullscreenLyricsWindow).GetField(
+                    "ProgressSlider",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                var progress = (System.Windows.Controls.Slider)progressField.GetValue(window);
+                progress.Maximum = 100;
+                progress.Value = 0;
+                progress.Measure(new System.Windows.Size(300, 26));
+                progress.Arrange(new System.Windows.Rect(0, 0, 300, 26));
+                progress.ApplyTemplate();
+                var playedTrack = (System.Windows.Controls.Primitives.RepeatButton)progress.Template.FindName("PlayedTrackButton", progress);
+                Assert.True(playedTrack != null);
+                Assert.Equal(0d, playedTrack.Opacity);
+                Assert.Equal(0d, playedTrack.ActualWidth);
+                progress.Value = 0.1;
+                progress.UpdateLayout();
+                var firstVisibleWidth = playedTrack.ActualWidth;
+                Assert.True(firstVisibleWidth > 0 && firstVisibleWidth < 1);
+                progress.Value = 1;
+                progress.UpdateLayout();
+                Assert.True(playedTrack.ActualWidth > firstVisibleWidth);
+                progress.Value = 50;
+                Assert.Equal(1d, playedTrack.Opacity);
+            }
+        }
+
+        static void FullscreenProgressFallsBackToLyricTimeline()
+        {
+            var lyrics = new TimedLyrics(
+                new[]
+                {
+                    new LyricLine(TimeSpan.Zero, "first"),
+                    new LyricLine(TimeSpan.FromSeconds(60), "last")
+                },
+                "fixture",
+                "artist");
+            using (var window = new FullscreenLyricsWindow(new OverlayPlacementSettings()))
+            {
+                window.Present(new FullscreenLyricsPresentation
+                {
+                    Session = new MediaSessionSnapshot
+                    {
+                        SessionId = "fixture",
+                        Title = "fixture",
+                        Duration = TimeSpan.Zero,
+                        PlaybackStatus = MediaPlaybackStatus.Paused
+                    },
+                    Lyrics = lyrics,
+                    Position = TimeSpan.FromSeconds(30),
+                    LyricsSearchFinished = true
+                });
+                var slider = (System.Windows.Controls.Slider)window.FindName("ProgressSlider");
+                Assert.True(slider.Maximum > 60);
+                Assert.Equal(30d, slider.Value);
+            }
+
+            var projection = typeof(FullscreenLyricsWindow).GetMethod(
+                "ProjectMediaPosition",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            Assert.True(projection != null);
+            var received = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var projected = (TimeSpan)projection.Invoke(null, new object[]
+            {
+                TimeSpan.FromSeconds(30), received, received.AddMilliseconds(1250), true, TimeSpan.FromSeconds(180)
+            });
+            Assert.Equal(TimeSpan.FromMilliseconds(31250), projected);
+            var paused = (TimeSpan)projection.Invoke(null, new object[]
+            {
+                TimeSpan.FromSeconds(30), received, received.AddSeconds(2), false, TimeSpan.FromSeconds(180)
+            });
+            Assert.Equal(TimeSpan.FromSeconds(30), paused);
+
+            var lyricProjection = typeof(FullscreenLyricsWindow).GetMethod(
+                "ApplyLyricVisualLead",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            Assert.True(lyricProjection != null);
+            var lyricPosition = (TimeSpan)lyricProjection.Invoke(null, new object[]
+            {
+                TimeSpan.FromSeconds(30), TimeSpan.FromMilliseconds(120)
+            });
+            Assert.Equal(TimeSpan.FromMilliseconds(30500), lyricPosition);
+
+            var windowSource = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "Fullscreen", "FullscreenLyricsWindow.xaml.cs"));
+            Assert.True(windowSource.Contains("SettingsClose_Click(object sender, RoutedEventArgs e) => ApplySettings_Click"));
+            Assert.True(windowSource.Contains("CancelSettings_Click"));
+        }
+
+        static void FullscreenProgressPreservesTimelineWhileDurationHydrates()
+        {
+            var durationChange = typeof(MainWindow).GetMethod(
+                "HasMaterialDurationChange",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var sameTrack = typeof(MainWindow).GetMethod(
+                "IsSameTrack",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            Assert.True(durationChange != null && sameTrack != null);
+
+            Assert.False((bool)durationChange.Invoke(null, new object[]
+            {
+                TimeSpan.Zero, TimeSpan.FromSeconds(203)
+            }));
+            Assert.False((bool)durationChange.Invoke(null, new object[]
+            {
+                TimeSpan.FromSeconds(203), TimeSpan.Zero
+            }));
+            Assert.False((bool)durationChange.Invoke(null, new object[]
+            {
+                TimeSpan.FromSeconds(203), TimeSpan.FromSeconds(204.5)
+            }));
+            Assert.True((bool)durationChange.Invoke(null, new object[]
+            {
+                TimeSpan.FromSeconds(203), TimeSpan.FromSeconds(207)
+            }));
+
+            var early = new TrackIdentity("Song", "Artist", TimeSpan.Zero, "Album");
+            var hydrated = new TrackIdentity("Song", "Artist", TimeSpan.FromSeconds(203), "Album");
+            Assert.True((bool)sameTrack.Invoke(null, new object[] { early, hydrated }));
+
+            var mainSource = File.ReadAllText(Path.Combine(
+                GetSolutionRoot(), "LyricHover.App", "MainWindow.xaml.cs"));
+            Assert.True(mainSource.Contains("if (!isNewTrack && IsSameTrack(currentTrack, track))"));
+            Assert.True(mainSource.Contains("HasMaterialDurationChange(currentTrack.Duration, track.Duration)"));
+        }
+
+        static void FullscreenLyricClickRequestsExactSeek()
+        {
+            using (var window = new FullscreenLyricsWindow(new OverlayPlacementSettings()))
+            {
+                window.Present(new FullscreenLyricsPresentation
+                {
+                    Session = new MediaSessionSnapshot
+                    {
+                        SessionId = "fixture",
+                        Duration = TimeSpan.FromMinutes(3),
+                        PlaybackStatus = MediaPlaybackStatus.Paused,
+                        Controls = new MediaControlCapabilities { CanSeek = true }
+                    },
+                    Lyrics = new TimedLyrics(new[]
+                    {
+                        new LyricLine(TimeSpan.FromSeconds(2), "first"),
+                        new LyricLine(TimeSpan.FromSeconds(12), "target")
+                    }),
+                    Position = TimeSpan.Zero,
+                    LyricsSearchFinished = true
+                });
+                TimeSpan? requested = null;
+                window.SeekRequested += (sender, position) => requested = position;
+                var stack = (System.Windows.Controls.StackPanel)window.FindName("LyricsStack");
+                var target = (System.Windows.Controls.Border)stack.Children[1];
+                var content = (System.Windows.Controls.Grid)target.Child;
+                var hitTarget = content.Children.OfType<System.Windows.Controls.Button>().Single();
+                hitTarget.RaiseEvent(new System.Windows.RoutedEventArgs(
+                    System.Windows.Controls.Button.ClickEvent));
+
+                Assert.Equal(TimeSpan.FromSeconds(12), requested.Value);
+            }
+        }
+
+        static void FullscreenLyricsDisableSeekingAffordanceWhenUnsupported()
+        {
+            var lyrics = new TimedLyrics(new[]
+            {
+                new LyricLine(TimeSpan.FromSeconds(2), "first"),
+                new LyricLine(TimeSpan.FromSeconds(12), "target")
+            });
+            using (var window = new FullscreenLyricsWindow(new OverlayPlacementSettings()))
+            {
+                var session = new MediaSessionSnapshot
+                {
+                    SessionId = "unsupported",
+                    Duration = TimeSpan.FromMinutes(3),
+                    PlaybackStatus = MediaPlaybackStatus.Playing,
+                    Controls = new MediaControlCapabilities { CanSeek = false }
+                };
+                window.Present(new FullscreenLyricsPresentation
+                {
+                    Session = session,
+                    Lyrics = lyrics,
+                    Position = TimeSpan.Zero,
+                    LyricsSearchFinished = true
+                });
+
+                TimeSpan? requested = null;
+                window.SeekRequested += (sender, position) => requested = position;
+                var stack = (System.Windows.Controls.StackPanel)window.FindName("LyricsStack");
+                var target = (System.Windows.Controls.Border)stack.Children[1];
+                var content = (System.Windows.Controls.Grid)target.Child;
+                var hitTarget = content.Children.OfType<System.Windows.Controls.Button>().Single();
+                Assert.False(hitTarget.IsHitTestVisible);
+                Assert.Equal(System.Windows.Input.Cursors.Arrow, target.Cursor);
+                hitTarget.RaiseEvent(new System.Windows.RoutedEventArgs(
+                    System.Windows.Controls.Button.ClickEvent));
+                Assert.False(requested.HasValue);
+
+                session.Controls.CanSeek = true;
+                window.Present(new FullscreenLyricsPresentation
+                {
+                    Session = session,
+                    Lyrics = lyrics,
+                    Position = TimeSpan.Zero,
+                    LyricsSearchFinished = true
+                });
+                Assert.True(hitTarget.IsHitTestVisible);
+                Assert.Equal(System.Windows.Input.Cursors.Hand, target.Cursor);
+            }
+        }
+
+        static void FullscreenSeekIgnoresStaleSmtcPositionsUntilConfirmed()
+        {
+            var method = typeof(MainWindow).GetMethod(
+                "ShouldHoldPendingSeek",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            Assert.True(method != null);
+            Assert.True((bool)method.Invoke(null, new object[]
+            {
+                TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(80), TimeSpan.FromMilliseconds(250)
+            }));
+            Assert.True((bool)method.Invoke(null, new object[]
+            {
+                TimeSpan.FromSeconds(80.2), TimeSpan.FromSeconds(80), TimeSpan.FromMilliseconds(200)
+            }));
+            Assert.False((bool)method.Invoke(null, new object[]
+            {
+                TimeSpan.FromSeconds(81), TimeSpan.FromSeconds(80), TimeSpan.FromSeconds(1)
+            }));
+            Assert.False((bool)method.Invoke(null, new object[]
+            {
+                TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(80), TimeSpan.FromSeconds(3.1)
+            }));
+        }
+
+        static void FullscreenArtworkEnhancerUpscalesLowResolutionThumbnails()
+        {
+            byte[] sourceBytes;
+            using (var source = new System.Drawing.Bitmap(64, 64))
+            using (var graphics = System.Drawing.Graphics.FromImage(source))
+            using (var stream = new MemoryStream())
+            {
+                graphics.Clear(System.Drawing.Color.DarkRed);
+                graphics.DrawLine(System.Drawing.Pens.White, 0, 0, 63, 63);
+                source.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
+                sourceBytes = stream.ToArray();
+            }
+
+            var type = typeof(FullscreenLyricsWindow).Assembly.GetType("LyricHover.App.Fullscreen.ArtworkEnhancer", true);
+            var enhancer = Activator.CreateInstance(type, true);
+            var method = type.GetMethod("Enhance", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+            var enhancedBytes = (byte[])method.Invoke(enhancer, new object[] { sourceBytes });
+            using (var stream = new MemoryStream(enhancedBytes, false))
+            using (var enhanced = new System.Drawing.Bitmap(stream))
+            {
+                Assert.True(enhanced.Width >= 256);
+                Assert.Equal(enhanced.Width, enhanced.Height);
+            }
+        }
+
+        static void FullscreenOnlineArtworkOnlyAcceptsMatchingUpgrades()
+        {
+            byte[] small;
+            byte[] matchingLarge;
+            byte[] differentLarge;
+            using (var source = new System.Drawing.Bitmap(220, 220))
+            using (var graphics = System.Drawing.Graphics.FromImage(source))
+            {
+                graphics.Clear(System.Drawing.Color.FromArgb(54, 12, 80));
+                graphics.FillRectangle(System.Drawing.Brushes.DeepPink, 24, 20, 70, 180);
+                graphics.FillEllipse(System.Drawing.Brushes.Gold, 80, 48, 116, 116);
+                using (var stream = new MemoryStream())
+                {
+                    source.Save(stream, System.Drawing.Imaging.ImageFormat.Jpeg);
+                    small = stream.ToArray();
+                }
+                using (var enlarged = new System.Drawing.Bitmap(source, 1000, 1000))
+                using (var stream = new MemoryStream())
+                {
+                    enlarged.Save(stream, System.Drawing.Imaging.ImageFormat.Jpeg);
+                    matchingLarge = stream.ToArray();
+                }
+            }
+            using (var different = new System.Drawing.Bitmap(1000, 1000))
+            using (var graphics = System.Drawing.Graphics.FromImage(different))
+            using (var stream = new MemoryStream())
+            {
+                graphics.Clear(System.Drawing.Color.DarkGreen);
+                graphics.FillRectangle(System.Drawing.Brushes.White, 0, 0, 500, 1000);
+                different.Save(stream, System.Drawing.Imaging.ImageFormat.Jpeg);
+                differentLarge = stream.ToArray();
+            }
+
+            var type = typeof(FullscreenLyricsWindow).Assembly.GetType("LyricHover.App.Fullscreen.ArtworkFingerprint", true);
+            var method = type.GetMethod("IsSuitableUpgrade", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+            Assert.True((bool)method.Invoke(null, new object[] { small, matchingLarge }));
+            Assert.False((bool)method.Invoke(null, new object[] { small, differentLarge }));
+            Assert.False((bool)method.Invoke(null, new object[] { matchingLarge, small }));
+
+            var root = GetSolutionRoot();
+            var resolver = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Fullscreen", "OnlineArtworkResolver.cs"));
+            var window = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Fullscreen", "FullscreenLyricsWindow.xaml.cs"));
+            var background = File.ReadAllText(Path.Combine(root, "LyricHover.App", "Fullscreen", "LowResolutionAmbientBackgroundControl.cs"));
+            Assert.True(resolver.Contains("LyricsCandidateMatcher.Score"));
+            Assert.True(resolver.Contains("ArtworkFingerprint.IsSuitableUpgrade"));
+            Assert.True(resolver.Contains("catch (IOException)"));
+            Assert.True(window.Contains("smtcArtworkKey, acceptedSmtcArtworkKey"));
+            Assert.True(background.Contains("WriteableBitmap"));
+            Assert.True(background.Contains("ActualWidth / 10.0"));
+            Assert.True(background.Contains("pixels = new byte[pixelWidth * pixelHeight * 4]"));
+            Assert.True(background.Contains("bitmap.WritePixels"));
+            Assert.True(background.Contains("var weight = 0.92 / (denominator * denominator)"));
+            Assert.True(background.Contains("red / totalWeight"));
+            Assert.True(background.Contains("AdvanceEnvelope(smoothedBass"));
+            Assert.True(background.Contains("CalculateAudioDrift("));
+            var backgroundType = typeof(FullscreenLyricsWindow).Assembly.GetType(
+                "LyricHover.App.Fullscreen.LowResolutionAmbientBackgroundControl", true);
+            var audioDrift = backgroundType.GetMethod(
+                "CalculateAudioDrift",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            Assert.True(audioDrift != null);
+            var mediumResponse = (double)audioDrift.Invoke(null, new object[] { true, 0.45d, 0.20d, 1d });
+            Assert.True(mediumResponse > 0.05 && mediumResponse < 0.07);
+            Assert.Equal(0d, (double)audioDrift.Invoke(null, new object[] { false, 1d, 1d, 1d }));
+            Assert.False(background.Contains("distanceSquared >= 1"));
+            Assert.False(background.Contains("new BlurEffect"));
         }
 
         static void SelectsNewestVisibleStoreRelease()
@@ -3197,10 +3894,10 @@ namespace LyricHover.Tests
                 props,
                 "<VersionPrefix>(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)</VersionPrefix>");
             Assert.True(versionMatch.Success);
-            // The major and minor stay on the V3.3 baseline. The patch digit is bumped by the
-            // publish script before this suite runs during candidate generation, so it is dynamic.
+            // The version is driven by the shared props file. Patch releases remain automatic,
+            // while an explicit target supports intentional minor or major release boundaries.
             Assert.Equal("3", versionMatch.Groups["major"].Value);
-            Assert.Equal("3", versionMatch.Groups["minor"].Value);
+            Assert.True(int.Parse(versionMatch.Groups["minor"].Value) >= 0);
             Assert.True(int.Parse(versionMatch.Groups["patch"].Value) >= 0);
             Assert.True(props.Contains("<VersionSuffix>beta</VersionSuffix>"));
             Assert.True(props.Contains("<Version>$(VersionPrefix)-$(VersionSuffix)</Version>"));
@@ -3209,6 +3906,8 @@ namespace LyricHover.Tests
             Assert.False(appProject.Contains("<Version>"));
             Assert.False(appProject.Contains("<FileVersion>"));
             Assert.True(publishScript.Contains("$nextPatch = $currentPatch + 1"));
+            Assert.True(publishScript.Contains("[string]$TargetVersion"));
+            Assert.True(publishScript.Contains("-KeepVersion 与 -TargetVersion 不能同时使用"));
             Assert.True(publishScript.Contains("LyricsIsland.PublishNextVersion"));
             Assert.True(publishScript.Contains("$mutex.WaitOne(0)"));
             Assert.True(publishScript.Contains("-KeepVersion 只能复现已有候选"));
@@ -3237,6 +3936,15 @@ namespace LyricHover.Tests
                 var versionAfterCandidate = File.ReadAllText(fixture.PropsPath);
                 AssertProcessExitCode(0, RunPublishVersionTest(fixture, "-KeepVersion -NoLaunch"));
                 Assert.Equal(versionAfterCandidate, File.ReadAllText(fixture.PropsPath));
+
+                File.WriteAllText(fixture.PropsPath, fixture.BaselineProps);
+                Directory.Delete(Path.Combine(fixture.Root, "publish"), true);
+                AssertProcessExitCode(0, RunPublishVersionTest(
+                    fixture,
+                    "-TargetVersion 4.2.0 -NoLaunch"));
+                Assert.Equal("4.2.0", ReadVersionPrefix(fixture.PropsPath));
+                Assert.Equal("4.2.0.0", FileVersionInfo.GetVersionInfo(
+                    Path.Combine(fixture.Root, "publish", "current", "LyricHover.App.dll")).FileVersion);
 
                 File.WriteAllText(fixture.PropsPath, fixture.BaselineProps);
                 Directory.Delete(Path.Combine(fixture.Root, "publish"), true);
@@ -4233,6 +4941,8 @@ namespace LyricHover.Tests
             Assert.False(mainWindowSource.Contains("? placementSettings.DefaultLyricOffsetMilliseconds"));
             Assert.True(mainWindowSource.Contains("private TimeSpan lyricOffset = TimeSpan.Zero;"));
             Assert.True(newTrackBlock.Contains("lyricOffset = TimeSpan.Zero;"));
+            Assert.True(mainWindowSource.Contains("LyricSynchronizationLead = TimeSpan.FromMilliseconds(800)"));
+            Assert.True(mainWindowSource.Contains("GetEffectiveLyricOffset(lyricOffset)"));
             Assert.Equal(0, legacyOffsetSettings.DefaultLyricOffsetMilliseconds);
             Assert.True(mainWindowSource.Contains("TimeSpan.FromSeconds(2.4)"));
             Assert.True(moduleHostSource.Contains("transientMessageTimer"));
@@ -4382,6 +5092,24 @@ namespace LyricHover.Tests
                 TimeSpan.FromMinutes(3));
 
             Assert.Equal(TimeSpan.FromSeconds(23), position);
+        }
+
+        static void ProjectsSnapshotDeliveryDelay()
+        {
+            var sampledAt = DateTimeOffset.Parse("2026-11-03T18:00:05+08:00");
+            var snapshot = new MediaSessionSnapshot
+            {
+                Position = TimeSpan.FromSeconds(20),
+                PositionSampledAtUtc = sampledAt,
+                Duration = TimeSpan.FromMinutes(3),
+                PlaybackStatus = MediaPlaybackStatus.Playing
+            };
+
+            var projected = TimelineSampleCompensator.ProjectDeliveredPosition(
+                snapshot,
+                sampledAt.AddMilliseconds(950));
+
+            Assert.Equal(TimeSpan.FromMilliseconds(20950), projected);
         }
 
         static void DoesNotCompensatePausedTimelineSamples()
@@ -4599,7 +5327,7 @@ namespace LyricHover.Tests
             clock.Advance(TimeSpan.FromSeconds(1));
 
             var jittered = coordinator.Update(
-                TimeSpan.FromMilliseconds(20700),
+                TimeSpan.FromMilliseconds(20920),
                 true,
                 MediaPlaybackStatus.Playing);
 
@@ -4610,6 +5338,16 @@ namespace LyricHover.Tests
                 true,
                 MediaPlaybackStatus.Playing);
             Assert.Equal(TimeSpan.FromSeconds(10), seeked.Position);
+
+            var correctedClock = new FakeMonotonicClock();
+            var correctedCoordinator = new TimelineCoordinator(correctedClock);
+            correctedCoordinator.Update(TimeSpan.FromMilliseconds(1386), true, MediaPlaybackStatus.Playing);
+            correctedClock.Advance(TimeSpan.FromMilliseconds(500));
+            var corrected = correctedCoordinator.Update(
+                TimeSpan.FromMilliseconds(1093),
+                true,
+                MediaPlaybackStatus.Playing);
+            Assert.Equal(TimeSpan.FromMilliseconds(1886), corrected.Position);
         }
 
         static void MouseAvoidanceSettingsFitWithoutScrolling()
@@ -4821,12 +5559,19 @@ namespace LyricHover.Tests
             var appAssembly = typeof(OverlayPlacementSettings).Assembly;
             var factoryType = appAssembly.GetType("LyricHover.App.TrayContextMenuFactory", throwOnError: true);
             var themeType = appAssembly.GetType("LyricHover.App.TrayContextMenuTheme", throwOnError: true);
-            var create = factoryType.GetMethod("Create", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            var create = factoryType.GetMethod(
+                "Create",
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static,
+                binder: null,
+                types: new[] { typeof(Action), typeof(Action), typeof(Action) },
+                modifiers: null);
             var apply = themeType.GetMethod("Apply", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            var fullscreenInvocations = 0;
             var settingsInvocations = 0;
             var exitInvocations = 0;
             var menu = create.Invoke(null, new object[]
             {
+                (Action)(() => fullscreenInvocations++),
                 (Action)(() => settingsInvocations++),
                 (Action)(() => exitInvocations++)
             });
@@ -4877,10 +5622,11 @@ namespace LyricHover.Tests
                 Assert.Equal("TrayMenuRenderer", rendererProperty.GetValue(menu).GetType().Name);
 
                 var items = itemsProperty.GetValue(menu);
-                Assert.Equal(2, (int)items.GetType().GetProperty("Count").GetValue(items));
+                Assert.Equal(3, (int)items.GetType().GetProperty("Count").GetValue(items));
                 var itemIndexer = items.GetType().GetProperty("Item", new[] { typeof(int) });
-                var settingsItem = itemIndexer.GetValue(items, new object[] { 0 });
-                var exitItem = itemIndexer.GetValue(items, new object[] { 1 });
+                var fullscreenItem = itemIndexer.GetValue(items, new object[] { 0 });
+                var settingsItem = itemIndexer.GetValue(items, new object[] { 1 });
+                var exitItem = itemIndexer.GetValue(items, new object[] { 2 });
                 var settingsSize = settingsItem.GetType().GetProperty("Size").GetValue(settingsItem);
                 Assert.Equal(
                     (int)Math.Round(150F * menuScale, MidpointRounding.AwayFromZero),
@@ -4888,8 +5634,10 @@ namespace LyricHover.Tests
                 Assert.Equal(
                     (int)Math.Round(33F * menuScale, MidpointRounding.AwayFromZero),
                     Convert.ToInt32(settingsSize.GetType().GetProperty("Height").GetValue(settingsSize)));
+                fullscreenItem.GetType().GetMethod("PerformClick").Invoke(fullscreenItem, null);
                 settingsItem.GetType().GetMethod("PerformClick").Invoke(settingsItem, null);
                 exitItem.GetType().GetMethod("PerformClick").Invoke(exitItem, null);
+                Assert.Equal(1, fullscreenInvocations);
                 Assert.Equal(1, settingsInvocations);
                 Assert.Equal(1, exitInvocations);
             }
@@ -5257,9 +6005,11 @@ namespace LyricHover.Tests
             Assert.True(serviceSource.Contains("AttachSession(added)"));
             Assert.True(serviceSource.Contains("DetachSessions()"));
             Assert.True(serviceSource.Contains("DetachSession"));
-            Assert.True(serviceSource.Contains("Session_Changed"));
+            Assert.True(serviceSource.Contains("Session_MediaPropertiesChanged"));
+            Assert.True(serviceSource.Contains("Session_PlaybackInfoChanged"));
             Assert.True(serviceSource.Contains("Session_TimelineChanged"));
             Assert.True(serviceSource.Contains("ScheduleRefreshAsync"));
+            Assert.True(serviceSource.Contains("ScheduleMediaPropertiesRefreshAsync"));
             Assert.True(serviceSource.Contains("timeline.MaxSeekTime"));
             Assert.True(serviceSource.Contains("TimelineMetadataResolver.ResolveDuration"));
             Assert.True(serviceSource.Contains("artworkBySessionId"));
@@ -5271,6 +6021,18 @@ namespace LyricHover.Tests
             var playbackStatusStart = serviceSource.IndexOf("public MediaPlaybackStatus?", StringComparison.Ordinal);
             var refreshBody = serviceSource.Substring(refreshStart, playbackStatusStart - refreshStart);
             Assert.False(refreshBody.Contains("DetachSessions();"));
+
+            var mediaRefreshStart = serviceSource.IndexOf(
+                "private async Task ScheduleMediaPropertiesRefreshAsync",
+                StringComparison.Ordinal);
+            var disposeStart = serviceSource.IndexOf("public void Dispose()", StringComparison.Ordinal);
+            var mediaRefreshBody = serviceSource.Substring(mediaRefreshStart, disposeStart - mediaRefreshStart);
+            Assert.True(serviceSource.Contains("MediaPropertiesRefreshDelaysMs = { 40, 250, 750 }"));
+            Assert.True(mediaRefreshBody.Contains("mediaChangeVersionBySessionId"));
+            Assert.True(mediaRefreshBody.Contains("currentVersion != version"));
+            Assert.True(mediaRefreshBody.Contains("artworkBySessionId.Remove"));
+            Assert.True(mediaRefreshBody.IndexOf("artworkBySessionId.Remove", StringComparison.Ordinal) <
+                mediaRefreshBody.IndexOf("await RefreshCoreAsync();", StringComparison.Ordinal));
 
             var mainWindowSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
             Assert.True(mainWindowSource.Contains("ExecuteTrackChangeCommandAsync"));
@@ -5857,13 +6619,16 @@ namespace LyricHover.Tests
             var block = new LyricHover.App.Modules.WordTrackingTextBlock();
             var anchorPosition = typeof(LyricHover.App.Modules.WordTrackingTextBlock)
                 .GetField("anchorPosition", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            var driftTolerance = typeof(LyricHover.App.Modules.WordTrackingTextBlock)
+                .GetField("MaximumContinuousAnchorDrift", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            Assert.Equal(TimeSpan.FromMilliseconds(120), (TimeSpan)driftTolerance.GetValue(null));
 
             block.Present(line.Text, line, TimeSpan.FromSeconds(1), true);
-            block.Present(line.Text, line, TimeSpan.FromSeconds(1.2), true);
+            block.Present(line.Text, line, TimeSpan.FromSeconds(1), true);
             Assert.Equal(TimeSpan.FromSeconds(1), (TimeSpan)anchorPosition.GetValue(block));
 
-            block.Present(line.Text, line, TimeSpan.FromSeconds(3), true);
-            Assert.Equal(TimeSpan.FromSeconds(3), (TimeSpan)anchorPosition.GetValue(block));
+            block.Present(line.Text, line, TimeSpan.FromSeconds(1.3), true);
+            Assert.Equal(TimeSpan.FromSeconds(1.3), (TimeSpan)anchorPosition.GetValue(block));
         }
 
         static void WordTrackingClipFollowsGlyphWidth()

@@ -6,5 +6,6 @@ namespace LyricHover.Core.Media
         public bool CanPause { get; set; }
         public bool CanSkipPrevious { get; set; }
         public bool CanSkipNext { get; set; }
+        public bool CanSeek { get; set; }
     }
 }

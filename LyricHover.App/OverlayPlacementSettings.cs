@@ -6,6 +6,7 @@ using System.Text.Json;
 using LyricHover.Core;
 using LyricHover.Core.Layout;
 using LyricHover.App.LyricDock;
+using LyricHover.App.Fullscreen;
 
 namespace LyricHover.App
 {
@@ -46,6 +47,10 @@ namespace LyricHover.App
         public const double DefaultLyricDockLyricsFontSize = 13;
         public const double MinLyricDockLyricsFontSize = 8;
         public const double MaxLyricDockLyricsFontSize = 18;
+
+        public const double DefaultFullscreenPrimaryFontSize = 60;
+        public const double DefaultFullscreenTranslationFontSize = 32;
+        public const double DefaultFullscreenLineHeightRatio = 1.26;
 
         public int SchemaVersion { get; set; } = 10;
 
@@ -126,6 +131,21 @@ namespace LyricHover.App
         public string LyricDockEnglishFontFamily { get; set; } = DefaultEnglishFontFamily;
 
         public double LyricDockLyricsFontSize { get; set; } = DefaultLyricDockLyricsFontSize;
+
+        public bool FullscreenShowTranslation { get; set; } = true;
+        public string FullscreenPrimaryChineseFontFamily { get; set; } = DefaultChineseFontFamily;
+        public string FullscreenPrimaryEnglishFontFamily { get; set; } = DefaultEnglishFontFamily;
+        public string FullscreenTranslationChineseFontFamily { get; set; } = DefaultChineseFontFamily;
+        public string FullscreenTranslationEnglishFontFamily { get; set; } = DefaultEnglishFontFamily;
+        public double FullscreenPrimaryFontSize { get; set; } = DefaultFullscreenPrimaryFontSize;
+        public double FullscreenTranslationFontSize { get; set; } = DefaultFullscreenTranslationFontSize;
+        public int FullscreenPrimaryFontWeight { get; set; } = 600;
+        public int FullscreenTranslationFontWeight { get; set; } = 400;
+        public double FullscreenLineHeightRatio { get; set; } = DefaultFullscreenLineHeightRatio;
+        public FullscreenMotionMode FullscreenMotionMode { get; set; } = FullscreenMotionMode.Ambient;
+        public FullscreenMotionIntensity FullscreenMotionIntensity { get; set; } = FullscreenMotionIntensity.Medium;
+        public FullscreenRenderQuality FullscreenRenderQuality { get; set; } = FullscreenRenderQuality.High60Fps;
+        public bool FullscreenReduceMotion { get; set; }
 
         public bool EnablePowerSavingMode { get; set; }
 
@@ -248,6 +268,18 @@ namespace LyricHover.App
                 MinLyricDockLyricsFontSize,
                 MaxLyricDockLyricsFontSize,
                 DefaultLyricDockLyricsFontSize);
+            FullscreenPrimaryChineseFontFamily = NormalizeFontName(FullscreenPrimaryChineseFontFamily, DefaultChineseFontFamily);
+            FullscreenPrimaryEnglishFontFamily = NormalizeFontName(FullscreenPrimaryEnglishFontFamily, DefaultEnglishFontFamily);
+            FullscreenTranslationChineseFontFamily = NormalizeFontName(FullscreenTranslationChineseFontFamily, DefaultChineseFontFamily);
+            FullscreenTranslationEnglishFontFamily = NormalizeFontName(FullscreenTranslationEnglishFontFamily, DefaultEnglishFontFamily);
+            FullscreenPrimaryFontSize = NormalizeRange(FullscreenPrimaryFontSize, 32, 96, DefaultFullscreenPrimaryFontSize);
+            FullscreenTranslationFontSize = NormalizeRange(FullscreenTranslationFontSize, 16, 56, DefaultFullscreenTranslationFontSize);
+            FullscreenPrimaryFontWeight = Math.Max(300, Math.Min(800, FullscreenPrimaryFontWeight));
+            FullscreenTranslationFontWeight = Math.Max(300, Math.Min(700, FullscreenTranslationFontWeight));
+            FullscreenLineHeightRatio = NormalizeRange(FullscreenLineHeightRatio, 1.1, 1.6, DefaultFullscreenLineHeightRatio);
+            if (!Enum.IsDefined(typeof(FullscreenMotionMode), FullscreenMotionMode)) FullscreenMotionMode = FullscreenMotionMode.Ambient;
+            if (!Enum.IsDefined(typeof(FullscreenMotionIntensity), FullscreenMotionIntensity)) FullscreenMotionIntensity = FullscreenMotionIntensity.Medium;
+            if (!Enum.IsDefined(typeof(FullscreenRenderQuality), FullscreenRenderQuality)) FullscreenRenderQuality = FullscreenRenderQuality.High60Fps;
             Edge = NormalizeEdge(Edge);
             LockedSourceAppUserModelId = LockedSourceAppUserModelId ?? string.Empty;
             LyricOffsetHotkeys = LyricOffsetHotkeys ?? HotkeySettings.CreateDefault();
@@ -312,6 +344,11 @@ namespace LyricHover.App
             return double.IsNaN(value) || double.IsInfinity(value)
                 ? fallback
                 : Math.Max(minimum, Math.Min(maximum, value));
+        }
+
+        private static string NormalizeFontName(string value, string fallback)
+        {
+            return string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
         }
 
         private static OverlayDockEdge NormalizeEdge(OverlayDockEdge edge)
