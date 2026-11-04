@@ -2420,8 +2420,10 @@ namespace LyricHover.Tests
         static void TopCornerModeSwitchAnimatesWithoutRemeasuringModules()
         {
             var root = GetSolutionRoot();
-            var settingsSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml.cs"));
-            var mainSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
+            var settingsSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml.cs"))
+                .Replace("\r\n", "\n");
+            var mainSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"))
+                .Replace("\r\n", "\n");
             var handlerStart = settingsSource.IndexOf("private void TopCornerModeRadioButton_Checked", StringComparison.Ordinal);
             var handlerEnd = settingsSource.IndexOf("private void AnimateTopCornerRadiusSlider", handlerStart, StringComparison.Ordinal);
             Assert.True(handlerStart >= 0 && handlerEnd > handlerStart);
@@ -4407,7 +4409,8 @@ namespace LyricHover.Tests
         static void ConvexIslandSizeAnimationUpdatesGeometryBeforeWindowBounds()
         {
             var main = File.ReadAllText(Path.Combine(
-                GetSolutionRoot(), "LyricHover.App", "MainWindow.xaml.cs"));
+                    GetSolutionRoot(), "LyricHover.App", "MainWindow.xaml.cs"))
+                .Replace("\r\n", "\n");
             var measuredStart = main.IndexOf("private bool ApplyMeasuredIslandSize", StringComparison.Ordinal);
             var measuredEnd = main.IndexOf("private void QueueModuleContentSizeUpdate", measuredStart, StringComparison.Ordinal);
             var measured = main.Substring(measuredStart, measuredEnd - measuredStart);
