@@ -41,6 +41,7 @@ namespace LyricHover.App.Fullscreen
         private readonly ArtworkEnhancer artworkEnhancer = new ArtworkEnhancer();
         private readonly OnlineArtworkResolver onlineArtworkResolver = new OnlineArtworkResolver();
         private readonly SystemOutputAudioAnalyzer audioAnalyzer = new SystemOutputAudioAnalyzer();
+        private readonly FullscreenSongEffectHost songEffectHost;
         private readonly DispatcherTimer auxiliaryTimer;
         private readonly DispatcherTimer followResumeTimer;
         private readonly DispatcherTimer followCenterTimer;
@@ -93,6 +94,7 @@ namespace LyricHover.App.Fullscreen
         public FullscreenLyricsWindow(OverlayPlacementSettings settings)
         {
             InitializeComponent();
+            songEffectHost = new FullscreenSongEffectHost(SongEffectLayer);
             LyricsStack.RenderTransform = lyricsMotionTransform;
             ArtworkImage.Clip = artworkClip;
             ArtworkImage.SizeChanged += ArtworkImage_SizeChanged;
@@ -178,6 +180,7 @@ namespace LyricHover.App.Fullscreen
             if (!ReferenceEquals(renderedLyrics, presentation.Lyrics)) BuildLyrics();
             UpdateLyricSeekAvailability(session?.Controls?.CanSeek == true);
             UpdateLyricsPosition();
+            UpdateSongEffect();
         }
 
         public void ApplyCommittedSettings(OverlayPlacementSettings settings)
@@ -199,7 +202,11 @@ namespace LyricHover.App.Fullscreen
             audioTimer.Start();
             followCenterTimer.Start();
             UpdateProgressRenderingSubscription();
-            Dispatcher.BeginInvoke(new Action(UpdateResponsiveLayout), DispatcherPriority.Loaded);
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                UpdateResponsiveLayout();
+                UpdateSongEffect();
+            }), DispatcherPriority.Loaded);
         }
 
         private void ArtworkImage_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -430,6 +437,7 @@ namespace LyricHover.App.Fullscreen
             if (currentLineIndex != nextIndex)
             {
                 currentLineIndex = nextIndex;
+                UpdateSongEffectSafeAreas();
             }
             var centerTargetChanged = centeredLineIndex != nextIndex;
             centeredLineIndex = nextIndex;
@@ -854,6 +862,7 @@ namespace LyricHover.App.Fullscreen
             TranslationButton.Opacity = draftSettings.FullscreenShowTranslation ? 1 : 0.52;
             EnsureAudioState();
             if (rebuild) ApplyTypography();
+            UpdateSongEffect();
         }
 
         private void EnsureAudioState()
@@ -948,6 +957,7 @@ namespace LyricHover.App.Fullscreen
             SelectByTag(MotionModeCombo, settings.FullscreenMotionMode.ToString());
             SelectByTag(IntensityCombo, settings.FullscreenMotionIntensity.ToString());
             SelectByTag(QualityCombo, settings.FullscreenRenderQuality.ToString());
+            SongEasterEggsCheck.IsChecked = settings.FullscreenSongEasterEggsEnabled;
             ReduceMotionCheck.IsChecked = settings.FullscreenReduceMotion;
             updatingSettings = false;
         }
@@ -967,6 +977,7 @@ namespace LyricHover.App.Fullscreen
             draftSettings.FullscreenMotionMode = ReadEnumTag(MotionModeCombo, FullscreenMotionMode.Ambient);
             draftSettings.FullscreenMotionIntensity = ReadEnumTag(IntensityCombo, FullscreenMotionIntensity.Medium);
             draftSettings.FullscreenRenderQuality = ReadEnumTag(QualityCombo, FullscreenRenderQuality.High60Fps);
+            draftSettings.FullscreenSongEasterEggsEnabled = SongEasterEggsCheck.IsChecked == true;
             draftSettings.FullscreenReduceMotion = ReduceMotionCheck.IsChecked == true;
             draftSettings.Normalize();
         }
@@ -1094,6 +1105,62 @@ namespace LyricHover.App.Fullscreen
             var artSize = Math.Min(NowPlayingPanel.ActualWidth > 0 ? NowPlayingPanel.ActualWidth : ActualWidth * .30, ActualHeight * (narrow ? .24 : .43));
             ArtworkFrame.Width = ArtworkFrame.Height = Math.Max(140, artSize);
             QueueLyricRowMeasurement();
+            UpdateSongEffectSafeAreas();
+        }
+
+        private void UpdateSongEffect()
+        {
+            if (disposed || songEffectHost == null || draftSettings == null) return;
+            songEffectHost.Update(presentation?.Session, draftSettings, CreateSongEffectContext());
+        }
+
+        private void UpdateSongEffectSafeAreas()
+        {
+            if (disposed || songEffectHost == null || draftSettings == null) return;
+            songEffectHost.UpdateSafeAreas(CreateSongEffectContext());
+        }
+
+        private SongEffectRenderContext CreateSongEffectContext()
+        {
+            var width = Math.Max(0, Root?.ActualWidth ?? ActualWidth);
+            var height = Math.Max(0, Root?.ActualHeight ?? ActualHeight);
+            var bounds = width > 0 && height > 0 ? new Rect(0, 0, width, height) : Rect.Empty;
+            var lyricsArea = GetBoundsRelativeToRoot(LyricsPanel);
+            var currentLineArea = Rect.Empty;
+            if (currentLineIndex >= 0 && currentLineIndex < lyricVisuals.Count)
+            {
+                currentLineArea = GetBoundsRelativeToRoot(lyricVisuals[currentLineIndex].Container);
+                if (!currentLineArea.IsEmpty) currentLineArea.Inflate(48, 34);
+            }
+            if (!bounds.IsEmpty)
+            {
+                if (!lyricsArea.IsEmpty) lyricsArea.Intersect(bounds);
+                if (!currentLineArea.IsEmpty) currentLineArea.Intersect(bounds);
+            }
+            return new SongEffectRenderContext
+            {
+                Bounds = bounds,
+                LyricsSafeArea = lyricsArea,
+                CurrentLineSafeArea = currentLineArea,
+                Quality = draftSettings?.FullscreenRenderQuality ?? FullscreenRenderQuality.High60Fps,
+                ReduceMotion = draftSettings?.FullscreenReduceMotion == true,
+                TrackKey = GetTrackKey(presentation?.Session)
+            };
+        }
+
+        private Rect GetBoundsRelativeToRoot(FrameworkElement element)
+        {
+            if (element == null || Root == null || element.ActualWidth <= 0 || element.ActualHeight <= 0)
+                return Rect.Empty;
+            try
+            {
+                return element.TransformToAncestor(Root).TransformBounds(
+                    new Rect(0, 0, element.ActualWidth, element.ActualHeight));
+            }
+            catch (InvalidOperationException)
+            {
+                return Rect.Empty;
+            }
         }
 
         private void FadeAuxiliaryControls(bool show)
@@ -1254,6 +1321,7 @@ namespace LyricHover.App.Fullscreen
             SystemEvents.DisplaySettingsChanged -= SystemEvents_DisplaySettingsChanged;
             auxiliaryTimer?.Stop(); followResumeTimer?.Stop(); followCenterTimer?.Stop(); manualScrollTimer?.Stop(); audioTimer?.Stop();
             AmbientBackground?.Dispose(); audioAnalyzer.Dispose();
+            songEffectHost?.Dispose();
             onlineArtworkResolver.Dispose();
             volumeDevice?.Dispose();
         }

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "id": "taylor-swift-all-too-well-maple-leaves",
+      "match": {
+        "artistAliases": ["Taylor Swift"],
+        "titleBase": "All Too Well",
+        "allowVersionSuffixes": true
+      },
+      "effect": {
+        "type": "maple-leaf-fall",
+        "assets": ["maple-leaf.svg"],
+        "colors": ["#B9363E", "#C84D3C", "#8D1F2D", "#D56A3A"],
+        "minSize": 36,
+        "maxSize": 82,
+        "count1080p": 8,
+        "count1440p": 10,
+        "count4k": 14,
+        "minOpacity": 0.14,
+        "maxOpacity": 0.30,
+        "lyricsOpacityMultiplier": 0.45,
+        "currentLineOpacityMultiplier": 0.15
+      }
+    }
+  ]
+}

@@ -96,7 +96,8 @@
 
     <Grid x:Name="Root">
         <local:LowResolutionAmbientBackgroundControl x:Name="AmbientBackground"/>
-        <Grid x:Name="ContentRoot" Margin="0">
+        <Canvas x:Name="SongEffectLayer" Panel.ZIndex="0" ClipToBounds="True" IsHitTestVisible="False" Focusable="False"/>
+        <Grid x:Name="ContentRoot" Panel.ZIndex="1" Margin="0">
             <Grid.ColumnDefinitions><ColumnDefinition x:Name="LeftColumn" Width="42*"/><ColumnDefinition x:Name="RightColumn" Width="58*"/></Grid.ColumnDefinitions>
             <Grid.RowDefinitions><RowDefinition x:Name="TopRow" Height="*"/><RowDefinition x:Name="BottomRow" Height="0"/></Grid.RowDefinitions>
 
@@ -175,6 +176,7 @@
                     <TextBlock Style="{StaticResource SettingLabel}" Text="背景模式"/><ComboBox x:Name="MotionModeCombo" Style="{StaticResource SettingCombo}" SelectionChanged="SettingControl_Changed"><ComboBoxItem Tag="Static">静态</ComboBoxItem><ComboBoxItem Tag="Ambient">氛围流动</ComboBoxItem><ComboBoxItem Tag="AudioReactive">音乐律动（系统输出）</ComboBoxItem></ComboBox>
                     <TextBlock Style="{StaticResource SettingLabel}" Text="律动强度"/><ComboBox x:Name="IntensityCombo" Style="{StaticResource SettingCombo}" SelectionChanged="SettingControl_Changed"><ComboBoxItem Tag="Low">低</ComboBoxItem><ComboBoxItem Tag="Medium">中</ComboBoxItem><ComboBoxItem Tag="High">高</ComboBoxItem></ComboBox>
                     <TextBlock Style="{StaticResource SettingLabel}" Text="画质"/><ComboBox x:Name="QualityCombo" Style="{StaticResource SettingCombo}" SelectionChanged="SettingControl_Changed"><ComboBoxItem Tag="High60Fps">高画质 60fps</ComboBoxItem><ComboBoxItem Tag="Balanced30Fps">平衡 30fps</ComboBoxItem><ComboBoxItem Tag="Static">静态回退</ComboBoxItem></ComboBox>
+                    <CheckBox x:Name="SongEasterEggsCheck" Style="{StaticResource SettingCheckBox}" Margin="0,14,0,0" Content="歌曲彩蛋" Checked="SettingControl_Changed" Unchecked="SettingControl_Changed"/>
                     <CheckBox x:Name="ReduceMotionCheck" Style="{StaticResource SettingCheckBox}" Margin="0,14,0,0" Content="减少动态效果" Checked="SettingControl_Changed" Unchecked="SettingControl_Changed"/>
                     <TextBlock Margin="0,8,0,0" Foreground="#8FFFFFFF" FontSize="11" TextWrapping="Wrap" Text="音乐律动分析当前默认输出设备的系统混音，可能包含其他应用声音；仅在内存中计算能量，不保存或上传音频。"/>
                 </StackPanel></ScrollViewer>

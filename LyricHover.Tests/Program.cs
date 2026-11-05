@@ -61,6 +61,8 @@ namespace LyricHover.Tests
                 suite.Run("fullscreen online artwork only accepts matching resolution upgrades", FullscreenOnlineArtworkOnlyAcceptsMatchingUpgrades);
                 suite.Run("fullscreen wrapped word highlight advances one visual line at a time", FullscreenWrappedWordHighlightAdvancesOneLineAtATime);
                 suite.Run("fullscreen hides missing translation placeholders", UsesOneLineForTranslationPlaceholder);
+                suite.Run("fullscreen song effects match safely and validate bundled SVG resources", FullscreenSongEffectsMatchSafelyAndValidateResources);
+                suite.Run("fullscreen song effects honor static mode, settings, and lifecycle", FullscreenSongEffectsHonorStaticModeAndLifecycle);
                 return suite.ExitCode;
             }
 
@@ -403,7 +405,8 @@ namespace LyricHover.Tests
                 FullscreenMotionMode = (FullscreenMotionMode)99,
                 FullscreenMotionIntensity = FullscreenMotionIntensity.High,
                 FullscreenRenderQuality = FullscreenRenderQuality.Balanced30Fps,
-                FullscreenReduceMotion = true
+                FullscreenReduceMotion = true,
+                FullscreenSongEasterEggsEnabled = false
             };
             settings.Normalize();
             Assert.Equal("Missing CJK Choice", settings.FullscreenPrimaryChineseFontFamily);
@@ -421,6 +424,8 @@ namespace LyricHover.Tests
             Assert.Equal(FullscreenMotionIntensity.High, restarted.FullscreenMotionIntensity);
             Assert.Equal(FullscreenRenderQuality.Balanced30Fps, restarted.FullscreenRenderQuality);
             Assert.True(restarted.FullscreenReduceMotion);
+            Assert.False(restarted.FullscreenSongEasterEggsEnabled);
+            Assert.True(new OverlayPlacementSettings().FullscreenSongEasterEggsEnabled);
 
             var closeSettings = new OverlayPlacementSettings
             {
@@ -434,13 +439,112 @@ namespace LyricHover.Tests
                 var combo = (System.Windows.Controls.ComboBox)window.FindName("MotionModeCombo");
                 combo.SelectedItem = combo.Items.Cast<System.Windows.Controls.ComboBoxItem>()
                     .First(item => string.Equals(item.Tag?.ToString(), "Ambient", StringComparison.Ordinal));
+                var easterEggs = (System.Windows.Controls.CheckBox)window.FindName("SongEasterEggsCheck");
+                easterEggs.IsChecked = false;
                 var close = typeof(FullscreenLyricsWindow).GetMethod(
                     "SettingsClose_Click",
                     System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
                 close.Invoke(window, new object[] { window, new System.Windows.RoutedEventArgs() });
                 Assert.True(applied != null);
                 Assert.Equal(FullscreenMotionMode.Ambient, applied.FullscreenMotionMode);
+                Assert.False(applied.FullscreenSongEasterEggsEnabled);
             }
+        }
+
+        static void FullscreenSongEffectsMatchSafelyAndValidateResources()
+        {
+            var catalog = SongEffectCatalog.LoadDefault();
+            Assert.Equal(1, catalog.Entries.Count);
+            var positives = new[]
+            {
+                "All Too Well",
+                "All Too Well (Taylor's Version)",
+                "All Too Well (10 Minute Version) (Taylor's Version) (From The Vault)",
+                "All Too Well (Sad Girl Autumn Version)",
+                "all too well — live"
+            };
+            foreach (var title in positives)
+            {
+                var match = catalog.Resolve(BuildSongEffectSession(title, "Taylor Swift"));
+                Assert.Equal("taylor-swift-all-too-well-maple-leaves", match?.Id);
+            }
+            Assert.True(catalog.Resolve(BuildSongEffectSession("All Too Well (Live)", "Taylor Swift & Guest")) != null);
+            Assert.True(catalog.Resolve(BuildSongEffectSession("All Too Well", "Some Cover Artist")) == null);
+            Assert.True(catalog.Resolve(BuildSongEffectSession("All Too Well", "Taylor Swift Tribute")) == null);
+            Assert.True(catalog.Resolve(BuildSongEffectSession("All Too Wellbeing", "Taylor Swift")) == null);
+            Assert.True(catalog.Resolve(BuildSongEffectSession("All Too Well: The Short Film", "Taylor Swift")) == null);
+
+            var descriptor = catalog.Entries[0];
+            foreach (var assetName in descriptor.Effect.Assets)
+                Assert.True(SvgVectorAssetLoader.Load(assetName) != null);
+            Assert.Equal(8, SongEffectLayout.ResolveTargetCount(1920, 1080, descriptor.Effect));
+            Assert.Equal(10, SongEffectLayout.ResolveTargetCount(2560, 1440, descriptor.Effect));
+            Assert.Equal(14, SongEffectLayout.ResolveTargetCount(3840, 2160, descriptor.Effect));
+            var random = new Random(42);
+            var protectedArea = new System.Windows.Rect(200, 0, 600, 200);
+            for (var index = 0; index < 50; index++)
+            {
+                var x = SongEffectLayout.ChooseSpawnX(random, 1000, protectedArea, 50);
+                Assert.False(protectedArea.Contains(new System.Windows.Point(x + 25, 50)));
+            }
+
+            var malicious = Encoding.UTF8.GetBytes(
+                "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 10 10\"><script/><path d=\"M0 0 L10 10\"/></svg>");
+            using (var stream = new MemoryStream(malicious))
+                Assert.True(SvgVectorAssetLoader.Parse(stream) == null);
+            var transformed = Encoding.UTF8.GetBytes(
+                "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 10 10\"><path transform=\"scale(2)\" d=\"M0 0 L10 10\"/></svg>");
+            using (var stream = new MemoryStream(transformed))
+                Assert.True(SvgVectorAssetLoader.Parse(stream) == null);
+        }
+
+        static void FullscreenSongEffectsHonorStaticModeAndLifecycle()
+        {
+            var layer = new System.Windows.Controls.Canvas();
+            var settings = new OverlayPlacementSettings
+            {
+                FullscreenSongEasterEggsEnabled = true,
+                FullscreenReduceMotion = true,
+                FullscreenRenderQuality = FullscreenRenderQuality.High60Fps
+            };
+            var context = new SongEffectRenderContext
+            {
+                Bounds = new System.Windows.Rect(0, 0, 1920, 1080),
+                LyricsSafeArea = new System.Windows.Rect(800, 0, 1120, 1080),
+                CurrentLineSafeArea = new System.Windows.Rect(820, 450, 1000, 180),
+                TrackKey = "test-track"
+            };
+            using (var host = new FullscreenSongEffectHost(layer))
+            {
+                host.Update(BuildSongEffectSession("All Too Well (10 Minute Version)", "Taylor Swift"), settings, context);
+                Assert.Equal("taylor-swift-all-too-well-maple-leaves", host.ActiveEffectId);
+                Assert.Equal(3, host.VisualCount);
+                Assert.False(host.IsRendering);
+
+                settings.FullscreenReduceMotion = false;
+                settings.FullscreenRenderQuality = FullscreenRenderQuality.High60Fps;
+                host.Update(BuildSongEffectSession("All Too Well (10 Minute Version)", "Taylor Swift"), settings, context);
+                Assert.True(host.IsRendering);
+
+                settings.FullscreenSongEasterEggsEnabled = false;
+                host.Update(BuildSongEffectSession("All Too Well (10 Minute Version)", "Taylor Swift"), settings, context);
+                Assert.Equal(string.Empty, host.ActiveEffectId);
+                Assert.True(host.IsRendering);
+            }
+            Assert.Equal(0, layer.Children.Count);
+        }
+
+        static MediaSessionSnapshot BuildSongEffectSession(string title, string artist)
+        {
+            return new MediaSessionSnapshot
+            {
+                SessionId = "song-effect-test",
+                Title = title,
+                Artist = artist,
+                Album = "Red",
+                Duration = TimeSpan.FromMinutes(10),
+                PlaybackStatus = MediaPlaybackStatus.Playing
+            };
         }
 
         static void FullscreenViewReusesTimelineAndRejectsStaleArtwork()

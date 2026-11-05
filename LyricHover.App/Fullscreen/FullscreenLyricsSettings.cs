@@ -57,6 +57,7 @@ namespace LyricHover.App.Fullscreen
             settings.FullscreenMotionIntensity = FullscreenMotionIntensity.Medium;
             settings.FullscreenRenderQuality = FullscreenRenderQuality.High60Fps;
             settings.FullscreenReduceMotion = false;
+            settings.FullscreenSongEasterEggsEnabled = true;
         }
 
         public static string ResolveInstalledFont(string requested, string fallback)

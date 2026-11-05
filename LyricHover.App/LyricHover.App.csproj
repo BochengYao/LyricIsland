@@ -36,6 +36,8 @@
     <Resource Include="Assets\pro-support-badge-dark.png" />
     <Resource Include="Assets\pro-support-badge-dark.svg" />
     <Resource Include="Assets\Xiaolai-Regular.ttf" />
+    <EmbeddedResource Include="Assets\SongEffects\catalog.json" />
+    <EmbeddedResource Include="Assets\SongEffects\*.svg" />
   </ItemGroup>
 
 </Project>

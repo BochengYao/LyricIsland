@@ -146,6 +146,7 @@ namespace LyricHover.App
         public FullscreenMotionIntensity FullscreenMotionIntensity { get; set; } = FullscreenMotionIntensity.Medium;
         public FullscreenRenderQuality FullscreenRenderQuality { get; set; } = FullscreenRenderQuality.High60Fps;
         public bool FullscreenReduceMotion { get; set; }
+        public bool FullscreenSongEasterEggsEnabled { get; set; } = true;
 
         public bool EnablePowerSavingMode { get; set; }
 

@@ -24,7 +24,8 @@ namespace LyricHover.Tests
             {
                 FullscreenMotionMode = FullscreenMotionMode.Ambient,
                 FullscreenRenderQuality = FullscreenRenderQuality.High60Fps,
-                FullscreenReduceMotion = false
+                FullscreenReduceMotion = false,
+                FullscreenSongEasterEggsEnabled = true
             };
             settings.Normalize();
 
@@ -117,6 +118,12 @@ namespace LyricHover.Tests
                     CaptureBackgroundAt(window, TimeSpan.FromSeconds(18),
                         Path.Combine(outputDirectory, "04-background-flow-18s.png"));
                     var metrics = Analyze(renderSamples);
+                    var effectLayer = window.FindName("SongEffectLayer") as System.Windows.Controls.Canvas;
+                    var effectSurface = effectLayer?.Children.OfType<System.Windows.Controls.Canvas>().FirstOrDefault();
+                    if (effectLayer != null)
+                        Capture(effectLayer, Path.Combine(outputDirectory, "05-song-effect-layer.png"));
+                    Console.WriteLine("SONG_EFFECT_PROBE surfaces={0} leaves={1}",
+                        effectLayer?.Children.Count ?? 0, effectSurface?.Children.Count ?? 0);
                     Console.WriteLine(
                         "ANIMATION_PROBE frames={0} median_ms={1:F2} p95_ms={2:F2} max_ms={3:F2} jank_frames={4}",
                         metrics.FrameCount, metrics.MedianMilliseconds, metrics.P95Milliseconds,
@@ -168,9 +175,9 @@ namespace LyricHover.Tests
             return new MediaSessionSnapshot
             {
                 SessionId = "fullscreen-animation-probe",
-                Title = "Smooth Animation Probe",
-                Artist = "LyricHover",
-                Album = "Local Verification",
+                Title = "All Too Well (10 Minute Version) (Taylor's Version)",
+                Artist = "Taylor Swift",
+                Album = "Red (Taylor's Version)",
                 Duration = TimeSpan.FromSeconds(13),
                 PlaybackStatus = status,
                 ArtworkBytes = ProbeArtwork
