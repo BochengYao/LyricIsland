@@ -81,6 +81,11 @@ namespace LyricHover.Tests
                 return FullscreenAnimationProbe.Run(FullscreenSongEffectProbeMode.SnakeCrawl);
             }
 
+            if (args.Length == 1 && string.Equals(args[0], "--fullscreen-snow-probe", StringComparison.Ordinal))
+            {
+                return FullscreenAnimationProbe.Run(FullscreenSongEffectProbeMode.Snowfall);
+            }
+
             if (args.Length == 1 && string.Equals(args[0], "--timeline-fixture", StringComparison.Ordinal))
             {
                 suite.Run("advances repeated reliable timeline sample", AdvancesRepeatedReliableTimelineSample);
@@ -464,7 +469,7 @@ namespace LyricHover.Tests
         static void FullscreenSongEffectsMatchSafelyAndValidateResources()
         {
             var catalog = SongEffectCatalog.LoadDefault();
-            Assert.Equal(3, catalog.Entries.Count);
+            Assert.Equal(4, catalog.Entries.Count);
             var positives = new[]
             {
                 "All Too Well",
@@ -519,6 +524,23 @@ namespace LyricHover.Tests
             Assert.True(catalog.Resolve(BuildSongEffectSession("Look What You Made Me Do It", "Taylor Swift")) == null);
             Assert.True(catalog.Resolve(BuildSongEffectSession("Look What You Made Me Do: Parody", "Taylor Swift")) == null);
 
+            var christmasPositives = new[]
+            {
+                "All I Want for Christmas Is You",
+                "all i want for christmas is you (Live)",
+                "All I Want for Christmas Is You [Remastered]",
+                "All I Want for Christmas Is You — Extra Festive"
+            };
+            foreach (var title in christmasPositives)
+            {
+                var match = catalog.Resolve(BuildSongEffectSession(title, "Mariah Carey"));
+                Assert.Equal("mariah-carey-all-i-want-for-christmas-is-you-snowfall", match?.Id);
+            }
+            Assert.True(catalog.Resolve(BuildSongEffectSession("All I Want for Christmas Is You", "Some Cover Artist")) == null);
+            Assert.True(catalog.Resolve(BuildSongEffectSession("All I Want for Christmas Is You", "Mariah Carey Tribute")) == null);
+            Assert.True(catalog.Resolve(BuildSongEffectSession("All I Want for Christmas Is You Too", "Mariah Carey")) == null);
+            Assert.True(catalog.Resolve(BuildSongEffectSession("All I Want for Christmas Is You: Parody", "Mariah Carey")) == null);
+
             foreach (var entry in catalog.Entries)
             {
                 Assert.True(FullscreenSongEffectHost.IsRegisteredEffectType(entry.Effect.Type));
@@ -546,6 +568,12 @@ namespace LyricHover.Tests
                 Assert.Equal(snakeColor.Substring(1, 2), snakeColor.Substring(3, 2));
                 Assert.Equal(snakeColor.Substring(1, 2), snakeColor.Substring(5, 2));
             }
+            var snowDescriptor = catalog.Entries.First(entry =>
+                entry.Id == "mariah-carey-all-i-want-for-christmas-is-you-snowfall");
+            Assert.Equal(MapleLeafFallRenderer.EffectType, snowDescriptor.Effect.Type);
+            Assert.Equal(12, SongEffectLayout.ResolveTargetCount(1920, 1080, snowDescriptor.Effect));
+            Assert.Equal(16, SongEffectLayout.ResolveTargetCount(2560, 1440, snowDescriptor.Effect));
+            Assert.Equal(22, SongEffectLayout.ResolveTargetCount(3840, 2160, snowDescriptor.Effect));
             var random = new Random(42);
             var protectedArea = new System.Windows.Rect(200, 0, 600, 200);
             for (var index = 0; index < 50; index++)
@@ -601,6 +629,11 @@ namespace LyricHover.Tests
                 host.Update(BuildSongEffectSession("Look What You Made Me Do", "Taylor Swift"), settings, context);
                 Assert.Equal("taylor-swift-look-what-you-made-me-do-snakes", host.ActiveEffectId);
                 Assert.Equal(2, host.VisualCount);
+                Assert.False(host.IsRendering);
+
+                host.Update(BuildSongEffectSession("All I Want for Christmas Is You", "Mariah Carey"), settings, context);
+                Assert.Equal("mariah-carey-all-i-want-for-christmas-is-you-snowfall", host.ActiveEffectId);
+                Assert.Equal(3, host.VisualCount);
                 Assert.False(host.IsRendering);
 
                 settings.FullscreenReduceMotion = false;

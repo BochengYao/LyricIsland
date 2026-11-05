@@ -66,6 +66,28 @@
         "lyricsOpacityMultiplier": 0.28,
         "currentLineOpacityMultiplier": 0.08
       }
+    },
+    {
+      "id": "mariah-carey-all-i-want-for-christmas-is-you-snowfall",
+      "match": {
+        "artistAliases": ["Mariah Carey"],
+        "titleBase": "All I Want for Christmas Is You",
+        "allowVersionSuffixes": true
+      },
+      "effect": {
+        "type": "maple-leaf-fall",
+        "assets": ["snowflake-six.svg", "snowflake-eight.svg", "snowflake-crystal.svg"],
+        "colors": ["#FFFFFF", "#E7F1FA", "#D5E5F2"],
+        "minSize": 18,
+        "maxSize": 42,
+        "count1080p": 12,
+        "count1440p": 16,
+        "count4k": 22,
+        "minOpacity": 0.18,
+        "maxOpacity": 0.46,
+        "lyricsOpacityMultiplier": 0.38,
+        "currentLineOpacityMultiplier": 0.12
+      }
     }
   ]
 }

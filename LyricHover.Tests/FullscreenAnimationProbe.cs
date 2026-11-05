@@ -18,7 +18,8 @@ namespace LyricHover.Tests
     {
         MapleLeaves,
         PaperStorm,
-        SnakeCrawl
+        SnakeCrawl,
+        Snowfall
     }
 
     internal static class FullscreenAnimationProbe
@@ -192,11 +193,16 @@ namespace LyricHover.Tests
                 title = "Look What You Made Me Do";
                 album = "reputation";
             }
+            else if (mode == FullscreenSongEffectProbeMode.Snowfall)
+            {
+                title = "All I Want for Christmas Is You";
+                album = "Merry Christmas";
+            }
             return new MediaSessionSnapshot
             {
                 SessionId = "fullscreen-animation-probe",
                 Title = title,
-                Artist = "Taylor Swift",
+                Artist = mode == FullscreenSongEffectProbeMode.Snowfall ? "Mariah Carey" : "Taylor Swift",
                 Album = album,
                 Duration = TimeSpan.FromSeconds(13),
                 PlaybackStatus = status,
@@ -208,6 +214,7 @@ namespace LyricHover.Tests
         {
             if (mode == FullscreenSongEffectProbeMode.PaperStorm) return "fullscreen-paper-probe";
             if (mode == FullscreenSongEffectProbeMode.SnakeCrawl) return "fullscreen-snake-probe";
+            if (mode == FullscreenSongEffectProbeMode.Snowfall) return "fullscreen-snow-probe";
             return "fullscreen-animation-probe";
         }
 
@@ -215,6 +222,7 @@ namespace LyricHover.Tests
         {
             if (mode == FullscreenSongEffectProbeMode.PaperStorm) return "paper-storm";
             if (mode == FullscreenSongEffectProbeMode.SnakeCrawl) return "snake-crawl";
+            if (mode == FullscreenSongEffectProbeMode.Snowfall) return "snowfall";
             return "maple-leaves";
         }
 

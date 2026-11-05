@@ -17,6 +17,8 @@ The bundled paper-sheet silhouettes are original project assets. The `flying-pap
 
 The original `snake-head.svg` asset and `snake-crawl` renderer provide a restrained monochrome Reputation-era motif. Short black and charcoal silhouettes use a broad angular viper head, narrow white eye slits, a white forked tongue, cold-white outline, and broken chevron scale marks; their slow edge paths avoid a cartoon-like motion while lyric safe areas dim the complete body and head.
 
+The three original snowflake SVG variants reuse `maple-leaf-fall` for Mariah Carey's `All I Want for Christmas Is You`. Catalog sizing, color, opacity, and count parameters turn the same falling-particle lifecycle into sparse cold-white snowfall without adding another frame subscription or renderer type.
+
 ## Add a new motion type
 
 Implement `IFullscreenSongEffectRenderer`, register its stable type name in `FullscreenSongEffectHost`, and extend catalog validation for its parameters. The renderer must fail closed, avoid hit testing, honor static/reduced-motion mode, stop frame subscriptions on deactivation, and remove all visuals in `Dispose`.
