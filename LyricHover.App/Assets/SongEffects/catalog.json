@@ -76,7 +76,7 @@
       },
       "effect": {
         "type": "maple-leaf-fall",
-        "assets": ["snowflake-six.svg", "snowflake-eight.svg", "snowflake-crystal.svg"],
+        "assets": ["snowflake.svg"],
         "colors": ["#FFFFFF", "#E7F1FA", "#D5E5F2"],
         "minSize": 18,
         "maxSize": 42,

@@ -571,6 +571,8 @@ namespace LyricHover.Tests
             var snowDescriptor = catalog.Entries.First(entry =>
                 entry.Id == "mariah-carey-all-i-want-for-christmas-is-you-snowfall");
             Assert.Equal(MapleLeafFallRenderer.EffectType, snowDescriptor.Effect.Type);
+            Assert.Equal(1, snowDescriptor.Effect.Assets.Count);
+            Assert.Equal("snowflake.svg", snowDescriptor.Effect.Assets[0]);
             Assert.Equal(12, SongEffectLayout.ResolveTargetCount(1920, 1080, snowDescriptor.Effect));
             Assert.Equal(16, SongEffectLayout.ResolveTargetCount(2560, 1440, snowDescriptor.Effect));
             Assert.Equal(22, SongEffectLayout.ResolveTargetCount(3840, 2160, snowDescriptor.Effect));
