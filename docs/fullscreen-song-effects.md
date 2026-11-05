@@ -15,7 +15,7 @@ The bundled maple-leaf silhouette is adapted by runtime recoloring from Twemoji'
 
 The bundled paper-sheet silhouettes are original project assets. The `flying-paper-storm` renderer recreates the monochrome, windswept paper-tornado motif with lateral travel, tumbling, page flips, depth variation, and lyric safe-area dimming; it does not use frames or artwork from the source music video.
 
-The original `snake-head.svg` asset and `snake-crawl` renderer provide a restrained monochrome Reputation-era motif. Short black, charcoal, white, and silver snakes use an inverted outline and scale pattern for contrast, follow mutable spline-like edge paths with independent waves and direction changes, and dim the complete body and head inside lyric safe areas.
+The original `snake-head.svg` asset and `snake-crawl` renderer provide a restrained monochrome Reputation-era motif. Short black and charcoal silhouettes use a broad angular viper head, narrow white eye slits, a white forked tongue, cold-white outline, and broken chevron scale marks; their slow edge paths avoid a cartoon-like motion while lyric safe areas dim the complete body and head.
 
 ## Add a new motion type
 

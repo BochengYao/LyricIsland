@@ -540,6 +540,12 @@ namespace LyricHover.Tests
             Assert.Equal(3, SongEffectLayout.ResolveTargetCount(1920, 1080, snakeDescriptor.Effect));
             Assert.Equal(4, SongEffectLayout.ResolveTargetCount(2560, 1440, snakeDescriptor.Effect));
             Assert.Equal(5, SongEffectLayout.ResolveTargetCount(3840, 2160, snakeDescriptor.Effect));
+            foreach (var snakeColor in snakeDescriptor.Effect.Colors)
+            {
+                Assert.Equal(7, snakeColor.Length);
+                Assert.Equal(snakeColor.Substring(1, 2), snakeColor.Substring(3, 2));
+                Assert.Equal(snakeColor.Substring(1, 2), snakeColor.Substring(5, 2));
+            }
             var random = new Random(42);
             var protectedArea = new System.Windows.Rect(200, 0, 600, 200);
             for (var index = 0; index < 50; index++)

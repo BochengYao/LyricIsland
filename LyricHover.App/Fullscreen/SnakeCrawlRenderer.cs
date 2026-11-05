@@ -149,7 +149,7 @@ namespace LyricHover.App.Fullscreen
             for (var index = particles.Count - 1; index >= 0; index--)
             {
                 var particle = particles[index];
-                var pulse = 0.88 + Math.Sin(particle.Phase * 0.55 + particle.SpeedPhase) * 0.12;
+                var pulse = 0.94 + Math.Sin(particle.Phase * 0.55 + particle.SpeedPhase) * 0.06;
                 particle.HeadDistance += particle.Speed * particle.Direction * pulse * elapsed;
                 particle.Phase += elapsed * particle.WaveSpeed;
                 UpdateSnakeVisual(particle, elapsed);
@@ -167,12 +167,12 @@ namespace LyricHover.App.Fullscreen
             var effect = descriptor.Effect;
             var asset = assets[random.Next(assets.Count)];
             var length = effect.MinSize + random.NextDouble() * (effect.MaxSize - effect.MinSize);
-            var thickness = 9.5 + (length - effect.MinSize) /
-                Math.Max(1, effect.MaxSize - effect.MinSize) * 4.5;
+            var thickness = 8.5 + (length - effect.MinSize) /
+                Math.Max(1, effect.MaxSize - effect.MinSize) * 4.0;
             var horizontal = random.NextDouble() < 0.74;
             var direction = random.NextDouble() < 0.68 ? 1 : -1;
             var travelSpan = horizontal ? context.Bounds.Width : context.Bounds.Height;
-            var edgeOffset = 34 + random.NextDouble() * 74;
+            var edgeOffset = 26 + random.NextDouble() * 52;
             var baseCross = horizontal
                 ? (random.NextDouble() < 0.5 ? edgeOffset : context.Bounds.Height - edgeOffset)
                 : (random.NextDouble() < 0.5 ? edgeOffset : context.Bounds.Width - edgeOffset);
@@ -186,12 +186,12 @@ namespace LyricHover.App.Fullscreen
             particle.Length = length;
             particle.HeadDistance = headDistance;
             particle.BaseCross = baseCross;
-            particle.Amplitude = 12 + random.NextDouble() * 10;
-            particle.Wavelength = 42 + random.NextDouble() * 30;
+            particle.Amplitude = 11 + random.NextDouble() * 6;
+            particle.Wavelength = 58 + random.NextDouble() * 26;
             particle.Phase = random.NextDouble() * Math.PI * 2;
             particle.SpeedPhase = random.NextDouble() * Math.PI * 2;
-            particle.WaveSpeed = 1.0 + random.NextDouble() * 0.85;
-            particle.Speed = (travelSpan + length * 2) / (12 + random.NextDouble() * 6);
+            particle.WaveSpeed = 0.55 + random.NextDouble() * 0.45;
+            particle.Speed = (travelSpan + length * 2) / (15 + random.NextDouble() * 6);
             particle.BaseOpacity = effect.MinOpacity + random.NextDouble() * (effect.MaxOpacity - effect.MinOpacity);
             particle.Visual.Opacity = particle.BaseOpacity;
             particle.Visual.Width = context.Bounds.Width;
@@ -215,19 +215,12 @@ namespace LyricHover.App.Fullscreen
             figure.Segments.Add(segment);
             geometry.Figures.Add(figure);
 
-            var lightBody = RelativeLuminance(color) >= 0.56;
             var body = new SolidColorBrush(color);
-            var outline = new SolidColorBrush(lightBody
-                ? Color.FromArgb(230, 10, 11, 13)
-                : Color.FromArgb(225, 238, 239, 241));
-            var pattern = new SolidColorBrush(lightBody
-                ? Color.FromArgb(210, 28, 30, 34)
-                : Color.FromArgb(210, 243, 244, 246));
-            var tongue = new SolidColorBrush(Color.FromArgb(210, 132, 24, 42));
+            var outline = new SolidColorBrush(Color.FromArgb(220, 226, 226, 226));
+            var pattern = new SolidColorBrush(Color.FromArgb(215, 242, 242, 242));
             if (body.CanFreeze) body.Freeze();
             if (outline.CanFreeze) outline.Freeze();
             if (pattern.CanFreeze) pattern.Freeze();
-            if (tongue.CanFreeze) tongue.Freeze();
 
             var visual = new Canvas { IsHitTestVisible = false };
             visual.Children.Add(new Path
@@ -235,21 +228,30 @@ namespace LyricHover.App.Fullscreen
                 Data = geometry,
                 Fill = body,
                 Stroke = outline,
-                StrokeThickness = 2.2,
-                StrokeLineJoin = PenLineJoin.Round,
+                StrokeThickness = 1.35,
+                StrokeLineJoin = PenLineJoin.Miter,
                 IsHitTestVisible = false
             });
 
             var scaleMarks = new List<ScaleMark>();
-            for (var markIndex = 0; markIndex < 4; markIndex++)
+            for (var markIndex = 0; markIndex < 5; markIndex++)
             {
-                var mark = new Rectangle
+                var markWidth = thickness * 0.90;
+                var markHeight = thickness * 0.58;
+                var mark = new Polyline
                 {
-                    Width = thickness * 0.48,
-                    Height = thickness * 0.48,
-                    RadiusX = 1,
-                    RadiusY = 1,
-                    Fill = pattern,
+                    Width = markWidth,
+                    Height = markHeight,
+                    Points = new PointCollection
+                    {
+                        new Point(0, 0),
+                        new Point(markWidth * 0.50, markHeight),
+                        new Point(markWidth, 0)
+                    },
+                    Stroke = pattern,
+                    StrokeThickness = Math.Max(0.85, thickness * 0.10),
+                    StrokeLineJoin = PenLineJoin.Miter,
+                    Stretch = Stretch.Fill,
                     RenderTransformOrigin = new Point(0.5, 0.5),
                     IsHitTestVisible = false
                 };
@@ -260,15 +262,15 @@ namespace LyricHover.App.Fullscreen
                 {
                     Visual = mark,
                     Rotation = rotation,
-                    CenterIndex = 5 + markIndex * 4
+                    CenterIndex = 6 + markIndex * 3
                 });
             }
 
-            var headWidth = thickness * 3.10;
-            var headHeight = thickness * 2.10;
+            var headWidth = thickness * 3.45;
+            var headHeight = thickness * 2.25;
             var head = new Canvas
             {
-                Width = headWidth * 1.18,
+                Width = headWidth,
                 Height = headHeight,
                 RenderTransformOrigin = new Point(0.5, 0.5),
                 IsHitTestVisible = false
@@ -278,41 +280,50 @@ namespace LyricHover.App.Fullscreen
                 Data = asset.Geometry,
                 Fill = body,
                 Stroke = outline,
-                StrokeThickness = 1.2,
+                StrokeThickness = 1.1,
                 Width = headWidth,
                 Height = headHeight,
                 Stretch = Stretch.Fill,
                 IsHitTestVisible = false
             });
-            var eyeBrush = new SolidColorBrush(lightBody
-                ? Color.FromArgb(240, 10, 11, 13)
-                : Color.FromArgb(240, 248, 248, 246));
-            if (eyeBrush.CanFreeze) eyeBrush.Freeze();
-            for (var eye = 0; eye < 2; eye++)
+            var facialStroke = new SolidColorBrush(Color.FromArgb(225, 246, 246, 246));
+            if (facialStroke.CanFreeze) facialStroke.Freeze();
+            head.Children.Add(new Line
             {
-                var shape = new Ellipse
-                {
-                    Width = Math.Max(1.6, thickness * 0.20),
-                    Height = Math.Max(1.6, thickness * 0.20),
-                    Fill = eyeBrush,
-                    IsHitTestVisible = false
-                };
-                Canvas.SetLeft(shape, headWidth * 0.66);
-                Canvas.SetTop(shape, headHeight * (eye == 0 ? 0.24 : 0.64));
-                head.Children.Add(shape);
-            }
+                X1 = headWidth * 0.54,
+                Y1 = headHeight * 0.29,
+                X2 = headWidth * 0.76,
+                Y2 = headHeight * 0.39,
+                Stroke = facialStroke,
+                StrokeThickness = Math.Max(1, thickness * 0.12),
+                StrokeStartLineCap = PenLineCap.Square,
+                StrokeEndLineCap = PenLineCap.Square,
+                IsHitTestVisible = false
+            });
+            head.Children.Add(new Line
+            {
+                X1 = headWidth * 0.54,
+                Y1 = headHeight * 0.71,
+                X2 = headWidth * 0.76,
+                Y2 = headHeight * 0.61,
+                Stroke = facialStroke,
+                StrokeThickness = Math.Max(1, thickness * 0.12),
+                StrokeStartLineCap = PenLineCap.Square,
+                StrokeEndLineCap = PenLineCap.Square,
+                IsHitTestVisible = false
+            });
             for (var fork = 0; fork < 2; fork++)
             {
                 head.Children.Add(new Line
                 {
-                    X1 = headWidth * 0.86,
+                    X1 = headWidth * 0.96,
                     Y1 = headHeight * 0.50,
-                    X2 = headWidth * 1.14,
+                    X2 = headWidth * 1.20,
                     Y2 = headHeight * (fork == 0 ? 0.36 : 0.64),
-                    Stroke = tongue,
-                    StrokeThickness = Math.Max(1, thickness * 0.11),
-                    StrokeStartLineCap = PenLineCap.Round,
-                    StrokeEndLineCap = PenLineCap.Round,
+                    Stroke = facialStroke,
+                    StrokeThickness = Math.Max(0.9, thickness * 0.09),
+                    StrokeStartLineCap = PenLineCap.Square,
+                    StrokeEndLineCap = PenLineCap.Square,
                     IsHitTestVisible = false
                 });
             }
@@ -335,11 +346,6 @@ namespace LyricHover.App.Fullscreen
                 HeadHeight = headHeight,
                 Thickness = thickness
             };
-        }
-
-        private static double RelativeLuminance(Color color)
-        {
-            return (color.R * 0.2126 + color.G * 0.7152 + color.B * 0.0722) / 255.0;
         }
 
         private void UpdateSnakeVisual(SnakeParticle particle, double elapsed)
@@ -395,7 +401,7 @@ namespace LyricHover.App.Fullscreen
                 var centerIndex = Math.Min(SegmentCount - 2, mark.CenterIndex);
                 var point = particle.Centerline[centerIndex];
                 var next = particle.Centerline[centerIndex + 1];
-                mark.Rotation.Angle = Math.Atan2(next.Y - point.Y, next.X - point.X) * 180 / Math.PI + 45;
+                mark.Rotation.Angle = Math.Atan2(next.Y - point.Y, next.X - point.X) * 180 / Math.PI;
                 Canvas.SetLeft(mark.Visual, point.X - mark.Visual.Width * 0.5);
                 Canvas.SetTop(mark.Visual, point.Y - mark.Visual.Height * 0.5);
             }
@@ -516,7 +522,7 @@ namespace LyricHover.App.Fullscreen
 
         private sealed class ScaleMark
         {
-            public Rectangle Visual;
+            public Polyline Visual;
             public RotateTransform Rotation;
             public int CenterIndex;
         }
