@@ -18,7 +18,7 @@ namespace LyricHover.Tests
     {
         private static readonly byte[] ProbeArtwork = BuildProbeArtwork();
 
-        public static int Run()
+        public static int Run(bool usePaperStorm)
         {
             var settings = new OverlayPlacementSettings
             {
@@ -30,8 +30,8 @@ namespace LyricHover.Tests
             settings.Normalize();
 
             var lyrics = BuildLyrics();
-            var playingSession = BuildSession(MediaPlaybackStatus.Playing);
-            var pausedSession = BuildSession(MediaPlaybackStatus.Paused);
+            var playingSession = BuildSession(MediaPlaybackStatus.Playing, usePaperStorm);
+            var pausedSession = BuildSession(MediaPlaybackStatus.Paused, usePaperStorm);
             var window = new FullscreenLyricsWindow(settings)
             {
                 WindowState = WindowState.Normal,
@@ -52,7 +52,8 @@ namespace LyricHover.Tests
             var settledCaptured = false;
             var closed = false;
             var exitCode = 1;
-            var outputDirectory = Path.Combine(GetSolutionRoot(), "output", "fullscreen-animation-probe");
+            var outputDirectory = Path.Combine(GetSolutionRoot(), "output",
+                usePaperStorm ? "fullscreen-paper-probe" : "fullscreen-animation-probe");
             Directory.CreateDirectory(outputDirectory);
 
             EventHandler rendering = (sender, args) =>
@@ -122,7 +123,8 @@ namespace LyricHover.Tests
                     var effectSurface = effectLayer?.Children.OfType<System.Windows.Controls.Canvas>().FirstOrDefault();
                     if (effectLayer != null)
                         Capture(effectLayer, Path.Combine(outputDirectory, "05-song-effect-layer.png"));
-                    Console.WriteLine("SONG_EFFECT_PROBE surfaces={0} leaves={1}",
+                    Console.WriteLine("SONG_EFFECT_PROBE effect={0} surfaces={1} visuals={2}",
+                        usePaperStorm ? "paper-storm" : "maple-leaves",
                         effectLayer?.Children.Count ?? 0, effectSurface?.Children.Count ?? 0);
                     Console.WriteLine(
                         "ANIMATION_PROBE frames={0} median_ms={1:F2} p95_ms={2:F2} max_ms={3:F2} jank_frames={4}",
@@ -170,14 +172,14 @@ namespace LyricHover.Tests
             return words;
         }
 
-        private static MediaSessionSnapshot BuildSession(MediaPlaybackStatus status)
+        private static MediaSessionSnapshot BuildSession(MediaPlaybackStatus status, bool usePaperStorm)
         {
             return new MediaSessionSnapshot
             {
                 SessionId = "fullscreen-animation-probe",
-                Title = "All Too Well (10 Minute Version) (Taylor's Version)",
+                Title = usePaperStorm ? "Fortnight (feat. Post Malone)" : "All Too Well (10 Minute Version) (Taylor's Version)",
                 Artist = "Taylor Swift",
-                Album = "Red (Taylor's Version)",
+                Album = usePaperStorm ? "THE TORTURED POETS DEPARTMENT" : "Red (Taylor's Version)",
                 Duration = TimeSpan.FromSeconds(13),
                 PlaybackStatus = status,
                 ArtworkBytes = ProbeArtwork

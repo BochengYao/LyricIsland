@@ -68,7 +68,12 @@ namespace LyricHover.Tests
 
             if (args.Length == 1 && string.Equals(args[0], "--fullscreen-animation-probe", StringComparison.Ordinal))
             {
-                return FullscreenAnimationProbe.Run();
+                return FullscreenAnimationProbe.Run(false);
+            }
+
+            if (args.Length == 1 && string.Equals(args[0], "--fullscreen-paper-probe", StringComparison.Ordinal))
+            {
+                return FullscreenAnimationProbe.Run(true);
             }
 
             if (args.Length == 1 && string.Equals(args[0], "--timeline-fixture", StringComparison.Ordinal))
@@ -454,7 +459,7 @@ namespace LyricHover.Tests
         static void FullscreenSongEffectsMatchSafelyAndValidateResources()
         {
             var catalog = SongEffectCatalog.LoadDefault();
-            Assert.Equal(1, catalog.Entries.Count);
+            Assert.Equal(2, catalog.Entries.Count);
             var positives = new[]
             {
                 "All Too Well",
@@ -474,18 +479,52 @@ namespace LyricHover.Tests
             Assert.True(catalog.Resolve(BuildSongEffectSession("All Too Wellbeing", "Taylor Swift")) == null);
             Assert.True(catalog.Resolve(BuildSongEffectSession("All Too Well: The Short Film", "Taylor Swift")) == null);
 
-            var descriptor = catalog.Entries[0];
-            foreach (var assetName in descriptor.Effect.Assets)
-                Assert.True(SvgVectorAssetLoader.Load(assetName) != null);
+            var fortnightPositives = new[]
+            {
+                "Fortnight",
+                "fortnight (feat. Post Malone)",
+                "Fortnight [Acoustic Version]",
+                "Fortnight — Live"
+            };
+            foreach (var title in fortnightPositives)
+            {
+                var match = catalog.Resolve(BuildSongEffectSession(title, "Taylor Swift feat. Post Malone"));
+                Assert.Equal("taylor-swift-fortnight-paper-storm", match?.Id);
+            }
+            Assert.True(catalog.Resolve(BuildSongEffectSession("Fortnight", "Taylor Swift & Post Malone")) != null);
+            Assert.True(catalog.Resolve(BuildSongEffectSession("Fortnight", "Post Malone")) == null);
+            Assert.True(catalog.Resolve(BuildSongEffectSession("Fortnight", "Taylor Swift Tribute")) == null);
+            Assert.True(catalog.Resolve(BuildSongEffectSession("Fortnite", "Taylor Swift")) == null);
+            Assert.True(catalog.Resolve(BuildSongEffectSession("Fortnightly", "Taylor Swift")) == null);
+
+            foreach (var entry in catalog.Entries)
+            {
+                Assert.True(FullscreenSongEffectHost.IsRegisteredEffectType(entry.Effect.Type));
+                foreach (var assetName in entry.Effect.Assets)
+                    Assert.True(SvgVectorAssetLoader.Load(assetName) != null);
+            }
+            var descriptor = catalog.Entries.First(entry =>
+                entry.Id == "taylor-swift-all-too-well-maple-leaves");
             Assert.Equal(8, SongEffectLayout.ResolveTargetCount(1920, 1080, descriptor.Effect));
             Assert.Equal(10, SongEffectLayout.ResolveTargetCount(2560, 1440, descriptor.Effect));
             Assert.Equal(14, SongEffectLayout.ResolveTargetCount(3840, 2160, descriptor.Effect));
+            var paperDescriptor = catalog.Entries.First(entry =>
+                entry.Id == "taylor-swift-fortnight-paper-storm");
+            Assert.Equal(16, SongEffectLayout.ResolveTargetCount(1920, 1080, paperDescriptor.Effect));
+            Assert.Equal(22, SongEffectLayout.ResolveTargetCount(2560, 1440, paperDescriptor.Effect));
+            Assert.Equal(30, SongEffectLayout.ResolveTargetCount(3840, 2160, paperDescriptor.Effect));
             var random = new Random(42);
             var protectedArea = new System.Windows.Rect(200, 0, 600, 200);
             for (var index = 0; index < 50; index++)
             {
                 var x = SongEffectLayout.ChooseSpawnX(random, 1000, protectedArea, 50);
                 Assert.False(protectedArea.Contains(new System.Windows.Point(x + 25, 50)));
+            }
+            var currentLine = new System.Windows.Rect(0, 350, 1000, 220);
+            for (var index = 0; index < 50; index++)
+            {
+                var y = PaperStormLayout.ChooseSpawnY(random, 900, currentLine, 60);
+                Assert.False(currentLine.Contains(new System.Windows.Point(500, y + 30)));
             }
 
             var malicious = Encoding.UTF8.GetBytes(
@@ -521,13 +560,19 @@ namespace LyricHover.Tests
                 Assert.Equal(3, host.VisualCount);
                 Assert.False(host.IsRendering);
 
+                host.Update(BuildSongEffectSession("Fortnight (feat. Post Malone)", "Taylor Swift"), settings, context);
+                Assert.Equal("taylor-swift-fortnight-paper-storm", host.ActiveEffectId);
+                Assert.Equal(3, host.VisualCount);
+                Assert.False(host.IsRendering);
+
                 settings.FullscreenReduceMotion = false;
                 settings.FullscreenRenderQuality = FullscreenRenderQuality.High60Fps;
-                host.Update(BuildSongEffectSession("All Too Well (10 Minute Version)", "Taylor Swift"), settings, context);
+                host.Update(BuildSongEffectSession("Fortnight (feat. Post Malone)", "Taylor Swift"), settings, context);
                 Assert.True(host.IsRendering);
+                Assert.Equal(8, host.VisualCount);
 
                 settings.FullscreenSongEasterEggsEnabled = false;
-                host.Update(BuildSongEffectSession("All Too Well (10 Minute Version)", "Taylor Swift"), settings, context);
+                host.Update(BuildSongEffectSession("Fortnight (feat. Post Malone)", "Taylor Swift"), settings, context);
                 Assert.Equal(string.Empty, host.ActiveEffectId);
                 Assert.True(host.IsRendering);
             }

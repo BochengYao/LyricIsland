@@ -119,7 +119,7 @@ namespace LyricHover.App.Fullscreen
             if (entry == null || string.IsNullOrWhiteSpace(entry.Id) || entry.Match == null || entry.Effect == null ||
                 string.IsNullOrWhiteSpace(entry.Match.TitleBase) || entry.Match.ArtistAliases == null ||
                 entry.Match.ArtistAliases.Count == 0 ||
-                !string.Equals(entry.Effect.Type, MapleLeafFallRenderer.EffectType, StringComparison.Ordinal) ||
+                !FullscreenSongEffectHost.IsRegisteredEffectType(entry.Effect.Type) ||
                 entry.Effect.Assets == null || entry.Effect.Assets.Count == 0 || entry.Effect.Colors == null ||
                 entry.Effect.Colors.Count == 0) return false;
             var effect = entry.Effect;

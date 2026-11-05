@@ -13,6 +13,8 @@ The SVG subset accepts a positive `viewBox` and one or more flattened `<path d="
 
 The bundled maple-leaf silhouette is adapted by runtime recoloring from Twemoji's U+1F341 graphic. See `THIRD_PARTY_NOTICES.md` for attribution and license details.
 
+The bundled paper-sheet silhouettes are original project assets. The `flying-paper-storm` renderer recreates the monochrome, windswept paper-tornado motif with lateral travel, tumbling, page flips, depth variation, and lyric safe-area dimming; it does not use frames or artwork from the source music video.
+
 ## Add a new motion type
 
 Implement `IFullscreenSongEffectRenderer`, register its stable type name in `FullscreenSongEffectHost`, and extend catalog validation for its parameters. The renderer must fail closed, avoid hit testing, honor static/reduced-motion mode, stop frame subscriptions on deactivation, and remove all visuals in `Dispose`.

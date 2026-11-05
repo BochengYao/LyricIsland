@@ -95,9 +95,17 @@ namespace LyricHover.App.Fullscreen
 
         private IFullscreenSongEffectRenderer CreateRenderer(string effectType)
         {
-            return string.Equals(effectType, MapleLeafFallRenderer.EffectType, StringComparison.Ordinal)
-                ? new MapleLeafFallRenderer(layer)
-                : null;
+            if (string.Equals(effectType, MapleLeafFallRenderer.EffectType, StringComparison.Ordinal))
+                return new MapleLeafFallRenderer(layer);
+            if (string.Equals(effectType, FlyingPaperStormRenderer.EffectType, StringComparison.Ordinal))
+                return new FlyingPaperStormRenderer(layer);
+            return null;
+        }
+
+        internal static bool IsRegisteredEffectType(string effectType)
+        {
+            return string.Equals(effectType, MapleLeafFallRenderer.EffectType, StringComparison.Ordinal) ||
+                string.Equals(effectType, FlyingPaperStormRenderer.EffectType, StringComparison.Ordinal);
         }
     }
 }

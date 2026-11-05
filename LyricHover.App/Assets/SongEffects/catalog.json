@@ -22,6 +22,28 @@
         "lyricsOpacityMultiplier": 0.45,
         "currentLineOpacityMultiplier": 0.15
       }
+    },
+    {
+      "id": "taylor-swift-fortnight-paper-storm",
+      "match": {
+        "artistAliases": ["Taylor Swift"],
+        "titleBase": "Fortnight",
+        "allowVersionSuffixes": true
+      },
+      "effect": {
+        "type": "flying-paper-storm",
+        "assets": ["paper-sheet.svg", "paper-sheet-wide.svg", "paper-sheet-torn.svg"],
+        "colors": ["#EEECE6", "#D9D8D4", "#F5F3ED", "#C7C8C8"],
+        "minSize": 54,
+        "maxSize": 126,
+        "count1080p": 16,
+        "count1440p": 22,
+        "count4k": 30,
+        "minOpacity": 0.13,
+        "maxOpacity": 0.31,
+        "lyricsOpacityMultiplier": 0.34,
+        "currentLineOpacityMultiplier": 0.10
+      }
     }
   ]
 }
