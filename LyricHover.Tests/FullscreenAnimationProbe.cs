@@ -14,11 +14,18 @@ using LyricHover.Core.Media;
 
 namespace LyricHover.Tests
 {
+    internal enum FullscreenSongEffectProbeMode
+    {
+        MapleLeaves,
+        PaperStorm,
+        SnakeCrawl
+    }
+
     internal static class FullscreenAnimationProbe
     {
         private static readonly byte[] ProbeArtwork = BuildProbeArtwork();
 
-        public static int Run(bool usePaperStorm)
+        public static int Run(FullscreenSongEffectProbeMode mode)
         {
             var settings = new OverlayPlacementSettings
             {
@@ -30,8 +37,8 @@ namespace LyricHover.Tests
             settings.Normalize();
 
             var lyrics = BuildLyrics();
-            var playingSession = BuildSession(MediaPlaybackStatus.Playing, usePaperStorm);
-            var pausedSession = BuildSession(MediaPlaybackStatus.Paused, usePaperStorm);
+            var playingSession = BuildSession(MediaPlaybackStatus.Playing, mode);
+            var pausedSession = BuildSession(MediaPlaybackStatus.Paused, mode);
             var window = new FullscreenLyricsWindow(settings)
             {
                 WindowState = WindowState.Normal,
@@ -52,8 +59,7 @@ namespace LyricHover.Tests
             var settledCaptured = false;
             var closed = false;
             var exitCode = 1;
-            var outputDirectory = Path.Combine(GetSolutionRoot(), "output",
-                usePaperStorm ? "fullscreen-paper-probe" : "fullscreen-animation-probe");
+            var outputDirectory = Path.Combine(GetSolutionRoot(), "output", ResolveOutputDirectoryName(mode));
             Directory.CreateDirectory(outputDirectory);
 
             EventHandler rendering = (sender, args) =>
@@ -124,7 +130,7 @@ namespace LyricHover.Tests
                     if (effectLayer != null)
                         Capture(effectLayer, Path.Combine(outputDirectory, "05-song-effect-layer.png"));
                     Console.WriteLine("SONG_EFFECT_PROBE effect={0} surfaces={1} visuals={2}",
-                        usePaperStorm ? "paper-storm" : "maple-leaves",
+                        ResolveEffectName(mode),
                         effectLayer?.Children.Count ?? 0, effectSurface?.Children.Count ?? 0);
                     Console.WriteLine(
                         "ANIMATION_PROBE frames={0} median_ms={1:F2} p95_ms={2:F2} max_ms={3:F2} jank_frames={4}",
@@ -172,18 +178,44 @@ namespace LyricHover.Tests
             return words;
         }
 
-        private static MediaSessionSnapshot BuildSession(MediaPlaybackStatus status, bool usePaperStorm)
+        private static MediaSessionSnapshot BuildSession(MediaPlaybackStatus status, FullscreenSongEffectProbeMode mode)
         {
+            var title = "All Too Well (10 Minute Version) (Taylor's Version)";
+            var album = "Red (Taylor's Version)";
+            if (mode == FullscreenSongEffectProbeMode.PaperStorm)
+            {
+                title = "Fortnight (feat. Post Malone)";
+                album = "THE TORTURED POETS DEPARTMENT";
+            }
+            else if (mode == FullscreenSongEffectProbeMode.SnakeCrawl)
+            {
+                title = "Look What You Made Me Do";
+                album = "reputation";
+            }
             return new MediaSessionSnapshot
             {
                 SessionId = "fullscreen-animation-probe",
-                Title = usePaperStorm ? "Fortnight (feat. Post Malone)" : "All Too Well (10 Minute Version) (Taylor's Version)",
+                Title = title,
                 Artist = "Taylor Swift",
-                Album = usePaperStorm ? "THE TORTURED POETS DEPARTMENT" : "Red (Taylor's Version)",
+                Album = album,
                 Duration = TimeSpan.FromSeconds(13),
                 PlaybackStatus = status,
                 ArtworkBytes = ProbeArtwork
             };
+        }
+
+        private static string ResolveOutputDirectoryName(FullscreenSongEffectProbeMode mode)
+        {
+            if (mode == FullscreenSongEffectProbeMode.PaperStorm) return "fullscreen-paper-probe";
+            if (mode == FullscreenSongEffectProbeMode.SnakeCrawl) return "fullscreen-snake-probe";
+            return "fullscreen-animation-probe";
+        }
+
+        private static string ResolveEffectName(FullscreenSongEffectProbeMode mode)
+        {
+            if (mode == FullscreenSongEffectProbeMode.PaperStorm) return "paper-storm";
+            if (mode == FullscreenSongEffectProbeMode.SnakeCrawl) return "snake-crawl";
+            return "maple-leaves";
         }
 
         private static byte[] BuildProbeArtwork()

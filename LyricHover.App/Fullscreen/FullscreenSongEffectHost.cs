@@ -99,13 +99,16 @@ namespace LyricHover.App.Fullscreen
                 return new MapleLeafFallRenderer(layer);
             if (string.Equals(effectType, FlyingPaperStormRenderer.EffectType, StringComparison.Ordinal))
                 return new FlyingPaperStormRenderer(layer);
+            if (string.Equals(effectType, SnakeCrawlRenderer.EffectType, StringComparison.Ordinal))
+                return new SnakeCrawlRenderer(layer);
             return null;
         }
 
         internal static bool IsRegisteredEffectType(string effectType)
         {
             return string.Equals(effectType, MapleLeafFallRenderer.EffectType, StringComparison.Ordinal) ||
-                string.Equals(effectType, FlyingPaperStormRenderer.EffectType, StringComparison.Ordinal);
+                string.Equals(effectType, FlyingPaperStormRenderer.EffectType, StringComparison.Ordinal) ||
+                string.Equals(effectType, SnakeCrawlRenderer.EffectType, StringComparison.Ordinal);
         }
     }
 }

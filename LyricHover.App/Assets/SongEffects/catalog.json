@@ -44,6 +44,28 @@
         "lyricsOpacityMultiplier": 0.34,
         "currentLineOpacityMultiplier": 0.10
       }
+    },
+    {
+      "id": "taylor-swift-look-what-you-made-me-do-snakes",
+      "match": {
+        "artistAliases": ["Taylor Swift"],
+        "titleBase": "Look What You Made Me Do",
+        "allowVersionSuffixes": true
+      },
+      "effect": {
+        "type": "snake-crawl",
+        "assets": ["snake-head.svg"],
+        "colors": ["#0C0D0F", "#24272C", "#F3F3F0", "#BFC3C7"],
+        "minSize": 110,
+        "maxSize": 180,
+        "count1080p": 3,
+        "count1440p": 4,
+        "count4k": 5,
+        "minOpacity": 0.26,
+        "maxOpacity": 0.44,
+        "lyricsOpacityMultiplier": 0.28,
+        "currentLineOpacityMultiplier": 0.08
+      }
     }
   ]
 }

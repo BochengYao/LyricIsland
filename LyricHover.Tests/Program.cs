@@ -68,12 +68,17 @@ namespace LyricHover.Tests
 
             if (args.Length == 1 && string.Equals(args[0], "--fullscreen-animation-probe", StringComparison.Ordinal))
             {
-                return FullscreenAnimationProbe.Run(false);
+                return FullscreenAnimationProbe.Run(FullscreenSongEffectProbeMode.MapleLeaves);
             }
 
             if (args.Length == 1 && string.Equals(args[0], "--fullscreen-paper-probe", StringComparison.Ordinal))
             {
-                return FullscreenAnimationProbe.Run(true);
+                return FullscreenAnimationProbe.Run(FullscreenSongEffectProbeMode.PaperStorm);
+            }
+
+            if (args.Length == 1 && string.Equals(args[0], "--fullscreen-snake-probe", StringComparison.Ordinal))
+            {
+                return FullscreenAnimationProbe.Run(FullscreenSongEffectProbeMode.SnakeCrawl);
             }
 
             if (args.Length == 1 && string.Equals(args[0], "--timeline-fixture", StringComparison.Ordinal))
@@ -459,7 +464,7 @@ namespace LyricHover.Tests
         static void FullscreenSongEffectsMatchSafelyAndValidateResources()
         {
             var catalog = SongEffectCatalog.LoadDefault();
-            Assert.Equal(2, catalog.Entries.Count);
+            Assert.Equal(3, catalog.Entries.Count);
             var positives = new[]
             {
                 "All Too Well",
@@ -497,6 +502,23 @@ namespace LyricHover.Tests
             Assert.True(catalog.Resolve(BuildSongEffectSession("Fortnite", "Taylor Swift")) == null);
             Assert.True(catalog.Resolve(BuildSongEffectSession("Fortnightly", "Taylor Swift")) == null);
 
+            var snakePositives = new[]
+            {
+                "Look What You Made Me Do",
+                "look what you made me do (Live)",
+                "Look What You Made Me Do [Remix]",
+                "Look What You Made Me Do — Reputation Tour"
+            };
+            foreach (var title in snakePositives)
+            {
+                var match = catalog.Resolve(BuildSongEffectSession(title, "Taylor Swift"));
+                Assert.Equal("taylor-swift-look-what-you-made-me-do-snakes", match?.Id);
+            }
+            Assert.True(catalog.Resolve(BuildSongEffectSession("Look What You Made Me Do", "Some Cover Artist")) == null);
+            Assert.True(catalog.Resolve(BuildSongEffectSession("Look What You Made Me Do", "Taylor Swift Tribute")) == null);
+            Assert.True(catalog.Resolve(BuildSongEffectSession("Look What You Made Me Do It", "Taylor Swift")) == null);
+            Assert.True(catalog.Resolve(BuildSongEffectSession("Look What You Made Me Do: Parody", "Taylor Swift")) == null);
+
             foreach (var entry in catalog.Entries)
             {
                 Assert.True(FullscreenSongEffectHost.IsRegisteredEffectType(entry.Effect.Type));
@@ -513,6 +535,11 @@ namespace LyricHover.Tests
             Assert.Equal(16, SongEffectLayout.ResolveTargetCount(1920, 1080, paperDescriptor.Effect));
             Assert.Equal(22, SongEffectLayout.ResolveTargetCount(2560, 1440, paperDescriptor.Effect));
             Assert.Equal(30, SongEffectLayout.ResolveTargetCount(3840, 2160, paperDescriptor.Effect));
+            var snakeDescriptor = catalog.Entries.First(entry =>
+                entry.Id == "taylor-swift-look-what-you-made-me-do-snakes");
+            Assert.Equal(3, SongEffectLayout.ResolveTargetCount(1920, 1080, snakeDescriptor.Effect));
+            Assert.Equal(4, SongEffectLayout.ResolveTargetCount(2560, 1440, snakeDescriptor.Effect));
+            Assert.Equal(5, SongEffectLayout.ResolveTargetCount(3840, 2160, snakeDescriptor.Effect));
             var random = new Random(42);
             var protectedArea = new System.Windows.Rect(200, 0, 600, 200);
             for (var index = 0; index < 50; index++)
@@ -565,14 +592,19 @@ namespace LyricHover.Tests
                 Assert.Equal(3, host.VisualCount);
                 Assert.False(host.IsRendering);
 
+                host.Update(BuildSongEffectSession("Look What You Made Me Do", "Taylor Swift"), settings, context);
+                Assert.Equal("taylor-swift-look-what-you-made-me-do-snakes", host.ActiveEffectId);
+                Assert.Equal(2, host.VisualCount);
+                Assert.False(host.IsRendering);
+
                 settings.FullscreenReduceMotion = false;
                 settings.FullscreenRenderQuality = FullscreenRenderQuality.High60Fps;
-                host.Update(BuildSongEffectSession("Fortnight (feat. Post Malone)", "Taylor Swift"), settings, context);
+                host.Update(BuildSongEffectSession("Look What You Made Me Do", "Taylor Swift"), settings, context);
                 Assert.True(host.IsRendering);
-                Assert.Equal(8, host.VisualCount);
+                Assert.Equal(2, host.VisualCount);
 
                 settings.FullscreenSongEasterEggsEnabled = false;
-                host.Update(BuildSongEffectSession("Fortnight (feat. Post Malone)", "Taylor Swift"), settings, context);
+                host.Update(BuildSongEffectSession("Look What You Made Me Do", "Taylor Swift"), settings, context);
                 Assert.Equal(string.Empty, host.ActiveEffectId);
                 Assert.True(host.IsRendering);
             }
