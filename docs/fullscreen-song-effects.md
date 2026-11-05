@@ -19,6 +19,16 @@ The original `snake-head.svg` asset and `snake-crawl` renderer provide a restrai
 
 The Twemoji U+2744 snowflake silhouette reuses `maple-leaf-fall` for Mariah Carey's `All I Want for Christmas Is You`. Catalog sizing, color, opacity, and count parameters turn the same falling-particle lifecycle into sparse cold-white snowfall without adding another frame subscription or renderer type. See `THIRD_PARTY_NOTICES.md` for attribution and license details.
 
+The same falling-particle lifecycle also powers Wham!'s sparse snow, Idina Menzel's mixed snow-and-ice crystals, Bruno Mars's gold confetti, and Taylor Swift's colored ribbons. Each catalog entry has independent density, size, color, and opacity parameters while retaining the shared lyric protection and reduced-motion behavior.
+
+Three reusable motion families cover the remaining bundled motifs:
+
+- `rain-streaks` renders Rihanna's restrained diagonal rain using one frame subscription and lyric-aware opacity.
+- `cosmic-drift`, `neon-speed-lines`, and `bat-swarm` share the ambient vector drift engine with separate speed, wave, pulse, and wing-flap profiles for Dua Lipa, The Weeknd, and Michael Jackson.
+- `edge-fireworks` keeps Katy Perry's repeated radial bursts near the upper and outer edges, away from the current lyric protection area.
+
+Every bundled effect supports the same 350 ms shutdown fade. Static or reduced-motion mode creates only two or three low-opacity edge visuals and does not subscribe to animation frames.
+
 ## Add a new motion type
 
 Implement `IFullscreenSongEffectRenderer`, register its stable type name in `FullscreenSongEffectHost`, and extend catalog validation for its parameters. The renderer must fail closed, avoid hit testing, honor static/reduced-motion mode, stop frame subscriptions on deactivation, and remove all visuals in `Dispose`.

@@ -19,7 +19,16 @@ namespace LyricHover.Tests
         MapleLeaves,
         PaperStorm,
         SnakeCrawl,
-        Snowfall
+        Snowfall,
+        LastChristmas,
+        LetItGo,
+        Umbrella,
+        Levitating,
+        BlindingLights,
+        Thriller,
+        Firework,
+        Magic24K,
+        TwentyTwo
     }
 
     internal static class FullscreenAnimationProbe
@@ -183,6 +192,7 @@ namespace LyricHover.Tests
         {
             var title = "All Too Well (10 Minute Version) (Taylor's Version)";
             var album = "Red (Taylor's Version)";
+            var artist = "Taylor Swift";
             if (mode == FullscreenSongEffectProbeMode.PaperStorm)
             {
                 title = "Fortnight (feat. Post Malone)";
@@ -197,12 +207,66 @@ namespace LyricHover.Tests
             {
                 title = "All I Want for Christmas Is You";
                 album = "Merry Christmas";
+                artist = "Mariah Carey";
+            }
+            else if (mode == FullscreenSongEffectProbeMode.LastChristmas)
+            {
+                title = "Last Christmas";
+                album = "Music from the Edge of Heaven";
+                artist = "Wham!";
+            }
+            else if (mode == FullscreenSongEffectProbeMode.LetItGo)
+            {
+                title = "Let It Go";
+                album = "Frozen";
+                artist = "Idina Menzel";
+            }
+            else if (mode == FullscreenSongEffectProbeMode.Umbrella)
+            {
+                title = "Umbrella (feat. JAY-Z)";
+                album = "Good Girl Gone Bad";
+                artist = "Rihanna";
+            }
+            else if (mode == FullscreenSongEffectProbeMode.Levitating)
+            {
+                title = "Levitating";
+                album = "Future Nostalgia";
+                artist = "Dua Lipa";
+            }
+            else if (mode == FullscreenSongEffectProbeMode.BlindingLights)
+            {
+                title = "Blinding Lights";
+                album = "After Hours";
+                artist = "The Weeknd";
+            }
+            else if (mode == FullscreenSongEffectProbeMode.Thriller)
+            {
+                title = "Thriller";
+                album = "Thriller";
+                artist = "Michael Jackson";
+            }
+            else if (mode == FullscreenSongEffectProbeMode.Firework)
+            {
+                title = "Firework";
+                album = "Teenage Dream";
+                artist = "Katy Perry";
+            }
+            else if (mode == FullscreenSongEffectProbeMode.Magic24K)
+            {
+                title = "24K Magic";
+                album = "24K Magic";
+                artist = "Bruno Mars";
+            }
+            else if (mode == FullscreenSongEffectProbeMode.TwentyTwo)
+            {
+                title = "22 (Taylor's Version)";
+                album = "Red (Taylor's Version)";
             }
             return new MediaSessionSnapshot
             {
                 SessionId = "fullscreen-animation-probe",
                 Title = title,
-                Artist = mode == FullscreenSongEffectProbeMode.Snowfall ? "Mariah Carey" : "Taylor Swift",
+                Artist = artist,
                 Album = album,
                 Duration = TimeSpan.FromSeconds(13),
                 PlaybackStatus = status,
@@ -215,6 +279,15 @@ namespace LyricHover.Tests
             if (mode == FullscreenSongEffectProbeMode.PaperStorm) return "fullscreen-paper-probe";
             if (mode == FullscreenSongEffectProbeMode.SnakeCrawl) return "fullscreen-snake-probe";
             if (mode == FullscreenSongEffectProbeMode.Snowfall) return "fullscreen-snow-probe";
+            if (mode == FullscreenSongEffectProbeMode.LastChristmas) return "fullscreen-last-christmas-probe";
+            if (mode == FullscreenSongEffectProbeMode.LetItGo) return "fullscreen-let-it-go-probe";
+            if (mode == FullscreenSongEffectProbeMode.Umbrella) return "fullscreen-umbrella-probe";
+            if (mode == FullscreenSongEffectProbeMode.Levitating) return "fullscreen-levitating-probe";
+            if (mode == FullscreenSongEffectProbeMode.BlindingLights) return "fullscreen-blinding-lights-probe";
+            if (mode == FullscreenSongEffectProbeMode.Thriller) return "fullscreen-thriller-probe";
+            if (mode == FullscreenSongEffectProbeMode.Firework) return "fullscreen-firework-probe";
+            if (mode == FullscreenSongEffectProbeMode.Magic24K) return "fullscreen-24k-magic-probe";
+            if (mode == FullscreenSongEffectProbeMode.TwentyTwo) return "fullscreen-22-probe";
             return "fullscreen-animation-probe";
         }
 
@@ -223,6 +296,15 @@ namespace LyricHover.Tests
             if (mode == FullscreenSongEffectProbeMode.PaperStorm) return "paper-storm";
             if (mode == FullscreenSongEffectProbeMode.SnakeCrawl) return "snake-crawl";
             if (mode == FullscreenSongEffectProbeMode.Snowfall) return "snowfall";
+            if (mode == FullscreenSongEffectProbeMode.LastChristmas) return "last-christmas-snowfall";
+            if (mode == FullscreenSongEffectProbeMode.LetItGo) return "ice-snowfall";
+            if (mode == FullscreenSongEffectProbeMode.Umbrella) return "rain-streaks";
+            if (mode == FullscreenSongEffectProbeMode.Levitating) return "cosmic-drift";
+            if (mode == FullscreenSongEffectProbeMode.BlindingLights) return "neon-speed-lines";
+            if (mode == FullscreenSongEffectProbeMode.Thriller) return "bat-swarm";
+            if (mode == FullscreenSongEffectProbeMode.Firework) return "edge-fireworks";
+            if (mode == FullscreenSongEffectProbeMode.Magic24K) return "gold-confetti";
+            if (mode == FullscreenSongEffectProbeMode.TwentyTwo) return "falling-ribbons";
             return "maple-leaves";
         }
 

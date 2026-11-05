@@ -86,6 +86,13 @@ namespace LyricHover.Tests
                 return FullscreenAnimationProbe.Run(FullscreenSongEffectProbeMode.Snowfall);
             }
 
+            if (args.Length == 2 &&
+                string.Equals(args[0], "--fullscreen-song-effect-probe", StringComparison.Ordinal) &&
+                Enum.TryParse(args[1], true, out FullscreenSongEffectProbeMode probeMode))
+            {
+                return FullscreenAnimationProbe.Run(probeMode);
+            }
+
             if (args.Length == 1 && string.Equals(args[0], "--timeline-fixture", StringComparison.Ordinal))
             {
                 suite.Run("advances repeated reliable timeline sample", AdvancesRepeatedReliableTimelineSample);
@@ -469,7 +476,7 @@ namespace LyricHover.Tests
         static void FullscreenSongEffectsMatchSafelyAndValidateResources()
         {
             var catalog = SongEffectCatalog.LoadDefault();
-            Assert.Equal(4, catalog.Entries.Count);
+            Assert.Equal(13, catalog.Entries.Count);
             var positives = new[]
             {
                 "All Too Well",
@@ -541,6 +548,52 @@ namespace LyricHover.Tests
             Assert.True(catalog.Resolve(BuildSongEffectSession("All I Want for Christmas Is You Too", "Mariah Carey")) == null);
             Assert.True(catalog.Resolve(BuildSongEffectSession("All I Want for Christmas Is You: Parody", "Mariah Carey")) == null);
 
+            AssertSongEffectMatches(catalog, "wham-last-christmas-snowfall", "Wham!",
+                "Last Christmas", "last christmas (Remastered)", "Last Christmas — Live");
+            Assert.True(catalog.Resolve(BuildSongEffectSession("Last Christmas", "Some Cover Artist")) == null);
+            Assert.True(catalog.Resolve(BuildSongEffectSession("Last Christmas", "Wham! Tribute")) == null);
+            Assert.True(catalog.Resolve(BuildSongEffectSession("Last Christmas Eve", "Wham!")) == null);
+
+            AssertSongEffectMatches(catalog, "idina-menzel-let-it-go-ice-snow", "Idina Menzel",
+                "Let It Go", "let it go (From Frozen)", "Let It Go — Live");
+            Assert.True(catalog.Resolve(BuildSongEffectSession("Let It Go", "Some Cover Artist")) == null);
+            Assert.True(catalog.Resolve(BuildSongEffectSession("Let It Go Again", "Idina Menzel")) == null);
+
+            AssertSongEffectMatches(catalog, "rihanna-umbrella-rain", "Rihanna feat. JAY-Z",
+                "Umbrella", "umbrella (Radio Edit)", "Umbrella — Live");
+            Assert.True(catalog.Resolve(BuildSongEffectSession("Umbrella", "Some Cover Artist")) == null);
+            Assert.True(catalog.Resolve(BuildSongEffectSession("Umbrellas", "Rihanna")) == null);
+
+            AssertSongEffectMatches(catalog, "dua-lipa-levitating-cosmic-drift", "Dua Lipa",
+                "Levitating", "levitating (Remix)", "Levitating — Live");
+            Assert.True(catalog.Resolve(BuildSongEffectSession("Levitating", "Some Cover Artist")) == null);
+            Assert.True(catalog.Resolve(BuildSongEffectSession("Levitating Again", "Dua Lipa")) == null);
+
+            AssertSongEffectMatches(catalog, "the-weeknd-blinding-lights-neon", "The Weeknd",
+                "Blinding Lights", "blinding lights (Remix)", "Blinding Lights — Live");
+            Assert.True(catalog.Resolve(BuildSongEffectSession("Blinding Lights", "The Weeknd Tribute")) == null);
+            Assert.True(catalog.Resolve(BuildSongEffectSession("Blinding Light", "The Weeknd")) == null);
+
+            AssertSongEffectMatches(catalog, "michael-jackson-thriller-bats", "Michael Jackson",
+                "Thriller", "thriller (2003 Edit)", "Thriller — Live");
+            Assert.True(catalog.Resolve(BuildSongEffectSession("Thriller", "Some Cover Artist")) == null);
+            Assert.True(catalog.Resolve(BuildSongEffectSession("Thrillers", "Michael Jackson")) == null);
+
+            AssertSongEffectMatches(catalog, "katy-perry-firework-edge-bursts", "Katy Perry",
+                "Firework", "firework (Acoustic)", "Firework — Live");
+            Assert.True(catalog.Resolve(BuildSongEffectSession("Firework", "Katy Perry Tribute")) == null);
+            Assert.True(catalog.Resolve(BuildSongEffectSession("Fireworks", "Katy Perry")) == null);
+
+            AssertSongEffectMatches(catalog, "bruno-mars-24k-magic-gold-confetti", "Bruno Mars",
+                "24K Magic", "24k magic (Live)", "24K Magic — Remix");
+            Assert.True(catalog.Resolve(BuildSongEffectSession("24K Magic", "Some Cover Artist")) == null);
+            Assert.True(catalog.Resolve(BuildSongEffectSession("24K Magical", "Bruno Mars")) == null);
+
+            AssertSongEffectMatches(catalog, "taylor-swift-22-falling-ribbons", "Taylor Swift",
+                "22", "22 (Taylor's Version)", "22 — Live");
+            Assert.True(catalog.Resolve(BuildSongEffectSession("22", "Some Cover Artist")) == null);
+            Assert.True(catalog.Resolve(BuildSongEffectSession("22 Jump Street", "Taylor Swift")) == null);
+
             foreach (var entry in catalog.Entries)
             {
                 Assert.True(FullscreenSongEffectHost.IsRegisteredEffectType(entry.Effect.Type));
@@ -576,6 +629,15 @@ namespace LyricHover.Tests
             Assert.Equal(12, SongEffectLayout.ResolveTargetCount(1920, 1080, snowDescriptor.Effect));
             Assert.Equal(16, SongEffectLayout.ResolveTargetCount(2560, 1440, snowDescriptor.Effect));
             Assert.Equal(22, SongEffectLayout.ResolveTargetCount(3840, 2160, snowDescriptor.Effect));
+            AssertEffectCounts(catalog, "wham-last-christmas-snowfall", 10, 14, 18);
+            AssertEffectCounts(catalog, "idina-menzel-let-it-go-ice-snow", 12, 16, 22);
+            AssertEffectCounts(catalog, "rihanna-umbrella-rain", 18, 24, 32);
+            AssertEffectCounts(catalog, "dua-lipa-levitating-cosmic-drift", 8, 12, 16);
+            AssertEffectCounts(catalog, "the-weeknd-blinding-lights-neon", 4, 6, 8);
+            AssertEffectCounts(catalog, "michael-jackson-thriller-bats", 5, 7, 10);
+            AssertEffectCounts(catalog, "katy-perry-firework-edge-bursts", 2, 3, 4);
+            AssertEffectCounts(catalog, "bruno-mars-24k-magic-gold-confetti", 16, 22, 30);
+            AssertEffectCounts(catalog, "taylor-swift-22-falling-ribbons", 12, 16, 22);
             var random = new Random(42);
             var protectedArea = new System.Windows.Rect(200, 0, 600, 200);
             for (var index = 0; index < 50; index++)
@@ -638,6 +700,25 @@ namespace LyricHover.Tests
                 Assert.Equal(3, host.VisualCount);
                 Assert.False(host.IsRendering);
 
+                AssertStaticSongEffect(host, settings, context, "Last Christmas", "Wham!",
+                    "wham-last-christmas-snowfall", 3);
+                AssertStaticSongEffect(host, settings, context, "Let It Go", "Idina Menzel",
+                    "idina-menzel-let-it-go-ice-snow", 3);
+                AssertStaticSongEffect(host, settings, context, "Umbrella", "Rihanna",
+                    "rihanna-umbrella-rain", 3);
+                AssertStaticSongEffect(host, settings, context, "Levitating", "Dua Lipa",
+                    "dua-lipa-levitating-cosmic-drift", 3);
+                AssertStaticSongEffect(host, settings, context, "Blinding Lights", "The Weeknd",
+                    "the-weeknd-blinding-lights-neon", 3);
+                AssertStaticSongEffect(host, settings, context, "Thriller", "Michael Jackson",
+                    "michael-jackson-thriller-bats", 3);
+                AssertStaticSongEffect(host, settings, context, "Firework", "Katy Perry",
+                    "katy-perry-firework-edge-bursts", 2);
+                AssertStaticSongEffect(host, settings, context, "24K Magic", "Bruno Mars",
+                    "bruno-mars-24k-magic-gold-confetti", 3);
+                AssertStaticSongEffect(host, settings, context, "22", "Taylor Swift",
+                    "taylor-swift-22-falling-ribbons", 3);
+
                 settings.FullscreenReduceMotion = false;
                 settings.FullscreenRenderQuality = FullscreenRenderQuality.High60Fps;
                 host.Update(BuildSongEffectSession("Look What You Made Me Do", "Taylor Swift"), settings, context);
@@ -663,6 +744,44 @@ namespace LyricHover.Tests
                 Duration = TimeSpan.FromMinutes(10),
                 PlaybackStatus = MediaPlaybackStatus.Playing
             };
+        }
+
+        static void AssertSongEffectMatches(
+            SongEffectCatalog catalog,
+            string expectedId,
+            string artist,
+            params string[] titles)
+        {
+            foreach (var title in titles)
+                Assert.Equal(expectedId, catalog.Resolve(BuildSongEffectSession(title, artist))?.Id);
+        }
+
+        static void AssertEffectCounts(
+            SongEffectCatalog catalog,
+            string effectId,
+            int count1080p,
+            int count1440p,
+            int count4k)
+        {
+            var descriptor = catalog.Entries.First(entry => entry.Id == effectId);
+            Assert.Equal(count1080p, SongEffectLayout.ResolveTargetCount(1920, 1080, descriptor.Effect));
+            Assert.Equal(count1440p, SongEffectLayout.ResolveTargetCount(2560, 1440, descriptor.Effect));
+            Assert.Equal(count4k, SongEffectLayout.ResolveTargetCount(3840, 2160, descriptor.Effect));
+        }
+
+        static void AssertStaticSongEffect(
+            FullscreenSongEffectHost host,
+            OverlayPlacementSettings settings,
+            SongEffectRenderContext context,
+            string title,
+            string artist,
+            string expectedId,
+            int expectedVisualCount)
+        {
+            host.Update(BuildSongEffectSession(title, artist), settings, context);
+            Assert.Equal(expectedId, host.ActiveEffectId);
+            Assert.Equal(expectedVisualCount, host.VisualCount);
+            Assert.False(host.IsRendering);
         }
 
         static void FullscreenViewReusesTimelineAndRejectsStaleArtwork()

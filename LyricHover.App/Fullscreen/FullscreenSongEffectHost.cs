@@ -101,6 +101,12 @@ namespace LyricHover.App.Fullscreen
                 return new FlyingPaperStormRenderer(layer);
             if (string.Equals(effectType, SnakeCrawlRenderer.EffectType, StringComparison.Ordinal))
                 return new SnakeCrawlRenderer(layer);
+            if (string.Equals(effectType, RainStreakRenderer.EffectType, StringComparison.Ordinal))
+                return new RainStreakRenderer(layer);
+            if (AmbientVectorDriftRenderer.Supports(effectType))
+                return new AmbientVectorDriftRenderer(layer);
+            if (string.Equals(effectType, EdgeFireworksRenderer.EffectType, StringComparison.Ordinal))
+                return new EdgeFireworksRenderer(layer);
             return null;
         }
 
@@ -108,7 +114,10 @@ namespace LyricHover.App.Fullscreen
         {
             return string.Equals(effectType, MapleLeafFallRenderer.EffectType, StringComparison.Ordinal) ||
                 string.Equals(effectType, FlyingPaperStormRenderer.EffectType, StringComparison.Ordinal) ||
-                string.Equals(effectType, SnakeCrawlRenderer.EffectType, StringComparison.Ordinal);
+                string.Equals(effectType, SnakeCrawlRenderer.EffectType, StringComparison.Ordinal) ||
+                string.Equals(effectType, RainStreakRenderer.EffectType, StringComparison.Ordinal) ||
+                AmbientVectorDriftRenderer.Supports(effectType) ||
+                string.Equals(effectType, EdgeFireworksRenderer.EffectType, StringComparison.Ordinal);
         }
     }
 }
