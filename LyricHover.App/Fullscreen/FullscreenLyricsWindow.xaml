@@ -103,7 +103,7 @@
             <Grid x:Name="NowPlayingPanel" Grid.Column="0" Margin="0,18,58,0" MaxWidth="560" VerticalAlignment="Center">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                 <Grid x:Name="ArtworkFrame" SnapsToDevicePixels="True">
-                    <Border CornerRadius="22" Background="Transparent">
+                    <Border CornerRadius="14" Background="Transparent">
                         <Border.Effect><DropShadowEffect BlurRadius="32" ShadowDepth="6" Opacity="0.22" Color="#000000" Direction="270"/></Border.Effect>
                         <Image x:Name="ArtworkImage" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality" SnapsToDevicePixels="True"/>
                     </Border>
@@ -126,6 +126,13 @@
 
             <Grid x:Name="LyricsPanel" Grid.Column="1" Margin="25,0,0,0" MaxWidth="980" RenderOptions.ClearTypeHint="Enabled">
                 <ScrollViewer x:Name="LyricsScroll" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly" PanningDeceleration="0.0015" PanningRatio="0.85" ScrollChanged="LyricsScroll_ScrollChanged">
+                    <ScrollViewer.OpacityMask>
+                        <LinearGradientBrush x:Name="LyricsBottomFadeMask" StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="Black" Offset="0"/>
+                            <GradientStop Color="Black" Offset="0.82"/>
+                            <GradientStop Color="Transparent" Offset="1"/>
+                        </LinearGradientBrush>
+                    </ScrollViewer.OpacityMask>
                     <StackPanel x:Name="LyricsStack"/>
                 </ScrollViewer>
                 <TextBlock x:Name="EmptyStateText" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Microsoft YaHei UI" FontSize="24" Foreground="#AFFFFFFF" TextAlignment="Center" TextWrapping="Wrap"/>

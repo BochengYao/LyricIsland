@@ -164,7 +164,9 @@ namespace LyricHover.Core
             // Do not borrow a sparse translation from an adjacent original line.
             // This keeps a missing translation empty rather than repeating the
             // previous sentence under the next lyric.
-            if (closest == null || !IsClosestOriginalLine(original, closest))
+            if (closest == null ||
+                !IsClosestOriginalLine(original, closest) ||
+                !LyricsPackageParser.IsMeaningfulTranslationText(closest.Text))
             {
                 return null;
             }

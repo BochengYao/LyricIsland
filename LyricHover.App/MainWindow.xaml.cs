@@ -165,6 +165,8 @@ namespace LyricHover.App
         private static readonly TimeSpan PowerSavingHoverTimerInterval = TimeSpan.FromMilliseconds(500);
         private bool powerSavingActive;
         private bool widgetsSettingsConfirmationShowing;
+        private DateTimeOffset lastIslandTopmostReassertionUtc = DateTimeOffset.MinValue;
+        private static readonly TimeSpan IslandTopmostReassertionInterval = TimeSpan.FromSeconds(1);
 
         public MainWindow()
         {
@@ -914,6 +916,7 @@ namespace LyricHover.App
                 return;
             }
 
+            EnsureIslandTopmost(!islandVisible);
             if (islandVisible)
             {
                 UpdateInteractionStateLayout();
@@ -928,6 +931,21 @@ namespace LyricHover.App
             islandVisible = true;
             hoverProximityTimer.Start();
             UpdateHoverProximity();
+        }
+
+        private void EnsureIslandTopmost(bool force)
+        {
+            var now = DateTimeOffset.UtcNow;
+            if (!force && now - lastIslandTopmostReassertionUtc < IslandTopmostReassertionInterval)
+            {
+                return;
+            }
+
+            var handle = new WindowInteropHelper(this).Handle;
+            if (NativeWindowPlacement.EnsureTopmost(handle))
+            {
+                lastIslandTopmostReassertionUtc = now;
+            }
         }
 
         private void HideIsland(bool animated)

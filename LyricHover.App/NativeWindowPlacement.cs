@@ -8,7 +8,22 @@ namespace LyricHover.App
     internal static class NativeWindowPlacement
     {
         private const uint SwpNoActivate = 0x0010;
+        private const uint SwpNoSize = 0x0001;
+        private const uint SwpNoMove = 0x0002;
         private const uint SwpNoZOrder = 0x0004;
+        private static readonly IntPtr HwndTopmost = new IntPtr(-1);
+
+        public static bool EnsureTopmost(IntPtr handle)
+        {
+            return handle != IntPtr.Zero && SetWindowPos(
+                handle,
+                HwndTopmost,
+                0,
+                0,
+                0,
+                0,
+                SwpNoActivate | SwpNoSize | SwpNoMove);
+        }
 
         public static bool CenterOnScreen(IntPtr handle, string screenName)
         {

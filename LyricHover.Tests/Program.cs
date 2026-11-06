@@ -60,6 +60,7 @@ namespace LyricHover.Tests
                 suite.Run("fullscreen artwork enhancer upscales low resolution thumbnails", FullscreenArtworkEnhancerUpscalesLowResolutionThumbnails);
                 suite.Run("fullscreen online artwork only accepts matching resolution upgrades", FullscreenOnlineArtworkOnlyAcceptsMatchingUpgrades);
                 suite.Run("fullscreen wrapped word highlight advances one visual line at a time", FullscreenWrappedWordHighlightAdvancesOneLineAtATime);
+                suite.Run("fullscreen hides missing translation placeholders", UsesOneLineForTranslationPlaceholder);
                 return suite.ExitCode;
             }
 
@@ -490,9 +491,14 @@ namespace LyricHover.Tests
             Assert.True(windowXaml.Contains("TextOptions.TextHintingMode=\"Fixed\""));
             Assert.True(windowXaml.Contains("RenderOptions.ClearTypeHint=\"Enabled\""));
             Assert.True(windowXaml.Contains("x:Name=\"ArtworkFrame\" SnapsToDevicePixels=\"True\""));
+            Assert.True(windowXaml.Contains("<Border CornerRadius=\"14\" Background=\"Transparent\">"));
             Assert.True(windowXaml.Contains("BlurRadius=\"32\" ShadowDepth=\"6\" Opacity=\"0.22\""));
             Assert.True(window.Contains("ArtworkImage.Clip = artworkClip"));
+            Assert.True(window.Contains("var radius = Math.Min(14"));
             Assert.True(window.Contains("artworkClip.RadiusX = radius"));
+            Assert.True(windowXaml.Contains("x:Name=\"LyricsBottomFadeMask\""));
+            Assert.True(windowXaml.Contains("<GradientStop Color=\"Black\" Offset=\"0.82\"/>"));
+            Assert.True(windowXaml.Contains("<GradientStop Color=\"Transparent\" Offset=\"1\"/>"));
             Assert.False(windowXaml.Contains("中文阅读"));
             Assert.False(window.Contains("ChinesePreset_Click"));
             Assert.True(windowXaml.Contains("x:Key=\"SettingCircleButton\""));
@@ -565,7 +571,7 @@ namespace LyricHover.Tests
             Assert.False(window.Contains("var overshoot = translation"));
             Assert.True(window.Contains("PrepareWordTracking(lyricVisuals[index])"));
             Assert.True(window.Contains("visual.WordTrackingPrepared"));
-            Assert.False(windowXaml.Contains("ScrollViewer.OpacityMask"));
+            Assert.True(windowXaml.Contains("<ScrollViewer.OpacityMask>"));
             var wheelTargetMethod = typeof(FullscreenLyricsWindow).GetMethod(
                 "CalculateWheelScrollTarget",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
@@ -1335,6 +1341,9 @@ namespace LyricHover.Tests
 
             Assert.Equal(1, lines.Count);
             Assert.Equal("Ohhhhh", lines[0].Text);
+            Assert.True(lyrics.GetTranslationForLine(
+                lyrics.Lines[0],
+                TimeSpan.FromSeconds(1.5)) == null);
         }
 
         static void DoesNotReuseStaleTranslationForNextLyric()
@@ -7713,6 +7722,7 @@ namespace LyricHover.Tests
             Assert.True(window.Contains("IsDarkTheme"));
             Assert.False(File.Exists(Path.Combine(root, "LyricHover.App", "TaskbarLyricsConfirmationWindow.xaml")));
             var mainWindow = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
+            var nativePlacement = File.ReadAllText(Path.Combine(root, "LyricHover.App", "NativeWindowPlacement.cs"));
             var settingsWindow = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml.cs"));
             var language = File.ReadAllText(Path.Combine(root, "LyricHover.App", "UiLanguageService.cs"));
             Assert.False(mainWindow.Contains("小组件保持可见"));
@@ -7723,6 +7733,10 @@ namespace LyricHover.Tests
             Assert.False(language.Contains("Widgets 恢复尚未完成"));
             Assert.True(mainWindow.Contains("ShowWidgetsSettingsConfirmation"));
             Assert.True(mainWindow.Contains("WidgetsHidingNeedsSettingsConfirmation"));
+            Assert.True(mainWindow.Contains("EnsureIslandTopmost(!islandVisible)"));
+            Assert.True(mainWindow.Contains("IslandTopmostReassertionInterval = TimeSpan.FromSeconds(1)"));
+            Assert.True(nativePlacement.Contains("EnsureTopmost(IntPtr handle)"));
+            Assert.True(nativePlacement.Contains("HwndTopmost"));
             var app = File.ReadAllText(Path.Combine(root, "LyricHover.App", "App.xaml.cs"));
             Assert.True(app.Contains("TryHandleElevatedTaskbarWrite"));
         }

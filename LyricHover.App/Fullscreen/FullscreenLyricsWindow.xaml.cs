@@ -206,7 +206,7 @@ namespace LyricHover.App.Fullscreen
         {
             var width = Math.Max(0, e.NewSize.Width);
             var height = Math.Max(0, e.NewSize.Height);
-            var radius = Math.Min(22, Math.Min(width, height) * 0.5);
+            var radius = Math.Min(14, Math.Min(width, height) * 0.5);
             artworkClip.Rect = new Rect(0, 0, width, height);
             artworkClip.RadiusX = radius;
             artworkClip.RadiusY = radius;
