@@ -190,7 +190,7 @@ namespace LyricHover.Tests
 
         private static MediaSessionSnapshot BuildSession(MediaPlaybackStatus status, FullscreenSongEffectProbeMode mode)
         {
-            var title = "All Too Well (10 Minute Version) (Taylor's Version)";
+            var title = "All Too Well (10 Minute Version) [Taylor's Version] [From The Vault]";
             var album = "Red (Taylor's Version)";
             var artist = "Taylor Swift";
             if (mode == FullscreenSongEffectProbeMode.PaperStorm)
