@@ -1713,7 +1713,7 @@
                           <Grid x:Name="HoverSettingsContent"
                                 Margin="0">
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" MinHeight="34" />
                                 <RowDefinition Height="*" MinHeight="34" />
                                 <RowDefinition Height="*" MinHeight="34" />
                                 <RowDefinition Height="*" MinHeight="34" />
@@ -1730,6 +1730,55 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="64" />
                             </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Row="0"
+                                       Grid.Column="0"
+                                       Margin="0,0,16,0"
+                                       Style="{StaticResource SettingLabel}"
+                                       Text="靠近方式" />
+                            <Border Grid.Row="0"
+                                    Grid.Column="1"
+                                    Grid.ColumnSpan="2"
+                                    Width="224"
+                                    Height="32"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center"
+                                    Background="{DynamicResource SettingsControlBackgroundBrush}"
+                                    BorderBrush="{DynamicResource SettingsControlBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="{StaticResource RadiusSmall}">
+                                <Grid>
+                                    <Border x:Name="HoverAvoidanceModeSelectionThumb"
+                                            Width="112"
+                                            Height="30"
+                                            HorizontalAlignment="Left"
+                                            IsHitTestVisible="False"
+                                            Background="{DynamicResource SettingsSelectedBackgroundBrush}"
+                                            BorderBrush="{DynamicResource SettingsControlBorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="{StaticResource RadiusSmall}">
+                                        <Border.RenderTransform>
+                                            <TranslateTransform x:Name="HoverAvoidanceModeSelectionTransform" />
+                                        </Border.RenderTransform>
+                                    </Border>
+                                    <StackPanel Panel.ZIndex="1" Orientation="Horizontal">
+                                        <RadioButton x:Name="SoftAuraAvoidanceRadioButton"
+                                                     Width="112"
+                                                     GroupName="HoverAvoidanceMode"
+                                                     Style="{StaticResource SegmentButtonStyle}"
+                                                     Checked="HoverAvoidanceModeRadioButton_Checked"
+                                                     ToolTip="鼠标靠近时，仅淡出指针周围区域"
+                                                     Content="柔光避让" />
+                                        <RadioButton x:Name="EdgeRetreatAvoidanceRadioButton"
+                                                     Width="112"
+                                                     GroupName="HoverAvoidanceMode"
+                                                     Style="{StaticResource SegmentButtonStyle}"
+                                                     Checked="HoverAvoidanceModeRadioButton_Checked"
+                                                     ToolTip="鼠标靠近时，整个歌词岛滑回屏幕边缘"
+                                                     Content="边缘隐退" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
 
                             <TextBlock Grid.Row="1"
                                        Grid.Column="0"

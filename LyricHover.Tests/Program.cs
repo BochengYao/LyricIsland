@@ -101,7 +101,7 @@ namespace LyricHover.Tests
                 suite.Run("does not compensate paused timeline samples", DoesNotCompensatePausedTimelineSamples);
                 suite.Run("accepts large real timeline correction", AcceptsLargeRealTimelineCorrection);
                 suite.Run("ignores compensated SMTC backward refreshes", IgnoresSmallBackwardTimelineJitterWhilePlaying);
-                suite.Run("word tracking preserves only tiny timeline jitter", WordTrackingPreservesProjectionAcrossSmallTimelineJitter);
+                suite.Run("word tracking preserves projection across bounded timeline jitter", WordTrackingPreservesProjectionAcrossBoundedTimelineJitter);
                 return suite.ExitCode;
             }
 
@@ -363,6 +363,8 @@ namespace LyricHover.Tests
             suite.Run("mouse avoidance settings fit without scrolling", MouseAvoidanceSettingsFitWithoutScrolling);
             suite.Run("mouse avoidance settings exposes hover aspect ratio preview", MouseAvoidanceSettingsExposesHoverAspectRatioPreview);
             suite.Run("mouse avoidance settings exposes click through option", MouseAvoidanceSettingsExposesClickThroughOption);
+            suite.Run("mouse avoidance settings exposes selectable modes", MouseAvoidanceSettingsExposesSelectableModes);
+            suite.Run("edge retreat uses release hysteresis", EdgeRetreatUsesReleaseHysteresis);
             suite.Run("mouse avoidance settings restores screenshot defaults", MouseAvoidanceSettingsRestoresScreenshotDefaults);
             suite.Run("click through keeps left drag available", ClickThroughKeepsLeftDragAvailable);
             suite.Run("settings window exposes theme mode switcher", SettingsWindowExposesThemeModeSwitcher);
@@ -395,7 +397,7 @@ namespace LyricHover.Tests
             suite.Run("tracks reference changes without treating equal content as the same object", TracksReferenceChangesWithoutTreatingEqualContentAsTheSameObject);
             suite.Run("module views skip unchanged rendering work", ModuleViewsSkipUnchangedRenderingWork);
             suite.Run("word tracking uses frame-smooth overlay clipping", WordTrackingUsesFrameSmoothOverlayClipping);
-            suite.Run("word tracking preserves only tiny timeline jitter", WordTrackingPreservesProjectionAcrossSmallTimelineJitter);
+            suite.Run("word tracking preserves projection across bounded timeline jitter", WordTrackingPreservesProjectionAcrossBoundedTimelineJitter);
             suite.Run("word tracking clip follows glyph width", WordTrackingClipFollowsGlyphWidth);
             suite.Run("word tracking reuses glyph map for the same line", WordTrackingReusesGlyphMapForSameLine);
             suite.Run("word tracking shares cached glyph maps across lyric layers", WordTrackingSharesGlyphMapsAcrossLayers);
@@ -2876,7 +2878,7 @@ namespace LyricHover.Tests
 
             settings.Normalize();
 
-            Assert.Equal(10, settings.SchemaVersion);
+            Assert.Equal(11, settings.SchemaVersion);
             Assert.Equal(LyricsSourcePreference.LrcLib, settings.LyricsSource);
             Assert.False(settings.LyricsSourcePriority.Contains(retiredSource));
             Assert.Equal(3, settings.LyricsSourcePriority.Count);
@@ -3415,7 +3417,7 @@ namespace LyricHover.Tests
             Assert.True(main.Contains("temporaryInteractionHeld,"));
             Assert.True(main.Contains("GetInteractionClock());"));
             Assert.False(main.Contains("interactionController.ToggleExpanded"));
-            Assert.True(main.Contains("IsHoverTransparencySuppressed()"));
+            Assert.True(main.Contains("IsHoverAvoidanceSuppressed()"));
         }
 
         static void TemporaryInteractionReleaseUsesConfiguredExpandedDuration()
@@ -5673,6 +5675,47 @@ namespace LyricHover.Tests
             Assert.True(mainWindowSource.Contains("HTTRANSPARENT"));
         }
 
+        static void MouseAvoidanceSettingsExposesSelectableModes()
+        {
+            var root = GetSolutionRoot();
+            var xaml = File.ReadAllText(Path.Combine(root, "LyricHover.App", "PlacementSettingsWindow.xaml"));
+            var settingsSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "OverlayPlacementSettings.cs"));
+            var mainWindowSource = File.ReadAllText(Path.Combine(root, "LyricHover.App", "MainWindow.xaml.cs"));
+
+            Assert.True(xaml.Contains("x:Name=\"SoftAuraAvoidanceRadioButton\""));
+            Assert.True(xaml.Contains("x:Name=\"EdgeRetreatAvoidanceRadioButton\""));
+            Assert.True(xaml.Contains("Content=\"柔光避让\""));
+            Assert.True(xaml.Contains("Content=\"边缘隐退\""));
+            Assert.True(settingsSource.Contains("HoverAvoidanceMode"));
+            Assert.True(mainWindowSource.Contains("GetPointerRelativeToVisibleIsland"));
+            Assert.True(mainWindowSource.Contains("GetHiddenPosition()"));
+        }
+
+        static void EdgeRetreatUsesReleaseHysteresis()
+        {
+            var controller = new HoverRetreatController();
+
+            Assert.False(controller.Update(true, 60, 60));
+            Assert.True(controller.Update(true, 59, 60));
+            Assert.True(controller.IsRetreated);
+            Assert.False(controller.Update(true, 83, 60));
+            Assert.True(controller.IsRetreated);
+            Assert.True(controller.Update(true, 84, 60));
+            Assert.False(controller.IsRetreated);
+
+            controller.Update(true, 0, 60);
+            Assert.True(controller.Update(false, 0, 60));
+            Assert.False(controller.IsRetreated);
+
+            var settings = new OverlayPlacementSettings { HoverAvoidanceMode = HoverAvoidanceMode.EdgeRetreat };
+            var restored = JsonSerializer.Deserialize<OverlayPlacementSettings>(JsonSerializer.Serialize(settings));
+            Assert.Equal(HoverAvoidanceMode.EdgeRetreat, restored.HoverAvoidanceMode);
+
+            restored.HoverAvoidanceMode = (HoverAvoidanceMode)99;
+            restored.Normalize();
+            Assert.Equal(HoverAvoidanceMode.SoftAura, restored.HoverAvoidanceMode);
+        }
+
         static void IgnoresSmallBackwardTimelineJitterWhilePlaying()
         {
             var clock = new FakeMonotonicClock();
@@ -5716,7 +5759,7 @@ namespace LyricHover.Tests
             Assert.False(panel.Contains("VerticalScrollBarVisibility"));
             Assert.True(panel.Contains("ClipToBounds=\"True\""));
             Assert.True(xaml.Contains("x:Name=\"HoverSettingsContent\""));
-            Assert.Equal(8, CountOccurrences(panel, "<RowDefinition Height=\"*\" MinHeight=\"34\" />"));
+            Assert.Equal(9, CountOccurrences(panel, "<RowDefinition Height=\"*\" MinHeight=\"34\" />"));
             Assert.True(panel.Contains("<RowDefinition Height=\"*\" MinHeight=\"102\" />"));
             Assert.True(panel.Contains("<RowDefinition Height=\"*\" MinHeight=\"50\" />"));
             Assert.True(xaml.Contains("Height=\"96\""));
@@ -6964,25 +7007,38 @@ namespace LyricHover.Tests
             Assert.False(dock.Contains("Math.Round(text.Length * wordTrackingProgress)"));
         }
 
-        static void WordTrackingPreservesProjectionAcrossSmallTimelineJitter()
+        static void WordTrackingPreservesProjectionAcrossBoundedTimelineJitter()
         {
             var line = new LyricLine(
                 TimeSpan.Zero,
                 "smooth",
                 new[] { new LyricWord(TimeSpan.Zero, TimeSpan.FromSeconds(4), "smooth") });
             var block = new LyricHover.App.Modules.WordTrackingTextBlock();
-            var anchorPosition = typeof(LyricHover.App.Modules.WordTrackingTextBlock)
+            var blockType = typeof(LyricHover.App.Modules.WordTrackingTextBlock);
+            var anchorPosition = blockType
                 .GetField("anchorPosition", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            var driftTolerance = typeof(LyricHover.App.Modules.WordTrackingTextBlock)
+            var anchorTimestamp = blockType
+                .GetField("anchorTimestamp", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            var driftTolerance = blockType
                 .GetField("MaximumContinuousAnchorDrift", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
-            Assert.Equal(TimeSpan.FromMilliseconds(120), (TimeSpan)driftTolerance.GetValue(null));
+            Assert.Equal(TimeSpan.FromMilliseconds(500), (TimeSpan)driftTolerance.GetValue(null));
 
             block.Present(line.Text, line, TimeSpan.FromSeconds(1), true);
-            block.Present(line.Text, line, TimeSpan.FromSeconds(1), true);
+            anchorTimestamp.SetValue(block, Stopwatch.GetTimestamp() - Stopwatch.Frequency / 4);
+            block.Present(line.Text, line, TimeSpan.FromSeconds(1.1), true);
             Assert.Equal(TimeSpan.FromSeconds(1), (TimeSpan)anchorPosition.GetValue(block));
 
-            block.Present(line.Text, line, TimeSpan.FromSeconds(1.3), true);
-            Assert.Equal(TimeSpan.FromSeconds(1.3), (TimeSpan)anchorPosition.GetValue(block));
+            anchorTimestamp.SetValue(block, Stopwatch.GetTimestamp() - Stopwatch.Frequency / 2);
+            block.Present(line.Text, line, TimeSpan.FromSeconds(1.7), true);
+            Assert.Equal(TimeSpan.FromSeconds(1), (TimeSpan)anchorPosition.GetValue(block));
+
+            anchorTimestamp.SetValue(block, Stopwatch.GetTimestamp() - Stopwatch.Frequency * 3 / 4);
+            block.Present(line.Text, line, TimeSpan.FromSeconds(1.4), true);
+            Assert.Equal(TimeSpan.FromSeconds(1), (TimeSpan)anchorPosition.GetValue(block));
+
+            anchorTimestamp.SetValue(block, Stopwatch.GetTimestamp() - Stopwatch.Frequency);
+            block.Present(line.Text, line, TimeSpan.FromSeconds(3), true);
+            Assert.Equal(TimeSpan.FromSeconds(3), (TimeSpan)anchorPosition.GetValue(block));
         }
 
         static void WordTrackingClipFollowsGlyphWidth()
@@ -7733,7 +7789,7 @@ namespace LyricHover.Tests
         static void TaskbarSettingsSchemaDefaultsToDisabled()
         {
             var source = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "OverlayPlacementSettings.cs"));
-            Assert.True(source.Contains("SchemaVersion { get; set; } = 10"));
+            Assert.True(source.Contains("SchemaVersion { get; set; } = 11"));
             Assert.True(source.Contains("LyricDockEnabled { get; set; }"));
             var settingsView = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "PlacementSettingsWindow.xaml"));
             Assert.True(settingsView.Contains("LyricDockEnabledCheckBox"));
@@ -7743,7 +7799,7 @@ namespace LyricHover.Tests
         {
             var source = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "OverlayPlacementSettings.cs"));
             Assert.True(source.Contains("public bool LyricDockEnabled { get; set; }"));
-            Assert.True(source.Contains("SchemaVersion = 10"));
+            Assert.True(source.Contains("SchemaVersion = 11"));
             Assert.True(source.Contains("originalSchemaVersion"));
             Assert.False(source.Contains("LyricDockEnabled { get; set; } = true"));
         }

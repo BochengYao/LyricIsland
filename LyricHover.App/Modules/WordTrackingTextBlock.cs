@@ -18,9 +18,10 @@ namespace LyricHover.App.Modules
     /// </summary>
     public sealed class WordTrackingTextBlock : Grid
     {
-        // Match the shared timeline's jitter tolerance. A wider local tolerance lets
-        // word highlighting keep running ahead after the player has corrected time.
-        private static readonly TimeSpan MaximumContinuousAnchorDrift = TimeSpan.FromMilliseconds(120);
+        // The shared timeline already rejects the larger SMTC sawtooth. Keep the visual
+        // clock continuous across the smaller delivery/dispatch jitter that remains,
+        // while still re-anchoring promptly for a meaningful seek or offset change.
+        private static readonly TimeSpan MaximumContinuousAnchorDrift = TimeSpan.FromMilliseconds(500);
         private const int MaximumCachedVisualWordMaps = 128;
         private static readonly object VisualWordMapCacheSync = new object();
         private static readonly Dictionary<VisualWordMapCacheKey, VisualWordMap> VisualWordMapCache =

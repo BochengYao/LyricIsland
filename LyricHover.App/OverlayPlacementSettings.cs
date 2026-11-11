@@ -10,6 +10,12 @@ using LyricHover.App.Fullscreen;
 
 namespace LyricHover.App
 {
+    public enum HoverAvoidanceMode
+    {
+        SoftAura = 0,
+        EdgeRetreat = 1
+    }
+
     public sealed class OverlayPlacementSettings
     {
         public const int MinCacheLimitMegabytes = 1;
@@ -52,7 +58,7 @@ namespace LyricHover.App
         public const double DefaultFullscreenTranslationFontSize = 32;
         public const double DefaultFullscreenLineHeightRatio = 1.26;
 
-        public int SchemaVersion { get; set; } = 10;
+        public int SchemaVersion { get; set; } = 11;
 
         public IslandLayoutSettings IslandLayouts { get; set; } = IslandLayoutDefaults.Create();
 
@@ -75,6 +81,8 @@ namespace LyricHover.App
         public List<HoverSpectrumStop> HoverSpectrumStops { get; set; } = CreateDefaultHoverSpectrumStops();
 
         public bool PassThroughOnHover { get; set; } = DefaultPassThroughOnHover;
+
+        public HoverAvoidanceMode HoverAvoidanceMode { get; set; } = HoverAvoidanceMode.SoftAura;
 
         public SettingsThemePreference SettingsTheme { get; set; } = SettingsThemePreference.System;
 
@@ -292,7 +300,7 @@ namespace LyricHover.App
             ExpandedAutoCollapseSeconds = Math.Max(
                 MinAutoRetractSeconds,
                 Math.Min(MaxAutoRetractSeconds, ExpandedAutoCollapseSeconds));
-            SchemaVersion = 10;
+            SchemaVersion = 11;
             OffsetRatio = Math.Max(0, Math.Min(1, OffsetRatio));
             CacheLimitMegabytes = Math.Max(MinCacheLimitMegabytes, Math.Min(MaxCacheLimitMegabytes, CacheLimitMegabytes));
             HoverAuraSize = Math.Max(MinHoverAuraSize, Math.Min(MaxHoverAuraSize, HoverAuraSize));
@@ -300,6 +308,10 @@ namespace LyricHover.App
             HoverAuraAspectRatio = Math.Max(MinHoverAuraAspectRatio, Math.Min(MaxHoverAuraAspectRatio, HoverAuraAspectRatio));
             HoverTransparencyPercent = Math.Max(MinHoverTransparencyPercent, Math.Min(MaxHoverTransparencyPercent, HoverTransparencyPercent));
             HoverSpectrumStops = NormalizeHoverSpectrumStops(HoverSpectrumStops, HoverTransparencyPercent);
+            if (!Enum.IsDefined(typeof(HoverAvoidanceMode), HoverAvoidanceMode))
+            {
+                HoverAvoidanceMode = HoverAvoidanceMode.SoftAura;
+            }
             LyricsSourcePriority = NormalizeLyricsSourcePriority(LyricsSourcePriority);
             LyricsSource = LyricsSourcePriority[0];
             PlayerPriority = NormalizePlayerPriority(PlayerPriority);
@@ -468,6 +480,7 @@ namespace LyricHover.App
                 var originalHoverTransparency = settings.HoverTransparencyPercent;
                 var originalHoverSpectrum = SerializeHoverSpectrum(settings.HoverSpectrumStops);
                 var originalPassThroughOnHover = settings.PassThroughOnHover;
+                var originalHoverAvoidanceMode = settings.HoverAvoidanceMode;
                 var originalSettingsTheme = settings.SettingsTheme;
                 var originalLanguage = settings.Language;
                 var originalLyricsSource = settings.LyricsSource;
@@ -496,6 +509,7 @@ namespace LyricHover.App
                     settings.HoverTransparencyPercent != originalHoverTransparency ||
                     SerializeHoverSpectrum(settings.HoverSpectrumStops) != originalHoverSpectrum ||
                     settings.PassThroughOnHover != originalPassThroughOnHover ||
+                    settings.HoverAvoidanceMode != originalHoverAvoidanceMode ||
                     settings.SettingsTheme != originalSettingsTheme ||
                     settings.Language != originalLanguage ||
                     settings.LyricsSource != originalLyricsSource ||

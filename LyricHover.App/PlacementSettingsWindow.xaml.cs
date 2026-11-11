@@ -302,6 +302,9 @@ namespace LyricHover.App
             HoverDetectionRangeSlider.Value = settings.HoverDetectionRange;
             HoverAuraAspectRatioSlider.Value = settings.HoverAuraAspectRatio;
             PassThroughOnHoverCheckBox.IsChecked = settings.PassThroughOnHover;
+            SoftAuraAvoidanceRadioButton.IsChecked = settings.HoverAvoidanceMode != HoverAvoidanceMode.EdgeRetreat;
+            EdgeRetreatAvoidanceRadioButton.IsChecked = settings.HoverAvoidanceMode == HoverAvoidanceMode.EdgeRetreat;
+            HoverAvoidanceModeSelectionTransform.X = settings.HoverAvoidanceMode == HoverAvoidanceMode.EdgeRetreat ? 112 : 0;
             EarlierHotkeyTextBox.Text = settings.LyricOffsetHotkeys.Earlier;
             LaterHotkeyTextBox.Text = settings.LyricOffsetHotkeys.Later;
             ResetHotkeyTextBox.Text = settings.LyricOffsetHotkeys.Reset;
@@ -1593,12 +1596,25 @@ namespace LyricHover.App
 
         private void ResetHoverDefaultsButton_Click(object sender, RoutedEventArgs e)
         {
+            SoftAuraAvoidanceRadioButton.IsChecked = true;
             HoverAuraSizeSlider.Value = OverlayPlacementSettings.DefaultHoverAuraSize;
             HoverDetectionRangeSlider.Value = OverlayPlacementSettings.DefaultHoverDetectionRange;
             HoverAuraAspectRatioSlider.Value = OverlayPlacementSettings.DefaultHoverAuraAspectRatio;
             SetHoverSpectrumControls(OverlayPlacementSettings.CreateDefaultHoverSpectrumStops());
             PassThroughOnHoverCheckBox.IsChecked = OverlayPlacementSettings.DefaultPassThroughOnHover;
             UpdateSettingValueLabels();
+            QueueDirtyStateUpdate();
+        }
+
+        private void HoverAvoidanceModeRadioButton_Checked(object sender, RoutedEventArgs e)
+        {
+            if (initializingSettings || HoverAvoidanceModeSelectionTransform == null)
+            {
+                return;
+            }
+
+            var edgeRetreat = EdgeRetreatAvoidanceRadioButton.IsChecked == true;
+            AnimateSegmentSelection(HoverAvoidanceModeSelectionTransform, edgeRetreat ? 112 : 0, true);
             QueueDirtyStateUpdate();
         }
 
@@ -1726,6 +1742,9 @@ namespace LyricHover.App
             settings.HoverTransparencyPercent = (int)Math.Round(SpectrumCenterTransparencySlider.Value);
             settings.HoverSpectrumStops = ReadHoverSpectrumStops();
             settings.PassThroughOnHover = PassThroughOnHoverCheckBox.IsChecked == true;
+            settings.HoverAvoidanceMode = EdgeRetreatAvoidanceRadioButton.IsChecked == true
+                ? HoverAvoidanceMode.EdgeRetreat
+                : HoverAvoidanceMode.SoftAura;
             settings.SettingsTheme = selectedThemePreference;
             settings.Language = LanguageComboBox.SelectedValue is AppLanguagePreference language
                 ? language

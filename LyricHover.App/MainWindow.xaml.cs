@@ -37,6 +37,7 @@ namespace LyricHover.App
         private readonly PlaybackIntentCoordinator playbackIntents = new PlaybackIntentCoordinator();
         private readonly SemaphoreSlim playbackCommandGate = new SemaphoreSlim(1, 1);
         private readonly IslandInteractionController interactionController = new IslandInteractionController();
+        private readonly HoverRetreatController hoverRetreatController = new HoverRetreatController();
         private readonly DateTimeOffset interactionClockOriginUtc = DateTimeOffset.UtcNow;
         private MediaSessionSnapshot currentSession;
         private string timelineSessionId = string.Empty;
@@ -478,6 +479,7 @@ namespace LyricHover.App
         {
             if (placementSettings == null ||
                 !placementSettings.PassThroughOnHover ||
+                placementSettings.HoverAvoidanceMode != HoverAvoidanceMode.SoftAura ||
                 layoutEditing ||
                 !islandVisible ||
                 !IsVisible ||
@@ -925,6 +927,7 @@ namespace LyricHover.App
                 return;
             }
 
+            hoverRetreatController.Reset();
             ApplyInteractionState(interactionController.GetState(GetInteractionClock()));
             var point = GetVisiblePosition();
             AnimateTo(point.Left, point.Top);
@@ -969,6 +972,7 @@ namespace LyricHover.App
 
             hoverProximityTimer.Stop();
             HideHoverTransparency();
+            hoverRetreatController.Reset();
             interactionController.PointerLeft(GetInteractionClock());
             ApplyInteractionState(IslandInteractionState.Collapsed);
             var point = GetHiddenPosition();
@@ -1130,12 +1134,18 @@ namespace LyricHover.App
 
         private void ShowHoverTransparency(Point localPoint, double intensity)
         {
+            if (placementSettings.HoverAvoidanceMode != HoverAvoidanceMode.SoftAura)
+            {
+                HideHoverTransparency();
+                return;
+            }
+
             if (powerSavingActive)
             {
                 return;
             }
 
-            if (IsHoverTransparencySuppressed())
+            if (IsHoverAvoidanceSuppressed())
             {
                 if (backgroundHoverOpacityMask != null || lyricsHoverOpacityMask != null)
                 {
@@ -1239,37 +1249,47 @@ namespace LyricHover.App
                 RestartNoPlaybackAutoRetractCountdown();
             }
             UpdateInteractionStateLayout();
-            var suppressHoverTransparency = IsHoverTransparencySuppressed();
+            var suppressHoverAvoidance = IsHoverAvoidanceSuppressed();
             ModuleHost.SetPlaybackInteractionEnabled(temporaryInteractionHeld);
             if (!islandVisible || !IsVisible)
             {
                 HideHoverTransparency();
+                hoverRetreatController.Reset();
                 return;
             }
 
-            if (suppressHoverTransparency)
+            if (suppressHoverAvoidance)
             {
                 HideHoverTransparency();
+                ResetHoverRetreat(true);
                 return;
             }
 
             if (powerSavingActive)
             {
                 HideHoverTransparency();
+                ResetHoverRetreat(true);
                 return;
             }
 
             UpdateInteractionStateLayout();
-            var cursor = Forms.Cursor.Position;
-            var localPoint = PointFromScreen(new Point(cursor.X, cursor.Y));
+            var localPoint = GetPointerRelativeToVisibleIsland();
+            var detectionRange = GetHoverDetectionRange();
+            var distance = GetDistanceToIsland(localPoint);
+            if (placementSettings.HoverAvoidanceMode == HoverAvoidanceMode.EdgeRetreat)
+            {
+                HideHoverTransparency();
+                UpdateHoverRetreat(distance, detectionRange);
+                return;
+            }
+
+            ResetHoverRetreat(true);
             if (IsInteractiveMouseSource(InputHitTest(localPoint) as DependencyObject))
             {
                 HideHoverTransparency();
                 return;
             }
 
-            var detectionRange = GetHoverDetectionRange();
-            var distance = GetDistanceToIsland(localPoint);
             if (distance >= detectionRange)
             {
                 if (!horizontalDragActive)
@@ -1290,9 +1310,43 @@ namespace LyricHover.App
             return Math.Max(OverlayPlacementSettings.MinHoverDetectionRange, placementSettings.HoverDetectionRange);
         }
 
-        private bool IsHoverTransparencySuppressed()
+        private bool IsHoverAvoidanceSuppressed()
         {
             return tutorialHoverSuppressed || settingsWindowHoverSuppressed || moduleDragActive || IsTemporaryInteractionHeld();
+        }
+
+        private Point GetPointerRelativeToVisibleIsland()
+        {
+            var cursor = Forms.Cursor.Position;
+            var localPoint = PointFromScreen(new Point(cursor.X, cursor.Y));
+            var visiblePosition = GetVisiblePosition();
+            return new Point(
+                localPoint.X + Left - visiblePosition.Left,
+                localPoint.Y + Top - visiblePosition.Top);
+        }
+
+        private void UpdateHoverRetreat(double distance, double detectionRange)
+        {
+            if (!hoverRetreatController.Update(true, distance, detectionRange))
+            {
+                return;
+            }
+
+            var target = hoverRetreatController.IsRetreated
+                ? GetHiddenPosition()
+                : GetVisiblePosition();
+            AnimateTo(target.Left, target.Top);
+        }
+
+        private void ResetHoverRetreat(bool restoreVisiblePosition)
+        {
+            if (!hoverRetreatController.Reset() || !restoreVisiblePosition || !islandVisible || islandFullscreenSuppressed)
+            {
+                return;
+            }
+
+            var target = GetVisiblePosition();
+            AnimateTo(target.Left, target.Top);
         }
 
         private string GetTemporaryInteractionGesture()
@@ -3605,7 +3659,11 @@ namespace LyricHover.App
             tutorialHoverEnteredCompletion?.TrySetResult(true);
             if (islandVisible)
             {
-                if (IsInteractiveMouseSource(e.OriginalSource as DependencyObject))
+                if (placementSettings.HoverAvoidanceMode == HoverAvoidanceMode.EdgeRetreat)
+                {
+                    UpdateHoverProximity();
+                }
+                else if (IsInteractiveMouseSource(e.OriginalSource as DependencyObject))
                 {
                     HideHoverTransparency();
                 }
@@ -3743,7 +3801,14 @@ namespace LyricHover.App
             UpdateInteractionStateLayout();
             if (islandVisible)
             {
-                ShowHoverTransparency(e.GetPosition(IslandShell));
+                if (placementSettings.HoverAvoidanceMode == HoverAvoidanceMode.EdgeRetreat)
+                {
+                    UpdateHoverProximity();
+                }
+                else
+                {
+                    ShowHoverTransparency(e.GetPosition(IslandShell));
+                }
             }
         }
 
