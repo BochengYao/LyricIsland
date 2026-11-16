@@ -5716,8 +5716,8 @@ namespace LyricHover.Tests
             Assert.False(controller.IsRetreated);
             Assert.True(mainWindowSource.Contains("geometry.FillContains(shapePoint)"));
             Assert.True(mainWindowSource.Contains("IsPointerInsideIslandShape(localPoint)"));
-            Assert.True(mainWindowSource.Contains("HoverRetreatDurationMilliseconds = 180"));
-            Assert.True(mainWindowSource.Contains("HoverRetreatRestoreDurationMilliseconds = 220"));
+            Assert.True(mainWindowSource.Contains("HoverRetreatDurationMilliseconds = 240"));
+            Assert.True(mainWindowSource.Contains("HoverRetreatRestoreDurationMilliseconds = 280"));
             Assert.True(mainWindowSource.Contains("AnimateTo(target.Left, target.Top, durationMilliseconds, true)"));
             Assert.True(mainWindowSource.Contains("1 - Math.Pow(1 - progress, 3)"));
 

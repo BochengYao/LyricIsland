@@ -28,8 +28,8 @@ namespace LyricHover.App
 {
     public partial class MainWindow : Window
     {
-        private const int HoverRetreatDurationMilliseconds = 180;
-        private const int HoverRetreatRestoreDurationMilliseconds = 220;
+        private const int HoverRetreatDurationMilliseconds = 240;
+        private const int HoverRetreatRestoreDurationMilliseconds = 280;
         private readonly DispatcherTimer timer;
         private readonly DispatcherTimer hoverProximityTimer;
         private readonly DispatcherTimer fullscreenMonitorTimer;
