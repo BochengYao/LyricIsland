@@ -1774,7 +1774,7 @@
                                                      GroupName="HoverAvoidanceMode"
                                                      Style="{StaticResource SegmentButtonStyle}"
                                                      Checked="HoverAvoidanceModeRadioButton_Checked"
-                                                     ToolTip="鼠标靠近时，整个歌词岛滑回屏幕边缘"
+                                                     ToolTip="鼠标碰到歌词岛时，整个歌词岛滑回屏幕边缘"
                                                      Content="边缘隐退" />
                                     </StackPanel>
                                 </Grid>

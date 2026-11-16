@@ -8,7 +8,7 @@ namespace LyricHover.App
 
         public bool IsRetreated { get; private set; }
 
-        public bool Update(bool enabled, double distance, double detectionRange)
+        public bool Update(bool enabled, double distance)
         {
             var previous = IsRetreated;
             if (!enabled || double.IsNaN(distance) || double.IsInfinity(distance))
@@ -17,10 +17,9 @@ namespace LyricHover.App
             }
             else
             {
-                var normalizedRange = Math.Max(0, detectionRange);
                 IsRetreated = previous
-                    ? distance < normalizedRange + ReleasePadding
-                    : distance < normalizedRange;
+                    ? distance < ReleasePadding
+                    : distance <= 0;
             }
 
             return previous != IsRetreated;

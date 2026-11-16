@@ -1274,16 +1274,16 @@ namespace LyricHover.App
 
             UpdateInteractionStateLayout();
             var localPoint = GetPointerRelativeToVisibleIsland();
-            var detectionRange = GetHoverDetectionRange();
             var distance = GetDistanceToIsland(localPoint);
             if (placementSettings.HoverAvoidanceMode == HoverAvoidanceMode.EdgeRetreat)
             {
                 HideHoverTransparency();
-                UpdateHoverRetreat(distance, detectionRange);
+                UpdateHoverRetreat(distance);
                 return;
             }
 
             ResetHoverRetreat(true);
+            var detectionRange = GetHoverDetectionRange();
             if (IsInteractiveMouseSource(InputHitTest(localPoint) as DependencyObject))
             {
                 HideHoverTransparency();
@@ -1325,9 +1325,9 @@ namespace LyricHover.App
                 localPoint.Y + Top - visiblePosition.Top);
         }
 
-        private void UpdateHoverRetreat(double distance, double detectionRange)
+        private void UpdateHoverRetreat(double distance)
         {
-            if (!hoverRetreatController.Update(true, distance, detectionRange))
+            if (!hoverRetreatController.Update(true, distance))
             {
                 return;
             }

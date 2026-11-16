@@ -364,7 +364,7 @@ namespace LyricHover.Tests
             suite.Run("mouse avoidance settings exposes hover aspect ratio preview", MouseAvoidanceSettingsExposesHoverAspectRatioPreview);
             suite.Run("mouse avoidance settings exposes click through option", MouseAvoidanceSettingsExposesClickThroughOption);
             suite.Run("mouse avoidance settings exposes selectable modes", MouseAvoidanceSettingsExposesSelectableModes);
-            suite.Run("edge retreat uses release hysteresis", EdgeRetreatUsesReleaseHysteresis);
+            suite.Run("edge retreat starts on contact and uses release hysteresis", EdgeRetreatStartsOnContactAndUsesReleaseHysteresis);
             suite.Run("mouse avoidance settings restores screenshot defaults", MouseAvoidanceSettingsRestoresScreenshotDefaults);
             suite.Run("click through keeps left drag available", ClickThroughKeepsLeftDragAvailable);
             suite.Run("settings window exposes theme mode switcher", SettingsWindowExposesThemeModeSwitcher);
@@ -5691,20 +5691,21 @@ namespace LyricHover.Tests
             Assert.True(mainWindowSource.Contains("GetHiddenPosition()"));
         }
 
-        static void EdgeRetreatUsesReleaseHysteresis()
+        static void EdgeRetreatStartsOnContactAndUsesReleaseHysteresis()
         {
             var controller = new HoverRetreatController();
 
-            Assert.False(controller.Update(true, 60, 60));
-            Assert.True(controller.Update(true, 59, 60));
+            Assert.False(controller.Update(true, 60));
+            Assert.False(controller.Update(true, 1));
+            Assert.True(controller.Update(true, 0));
             Assert.True(controller.IsRetreated);
-            Assert.False(controller.Update(true, 83, 60));
+            Assert.False(controller.Update(true, 23));
             Assert.True(controller.IsRetreated);
-            Assert.True(controller.Update(true, 84, 60));
+            Assert.True(controller.Update(true, 24));
             Assert.False(controller.IsRetreated);
 
-            controller.Update(true, 0, 60);
-            Assert.True(controller.Update(false, 0, 60));
+            controller.Update(true, 0);
+            Assert.True(controller.Update(false, 0));
             Assert.False(controller.IsRetreated);
 
             var settings = new OverlayPlacementSettings { HoverAvoidanceMode = HoverAvoidanceMode.EdgeRetreat };

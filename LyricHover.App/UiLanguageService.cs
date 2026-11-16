@@ -73,7 +73,7 @@ namespace LyricHover.App
             ["柔光避让"] = new[] { "柔光避让", "柔光避讓", "Soft Aura", "ソフトオーラ" },
             ["边缘隐退"] = new[] { "边缘隐退", "邊緣隱退", "Edge Retreat", "エッジに収納" },
             ["鼠标靠近时，仅淡出指针周围区域"] = new[] { "鼠标靠近时，仅淡出指针周围区域", "滑鼠靠近時，僅淡出指標周圍區域", "Fade only the area around the pointer", "ポインター周辺だけを薄くします" },
-            ["鼠标靠近时，整个歌词岛滑回屏幕边缘"] = new[] { "鼠标靠近时，整个歌词岛滑回屏幕边缘", "滑鼠靠近時，整個歌詞島滑回螢幕邊緣", "Slide the entire lyrics island back to the screen edge", "歌詞島全体を画面端へ収納します" },
+            ["鼠标碰到歌词岛时，整个歌词岛滑回屏幕边缘"] = new[] { "鼠标碰到歌词岛时，整个歌词岛滑回屏幕边缘", "滑鼠碰到歌詞島時，整個歌詞島滑回螢幕邊緣", "Slide the entire lyrics island back when the pointer touches it", "ポインターが歌詞島に触れたとき、画面端へ収納します" },
             ["快捷键"] = new[] { "快捷键", "快速鍵", "Shortcuts", "ショートカット" },
             ["打开/关闭全屏歌词"] = new[] { "打开/关闭全屏歌词", "開啟/關閉全螢幕歌詞", "Toggle fullscreen lyrics", "全画面歌詞を切り替え" },
             ["模块布局"] = new[] { "模块布局", "模組佈局", "Module layout", "モジュールレイアウト" },
