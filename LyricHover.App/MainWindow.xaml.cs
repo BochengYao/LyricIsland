@@ -28,6 +28,8 @@ namespace LyricHover.App
 {
     public partial class MainWindow : Window
     {
+        private const int HoverRetreatDurationMilliseconds = 180;
+        private const int HoverRetreatRestoreDurationMilliseconds = 220;
         private readonly DispatcherTimer timer;
         private readonly DispatcherTimer hoverProximityTimer;
         private readonly DispatcherTimer fullscreenMonitorTimer;
@@ -1036,7 +1038,11 @@ namespace LyricHover.App
             }
         }
 
-        private void AnimateTo(double targetLeft, double targetTop)
+        private void AnimateTo(
+            double targetLeft,
+            double targetTop,
+            int? durationMilliseconds = null,
+            bool useResponsiveEaseOut = false)
         {
             if (powerSavingActive)
             {
@@ -1055,7 +1061,8 @@ namespace LyricHover.App
             var startLeft = Left;
             var startTop = Top;
             var retracting = targetTop < startTop;
-            var duration = TimeSpan.FromMilliseconds(retracting ? 300 : 360);
+            var duration = TimeSpan.FromMilliseconds(
+                durationMilliseconds ?? (retracting ? 300 : 360));
             var started = DateTime.UtcNow;
 
             StopPositionAnimationFrames();
@@ -1072,9 +1079,11 @@ namespace LyricHover.App
                 var progress = Math.Max(
                     0,
                     Math.Min(1, (DateTime.UtcNow - started).TotalMilliseconds / duration.TotalMilliseconds));
-                var eased = retracting
-                    ? Math.Pow(progress, 3)
-                    : 1 - Math.Pow(1 - progress, 4);
+                var eased = useResponsiveEaseOut
+                    ? 1 - Math.Pow(1 - progress, 3)
+                    : retracting
+                        ? Math.Pow(progress, 3)
+                        : 1 - Math.Pow(1 - progress, 4);
                 Left = startLeft + (targetLeft - startLeft) * eased;
                 Top = startTop + (targetTop - startTop) * eased;
 
@@ -1335,7 +1344,10 @@ namespace LyricHover.App
             var target = hoverRetreatController.IsRetreated
                 ? GetHiddenPosition()
                 : GetVisiblePosition();
-            AnimateTo(target.Left, target.Top);
+            var durationMilliseconds = hoverRetreatController.IsRetreated
+                ? HoverRetreatDurationMilliseconds
+                : HoverRetreatRestoreDurationMilliseconds;
+            AnimateTo(target.Left, target.Top, durationMilliseconds, true);
         }
 
         private void ResetHoverRetreat(bool restoreVisiblePosition)
@@ -1346,7 +1358,11 @@ namespace LyricHover.App
             }
 
             var target = GetVisiblePosition();
-            AnimateTo(target.Left, target.Top);
+            AnimateTo(
+                target.Left,
+                target.Top,
+                HoverRetreatRestoreDurationMilliseconds,
+                true);
         }
 
         private string GetTemporaryInteractionGesture()

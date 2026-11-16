@@ -5694,6 +5694,7 @@ namespace LyricHover.Tests
         static void EdgeRetreatStartsOnContactAndUsesReleaseHysteresis()
         {
             var controller = new HoverRetreatController();
+            var mainWindowSource = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "MainWindow.xaml.cs"));
 
             Assert.False(controller.Update(true, 60));
             Assert.False(controller.Update(true, 1));
@@ -5707,6 +5708,10 @@ namespace LyricHover.Tests
             controller.Update(true, 0);
             Assert.True(controller.Update(false, 0));
             Assert.False(controller.IsRetreated);
+            Assert.True(mainWindowSource.Contains("HoverRetreatDurationMilliseconds = 180"));
+            Assert.True(mainWindowSource.Contains("HoverRetreatRestoreDurationMilliseconds = 220"));
+            Assert.True(mainWindowSource.Contains("AnimateTo(target.Left, target.Top, durationMilliseconds, true)"));
+            Assert.True(mainWindowSource.Contains("1 - Math.Pow(1 - progress, 3)"));
 
             var settings = new OverlayPlacementSettings { HoverAvoidanceMode = HoverAvoidanceMode.EdgeRetreat };
             var restored = JsonSerializer.Deserialize<OverlayPlacementSettings>(JsonSerializer.Serialize(settings));
