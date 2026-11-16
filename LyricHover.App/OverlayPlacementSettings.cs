@@ -45,8 +45,8 @@ namespace LyricHover.App
         public const double DefaultIslandFontScale = 1;
         public const string DefaultChineseFontFamily = "Microsoft YaHei UI";
         public const string DefaultEnglishFontFamily = "Segoe UI";
-        public const double DefaultIslandConcaveRadius = 30;
-        public const double DefaultIslandConvexRadius = 13.2;
+        public const double DefaultIslandConcaveRadius = 26.1;
+        public const double DefaultIslandConvexRadius = 18.5;
         public const double DefaultIslandConvexContentEdgeDistance = 9;
         public const double MaxIslandConvexContentEdgeDistance = 48;
 
@@ -448,6 +448,8 @@ namespace LyricHover.App
 
     public sealed class OverlaySettingsStore
     {
+        private const double LegacyIslandConcaveRadius = 30;
+        private const double LegacyIslandConvexRadius = 13.2;
         private readonly string path;
 
         public OverlaySettingsStore(string path)
@@ -462,7 +464,15 @@ namespace LyricHover.App
             OverlayPlacementSettings settings;
             try
             {
-                settings = JsonSerializer.Deserialize<OverlayPlacementSettings>(File.ReadAllText(path)) ?? new OverlayPlacementSettings();
+                var json = File.ReadAllText(path);
+                using (var document = JsonDocument.Parse(json))
+                {
+                    settings = JsonSerializer.Deserialize<OverlayPlacementSettings>(json) ?? new OverlayPlacementSettings();
+                    if (!document.RootElement.TryGetProperty(nameof(OverlayPlacementSettings.IslandConcaveRadius), out _))
+                        settings.IslandConcaveRadius = LegacyIslandConcaveRadius;
+                    if (!document.RootElement.TryGetProperty(nameof(OverlayPlacementSettings.IslandConvexRadius), out _))
+                        settings.IslandConvexRadius = LegacyIslandConvexRadius;
+                }
             }
             catch
             {

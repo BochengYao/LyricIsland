@@ -187,6 +187,7 @@ namespace LyricHover.Tests
             suite.Run("keeps repeated divider modules", KeepsRepeatedDividerModules);
             suite.Run("settings schema contains independent layouts", SettingsSchemaContainsIndependentLayouts);
             suite.Run("island appearance settings normalize and round trip compatibly", IslandAppearanceSettingsNormalizeAndRoundTrip);
+            suite.Run("new users get updated corner radii without changing existing settings", NewUsersGetUpdatedCornerRadiiWithoutChangingExistingSettings);
             suite.Run("Chinese font selectors only list families with CJK glyphs", ChineseFontSelectorsFilterForCjkGlyphs);
             suite.Run("island appearance preview and live shape share pill geometry", IslandAppearanceGeometryKeepsCapsuleBounds);
             suite.Run("settings fixes preserve DPI clarity and deliberate actions", SettingsFixesPreserveDpiClarityAndDeliberateActions);
@@ -2551,6 +2552,33 @@ namespace LyricHover.Tests
             var settingsView = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "PlacementSettingsWindow.xaml"));
             Assert.True(settingsView.Contains("IslandWordTrackingCheckBox"));
             Assert.True(settingsView.Contains("DockWordTrackingCheckBox"));
+        }
+
+        static void NewUsersGetUpdatedCornerRadiiWithoutChangingExistingSettings()
+        {
+            WithTemporarySettingsStore((store, path) =>
+            {
+                var firstRun = store.Load();
+                Assert.False(firstRun.IslandTopCornersConvex);
+                Assert.Equal(26.1d, firstRun.IslandConcaveRadius);
+                Assert.Equal(18.5d, firstRun.IslandConvexRadius);
+                Assert.False(File.Exists(path));
+
+                const string saved = "{\"SchemaVersion\":11,\"IslandConcaveRadius\":34.2,\"IslandConvexRadius\":9.5}";
+                File.WriteAllText(path, saved);
+                var existing = store.Load();
+                Assert.Equal(34.2d, existing.IslandConcaveRadius);
+                Assert.Equal(9.5d, existing.IslandConvexRadius);
+                Assert.Equal(saved, File.ReadAllText(path));
+
+                const string legacy = "{\"SchemaVersion\":11,\"IslandTopCornersConvex\":true}";
+                File.WriteAllText(path, legacy);
+                var older = store.Load();
+                Assert.True(older.IslandTopCornersConvex);
+                Assert.Equal(30d, older.IslandConcaveRadius);
+                Assert.Equal(13.2d, older.IslandConvexRadius);
+                Assert.Equal(legacy, File.ReadAllText(path));
+            });
         }
 
         static void IslandAppearanceSettingsNormalizeAndRoundTrip()

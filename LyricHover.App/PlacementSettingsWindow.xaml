@@ -1296,15 +1296,15 @@
                                     <TextBlock x:Name="IslandConcaveRadiusLabel" Grid.Row="19" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource SettingLabel}" Text="凹角半径" />
                                     <Grid Grid.Row="19" Grid.Column="1" VerticalAlignment="Center">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="88" /><ColumnDefinition Width="42" /></Grid.ColumnDefinitions>
-                                        <Slider x:Name="IslandConcaveRadiusSlider" Minimum="0" Maximum="120" Value="30" VerticalAlignment="Center" />
-                                        <TextBox x:Name="IslandConcaveRadiusTextBox" Grid.Column="1" Margin="8,0,0,0" TextAlignment="Center" VerticalContentAlignment="Center" Text="30" />
+                                        <Slider x:Name="IslandConcaveRadiusSlider" Minimum="0" Maximum="120" Value="26.1" VerticalAlignment="Center" />
+                                        <TextBox x:Name="IslandConcaveRadiusTextBox" Grid.Column="1" Margin="8,0,0,0" TextAlignment="Center" VerticalContentAlignment="Center" Text="26.1" />
                                         <TextBlock Grid.Column="2" Margin="8,0,0,0" HorizontalAlignment="Stretch" TextAlignment="Right" VerticalAlignment="Center" Foreground="{DynamicResource SettingsSecondaryForegroundBrush}" Text="DIP" />
                                     </Grid>
                                     <TextBlock Grid.Row="20" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource SettingLabel}" Text="凸角半径" />
                                     <Grid Grid.Row="20" Grid.Column="1" VerticalAlignment="Center">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="88" /><ColumnDefinition Width="42" /></Grid.ColumnDefinitions>
-                                        <Slider x:Name="IslandConvexRadiusSlider" Minimum="0" Maximum="120" Value="13.2" VerticalAlignment="Center" />
-                                        <TextBox x:Name="IslandConvexRadiusTextBox" Grid.Column="1" Margin="8,0,0,0" TextAlignment="Center" VerticalContentAlignment="Center" Text="13.2" />
+                                        <Slider x:Name="IslandConvexRadiusSlider" Minimum="0" Maximum="120" Value="18.5" VerticalAlignment="Center" />
+                                        <TextBox x:Name="IslandConvexRadiusTextBox" Grid.Column="1" Margin="8,0,0,0" TextAlignment="Center" VerticalContentAlignment="Center" Text="18.5" />
                                         <TextBlock Grid.Column="2" Margin="8,0,0,0" HorizontalAlignment="Stretch" TextAlignment="Right" VerticalAlignment="Center" Foreground="{DynamicResource SettingsSecondaryForegroundBrush}" Text="DIP" />
                                     </Grid>
                                     <Grid x:Name="IslandConvexContentEdgeDistanceRow" Grid.Row="21" Grid.ColumnSpan="2" Height="0" Opacity="0" Visibility="Collapsed" ClipToBounds="True">
