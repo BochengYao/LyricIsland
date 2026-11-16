@@ -364,7 +364,7 @@ namespace LyricHover.Tests
             suite.Run("mouse avoidance settings exposes hover aspect ratio preview", MouseAvoidanceSettingsExposesHoverAspectRatioPreview);
             suite.Run("mouse avoidance settings exposes click through option", MouseAvoidanceSettingsExposesClickThroughOption);
             suite.Run("mouse avoidance settings exposes selectable modes", MouseAvoidanceSettingsExposesSelectableModes);
-            suite.Run("edge retreat starts on contact and uses release hysteresis", EdgeRetreatStartsOnContactAndUsesReleaseHysteresis);
+            suite.Run("edge retreat confirms shape contact and uses release hysteresis", EdgeRetreatConfirmsShapeContactAndUsesReleaseHysteresis);
             suite.Run("mouse avoidance settings restores screenshot defaults", MouseAvoidanceSettingsRestoresScreenshotDefaults);
             suite.Run("click through keeps left drag available", ClickThroughKeepsLeftDragAvailable);
             suite.Run("settings window exposes theme mode switcher", SettingsWindowExposesThemeModeSwitcher);
@@ -5691,23 +5691,31 @@ namespace LyricHover.Tests
             Assert.True(mainWindowSource.Contains("GetHiddenPosition()"));
         }
 
-        static void EdgeRetreatStartsOnContactAndUsesReleaseHysteresis()
+        static void EdgeRetreatConfirmsShapeContactAndUsesReleaseHysteresis()
         {
             var controller = new HoverRetreatController();
             var mainWindowSource = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "MainWindow.xaml.cs"));
+            var started = TimeSpan.FromSeconds(1);
 
-            Assert.False(controller.Update(true, 60));
-            Assert.False(controller.Update(true, 1));
-            Assert.True(controller.Update(true, 0));
+            Assert.False(controller.Update(true, false, 0, started));
+            Assert.False(controller.Update(true, true, 0, started));
+            Assert.False(controller.Update(true, true, 0, started + TimeSpan.FromMilliseconds(79)));
+            Assert.True(controller.Update(true, true, 0, started + TimeSpan.FromMilliseconds(80)));
             Assert.True(controller.IsRetreated);
-            Assert.False(controller.Update(true, 23));
+            Assert.False(controller.Update(true, false, 23, started + TimeSpan.FromMilliseconds(120)));
             Assert.True(controller.IsRetreated);
-            Assert.True(controller.Update(true, 24));
+            Assert.True(controller.Update(true, false, 24, started + TimeSpan.FromMilliseconds(160)));
             Assert.False(controller.IsRetreated);
 
-            controller.Update(true, 0);
-            Assert.True(controller.Update(false, 0));
+            Assert.False(controller.Update(true, true, 0, started + TimeSpan.FromMilliseconds(200)));
+            Assert.False(controller.Update(true, false, 1, started + TimeSpan.FromMilliseconds(240)));
+            Assert.False(controller.Update(true, true, 0, started + TimeSpan.FromMilliseconds(280)));
+            Assert.False(controller.Update(true, true, 0, started + TimeSpan.FromMilliseconds(359)));
+            Assert.True(controller.Update(true, true, 0, started + TimeSpan.FromMilliseconds(360)));
+            Assert.True(controller.Update(false, false, 0, started + TimeSpan.FromMilliseconds(361)));
             Assert.False(controller.IsRetreated);
+            Assert.True(mainWindowSource.Contains("geometry.FillContains(shapePoint)"));
+            Assert.True(mainWindowSource.Contains("IsPointerInsideIslandShape(localPoint)"));
             Assert.True(mainWindowSource.Contains("HoverRetreatDurationMilliseconds = 180"));
             Assert.True(mainWindowSource.Contains("HoverRetreatRestoreDurationMilliseconds = 220"));
             Assert.True(mainWindowSource.Contains("AnimateTo(target.Left, target.Top, durationMilliseconds, true)"));

@@ -1287,7 +1287,7 @@ namespace LyricHover.App
             if (placementSettings.HoverAvoidanceMode == HoverAvoidanceMode.EdgeRetreat)
             {
                 HideHoverTransparency();
-                UpdateHoverRetreat(distance);
+                UpdateHoverRetreat(IsPointerInsideIslandShape(localPoint), distance);
                 return;
             }
 
@@ -1334,9 +1334,25 @@ namespace LyricHover.App
                 localPoint.Y + Top - visiblePosition.Top);
         }
 
-        private void UpdateHoverRetreat(double distance)
+        private bool IsPointerInsideIslandShape(Point localPoint)
         {
-            if (!hoverRetreatController.Update(true, distance))
+            var geometry = IslandShape?.Data;
+            if (geometry == null)
+            {
+                return false;
+            }
+
+            var shapePoint = TranslatePoint(localPoint, IslandShape);
+            return geometry.FillContains(shapePoint);
+        }
+
+        private void UpdateHoverRetreat(bool isTouching, double distance)
+        {
+            if (!hoverRetreatController.Update(
+                true,
+                isTouching,
+                distance,
+                GetInteractionClock()))
             {
                 return;
             }
