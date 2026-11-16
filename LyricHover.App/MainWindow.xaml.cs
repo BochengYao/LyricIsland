@@ -57,6 +57,9 @@ namespace LyricHover.App
         private readonly ScreenCatalog screenCatalog = new ScreenCatalog();
         private ILyricsClient lyricsClient;
         private TimedLyrics currentLyrics = new TimedLyrics(new LyricLine[0]);
+        private TimedLyrics convertedLyricsSource;
+        private TimedLyrics convertedLyrics;
+        private ChineseLyricsScript convertedLyricsScript;
         private TrackIdentity currentTrack;
         private OverlayPlacementSettings placementSettings => settingsStateCoordinator.Current;
         private LyricsSourcePreference selectedLyricsSource = LyricsSourcePreference.Automatic;
@@ -754,8 +757,9 @@ namespace LyricHover.App
                 }
 
                 var effectiveLyricOffset = GetEffectiveLyricOffset(lyricOffset);
+                var displayLyrics = GetDisplayLyrics();
                 var lines = LyricsDisplaySelector.Select(
-                    currentLyrics,
+                    displayLyrics,
                     timeline.Position,
                     effectiveLyricOffset,
                     placementSettings.UseMultiLineDisplay,
@@ -763,7 +767,7 @@ namespace LyricHover.App
                 // The taskbar dock keeps its own lines/translation preference, independent
                 // from the island, so select a second snapshot with the dock settings.
                 var dockLines = LyricsDisplaySelector.Select(
-                    currentLyrics,
+                    displayLyrics,
                     timeline.Position,
                     effectiveLyricOffset,
                     placementSettings.LyricDockUseMultiLineDisplay,
@@ -772,7 +776,7 @@ namespace LyricHover.App
                     timeline.Position,
                     effectiveLyricOffset,
                     TimeSpan.FromSeconds(4));
-                var currentLine = currentLyrics.GetCurrentLine(timeline.Position, effectiveLyricOffset);
+                var currentLine = displayLyrics.GetCurrentLine(timeline.Position, effectiveLyricOffset);
                 var wordProgress = currentLine.GetWordProgress(timeline.Position + effectiveLyricOffset);
                 ScheduleLyricLineBoundaryRefresh(
                     currentLine,
@@ -1689,6 +1693,24 @@ namespace LyricHover.App
             {
                 ShowIsland();
             }
+            if (previousSettings.UseTraditionalChineseLyrics != runtimeSettings.UseTraditionalChineseLyrics)
+            {
+                _ = RefreshAsync();
+            }
+        }
+
+        private TimedLyrics GetDisplayLyrics()
+        {
+            var script = placementSettings.UseTraditionalChineseLyrics
+                ? ChineseLyricsScript.Traditional
+                : ChineseLyricsScript.Simplified;
+            if (!ReferenceEquals(convertedLyricsSource, currentLyrics) || convertedLyricsScript != script)
+            {
+                convertedLyrics = ChineseLyricsConverter.Convert(currentLyrics, script);
+                convertedLyricsSource = currentLyrics;
+                convertedLyricsScript = script;
+            }
+            return convertedLyrics;
         }
 
         private static bool HasIslandModuleAppearanceChanged(
@@ -2233,7 +2255,7 @@ namespace LyricHover.App
             fullscreenLyricsWindow?.Present(new FullscreenLyricsPresentation
             {
                 Session = currentSession,
-                Lyrics = currentLyrics,
+                Lyrics = GetDisplayLyrics(),
                 Position = currentEffectivePosition,
                 Offset = GetEffectiveLyricOffset(lyricOffset),
                 LyricsSearchFinished = lyricsSearchFinished

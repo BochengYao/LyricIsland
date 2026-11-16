@@ -102,6 +102,8 @@ namespace LyricHover.App
 
         public bool ShowTranslation { get; set; } = true;
 
+        public bool UseTraditionalChineseLyrics { get; set; }
+
         public bool IslandWordTrackingEnabled { get; set; } = true;
 
         public string IslandChineseFontFamily { get; set; } = DefaultChineseFontFamily;
@@ -486,6 +488,7 @@ namespace LyricHover.App
                 var originalLyricsSource = settings.LyricsSource;
                 var originalUseMultiLineDisplay = settings.UseMultiLineDisplay;
                 var originalShowTranslation = settings.ShowTranslation;
+                var originalUseTraditionalChineseLyrics = settings.UseTraditionalChineseLyrics;
                 var originalIslandWordTracking = settings.IslandWordTrackingEnabled;
                 var originalIslandConvexContentEdgeDistance = settings.IslandConvexContentEdgeDistance;
                 var originalIslandEnabled = settings.IslandEnabled;
@@ -515,6 +518,7 @@ namespace LyricHover.App
                     settings.LyricsSource != originalLyricsSource ||
                     settings.UseMultiLineDisplay != originalUseMultiLineDisplay ||
                     settings.ShowTranslation != originalShowTranslation ||
+                    settings.UseTraditionalChineseLyrics != originalUseTraditionalChineseLyrics ||
                     settings.IslandWordTrackingEnabled != originalIslandWordTracking ||
                     Math.Abs(settings.IslandConvexContentEdgeDistance - originalIslandConvexContentEdgeDistance) > 0.0001 ||
                     settings.IslandEnabled != originalIslandEnabled ||

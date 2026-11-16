@@ -6831,8 +6831,10 @@ namespace LyricHover.Tests
             Assert.False(xaml.Contains("x:Name=\"ExpandableInteractionHintText\""));
             Assert.False(xaml.Contains("按住 Ctrl 并单击LyricHover才会展开或收起"));
             Assert.True(xaml.Contains("x:Name=\"ExpandablePreviewDescriptionText\""));
-            Assert.True(settings.Contains("UpdateExpandableInteractionHint"));
+            Assert.True(settings.Contains("UpdateTemporaryInteractionHints"));
             Assert.True(settings.Contains("ExpandablePreviewDescriptionText.Text = UiLanguageService.Translate"));
+            Assert.True(xaml.Contains("x:Name=\"HoverShortcutHintText\""));
+            Assert.True(settings.Contains("HoverShortcutHintText.Text = string.Format("));
             Assert.True(xaml.Contains("按住 "));
             Assert.True(xaml.Contains("即展开，松开后自动折叠"));
             Assert.True(main.Contains("按住 \" + GetTemporaryInteractionGesture() + \" 即时展开"));

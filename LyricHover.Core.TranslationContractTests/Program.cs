@@ -22,6 +22,7 @@ namespace LyricHover.Core.TranslationContractTests
                 FindsLocalizedTitleThroughArtistFallback();
                 FindsLocalizedTitleThroughQqArtistFallback();
                 RejectsAmbiguousLocalizedTitleFallback();
+                ConvertsChineseLyricsAndTranslationsForDisplay();
                 Console.WriteLine("Core translation contract tests passed.");
                 return 0;
             }
@@ -45,6 +46,32 @@ namespace LyricHover.Core.TranslationContractTests
                 LyricsTranslationLanguage.English);
             Assert(LyricsPackageParser.GetTranslationLanguage(localized) == LyricsTranslationLanguage.English,
                 "Localized package language missing.");
+        }
+
+        private static void ConvertsChineseLyricsAndTranslationsForDisplay()
+        {
+            var source = new TimedLyrics(
+                new[] {
+                    new LyricLine(TimeSpan.Zero, "歌词", new[] { new LyricWord(TimeSpan.Zero, TimeSpan.FromSeconds(1), "歌词") }),
+                    new LyricLine(TimeSpan.FromSeconds(2), "歌詞"),
+                    new LyricLine(TimeSpan.FromSeconds(4), "かな 歌詞")
+                }, "title", "artist",
+                new[] { new LyricLine(TimeSpan.Zero, "音乐"), new LyricLine(TimeSpan.FromSeconds(2), "音樂") });
+            var traditional = ChineseLyricsConverter.Convert(source, ChineseLyricsScript.Traditional);
+            Assert(traditional.Lines[0].Text == "歌詞" && traditional.Lines[0].Words[0].Text == "歌詞",
+                "Traditional conversion did not preserve word timing text: " + traditional.Lines[0].Text + " / " + traditional.Lines[0].Words[0].Text);
+            Assert(traditional.TranslationLines[0].Text == "音樂", "Translation was not converted to Traditional Chinese.");
+            Assert(traditional.Lines[2].Text == "かな 歌詞", "Japanese lyric was changed.");
+            var simplified = ChineseLyricsConverter.Convert(source, ChineseLyricsScript.Simplified);
+            Assert(simplified.Lines[1].Text == "歌词" && simplified.TranslationLines[1].Text == "音乐",
+                "Traditional source text was not converted to Simplified Chinese.");
+            Assert(source.Lines[0].Text == "歌词" && source.TranslationLines[1].Text == "音樂",
+                "Conversion changed the source lyrics.");
+            var japaneseTranslation = new TimedLyrics(
+                new[] { new LyricLine(TimeSpan.Zero, "歌词") }, "", "",
+                new[] { new LyricLine(TimeSpan.Zero, "音樂") }, LyricsTranslationLanguage.Japanese);
+            Assert(ChineseLyricsConverter.Convert(japaneseTranslation, ChineseLyricsScript.Simplified)
+                .TranslationLines[0].Text == "音樂", "Japanese translation was converted.");
         }
 
         private static void MatchesOnlyTheRequestedTranslationLanguage()

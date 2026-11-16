@@ -280,6 +280,7 @@ namespace LyricHover.App
             SingleLineRadioButton.IsChecked = !settings.UseMultiLineDisplay;
             MultiLineRadioButton.IsChecked = settings.UseMultiLineDisplay;
             ShowTranslationCheckBox.IsChecked = settings.ShowTranslation;
+            TraditionalChineseLyricsCheckBox.IsChecked = settings.UseTraditionalChineseLyrics;
             IslandWordTrackingCheckBox.IsChecked = settings.IslandWordTrackingEnabled;
             IslandEnabledSwitch.IsChecked = settings.IslandEnabled;
             HideIslandInFullscreenCheckBox.IsChecked = settings.HideIslandInFullscreen;
@@ -310,7 +311,7 @@ namespace LyricHover.App
             ResetHotkeyTextBox.Text = settings.LyricOffsetHotkeys.Reset;
             FullscreenLyricsHotkeyTextBox.Text = settings.LyricOffsetHotkeys.FullscreenLyrics;
             TemporaryInteractionHotkeyTextBox.Text = settings.LyricOffsetHotkeys.TemporaryInteraction;
-            UpdateExpandableInteractionHint();
+            UpdateTemporaryInteractionHints();
             SetHoverSpectrumControls(settings.HoverSpectrumStops);
             InitializeLayoutEditingControls(settings);
             InitializeLayoutModePreviewAnimation();
@@ -840,6 +841,7 @@ namespace LyricHover.App
                 SingleLineRadioButton,
                 MultiLineRadioButton,
                 ShowTranslationCheckBox,
+                TraditionalChineseLyricsCheckBox,
                 LyricDockEnabledCheckBox,
                 DockAlignmentCenterRadioButton,
                 DockAlignmentLeftRadioButton,
@@ -1047,6 +1049,7 @@ namespace LyricHover.App
             InitializePlayerSelection(workingSettings);
             ApplyProEntitlementState(verifiedProEntitlementKind);
             UpdateSettingValueLabels();
+            UpdateTemporaryInteractionHints();
         }
 
         private void LanguageComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1099,7 +1102,7 @@ namespace LyricHover.App
             if (ReferenceEquals(sender, DockFontSizeTextBox) && !SyncAppearanceSlider(DockFontSizeTextBox, DockFontSizeSlider)) return;
             if (ReferenceEquals(sender, TemporaryInteractionHotkeyTextBox))
             {
-                UpdateExpandableInteractionHint();
+                UpdateTemporaryInteractionHints();
             }
             UpdateIslandAppearancePreview(ReferenceEquals(sender, IslandFontScaleTextBox));
             QueueDirtyStateUpdate();
@@ -1336,9 +1339,9 @@ namespace LyricHover.App
             row.BeginAnimation(UIElement.OpacityProperty, opacityAnimation, HandoffBehavior.SnapshotAndReplace);
         }
 
-        private void UpdateExpandableInteractionHint()
+        private void UpdateTemporaryInteractionHints()
         {
-            if (ExpandablePreviewDescriptionText == null || TemporaryInteractionHotkeyTextBox == null)
+            if (TemporaryInteractionHotkeyTextBox == null)
             {
                 return;
             }
@@ -1346,8 +1349,18 @@ namespace LyricHover.App
             var gesture = string.IsNullOrWhiteSpace(TemporaryInteractionHotkeyTextBox.Text)
                 ? "Ctrl"
                 : TemporaryInteractionHotkeyTextBox.Text.Trim();
-            ExpandablePreviewDescriptionText.Text = UiLanguageService.Translate("平时保持紧凑，按住 ") + gesture +
-                UiLanguageService.Translate(" 即展开，松开后自动折叠。");
+            if (ExpandablePreviewDescriptionText != null)
+            {
+                ExpandablePreviewDescriptionText.Text = UiLanguageService.Translate("平时保持紧凑，按住 ") + gesture +
+                    UiLanguageService.Translate(" 即展开，松开后自动折叠。");
+            }
+            if (HoverShortcutHintText != null)
+            {
+                HoverShortcutHintText.Text = string.Format(
+                    CultureInfo.CurrentCulture,
+                    UiLanguageService.Translate("按下{0}以在鼠标靠近时弹出歌词岛"),
+                    gesture);
+            }
         }
 
         private void SynchronizeInitialIslandEnabledState()
@@ -1773,6 +1786,7 @@ namespace LyricHover.App
             settings.IslandConvexContentEdgeDistance = IslandConvexContentEdgeDistanceSlider.Value;
             settings.IslandTopCornersConvex = islandTopCornersConvexMode;
             settings.ShowTranslation = ShowTranslationCheckBox.IsChecked == true;
+            settings.UseTraditionalChineseLyrics = TraditionalChineseLyricsCheckBox.IsChecked == true;
             settings.IslandWordTrackingEnabled = IslandWordTrackingCheckBox.IsChecked == true;
             settings.IslandEnabled = IslandEnabledSwitch.IsChecked == true;
             settings.HideIslandInFullscreen = HideIslandInFullscreenCheckBox.IsChecked == true;
@@ -2148,6 +2162,7 @@ namespace LyricHover.App
                 IslandEnabledSwitch,
                 HideIslandInFullscreenCheckBox,
                 ShowTranslationCheckBox,
+                TraditionalChineseLyricsCheckBox,
                 IslandWordTrackingCheckBox,
                 LyricDockEnabledCheckBox,
                 DockShowTranslationCheckBox,
@@ -3673,6 +3688,7 @@ namespace LyricHover.App
                 EnsureLyricDockControlStates();
             }
             UiLanguageService.ApplyTo(this);
+            UpdateTemporaryInteractionHints();
             ScheduleLocalizedVisualRefresh();
             if (section == "Support")
             {
