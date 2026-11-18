@@ -123,4 +123,44 @@
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
+  <url>
+    <loc>https://lyric-island.top/songs/</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://lyric-island.top/songs/" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://lyric-island.top/zh-hant/songs/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://lyric-island.top/en/songs/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://lyric-island.top/ja/songs/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://lyric-island.top/songs/" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://lyric-island.top/zh-hant/songs/</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://lyric-island.top/songs/" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://lyric-island.top/zh-hant/songs/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://lyric-island.top/en/songs/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://lyric-island.top/ja/songs/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://lyric-island.top/songs/" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://lyric-island.top/en/songs/</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://lyric-island.top/songs/" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://lyric-island.top/zh-hant/songs/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://lyric-island.top/en/songs/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://lyric-island.top/ja/songs/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://lyric-island.top/songs/" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://lyric-island.top/ja/songs/</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://lyric-island.top/songs/" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://lyric-island.top/zh-hant/songs/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://lyric-island.top/en/songs/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://lyric-island.top/ja/songs/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://lyric-island.top/songs/" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
 </urlset>

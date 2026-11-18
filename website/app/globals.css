@@ -459,6 +459,14 @@ html[lang="en"] :where(
   transform: scaleX(1);
 }
 
+.desktopNavLinks a[aria-current="page"] { color: #a74b25; }
+
+/* Five navigation items need the compact menu before the tablet breakpoint. */
+@media (min-width: 768px) and (max-width: 1100px) {
+  .floatingNav .desktopNavLinks { display: none; }
+  .floatingNav .mobileMenu { display: block; }
+}
+
 .desktopNavLinks .navFeatureLink,
 .mobileMenuPanel .navFeatureLink {
   position: relative;

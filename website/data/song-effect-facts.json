@@ -1,0 +1,14 @@
+{
+  "maple-leaf-fall:maple-leaf.svg": ["枫叶飘落", "楓葉飄落", "Falling maple leaves", "舞い落ちる楓の葉"],
+  "flying-paper-storm:paper-sheet-torn.svg,paper-sheet-wide.svg,paper-sheet.svg": ["纸页翻飞", "紙頁翻飛", "Flying paper sheets", "舞い飛ぶ紙のページ"],
+  "snake-crawl:snake-head.svg": ["黑色蛇形爬行", "黑色蛇形爬行", "Crawling black snakes", "這う黒い蛇"],
+  "maple-leaf-fall:snowflake.svg": ["雪花飘落", "雪花飄落", "Falling snowflakes", "舞い落ちる雪"],
+  "maple-leaf-fall:ice-crystal.svg,snowflake.svg": ["雪花与冰晶飘落", "雪花與冰晶飄落", "Falling snowflakes and ice crystals", "舞い落ちる雪と氷の結晶"],
+  "rain-streaks:rain-streak.svg": ["雨丝落下", "雨絲落下", "Falling rain streaks", "降り注ぐ雨筋"],
+  "cosmic-drift:cosmic-comet.svg,cosmic-planet.svg,cosmic-star.svg": ["星星、行星与彗星漂移", "星星、行星與彗星漂移", "Drifting stars, planets and comets", "漂う星・惑星・彗星"],
+  "neon-speed-lines:neon-streak.svg": ["红色霓虹光线横移", "紅色霓虹光線橫移", "Red neon lines moving sideways", "横切る赤いネオンの光"],
+  "bat-swarm:bat-sharp.svg,bat-wide.svg": ["蝙蝠群振翅飞行", "蝙蝠群振翅飛行", "A swarm of flapping bats", "羽ばたくコウモリの群れ"],
+  "edge-fireworks:firework-spark.svg": ["烟花向外绽放", "煙花向外綻放", "Expanding fireworks", "広がる花火"],
+  "maple-leaf-fall:confetti-diamond.svg,confetti-rect.svg": ["金色纸屑飘落", "金色紙屑飄落", "Falling gold confetti", "舞い落ちる金色の紙吹雪"],
+  "maple-leaf-fall:ribbon-loop.svg,ribbon-wave.svg": ["多彩丝带飘落", "多彩絲帶飄落", "Falling colorful ribbons", "舞い落ちる色とりどりのリボン"]
+}

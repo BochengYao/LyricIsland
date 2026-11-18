@@ -1,7 +1,7 @@
 import { normalizeBrandCopy } from "@/lib/brand";
 
 export type Locale = "zh" | "zhHant" | "en" | "ja";
-export type LocalizedPage = "home" | "updates" | "incentives";
+export type LocalizedPage = "home" | "updates" | "incentives" | "songs";
 
 export const localeDetails: Record<Locale, { label: string; languageTag: string }> = {
   zh: { label: "简体中文", languageTag: "zh-CN" },
@@ -157,6 +157,7 @@ const rawCopyByLocale: Record<"zh" | "en", SiteCopy> = {
     nav: [
       { label: "主页", href: "#main" },
       { label: "新功能", href: "/updates" },
+      { label: "彩蛋歌曲", href: "/songs" },
       { label: "用户激励计划", href: "/incentives", kind: "feature" },
       {
         label: "Microsoft Store",
@@ -328,6 +329,7 @@ const rawCopyByLocale: Record<"zh" | "en", SiteCopy> = {
     nav: [
       { label: "Home", href: "#main" },
       { label: "What's new", href: "/en/updates" },
+      { label: "Easter egg songs", href: "/en/songs" },
       { label: "Community rewards", href: "/en/incentives", kind: "feature" },
       {
         label: "Microsoft Store",
@@ -540,6 +542,7 @@ const traditionalSiteCopy = {
   nav: [
     { label: "首頁", href: "#main" },
     { label: "新功能", href: localePath("zhHant", "updates") },
+    { label: "彩蛋歌曲", href: localePath("zhHant", "songs") },
     { label: "使用者激勵計畫", href: localePath("zhHant", "incentives"), kind: "feature" as const },
     { label: "Microsoft Store", href: microsoftStoreUrl, external: true, kind: "store" as const }
   ]
@@ -550,6 +553,7 @@ const japaneseSiteCopy: SiteCopy = {
   nav: [
     { label: "ホーム", href: "#main" },
     { label: "新機能", href: "/ja/updates" },
+    { label: "隠し演出の曲", href: "/ja/songs" },
     { label: "コミュニティ特典", href: "/ja/incentives", kind: "feature" },
     { label: "Microsoft Store", href: microsoftStoreUrl, external: true, kind: "store" }
   ],

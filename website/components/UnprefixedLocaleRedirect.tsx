@@ -2,7 +2,7 @@ import Script from "next/script";
 
 const localeEntryRedirectScript = String.raw`(() => {
   const pathname = window.location.pathname;
-  if (pathname !== "/" && pathname !== "/updates" && pathname !== "/updates/" && pathname !== "/incentives" && pathname !== "/incentives/") return;
+  if (!/^\/(?:updates\/?|incentives\/?|songs\/?)?$/.test(pathname)) return;
 
   const preferenceKey = "lyric_hover_locale_preference";
   const supportedLocales = ["zh", "zhHant", "en", "ja"];

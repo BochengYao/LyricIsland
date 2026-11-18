@@ -16,6 +16,7 @@ tests/__pycache__/
 .npm-cache/
 .pydeps/
 .playwright-browsers/
+.screenshots-easter-songs/
 *.log
 .env*
 !.env.example

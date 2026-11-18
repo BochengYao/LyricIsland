@@ -1,0 +1,14 @@
+{
+  "release": "v3.7.2-beta",
+  "commit": "617949231a83332d24a1b8f4dd42b54aaf9730bc",
+  "renderers": {
+    "MapleLeafFallRenderer.cs": "b67db0880be323e40a24d43d16c5ebf368bf42ad9bcd7014294462de0cde9ba4",
+    "FlyingPaperStormRenderer.cs": "59cdbef2226caca3f03eb8486f794186b9d71244f2f2c1fc9cf9e59a26ea7872",
+    "SnakeCrawlRenderer.cs": "3da2c41b9a960c42277f153424fdd33263b876e938358b8ed75b6cdb61008b48",
+    "RainStreakRenderer.cs": "cb4334a7a57b732a59fc916555dd78e21d770b566ec2b3faf04513382af9b296",
+    "AmbientVectorDriftRenderer.cs": "4a1186a3a96cb7b372156e3e3789095ec6858f3c5d4fd66864befc70138064ef",
+    "EdgeFireworksRenderer.cs": "b2576dc8bf3dbf1bc875fbd528d9f0c6d1136598c8e57759c6ea3b611dbd53d4",
+    "FullscreenSongEffectHost.cs": "83956db482a2ae72fd8ea0e14ad48e1a21d59e9c39e3dd56c28431a024e8337a",
+    "SongEffectCatalog.cs": "526af8995699ac0c60d360304328e0717ecf066c19c077971612cba5eed223cb"
+  }
+}

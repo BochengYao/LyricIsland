@@ -135,6 +135,7 @@ export function PrimaryNavigation({
             <a
               key={item.href}
               href={item.href}
+              aria-current={page !== "home" && item.href === localePath(locale, page) ? "page" : undefined}
               className={
                 item.kind === "feature"
                   ? "navFeatureLink"
@@ -162,6 +163,7 @@ export function PrimaryNavigation({
                 <a
                   key={item.href}
                   href={item.href}
+                  aria-current={page !== "home" && item.href === localePath(locale, page) ? "page" : undefined}
                   className={
                     item.kind === "feature"
                       ? "navFeatureLink"
