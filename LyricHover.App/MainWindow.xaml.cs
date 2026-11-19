@@ -1693,7 +1693,7 @@ namespace LyricHover.App
             {
                 ShowIsland();
             }
-            if (previousSettings.UseTraditionalChineseLyrics != runtimeSettings.UseTraditionalChineseLyrics)
+            if (previousSettings.ShouldUseTraditionalChineseLyrics() != runtimeSettings.ShouldUseTraditionalChineseLyrics())
             {
                 _ = RefreshAsync();
             }
@@ -1701,7 +1701,7 @@ namespace LyricHover.App
 
         private TimedLyrics GetDisplayLyrics()
         {
-            var script = placementSettings.UseTraditionalChineseLyrics
+            var script = placementSettings.ShouldUseTraditionalChineseLyrics()
                 ? ChineseLyricsScript.Traditional
                 : ChineseLyricsScript.Simplified;
             if (!ReferenceEquals(convertedLyricsSource, currentLyrics) || convertedLyricsScript != script)

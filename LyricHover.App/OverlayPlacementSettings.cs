@@ -102,7 +102,10 @@ namespace LyricHover.App
 
         public bool ShowTranslation { get; set; } = true;
 
-        public bool UseTraditionalChineseLyrics { get; set; }
+        public bool? TraditionalChineseLyricsOverride { get; set; }
+
+        public bool ShouldUseTraditionalChineseLyrics() => TraditionalChineseLyricsOverride ??
+            (UiLanguageService.Resolve(AppLanguagePreference.System) == AppLanguagePreference.TraditionalChinese);
 
         public bool IslandWordTrackingEnabled { get; set; } = true;
 
@@ -468,6 +471,14 @@ namespace LyricHover.App
                 using (var document = JsonDocument.Parse(json))
                 {
                     settings = JsonSerializer.Deserialize<OverlayPlacementSettings>(json) ?? new OverlayPlacementSettings();
+                    if (document.RootElement.ValueKind != JsonValueKind.Object) return settings;
+                    // Older builds saved false even when the user never touched the switch.
+                    if (!document.RootElement.TryGetProperty(nameof(OverlayPlacementSettings.TraditionalChineseLyricsOverride), out _) &&
+                        document.RootElement.TryGetProperty("UseTraditionalChineseLyrics", out var legacyScript) &&
+                        legacyScript.ValueKind == JsonValueKind.True)
+                    {
+                        settings.TraditionalChineseLyricsOverride = true;
+                    }
                     if (!document.RootElement.TryGetProperty(nameof(OverlayPlacementSettings.IslandConcaveRadius), out _))
                         settings.IslandConcaveRadius = LegacyIslandConcaveRadius;
                     if (!document.RootElement.TryGetProperty(nameof(OverlayPlacementSettings.IslandConvexRadius), out _))
@@ -498,7 +509,6 @@ namespace LyricHover.App
                 var originalLyricsSource = settings.LyricsSource;
                 var originalUseMultiLineDisplay = settings.UseMultiLineDisplay;
                 var originalShowTranslation = settings.ShowTranslation;
-                var originalUseTraditionalChineseLyrics = settings.UseTraditionalChineseLyrics;
                 var originalIslandWordTracking = settings.IslandWordTrackingEnabled;
                 var originalIslandConvexContentEdgeDistance = settings.IslandConvexContentEdgeDistance;
                 var originalIslandEnabled = settings.IslandEnabled;
@@ -528,7 +538,6 @@ namespace LyricHover.App
                     settings.LyricsSource != originalLyricsSource ||
                     settings.UseMultiLineDisplay != originalUseMultiLineDisplay ||
                     settings.ShowTranslation != originalShowTranslation ||
-                    settings.UseTraditionalChineseLyrics != originalUseTraditionalChineseLyrics ||
                     settings.IslandWordTrackingEnabled != originalIslandWordTracking ||
                     Math.Abs(settings.IslandConvexContentEdgeDistance - originalIslandConvexContentEdgeDistance) > 0.0001 ||
                     settings.IslandEnabled != originalIslandEnabled ||

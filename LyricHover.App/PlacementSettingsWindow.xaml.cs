@@ -280,7 +280,7 @@ namespace LyricHover.App
             SingleLineRadioButton.IsChecked = !settings.UseMultiLineDisplay;
             MultiLineRadioButton.IsChecked = settings.UseMultiLineDisplay;
             ShowTranslationCheckBox.IsChecked = settings.ShowTranslation;
-            TraditionalChineseLyricsCheckBox.IsChecked = settings.UseTraditionalChineseLyrics;
+            TraditionalChineseLyricsCheckBox.IsChecked = settings.ShouldUseTraditionalChineseLyrics();
             IslandWordTrackingCheckBox.IsChecked = settings.IslandWordTrackingEnabled;
             IslandEnabledSwitch.IsChecked = settings.IslandEnabled;
             HideIslandInFullscreenCheckBox.IsChecked = settings.HideIslandInFullscreen;
@@ -1376,6 +1376,10 @@ namespace LyricHover.App
 
         private void SettingsToggle_Changed(object sender, RoutedEventArgs e)
         {
+            if (ReferenceEquals(sender, TraditionalChineseLyricsCheckBox) && !initializingSettings)
+            {
+                workingSettings.TraditionalChineseLyricsOverride = TraditionalChineseLyricsCheckBox.IsChecked == true;
+            }
             EnsureAtLeastOneLyricSurfaceEnabled(sender as ToggleButton);
             if (ReferenceEquals(sender, PowerSavingModeCheckBox))
             {
@@ -1786,7 +1790,6 @@ namespace LyricHover.App
             settings.IslandConvexContentEdgeDistance = IslandConvexContentEdgeDistanceSlider.Value;
             settings.IslandTopCornersConvex = islandTopCornersConvexMode;
             settings.ShowTranslation = ShowTranslationCheckBox.IsChecked == true;
-            settings.UseTraditionalChineseLyrics = TraditionalChineseLyricsCheckBox.IsChecked == true;
             settings.IslandWordTrackingEnabled = IslandWordTrackingCheckBox.IsChecked == true;
             settings.IslandEnabled = IslandEnabledSwitch.IsChecked == true;
             settings.HideIslandInFullscreen = HideIslandInFullscreenCheckBox.IsChecked == true;

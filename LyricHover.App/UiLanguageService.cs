@@ -425,7 +425,7 @@ namespace LyricHover.App
             }
         }
 
-        private static AppLanguagePreference Resolve(AppLanguagePreference preference)
+        internal static AppLanguagePreference Resolve(AppLanguagePreference preference)
         {
             if (preference != AppLanguagePreference.System)
             {
@@ -435,7 +435,8 @@ namespace LyricHover.App
             var name = CultureInfo.CurrentUICulture.Name;
             if (name.StartsWith("zh-Hant", StringComparison.OrdinalIgnoreCase) ||
                 name.StartsWith("zh-TW", StringComparison.OrdinalIgnoreCase) ||
-                name.StartsWith("zh-HK", StringComparison.OrdinalIgnoreCase))
+                name.StartsWith("zh-HK", StringComparison.OrdinalIgnoreCase) ||
+                name.StartsWith("zh-MO", StringComparison.OrdinalIgnoreCase))
             {
                 return AppLanguagePreference.TraditionalChinese;
             }

@@ -188,6 +188,7 @@ namespace LyricHover.Tests
             suite.Run("settings schema contains independent layouts", SettingsSchemaContainsIndependentLayouts);
             suite.Run("island appearance settings normalize and round trip compatibly", IslandAppearanceSettingsNormalizeAndRoundTrip);
             suite.Run("new users get updated corner radii without changing existing settings", NewUsersGetUpdatedCornerRadiiWithoutChangingExistingSettings);
+            suite.Run("Chinese lyric script follows Windows until explicitly chosen", ChineseLyricScriptFollowsWindowsUntilExplicitlyChosen);
             suite.Run("Chinese font selectors only list families with CJK glyphs", ChineseFontSelectorsFilterForCjkGlyphs);
             suite.Run("island appearance preview and live shape share pill geometry", IslandAppearanceGeometryKeepsCapsuleBounds);
             suite.Run("settings fixes preserve DPI clarity and deliberate actions", SettingsFixesPreserveDpiClarityAndDeliberateActions);
@@ -2552,6 +2553,42 @@ namespace LyricHover.Tests
             var settingsView = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "PlacementSettingsWindow.xaml"));
             Assert.True(settingsView.Contains("IslandWordTrackingCheckBox"));
             Assert.True(settingsView.Contains("DockWordTrackingCheckBox"));
+        }
+
+        static void ChineseLyricScriptFollowsWindowsUntilExplicitlyChosen()
+        {
+            var originalCulture = System.Globalization.CultureInfo.CurrentUICulture;
+            var originalLanguage = UiLanguageService.Preference;
+            try
+            {
+                WithTemporarySettingsStore((store, path) =>
+                {
+                    System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("zh-TW");
+                    UiLanguageService.SetPreference(AppLanguagePreference.English);
+                    var automatic = store.Load();
+                    Assert.True(automatic.ShouldUseTraditionalChineseLyrics());
+                    store.Save(automatic);
+                    Assert.True(store.Load().ShouldUseTraditionalChineseLyrics());
+                    Assert.False(store.Load().TraditionalChineseLyricsOverride.HasValue);
+
+                    File.WriteAllText(path, "{\"UseTraditionalChineseLyrics\":false}");
+                    Assert.True(store.Load().ShouldUseTraditionalChineseLyrics());
+
+                    automatic.TraditionalChineseLyricsOverride = false;
+                    store.Save(automatic);
+                    Assert.False(store.Load().ShouldUseTraditionalChineseLyrics());
+
+                    System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("zh-CN");
+                    Assert.False(new OverlayPlacementSettings().ShouldUseTraditionalChineseLyrics());
+                    File.WriteAllText(path, "{\"UseTraditionalChineseLyrics\":true}");
+                    Assert.True(store.Load().ShouldUseTraditionalChineseLyrics());
+                });
+            }
+            finally
+            {
+                System.Globalization.CultureInfo.CurrentUICulture = originalCulture;
+                UiLanguageService.SetPreference(originalLanguage);
+            }
         }
 
         static void NewUsersGetUpdatedCornerRadiiWithoutChangingExistingSettings()

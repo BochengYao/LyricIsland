@@ -23,6 +23,7 @@ namespace LyricHover.Core.TranslationContractTests
                 FindsLocalizedTitleThroughQqArtistFallback();
                 RejectsAmbiguousLocalizedTitleFallback();
                 ConvertsChineseLyricsAndTranslationsForDisplay();
+                SimplifiesReportedTraditionalCharactersInLyrics();
                 Console.WriteLine("Core translation contract tests passed.");
                 return 0;
             }
@@ -72,6 +73,25 @@ namespace LyricHover.Core.TranslationContractTests
                 new[] { new LyricLine(TimeSpan.Zero, "音樂") }, LyricsTranslationLanguage.Japanese);
             Assert(ChineseLyricsConverter.Convert(japaneseTranslation, ChineseLyricsScript.Simplified)
                 .TranslationLines[0].Text == "音樂", "Japanese translation was converted.");
+        }
+
+        private static void SimplifiesReportedTraditionalCharactersInLyrics()
+        {
+            var timestamp = TimeSpan.FromSeconds(1);
+            var word = new LyricWord(TimeSpan.FromMilliseconds(80), TimeSpan.FromMilliseconds(220), "後");
+            var source = new TimedLyrics(
+                new[] { new LyricLine(timestamp, "為何舊知己在最後變不到老友?", new[] { word }) },
+                "", "",
+                new[] { new LyricLine(timestamp, "早知解散後各自有際遇作導遊") },
+                LyricsTranslationLanguage.TraditionalChinese);
+            var result = ChineseLyricsConverter.Convert(source, ChineseLyricsScript.Simplified);
+            Assert(result.Lines[0].Text == "为何旧知己在最后变不到老友?", "Original lyric still contains Traditional Chinese.");
+            Assert(result.TranslationLines[0].Text == "早知解散后各自有际遇作导游", "Translation still contains Traditional Chinese.");
+            var convertedWord = result.Lines[0].Words[0];
+            Assert(convertedWord.Text == "后" && convertedWord.Offset == word.Offset && convertedWord.Duration == word.Duration,
+                "The converted word must retain its timing.");
+            Assert(ChineseLyricsConverter.ConvertText("歌詞・音樂", ChineseLyricsScript.Simplified) == "歌词・音乐",
+                "Shared punctuation must not prevent conversion.");
         }
 
         private static void MatchesOnlyTheRequestedTranslationLanguage()
