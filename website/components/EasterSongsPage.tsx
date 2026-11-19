@@ -2,6 +2,7 @@ import Link from "next/link";
 import { PrimaryNavigation, LogoLockup, Eyebrow } from "./SitePage";
 import { EasterSongsExplorer } from "./EasterSongsExplorer";
 import { ExternalArrow } from "./ExternalArrow";
+import { DecorativeStar } from "./DecorativeStar";
 import { easterCopy } from "@/data/easter-songs";
 import { localePath, microsoftStoreUrl, type Locale } from "@/data/site-copy";
 import styles from "./EasterSongsPage.module.css";
@@ -14,7 +15,7 @@ export function EasterSongsPage({ locale }: { locale: Locale }) {
     <main id="main" className={`${styles.main} sectionContainer`}>
       <div className={styles.hero}>
         <div><Eyebrow>{copy.eyebrow}</Eyebrow><h1>{copy.title}</h1></div>
-        <div className={styles.heroNote}><span aria-hidden="true" className={styles.asterisk}>✳</span><p>{copy.intro}</p></div>
+        <div className={styles.heroNote}><DecorativeStar className={styles.asterisk} /><p>{copy.intro}</p></div>
       </div>
       <EasterSongsExplorer locale={locale} />
       <section className={styles.guide} aria-labelledby="how-title">

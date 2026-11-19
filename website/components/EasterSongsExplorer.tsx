@@ -6,6 +6,7 @@ import { drawSong, newQuestion } from "@/lib/easter-song-games";
 import type { Locale } from "@/data/site-copy";
 import { SongEffectClue } from "./SongEffectClue";
 import { SongEffectBackground } from "./SongEffectBackground";
+import { DecorativeStar } from "./DecorativeStar";
 import styles from "./EasterSongsPage.module.css";
 
 export function EasterSongsExplorer({ locale }: { locale: Locale }) {
@@ -38,7 +39,7 @@ export function EasterSongsExplorer({ locale }: { locale: Locale }) {
     <section className={styles.daily} id="daily" aria-labelledby="daily-title">
       <div className={styles.dailyIntro}><span className={styles.kicker}>01 / A LITTLE CHANCE</span><h2 id="daily-title">{play.draw}</h2><p>{play.drawNote}</p></div>
       <div className={styles.drawArea}>
-        {!drawn ? <button className={styles.sleeve} type="button" onClick={() => setDrawn(drawSong())} aria-label={play.sleeve}><span className={styles.sleeveTop}>LYRIC HOVER / HIDDEN TRACKS</span><span className={styles.sleeveArt} aria-hidden="true">✳</span><strong>{play.drawHint}</strong><span className={styles.sleeveBottom}>SIDE A <span>↗</span> YOUR NEXT FAVORITE</span></button>
+        {!drawn ? <button className={styles.sleeve} type="button" onClick={() => setDrawn(drawSong())} aria-label={play.sleeve}><span className={styles.sleeveTop}>LYRIC HOVER / HIDDEN TRACKS</span><DecorativeStar className={styles.sleeveArt} /><strong>{play.drawHint}</strong><span className={styles.sleeveBottom}>SIDE A <span>↗</span> YOUR NEXT FAVORITE</span></button>
           : <div className={styles.drawResult} key={drawn.id}><span className={styles.kicker}>{play.result}</span><h3>{drawn.title}</h3><p className={styles.artist}>{drawn.artist}</p><div className={styles.fact}><small>{play.effect}</small><strong>{songEffectName(drawn, locale)}</strong></div><div className={styles.resultActions}><button type="button" onClick={() => setDrawn(drawSong(drawn.id))}>{play.drawAgain} ↻</button></div></div>}
       </div>
     </section>
