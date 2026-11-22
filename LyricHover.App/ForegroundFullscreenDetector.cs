@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
 using Forms = System.Windows.Forms;
 
 namespace LyricHover.App
@@ -15,6 +16,7 @@ namespace LyricHover.App
                 if (foreground == IntPtr.Zero ||
                     foreground == excludedWindow ||
                     foreground == GetShellWindow() ||
+                    IsDesktopWindow(foreground) ||
                     !GetWindowRect(foreground, out var rect))
                 {
                     return false;
@@ -63,6 +65,21 @@ namespace LyricHover.App
                 windowBottom >= screenBottom;
         }
 
+        private static bool IsDesktopWindow(IntPtr window)
+        {
+            var className = new StringBuilder(256);
+            GetClassName(window, className, className.Capacity);
+            return IsDesktopWindowClass(className.ToString());
+        }
+
+        public static bool IsDesktopWindowClass(string className)
+        {
+            // Explorer can foreground WorkerW while editing a desktop item's name.
+            // It covers the monitor but is still the desktop, not fullscreen content.
+            return string.Equals(className, "Progman", StringComparison.Ordinal) ||
+                string.Equals(className, "WorkerW", StringComparison.Ordinal);
+        }
+
         private static Forms.Screen ResolveScreen(string screenName)
         {
             if (!string.IsNullOrWhiteSpace(screenName))
@@ -83,6 +100,9 @@ namespace LyricHover.App
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetShellWindow();
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        private static extern int GetClassName(IntPtr hwnd, StringBuilder className, int maxCount);
 
         [DllImport("user32.dll")]
         private static extern bool GetWindowRect(IntPtr hwnd, out NativeRect rect);

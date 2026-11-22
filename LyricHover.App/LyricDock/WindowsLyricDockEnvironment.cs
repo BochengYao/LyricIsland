@@ -18,7 +18,6 @@ namespace LyricHover.App.LyricDock
         private const string WidgetsValueName = "TaskbarDa";
         private const uint WmSettingChange = 0x001A;
         private const uint SmtoAbortIfHung = 0x0002;
-        private static readonly IntPtr HwndBroadcast = new IntPtr(0xffff);
         private static readonly object TaskbarSearchSync = new object();
         private readonly Forms.Timer changeTimer;
         private readonly Dictionary<string, WidgetAnchor> widgetAnchors = new Dictionary<string, WidgetAnchor>(StringComparer.OrdinalIgnoreCase);
@@ -559,9 +558,9 @@ namespace LyricHover.App.LyricDock
         {
             try
             {
-                var result = IntPtr.Zero;
-                var broadcastOk = SendMessageTimeout(HwndBroadcast, WmSettingChange, IntPtr.Zero, "ImmersiveShell", SmtoAbortIfHung, 2000, out result) != IntPtr.Zero;
-                WriteDiagnosticLog($"Refresh: expected={expectedState}, forceHide={forceHide}, broadcast={(broadcastOk ? "ok" : "failed")}");
+                var notificationOk = NotifyTaskbarsSettingsChanged();
+                var notificationRetried = false;
+                WriteDiagnosticLog($"Refresh: expected={expectedState}, forceHide={forceHide}, taskbarNotification={(notificationOk ? "ok" : "failed")}");
                 var deadline = Stopwatch.StartNew();
                 while (deadline.Elapsed < TimeSpan.FromSeconds(8))
                 {
@@ -574,10 +573,11 @@ namespace LyricHover.App.LyricDock
                         WriteDiagnosticLog($"Refresh: verified after {deadline.ElapsedMilliseconds}ms");
                         return true;
                     }
-                    if (!broadcastOk && deadline.ElapsedMilliseconds >= 2000)
+                    if (!notificationOk && !notificationRetried && deadline.ElapsedMilliseconds >= 2000)
                     {
-                        // Retry the broadcast once; the first attempt may have raced a hung window.
-                        broadcastOk = SendMessageTimeout(HwndBroadcast, WmSettingChange, IntPtr.Zero, "ImmersiveShell", SmtoAbortIfHung, 2000, out result) != IntPtr.Zero;
+                        // Retry once; the first attempt may have raced a hung taskbar.
+                        notificationRetried = true;
+                        notificationOk = NotifyTaskbarsSettingsChanged();
                     }
                     Thread.Sleep(200);
                 }
@@ -592,6 +592,30 @@ namespace LyricHover.App.LyricDock
         }
 
         private bool LastRegistryStable;
+
+        private bool NotifyTaskbarsSettingsChanged()
+        {
+            IntPtr[] taskbars;
+            lock (widgetAnchorsSync)
+            {
+                taskbars = widgetAnchors.Values.Select(anchor => anchor.TaskbarHandle).Distinct().ToArray();
+            }
+            // Broadcasting WM_SETTINGCHANGE also refreshes Explorer's desktop views and
+            // can cancel an in-progress rename. Only the taskbars own the Widgets setting.
+            var notified = taskbars.Length > 0;
+            foreach (var taskbar in taskbars)
+            {
+                var className = GetClassName(taskbar);
+                if (className != "Shell_TrayWnd" && className != "Shell_SecondaryTrayWnd")
+                {
+                    notified = false;
+                    continue;
+                }
+                notified &= SendMessageTimeout(taskbar, WmSettingChange, IntPtr.Zero,
+                    "ImmersiveShell", SmtoAbortIfHung, 2000, out _) != IntPtr.Zero;
+            }
+            return notified;
+        }
         private bool LastWidgetsVisible = true;
 
         private static void WriteDiagnosticLog(string message)

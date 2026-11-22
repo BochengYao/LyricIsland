@@ -219,8 +219,12 @@ namespace LyricHover.App.LyricDock
         {
             if (!succeeded || !CanUse(placement))
             {
-                if (reason == LyricDockFailureReason.TaskbarAutoHiddenOrFullscreen)
+                if (reason == LyricDockFailureReason.TaskbarAutoHiddenOrFullscreen ||
+                    reason == LyricDockFailureReason.TaskbarChanged)
                 {
+                    // Explorer's UIA tree can be temporarily unavailable during shell
+                    // edits. Keep the lease and retry the next probe without restoring
+                    // Widgets and refreshing Explorer in the middle of the user's rename.
                     surface.Hide();
                     return;
                 }

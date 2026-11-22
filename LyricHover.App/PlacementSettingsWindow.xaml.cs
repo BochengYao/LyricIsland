@@ -2613,11 +2613,21 @@ namespace LyricHover.App
         private void ShowTranslationCheckBox_Changed(object sender, RoutedEventArgs e)
         {
             UpdateTranslationLineModeLock();
+            if (!initializingSettings && ShowTranslationCheckBox.IsChecked == true)
+            {
+                ShowTranslationModeToast(TranslationModeToast);
+            }
+            QueueDirtyStateUpdate();
         }
 
         private void DockShowTranslationCheckBox_Changed(object sender, RoutedEventArgs e)
         {
             UpdateDockTranslationLineModeLock();
+            if (!initializingSettings && DockShowTranslationCheckBox.IsChecked == true)
+            {
+                ShowTranslationModeToast(DockTranslationModeToast);
+            }
+            QueueDirtyStateUpdate();
         }
 
         private void SingleLineRadioButton_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -2627,9 +2637,7 @@ namespace LyricHover.App
                 return;
             }
 
-            MultiLineRadioButton.IsChecked = true;
-            ShowTranslationModeToast(TranslationModeToast);
-            e.Handled = true;
+            ShowTranslationCheckBox.IsChecked = false;
         }
 
         private void DockSingleLineRadioButton_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -2639,18 +2647,24 @@ namespace LyricHover.App
                 return;
             }
 
-            DockMultiLineRadioButton.IsChecked = true;
-            ShowTranslationModeToast(DockTranslationModeToast);
-            e.Handled = true;
+            DockShowTranslationCheckBox.IsChecked = false;
         }
 
         private void LineModeRadioButton_Checked(object sender, RoutedEventArgs e)
         {
+            if (!initializingSettings && ReferenceEquals(sender, SingleLineRadioButton))
+            {
+                ShowTranslationCheckBox.IsChecked = false;
+            }
             UpdateLineModeSelection(!initializingSettings);
         }
 
         private void DockLineModeRadioButton_Checked(object sender, RoutedEventArgs e)
         {
+            if (!initializingSettings && ReferenceEquals(sender, DockSingleLineRadioButton))
+            {
+                DockShowTranslationCheckBox.IsChecked = false;
+            }
             UpdateDockLineModeSelection(!initializingSettings);
         }
 
@@ -3530,7 +3544,7 @@ namespace LyricHover.App
             var image = new BitmapImage();
             image.BeginInit();
             image.CacheOption = BitmapCacheOption.OnLoad;
-            image.UriSource = new Uri($"pack://application:,,,/{asset}", UriKind.Absolute);
+            image.UriSource = new Uri($"pack://application:,,,/LyricHover.App;component/{asset}", UriKind.Absolute);
             image.EndInit();
             image.Freeze();
             SupportProEmblem.Source = image;

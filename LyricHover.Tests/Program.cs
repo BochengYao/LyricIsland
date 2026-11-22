@@ -18,12 +18,17 @@ using LyricHover.App.Fullscreen;
 
 namespace LyricHover.Tests
 {
-    class Program
+    partial class Program
     {
         [STAThread]
         static int Main(string[] args)
         {
             var suite = new TestSuite();
+            if (args.Length == 1 && args[0] == "--rename-translation-fixture")
+            {
+                RunRenameTranslationTests(suite);
+                return suite.ExitCode;
+            }
             var skipReleaseVersionFixture = string.Equals(
                 Environment.GetEnvironmentVariable("LYRICHOVER_SKIP_RELEASE_VERSION_FIXTURE"),
                 "1",
@@ -105,6 +110,7 @@ namespace LyricHover.Tests
                 return suite.ExitCode;
             }
 
+            RunRenameTranslationTests(suite);
             suite.Run("parses synced lrc lines and metadata", ParsesSyncedLrcLinesAndMetadata);
             suite.Run("parses QQ QRC word timings and progress", ParsesQrcWordTimingsAndProgress);
             suite.Run("parses NetEase YRC word timings", ParsesYrcWordTimings);
@@ -337,7 +343,7 @@ namespace LyricHover.Tests
             suite.Run("convex island size animation updates geometry before window bounds", ConvexIslandSizeAnimationUpdatesGeometryBeforeWindowBounds);
             suite.Run("cancels layout draft without mutating original", CancelsLayoutDraftWithoutMutatingOriginal);
             suite.Run("uses approved lyric offset hotkeys", UsesApprovedLyricOffsetHotkeys);
-            suite.Run("translation mode explains why single line is unavailable", TranslationModeExplainsSingleLineRestriction);
+            suite.Run("translation mode explains its multiline presentation", TranslationModeExplainsSingleLineRestriction);
             suite.Run("settings exposes player priority and automatic selection", SettingsExposesPlayerSelection);
             suite.Run("estimates missing playback timeline", EstimatesMissingPlaybackTimeline);
             suite.Run("advances when a player repeats one reliable timeline sample", AdvancesRepeatedReliableTimelineSample);
@@ -5390,8 +5396,7 @@ namespace LyricHover.Tests
             Assert.True(source.Contains("FadeOutTranslationModeToast"));
             Assert.True(source.Contains("TimeSpan.FromMilliseconds(320)"));
             Assert.False(source.Contains("TranslationModeToast.IsOpen"));
-            // The single-line restriction path must stay toast based. Unrelated confirmations
-            // elsewhere in the settings window (badge imprint, taskbar lyrics) are out of scope.
+            // Translation mode explains its multiline presentation without modal dialogs.
             var toastPathStart = source.IndexOf("private void SingleLineRadioButton_PreviewMouseLeftButtonDown", StringComparison.Ordinal);
             var fadeOutStart = source.IndexOf("private void FadeOutTranslationModeToast", StringComparison.Ordinal);
             var toastPathEnd = source.IndexOf("private void", fadeOutStart + 1, StringComparison.Ordinal);

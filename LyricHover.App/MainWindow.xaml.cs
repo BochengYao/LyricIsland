@@ -1650,6 +1650,9 @@ namespace LyricHover.App
             RegisterGlobalHotkeys();
             UpdateIslandShape();
             UpdateIslandTextPixelAlignment();
+            // Re-select cached lyrics immediately, including when playback is paused or
+            // idle refreshes are throttled. Rendering preferences must not wait on a fetch.
+            _ = RefreshAsync();
             if (!previousSettings.IslandTopCornersConvex.Equals(runtimeSettings.IslandTopCornersConvex) ||
                 !previousSettings.IslandConvexScreenEdgeDistance.Equals(runtimeSettings.IslandConvexScreenEdgeDistance))
             {
