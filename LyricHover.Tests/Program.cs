@@ -8610,7 +8610,8 @@ namespace LyricHover.Tests
         public double LastWidth { get; private set; }
         public LyricDockPlacement LastPlacement { get; private set; }
         public int PlaceCalls { get; private set; }
-        public void Show() { IsVisible = true; }
+        public int ShowCalls { get; private set; }
+        public void Show() { ShowCalls++; IsVisible = true; }
         public void Hide() { IsVisible = false; }
         public void Present(LyricsPresentationSnapshot snapshot) { LastSnapshot = snapshot; }
         public void Place(LyricDockPlacement placement, double width) { PlaceCalls++; LastPlacement = placement; LastWidth = width; }

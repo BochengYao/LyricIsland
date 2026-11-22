@@ -325,7 +325,9 @@ namespace LyricHover.App.LyricDock
                 lastAppliedWidth = width;
             }
             if (presentSnapshot) surface.Present(snapshot);
-            if (!surface.IsVisible) surface.Show();
+            // Explorer can raise its taskbar above a still-visible overlay after shell
+            // edits. Show also restores native z order without taking keyboard focus.
+            surface.Show();
         }
 
         internal static bool AreEquivalentPlacements(

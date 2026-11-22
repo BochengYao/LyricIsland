@@ -2231,7 +2231,8 @@ namespace LyricHover.App
                 WordTrackingPosition = currentWordTrackingPosition,
                 IsWaitingForPlayback = currentSession == null
             };
-            var islandState = taskbarSnapshot.ToIslandRenderState();
+            // Share the media clock, but keep the island's independently selected text.
+            var islandState = taskbarSnapshot.ToIslandRenderState(currentPrimaryText, currentSecondaryText);
             islandState.PrimaryWordTrackingProgress = placementSettings.IslandWordTrackingEnabled
                 ? currentWordTrackingProgress
                 : -1;

@@ -22,11 +22,16 @@ namespace LyricHover.App.LyricDock
 
         public IslandRenderState ToIslandRenderState()
         {
+            return ToIslandRenderState(PrimaryText, SecondaryText);
+        }
+
+        public IslandRenderState ToIslandRenderState(string primaryLyric, string secondaryLyric)
+        {
             return new IslandRenderState
             {
                 Session = Session,
-                PrimaryLyric = PrimaryText ?? string.Empty,
-                SecondaryLyric = SecondaryText ?? string.Empty,
+                PrimaryLyric = primaryLyric ?? string.Empty,
+                SecondaryLyric = secondaryLyric ?? string.Empty,
                 PrimaryAccent = AccentText ?? string.Empty,
                 TimelineReliability = TimelineReliability,
                 EffectivePosition = EffectivePosition,

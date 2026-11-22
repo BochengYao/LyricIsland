@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.IO;
 using System.Text.Json;
+using System.Runtime.InteropServices;
 using System.Windows.Controls;
 using LyricHover.App;
 using LyricHover.App.LyricDock;
+using LyricHover.App.Modules;
 using LyricHover.Core;
 
 namespace LyricHover.Tests
@@ -18,6 +20,9 @@ namespace LyricHover.Tests
             suite.Run("desktop hosts are not fullscreen content during rename", DesktopHostsAreNotFullscreenContent);
             suite.Run("Widgets refresh only notifies taskbars and bounds retries", WidgetsRefreshOnlyNotifiesTaskbars);
             suite.Run("transient shell probes preserve the dock lease and recover", TransientShellProbesPreserveDockLease);
+            suite.Run("island rendering uses island lines while dock translation is enabled", IslandRenderingUsesIndependentLyrics);
+            suite.Run("visible dock restores z order on unchanged placement probes", VisibleDockRestoresZOrderOnUnchangedPlacement);
+            suite.Run("native dock recovers above a raised window without taking focus", NativeDockRecoversZOrderWithoutTakingFocus);
         }
 
         static void TranslationSwitchesReleaseSingleLine()
@@ -61,6 +66,118 @@ namespace LyricHover.Tests
                 }
             }
             finally { window.Close(); }
+        }
+
+        static void IslandRenderingUsesIndependentLyrics()
+        {
+            var lyrics = LyricsPackageParser.Parse("[00:01.00]hello\n[00:02.00]next\n" +
+                LyricsPackageParser.TranslationSeparator + "\n[00:01.00]你好\n[00:02.00]下一句");
+            var view = new LyricsModuleView { AnimationsEnabled = false };
+            foreach (var islandMultiline in new[] { false, true })
+            {
+                foreach (var islandTranslation in new[] { false, true })
+                {
+                    foreach (var dockTranslation in new[] { false, true })
+                    {
+                        var islandLines = LyricsDisplaySelector.Select(lyrics, TimeSpan.FromSeconds(1), TimeSpan.Zero,
+                            islandMultiline, islandTranslation);
+                        var dockLines = LyricsDisplaySelector.Select(lyrics, TimeSpan.FromSeconds(1), TimeSpan.Zero,
+                            true, dockTranslation);
+                        var snapshot = new LyricsPresentationSnapshot
+                        {
+                            PrimaryText = dockLines[0].Text,
+                            SecondaryText = dockLines.Count > 1 ? dockLines[1].Text : "",
+                            EffectivePosition = TimeSpan.FromSeconds(1)
+                        };
+                        var primary = islandLines[0].Text;
+                        var secondary = islandLines.Count > 1 ? islandLines[1].Text : "";
+                        // Use the production snapshot as well as the production WPF view;
+                        // this test project links a separate copy for controller fixtures.
+                        var snapshotType = typeof(LyricsModuleView).Assembly.GetType(typeof(LyricsPresentationSnapshot).FullName);
+                        var runtimeSnapshot = Activator.CreateInstance(snapshotType);
+                        snapshotType.GetProperty("PrimaryText").SetValue(runtimeSnapshot, snapshot.PrimaryText);
+                        snapshotType.GetProperty("SecondaryText").SetValue(runtimeSnapshot, snapshot.SecondaryText);
+                        snapshotType.GetProperty("EffectivePosition").SetValue(runtimeSnapshot, snapshot.EffectivePosition);
+                        var projection = snapshotType.GetMethod("ToIslandRenderState", new[] { typeof(string), typeof(string) });
+                        Assert.True(projection != null);
+                        var state = projection.Invoke(runtimeSnapshot, new object[] { primary, secondary });
+                        typeof(LyricsModuleView).GetMethod("Update").Invoke(view, new[] { state });
+                        var renderedSecondary = (TextBlock)view.FindName("SecondaryLyricText");
+                        Assert.Equal(secondary, new System.Windows.Documents.TextRange(
+                            renderedSecondary.ContentStart, renderedSecondary.ContentEnd).Text);
+                        Assert.Equal(secondary.Length > 0 ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed,
+                            renderedSecondary.Visibility);
+                        Assert.Equal(snapshot.SecondaryText, dockLines.Count > 1 ? dockLines[1].Text : "");
+                        Assert.Equal(snapshot.EffectivePosition, (TimeSpan)state.GetType().GetProperty("EffectivePosition").GetValue(state));
+                    }
+                }
+            }
+            var main = File.ReadAllText(Path.Combine(GetSolutionRoot(), "LyricHover.App", "MainWindow.xaml.cs"));
+            Assert.True(main.Contains("taskbarSnapshot.ToIslandRenderState(currentPrimaryText, currentSecondaryText)"));
+        }
+
+        static void VisibleDockRestoresZOrderOnUnchangedPlacement()
+        {
+            var environment = new FakeLyricDockEnvironment { TaskbarDa = TaskbarDaValueState.Disabled };
+            var surface = new FakeTaskbarSurface();
+            var recoveryPath = Path.Combine(Path.GetTempPath(), "lyrichover-zorder-" + Guid.NewGuid() + ".txt");
+            using var controller = new LyricDockController(environment, new WidgetVisibilityLease(environment, recoveryPath), surface);
+            Assert.True(controller.Configure(true, "DISPLAY1", LyricDockAlignment.Center));
+            var initialShows = surface.ShowCalls;
+            Assert.True(surface.IsVisible);
+            var probe = typeof(LyricDockController).GetMethod("ApplyPlacementProbe", BindingFlags.Instance | BindingFlags.NonPublic);
+            probe.Invoke(controller, new object[] { true, environment.Placement, LyricDockFailureReason.None, false });
+            Assert.Equal(initialShows + 1, surface.ShowCalls);
+            Assert.Equal(1, surface.PlaceCalls);
+            Assert.Equal(0, environment.TaskbarDaWriteCalls);
+        }
+
+        [DllImport("user32.dll", EntryPoint = "GetWindow")]
+        static extern IntPtr DockTestGetWindow(IntPtr hwnd, uint command);
+        [DllImport("user32.dll", EntryPoint = "GetForegroundWindow")]
+        static extern IntPtr DockTestGetForegroundWindow();
+        [DllImport("user32.dll", EntryPoint = "SetWindowPos")]
+        static extern bool DockTestSetWindowPos(IntPtr hwnd, IntPtr insertAfter, int x, int y, int cx, int cy, uint flags);
+
+        static void NativeDockRecoversZOrderWithoutTakingFocus()
+        {
+            var dockType = typeof(LyricsModuleView).Assembly.GetType("LyricHover.App.LyricDock.LyricDockWindow");
+            var dock = (System.Windows.Window)Activator.CreateInstance(dockType, new object[] { null });
+            var cover = new System.Windows.Window
+            {
+                Width = 24, Height = 24, Left = -30000, Top = -30000,
+                ShowActivated = false, ShowInTaskbar = false, Topmost = true, Focusable = false
+            };
+            try
+            {
+                dock.Left = -30000;
+                dock.Top = -30000;
+                dock.Width = 360;
+                dock.Height = 40;
+                var surfaceType = dockType.Assembly.GetType("LyricHover.App.LyricDock.ILyricDockSurface");
+                var show = surfaceType.GetMethod("Show");
+                var foreground = DockTestGetForegroundWindow();
+                show.Invoke(dock, null);
+                cover.Show();
+                var dockHandle = new System.Windows.Interop.WindowInteropHelper(dock).Handle;
+                var coverHandle = new System.Windows.Interop.WindowInteropHelper(cover).Handle;
+                Assert.True(DockTestSetWindowPos(coverHandle, new IntPtr(-1), 0, 0, 0, 0, 0x0010 | 0x0001 | 0x0002));
+                Assert.True(IsDockTestWindowAbove(coverHandle, dockHandle));
+                Assert.True(dock.IsVisible); // HWND visibility does not detect occlusion.
+                show.Invoke(dock, null);
+                Assert.True(IsDockTestWindowAbove(dockHandle, coverHandle));
+                Assert.Equal(foreground, DockTestGetForegroundWindow());
+            }
+            finally { cover.Close(); dock.Close(); }
+        }
+
+        static bool IsDockTestWindowAbove(IntPtr expectedAbove, IntPtr other)
+        {
+            for (var window = DockTestGetWindow(expectedAbove, 2); window != IntPtr.Zero; window = DockTestGetWindow(window, 2))
+            {
+                if (window == other) return true;
+            }
+            return false;
         }
 
         static void DesktopHostsAreNotFullscreenContent()
