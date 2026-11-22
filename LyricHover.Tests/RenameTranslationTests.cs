@@ -23,6 +23,7 @@ namespace LyricHover.Tests
             suite.Run("island rendering uses island lines while dock translation is enabled", IslandRenderingUsesIndependentLyrics);
             suite.Run("visible dock restores z order on unchanged placement probes", VisibleDockRestoresZOrderOnUnchangedPlacement);
             suite.Run("native dock recovers above a raised window without taking focus", NativeDockRecoversZOrderWithoutTakingFocus);
+            suite.Run("single island lyric centers vertically after removing the secondary row", SingleIslandLyricCentersVertically);
         }
 
         static void TranslationSwitchesReleaseSingleLine()
@@ -66,6 +67,44 @@ namespace LyricHover.Tests
                 }
             }
             finally { window.Close(); }
+        }
+
+        static void SingleIslandLyricCentersVertically()
+        {
+            var view = new LyricsModuleView { AnimationsEnabled = false };
+            var snapshotType = typeof(LyricsModuleView).Assembly.GetType(typeof(LyricsPresentationSnapshot).FullName);
+            var snapshot = Activator.CreateInstance(snapshotType);
+            var projection = snapshotType.GetMethod("ToIslandRenderState", new[] { typeof(string), typeof(string) });
+            var update = typeof(LyricsModuleView).GetMethod("Update");
+            foreach (var fontSize in new[] { 15d, 24d, 32d })
+            {
+                view.ApplyAppearance(new OverlayPlacementSettings { IslandLyricsFontSize = fontSize });
+                foreach (var secondary in new[] { "", "下一句 / translation", "" })
+                {
+                    update.Invoke(view, new[] { projection.Invoke(snapshot, new object[] { "English gyjp / 中文歌词", secondary }) });
+                    view.Measure(new System.Windows.Size(view.Width, view.Height));
+                    view.Arrange(new System.Windows.Rect(0, 0, view.Width, view.Height));
+                    view.UpdateLayout();
+                    var primary = (System.Windows.FrameworkElement)view.FindName("PrimaryLyricClip");
+                    var secondaryClip = (System.Windows.FrameworkElement)view.FindName("SecondaryLyricClip");
+                    if (secondary.Length == 0)
+                    {
+                        var primaryTop = primary.TransformToAncestor(view).Transform(new System.Windows.Point()).Y;
+                        Assert.True(Math.Abs(primaryTop + primary.ActualHeight / 2 - view.ActualHeight / 2) <= 1);
+                        Assert.Equal(System.Windows.Visibility.Collapsed, secondaryClip.Visibility);
+                    }
+                    else
+                    {
+                        Assert.Equal(System.Windows.Visibility.Visible, secondaryClip.Visibility);
+                        Assert.True(secondaryClip.ActualHeight > 0);
+                    }
+                }
+            }
+            // The incoming animation layer must also stop reserving an empty row.
+            view.AnimationsEnabled = true;
+            update.Invoke(view, new[] { projection.Invoke(snapshot, new object[] { "new line", "" }) });
+            var incoming = (System.Windows.FrameworkElement)view.FindName("IncomingSecondaryLyricClip");
+            Assert.Equal(System.Windows.Visibility.Collapsed, incoming.Visibility);
         }
 
         static void IslandRenderingUsesIndependentLyrics()

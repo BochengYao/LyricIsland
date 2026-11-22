@@ -290,6 +290,9 @@ namespace LyricHover.App.Modules
             transform.X = 0;
             IslandAppearanceRendering.SetMixedText(textBlock, text, chineseFontFamily, englishFontFamily);
             textBlock.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+            // Collapse the row itself so the centered StackPanel measures only the
+            // primary line in single-line mode, including the incoming animation layer.
+            clip.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
             textBlock.Width = double.NaN;
             Canvas.SetLeft(textBlock, 0);
             if (visible)
